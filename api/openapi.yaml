@@ -1,0 +1,756 @@
+openapi: 3.0.3
+info:
+  title: fWarrange REST API
+  description: |
+    REST API for fWarrange, a macOS window layout save/restore tool.
+    Embedded HTTP server powered by Swift `Network.framework` (NWListener).
+    Provides remote access to all core features except Settings modification.
+
+    ## Security
+
+    - **Default binding**: `127.0.0.1` (localhost only). The API is disabled by default.
+    - **External access**: Must be explicitly enabled in the Settings UI.
+      When enabled, the server binds to `0.0.0.0` and applies a CIDR whitelist.
+    - **CIDR whitelist**: Only IP addresses matching the configured CIDR ranges are allowed.
+      Default: `192.168.0.0/16`. Multiple ranges can be specified (comma-separated).
+    - **Localhost always allowed**: Requests from `127.0.0.1` are always permitted regardless of CIDR settings.
+    - **Rejected requests**: Connections from non-whitelisted IPs receive `403 Forbidden`.
+    - **No internet exposure**: This API must NOT be exposed to the public internet.
+  version: 1.0.0
+  contact:
+    name: fWarrange
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3016
+    description: Local development server (embedded in macOS app)
+
+tags:
+  - name: Status
+    description: Server health check
+  - name: Layouts
+    description: Layout CRUD (list, detail, rename, delete)
+  - name: Capture
+    description: Capture current window positions and save as layout
+  - name: Restore
+    description: Restore saved window layout
+  - name: Windows
+    description: Query current system windows and running apps
+  - name: System
+    description: System status (Accessibility permissions, etc.)
+
+paths:
+  /:
+    get:
+      summary: Health Check
+      description: Returns server running status and basic information.
+      operationId: healthCheck
+      tags:
+        - Status
+      responses:
+        '200':
+          description: Server is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ok
+                app: fWarrange
+                version: "1.08"
+                port: 3016
+
+  /api/v1/layouts:
+    get:
+      summary: List layouts
+      description: Returns metadata for all saved layouts.
+      operationId: listLayouts
+      tags:
+        - Layouts
+      responses:
+        '200':
+          description: Layout list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayoutListResponse'
+              example:
+                status: ok
+                data:
+                  - name: myLayout
+                    windowCount: 12
+                    fileDate: "2026-03-17T10:30:00Z"
+                  - name: workSetup
+                    windowCount: 8
+                    fileDate: "2026-03-16T09:00:00Z"
+
+    delete:
+      summary: Delete all layouts
+      description: |
+        Deletes all saved layouts.
+        Requires `X-Confirm-Delete-All: true` header as a safety measure.
+      operationId: deleteAllLayouts
+      tags:
+        - Layouts
+      parameters:
+        - name: X-Confirm-Delete-All
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: ["true"]
+          description: Confirmation header for bulk deletion
+      responses:
+        '200':
+          description: All layouts deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteAllResponse'
+        '400':
+          description: Missing confirmation header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error: "X-Confirm-Delete-All header required"
+
+  /api/v1/layouts/{name}:
+    get:
+      summary: Get layout detail
+      description: Returns full window information for a specific layout.
+      operationId: getLayout
+      tags:
+        - Layouts
+      parameters:
+        - $ref: '#/components/parameters/LayoutName'
+      responses:
+        '200':
+          description: Layout detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayoutDetailResponse'
+        '404':
+          description: Layout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error: "Layout 'unknown' not found"
+
+    put:
+      summary: Rename layout
+      description: Renames a layout file.
+      operationId: renameLayout
+      tags:
+        - Layouts
+      parameters:
+        - $ref: '#/components/parameters/LayoutName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenameRequest'
+            example:
+              newName: workSetup-v2
+      responses:
+        '200':
+          description: Rename successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenameResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Layout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete layout
+      description: Deletes a specific layout.
+      operationId: deleteLayout
+      tags:
+        - Layouts
+      parameters:
+        - $ref: '#/components/parameters/LayoutName'
+      responses:
+        '200':
+          description: Layout deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '404':
+          description: Layout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/capture:
+    post:
+      summary: Capture and save current windows
+      description: |
+        Captures all visible window positions and sizes, then saves them as a layout.
+        The app UI layout list is automatically refreshed via notification.
+      operationId: captureAndSave
+      tags:
+        - Capture
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureRequest'
+            examples:
+              named:
+                summary: Capture with a specific name
+                value:
+                  name: myLayout
+              filtered:
+                summary: Capture specific apps only
+                value:
+                  name: safariOnly
+                  filterApps: ["Safari", "iTerm2"]
+              default:
+                summary: Auto-generated name
+                value: {}
+      responses:
+        '200':
+          description: Capture and save successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureResponse'
+        '500':
+          description: Capture failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/layouts/{name}/restore:
+    post:
+      summary: Restore layout
+      description: |
+        Restores window positions and sizes from a saved layout.
+        Processed asynchronously using a score-based window matching algorithm.
+
+        **Prerequisite**: Accessibility permission must be granted.
+      operationId: restoreLayout
+      tags:
+        - Restore
+      parameters:
+        - $ref: '#/components/parameters/LayoutName'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreRequest'
+            examples:
+              default:
+                summary: Restore with default settings
+                value: {}
+              custom:
+                summary: Custom retry settings
+                value:
+                  maxRetries: 3
+                  retryInterval: 1.0
+                  minimumScore: 50
+                  enableParallel: true
+      responses:
+        '200':
+          description: Restore completed (may include partial failures)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreResponse'
+        '403':
+          description: Accessibility permission not granted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error: "Accessibility permission not granted"
+        '404':
+          description: Layout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/layouts/{name}/windows/remove:
+    post:
+      summary: Remove specific windows from layout
+      description: Removes windows with the specified IDs from a layout file.
+      operationId: removeWindows
+      tags:
+        - Layouts
+      parameters:
+        - $ref: '#/components/parameters/LayoutName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveWindowsRequest'
+            example:
+              windowIds: [14205, 5032]
+      responses:
+        '200':
+          description: Windows removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoveWindowsResponse'
+        '404':
+          description: Layout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/windows/current:
+    get:
+      summary: Get current windows (without saving)
+      description: Returns all currently visible windows. Does not save to file.
+      operationId: getCurrentWindows
+      tags:
+        - Windows
+      parameters:
+        - name: filterApps
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated app name filter (e.g. Safari,iTerm2)
+          example: "Safari,iTerm2"
+      responses:
+        '200':
+          description: Current window list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentWindowsResponse'
+
+  /api/v1/windows/apps:
+    get:
+      summary: List running apps
+      description: Returns names of currently running GUI applications.
+      operationId: getRunningApps
+      tags:
+        - Windows
+      responses:
+        '200':
+          description: Running app list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunningAppsResponse'
+              example:
+                status: ok
+                data:
+                  apps: ["Safari", "iTerm2", "Xcode", "Finder", "Slack"]
+
+  /api/v1/status/accessibility:
+    get:
+      summary: Accessibility permission status
+      description: Checks whether macOS Accessibility permission is granted.
+      operationId: getAccessibilityStatus
+      tags:
+        - System
+      responses:
+        '200':
+          description: Permission status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessibilityResponse'
+              example:
+                status: ok
+                data:
+                  granted: true
+
+components:
+  parameters:
+    LayoutName:
+      name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Layout name (YAML filename without extension)
+      example: myLayout
+
+  schemas:
+    # --- Common ---
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [error]
+        error:
+          type: string
+          description: Error message
+      required: [status, error]
+
+    # --- Health Check ---
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        app:
+          type: string
+          example: fWarrange
+        version:
+          type: string
+          example: "1.08"
+        port:
+          type: integer
+          example: 3016
+      required: [status, app, version, port]
+
+    # --- Window models ---
+    WindowPosition:
+      type: object
+      properties:
+        x:
+          type: number
+          format: double
+          description: Screen X coordinate (negative values indicate secondary monitors)
+        y:
+          type: number
+          format: double
+          description: Screen Y coordinate
+      required: [x, y]
+
+    WindowSize:
+      type: object
+      properties:
+        width:
+          type: number
+          format: double
+        height:
+          type: number
+          format: double
+      required: [width, height]
+
+    WindowInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: System Window ID
+        app:
+          type: string
+          description: Application name
+        window:
+          type: string
+          description: Window title
+        layer:
+          type: integer
+          description: Window layer (0 = normal)
+        pos:
+          $ref: '#/components/schemas/WindowPosition'
+        size:
+          $ref: '#/components/schemas/WindowSize'
+      required: [id, app, window, layer, pos, size]
+
+    # --- Layout models ---
+    LayoutMetadata:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Layout name
+        windowCount:
+          type: integer
+          description: Number of windows in layout
+        fileDate:
+          type: string
+          format: date-time
+          description: Last modified date
+      required: [name, windowCount, fileDate]
+
+    # --- Requests & Responses ---
+    LayoutListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LayoutMetadata'
+      required: [status, data]
+
+    LayoutDetailResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+            windowCount:
+              type: integer
+            fileDate:
+              type: string
+              format: date-time
+            windows:
+              type: array
+              items:
+                $ref: '#/components/schemas/WindowInfo'
+          required: [name, windowCount, fileDate, windows]
+      required: [status, data]
+
+    CaptureRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Layout name (auto-generated from date if omitted)
+        filterApps:
+          type: array
+          items:
+            type: string
+          description: Capture only these apps (all apps if omitted)
+
+    CaptureResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+            windowCount:
+              type: integer
+            windows:
+              type: array
+              items:
+                $ref: '#/components/schemas/WindowInfo'
+          required: [name, windowCount, windows]
+      required: [status, data]
+
+    RestoreRequest:
+      type: object
+      properties:
+        maxRetries:
+          type: integer
+          description: Maximum retry attempts
+          default: 5
+        retryInterval:
+          type: number
+          format: double
+          description: Retry interval in seconds
+          default: 0.5
+        minimumScore:
+          type: integer
+          description: Minimum matching score (0-100)
+          default: 30
+        enableParallel:
+          type: boolean
+          description: Enable parallel restore per app
+          default: true
+
+    WindowMatchResult:
+      type: object
+      properties:
+        app:
+          type: string
+        window:
+          type: string
+        matchType:
+          type: string
+          enum: [ID, "Title(Exact)", Regex, "Title(Contains)", Width, Height, Ratio, Area, None]
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        success:
+          type: boolean
+      required: [app, window, matchType, score, success]
+
+    RestoreResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total window count
+            succeeded:
+              type: integer
+              description: Successfully restored count
+            failed:
+              type: integer
+              description: Failed restore count
+            results:
+              type: array
+              items:
+                $ref: '#/components/schemas/WindowMatchResult'
+          required: [total, succeeded, failed, results]
+      required: [status, data]
+
+    RenameRequest:
+      type: object
+      properties:
+        newName:
+          type: string
+          description: New layout name
+      required: [newName]
+
+    RenameResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            oldName:
+              type: string
+            newName:
+              type: string
+          required: [oldName, newName]
+      required: [status, data]
+
+    DeleteResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            deleted:
+              type: string
+              description: Deleted layout name
+          required: [deleted]
+      required: [status, data]
+
+    DeleteAllResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            deletedCount:
+              type: integer
+              description: Number of deleted layouts
+          required: [deletedCount]
+      required: [status, data]
+
+    RemoveWindowsRequest:
+      type: object
+      properties:
+        windowIds:
+          type: array
+          items:
+            type: integer
+          description: Window IDs to remove
+      required: [windowIds]
+
+    RemoveWindowsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            layout:
+              type: string
+            removedCount:
+              type: integer
+            remainingCount:
+              type: integer
+          required: [layout, removedCount, remainingCount]
+      required: [status, data]
+
+    CurrentWindowsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            windowCount:
+              type: integer
+            windows:
+              type: array
+              items:
+                $ref: '#/components/schemas/WindowInfo'
+          required: [windowCount, windows]
+      required: [status, data]
+
+    RunningAppsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            apps:
+              type: array
+              items:
+                type: string
+          required: [apps]
+      required: [status, data]
+
+    AccessibilityResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            granted:
+              type: boolean
+          required: [granted]
+      required: [status, data]
