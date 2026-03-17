@@ -370,6 +370,59 @@ paths:
                 data:
                   apps: ["Safari", "iTerm2", "Xcode", "Finder", "Slack"]
 
+  /api/v1/locale:
+    get:
+      summary: Get current locale
+      description: Returns the current app language and list of supported languages.
+      operationId: getLocale
+      tags:
+        - System
+      responses:
+        '200':
+          description: Current locale info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocaleResponse'
+              example:
+                status: ok
+                data:
+                  current: ko
+                  supported: ["system", "ko", "en", "ja", "ar", "zh-Hans", "zh-Hant", "fr", "de", "hi", "es"]
+
+    put:
+      summary: Change app language
+      description: |
+        Changes the app display language. Requires app restart to take effect.
+        Use "system" to follow macOS system language.
+      operationId: setLocale
+      tags:
+        - System
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetLocaleRequest'
+            example:
+              language: en
+      responses:
+        '200':
+          description: Language changed (restart required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetLocaleResponse'
+        '400':
+          description: Unsupported language code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                error: "Unsupported language: 'xx'"
+
   /api/v1/status/accessibility:
     get:
       summary: Accessibility permission status
@@ -753,4 +806,50 @@ components:
             granted:
               type: boolean
           required: [granted]
+      required: [status, data]
+
+    LocaleResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            current:
+              type: string
+              description: Current language code (e.g. "ko", "en", "system")
+            supported:
+              type: array
+              items:
+                type: string
+              description: List of supported language codes
+          required: [current, supported]
+      required: [status, data]
+
+    SetLocaleRequest:
+      type: object
+      properties:
+        language:
+          type: string
+          description: Language code to set (e.g. "ko", "en", "system")
+      required: [language]
+
+    SetLocaleResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            language:
+              type: string
+              description: New language code
+            restartRequired:
+              type: boolean
+              description: Whether app restart is needed
+          required: [language, restartRequired]
       required: [status, data]
