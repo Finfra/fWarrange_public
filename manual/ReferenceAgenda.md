@@ -19,3 +19,14 @@
 ### 4-1. 다중 모니터 복원 및 좌표계 이해 (Multi-Monitor Coordinates)
 ### 4-2. SwiftUI GUI 아키텍처 및 설정 (GUI Integration & macOS App)
 ### 4-3. 손쉬운 사용 권한 문제 해결 (Accessibility Permissions Troubleshooting)
+
+## 5. REST API 서버 (REST API Server)
+### 5-1. 내장 HTTP 서버 아키텍처 (NWListener 기반 서버 구조)
+### 5-2. 엔드포인트 레퍼런스 (12개 API 엔드포인트 상세 명세)
+### 5-3. 보안 및 접근 제어 (CIDR 화이트리스트, localhost 바인딩)
+### 5-4. 자동화 연동 가이드 (curl, Apple Shortcuts, 쉘 스크립트)
+
+## 6. 설정 및 커스터마이징 (Settings & Customization)
+### 6-1. 설정 탭 구조 (일반/단축키/복구/API/고급)
+### 6-2. 글로벌 단축키 커스터마이징 (5개 단축키 편집)
+### 6-3. 테마 및 UI 옵션 (다크 모드, 미니맵 높이, 앱 전환기)

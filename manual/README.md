@@ -18,13 +18,15 @@
 - 03_QuickStart/
   - QuickStart.md: 레이아웃 저장부터 복구까지 표준 3단계 흐름(저장 → 윈도우 이동 → 복원)
 - 04_UserGuide/
-  - GUI_Usage.md: SwiftUI 시스템 트레이 앱 사용법 및 자동화 설정
+  - GUI_Usage.md: SwiftUI 메뉴바 앱 사용법 (5탭 설정: 일반/단축키/복구/API/고급)
   - CLI_Usage.md: `saveWindowsInfo.swift`, `setWindows.swift` 매개변수 활용 및 커스텀 YAML 데이터 지정
+  - API_Usage.md: REST API 서버 활성화 및 curl/자동화 연동 가이드
 - 05_LayoutRules/
   - MatchingAlgorithm.md: 스마트 매칭 엔진(Score System: 100~30점) 단계별 규칙해설
   - YAML_DataStructure.md: `windowInfo.yml`의 좌표계(pos), 크기(size), 레이어 속성 정리
 - 06_Advanced/
   - Scripting.md: `list_apps.swift`, `list_cg.swift` 상세 활용 및 타 시스템 연동
+  - REST_API.md: 내장 REST API 서버 활용 가이드 (12개 엔드포인트, curl 예제, 보안 설정)
 - 07_Debugging/
   - Logs.md: 앱 로그, 터미널 출력 형식 및 오류 판단 방법
   - Troubleshooting.md: 손쉬운 사용 권한 꼬임 해결, 창 크기 계산(CoreGraphics vs AppKit) 문제 진단
@@ -43,23 +45,41 @@
 - 코드/명령 표기: 백틱(`)으로 감싸 명확히 표기 (예: `swift saveWindowsInfo.swift`)
 - 스크린샷: `finfraHome/_resource/product/fWarrange.capture/` 파일들을 참조하여 삽입
 
+## GUI 설정 탭 구성 (5탭)
+
+| 탭 | 주요 항목 |
+|----|-----------|
+| 일반 | 언어, 데이터 경로, 권한 상태, 자동실행, 테마 |
+| 단축키 | 캡처/복구/목록 등 5개 단축키 설정 |
+| 복구 | 재시도 횟수, 간격, 매칭 점수 기준, 제외 앱 목록 |
+| API | REST 서버 활성화, 포트 설정, 외부 접속 허용, CIDR 필터 |
+| 고급 | 로그 설정, 기타 옵션, Dangerous Zone |
+
 ## 빠른 시작(요약)
 - **캡처**: `cd lib/wArrange_core/ && swift saveWindowsInfo.swift`
 - **복원**: `cd lib/wArrange_core/ && swift setWindows.swift`
 - **앱 보기**: `swift list_all_apps.swift`
 - **GUI 빌드**: `xcodebuild -scheme fWarrange -configuration Debug build`
+- **API 서버**: 설정 → API 탭에서 활성화 후 `curl http://localhost:3016/`
+- **API 캡처**: `curl -X POST http://localhost:3016/api/v1/capture -H "Content-Type: application/json" -d '{"name":"myLayout"}'`
+- **API 복구**: `curl -X POST http://localhost:3016/api/v1/layouts/myLayout/restore`
 
-## 향후 작성 일정(To‑Do)
+## 향후 작성 일정(To-Do)
 - [ ] 01_Overview/Introduction.md 초안
 - [ ] 02_Install/Permissions.md (손쉬운 사용 권한 스크린샷 포함)
 - [ ] 04_UserGuide/CLI_Usage.md
+- [ ] 04_UserGuide/API_Usage.md (REST API 활용 가이드)
 - [ ] 05_LayoutRules/MatchingAlgorithm.md (스코어 표 정리)
+- [ ] 06_Advanced/REST_API.md (REST API 상세 레퍼런스)
 - [ ] 07_Debugging/Troubleshooting.md (권한 초기화 등)
 - [ ] 09_FAQ/FAQ.md
 
 ## 관련 문서(핵심 링크)
 - **시스템 문서**: `GEMINI.md`, `tasks.md`
 - **이슈 관리**: `Issue.md`
+- **API 스펙**: `_public/api/openapi.yaml`
+- **REST 설계 문서**: `_doc_design/RestAPI.md`
+- **API 테스트 스크립트**: `lib/rest/test-api.sh`
 
 ---
-본 README는 매뉴얼의 “맵” 역할을 합니다. 각 섹션 작성 시 본 구조를 기준으로 문서를 추가하고, 완료 후 본 리스트의 To‑Do를 체크하세요.
+본 README는 매뉴얼의 "맵" 역할을 합니다. 각 섹션 작성 시 본 구조를 기준으로 문서를 추가하고, 완료 후 본 리스트의 To-Do를 체크하세요.

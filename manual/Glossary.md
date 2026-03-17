@@ -14,6 +14,11 @@
 | 현재 윈도우의 상태를 YAML 문서로 보존하는 액션                    | Save / Capture    | 캡처 (저장)      | キャプチャ (保存)    | Speichern (Erfassen)      | 保存 (捕获)        |
 | 패턴 매칭 규칙을 통한 창 제목 역추적 기법                         | Regex Match       | 정규식 매칭      | 正規表現マッチング   | Regex-Übereinstimmung     | 正则匹配           |
 | 다중 모니터 구성을 아우르는 하나의 논리적 바탕화면                | Workspace         | 워크스페이스     | ワークスペース       | Arbeitsbereich            | 工作区             |
+| 외부 클라이언트가 HTTP로 앱 기능을 원격 호출하는 인터페이스       | REST API          | REST API         | REST API             | REST API                  | REST API           |
+| 네트워크 요청을 수신하여 응답을 반환하는 내장 서버                | Embedded Server   | 내장 서버        | 内蔵サーバー         | Eingebetteter Server      | 内置服务器         |
+| IP 주소 대역을 지정하여 접근을 제한하는 보안 규칙                 | CIDR Whitelist    | CIDR 화이트리스트 | CIDRホワイトリスト   | CIDR-Whitelist            | CIDR白名单         |
+| 앱 내부 이벤트를 다른 컴포넌트에 비동기 전달하는 메커니즘         | Notification      | 알림 (노티피케이션) | 通知               | Benachrichtigung          | 通知               |
+| 앱 상단 메뉴바에 상주하는 시스템 트레이 형태의 인터페이스         | Menu Bar App      | 메뉴바 앱        | メニューバーアプリ   | Menüleisten-App           | 菜单栏应用         |
 
 > **참고 (Notes)**:
 > *   빈 칸 혹은 미번역 항목은 향후 Localization 팀과의 협의 후 `Localizable.strings` 리소스를 기준으로 업데이트 될 예정입니다.
