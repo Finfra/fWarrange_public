@@ -1,0 +1,10 @@
+{
+  "name": "fwarrange",
+  "description": "Save and restore macOS window layouts via fWarrange REST API",
+  "version": "1.0.0",
+  "author": {
+    "name": "nowage"
+  },
+  "homepage": "https://github.com/nowage/fWarrange",
+  "repository": "https://github.com/nowage/fWarrange"
+}
