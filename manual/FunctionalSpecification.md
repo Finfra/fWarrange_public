@@ -159,18 +159,18 @@ fWarrange Skill은 `/fwarrange:fwarrange` 슬래시 커맨드로 fWarrange REST 
 
 ### 방법 1: Plugin 설치 (권장)
 ```bash
-claude plugin install --from https://github.com/nowage/fWarrange --path _public/agents/claude
+claude plugin install --from https://github.com/nowage/fWarrange --path agents/claude
 ```
 
 ### 방법 2: 수동 복사 (프로젝트별)
 ```bash
-cp _public/agents/claude/skills/fwarrange/SKILL.md \
+cp agents/claude/skills/fwarrange/SKILL.md \
    <PROJECT>/.claude/commands/skills/fwarrange.md
 ```
 
 ### 방법 3: 글로벌 설치
 ```bash
-cp _public/agents/claude/skills/fwarrange/SKILL.md \
+cp agents/claude/skills/fwarrange/SKILL.md \
    ~/.claude/commands/fwarrange.md
 ```
 

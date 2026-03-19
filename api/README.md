@@ -536,10 +536,10 @@ All errors follow the same format:
 
 ```bash
 # Automated tests (14 items)
-bash _public/api/test-api.sh [port]
+bash api/test-api.sh [port]
 
 # Example: custom port
-bash _public/api/test-api.sh 3017
+bash api/test-api.sh 3017
 ```
 
 Test items:

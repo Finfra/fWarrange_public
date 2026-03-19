@@ -10,7 +10,7 @@
 ## 디렉토리 구조
 
 ```
-_public/manual/
+manual/
 ├── README.md                    # 본 파일 (매뉴얼 구조 가이드)
 ├── FunctionalSpecification.md   # 기능 명세서
 ├── ReferenceAgenda.md           # 참조 목록
@@ -86,11 +86,11 @@ _public/manual/
 - [x] Glossary.md - 용어 사전 (REST API, Skill, MCP 용어 포함)
 
 ## 관련 문서(핵심 링크)
-- **API 스펙**: `_public/api/openapi.yaml`
-- **API 테스트 스크립트**: `_public/api/test-api.sh`
-- **Skill 정의**: `_public/agents/claude/skills/fwarrange/SKILL.md`
-- **Plugin 설정**: `_public/agents/claude/.claude-plugin/plugin.json`
-- **MCP 서버**: `_public/mcp/` (npm 패키지: `fwarrange-mcp`)
+- **API 스펙**: `api/openapi.yaml`
+- **API 테스트 스크립트**: `api/test-api.sh`
+- **Skill 정의**: `agents/claude/skills/fwarrange/SKILL.md`
+- **Plugin 설정**: `agents/claude/.claude-plugin/plugin.json`
+- **MCP 서버**: `mcp/` (npm 패키지: `fwarrange-mcp`)
 - **이슈 관리**: `Issue.md`
 
 ---

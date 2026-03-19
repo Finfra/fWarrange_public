@@ -33,7 +33,7 @@ npm install -g fwarrange-mcp
 ### Build from Source
 
 ```bash
-cd _public/mcp
+cd mcp
 npm install
 npm run build
 ```

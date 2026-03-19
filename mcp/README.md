@@ -33,7 +33,7 @@ Run directly via `npx` in your MCP configuration.
 
 ```bash
 git clone https://github.com/nowage/fWarrange.git
-cd fWarrange/_public/mcp
+cd fWarrange/mcp
 npm install
 ```
 
@@ -62,7 +62,7 @@ npm install
     "fwarrange": {
       "command": "node",
       "args": [
-        "{PROJECT_ROOT-type-or-paste-it}/_public/mcp/index.js"
+        "{PROJECT_ROOT-type-or-paste-it}/mcp/index.js"
       ]
     }
   }
@@ -353,7 +353,7 @@ curl http://localhost:3016/
 ## Publishing to npm
 
 ```bash
-cd _public/mcp
+cd mcp
 npm publish
 ```
 

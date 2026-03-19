@@ -536,10 +536,10 @@ print(f"복구: {result['data']['succeeded']}/{result['data']['total']}")
 
 ```bash
 # 자동화 테스트 (14개 항목)
-bash _public/api/test-api.sh [port]
+bash api/test-api.sh [port]
 
 # 예시: 포트 지정
-bash _public/api/test-api.sh 3017
+bash api/test-api.sh 3017
 ```
 
 테스트 항목:

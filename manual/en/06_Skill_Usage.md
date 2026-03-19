@@ -17,7 +17,7 @@ The Claude Code Skill uses the `/fwarrange:fwarrange` slash command to invoke th
 ### Method 1: Claude Code Plugin Install (Recommended)
 
 ```bash
-claude plugin install --from https://github.com/nowage/fWarrange --path _public/agents/claude
+claude plugin install --from https://github.com/nowage/fWarrange --path agents/claude
 ```
 
 After installation, the skill is auto-registered via `.claude-plugin/plugin.json`.
@@ -27,7 +27,7 @@ After installation, the skill is auto-registered via `.claude-plugin/plugin.json
 Copy the Skill file to your project's `.claude/commands/skills/` directory:
 
 ```bash
-cp _public/agents/claude/skills/fwarrange/SKILL.md \
+cp agents/claude/skills/fwarrange/SKILL.md \
    <YOUR_PROJECT>/.claude/commands/skills/fwarrange.md
 ```
 
@@ -36,7 +36,7 @@ cp _public/agents/claude/skills/fwarrange/SKILL.md \
 To use across all projects, copy to the global commands directory:
 
 ```bash
-cp _public/agents/claude/skills/fwarrange/SKILL.md \
+cp agents/claude/skills/fwarrange/SKILL.md \
    ~/.claude/commands/fwarrange.md
 ```
 

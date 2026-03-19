@@ -100,14 +100,14 @@ Copy the plugin directory to your project:
 
 ```bash
 # From fWarrange project root
-cp -r _public/agents/claude/.claude-plugin .claude-plugin
-cp -r _public/agents/claude/skills .claude/skills
+cp -r agents/claude/.claude-plugin .claude-plugin
+cp -r agents/claude/skills .claude/skills
 ```
 
 ### Option 3: Symbolic Link
 
 ```bash
-ln -sf _public/agents/claude/skills/fwarrange .claude/skills/fwarrange
+ln -sf agents/claude/skills/fwarrange .claude/skills/fwarrange
 ```
 
 ---
@@ -131,7 +131,7 @@ The fWarrange REST API server must be running:
 
 | Extension                 | Location       | Description                                             |
 | ------------------------- | -------------- | ------------------------------------------------------- |
-| [MCP Server](../../mcp/) | `_public/mcp/` | Window layout management via MCP protocol (Claude Desktop compatible) |
+| [MCP Server](../../mcp/) | `mcp/` | Window layout management via MCP protocol (Claude Desktop compatible) |
 
 ---
 

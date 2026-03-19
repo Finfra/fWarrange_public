@@ -33,7 +33,7 @@ npm install -g fwarrange-mcp
 ### 소스에서 빌드
 
 ```bash
-cd _public/mcp
+cd mcp
 npm install
 npm run build
 ```
