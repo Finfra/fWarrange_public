@@ -188,7 +188,7 @@ Restore a saved layout to reposition windows.
 | `name`           | string  | Yes      | -       | Layout name to restore         |
 | `maxRetries`     | number  | No       | 5       | Maximum retry attempts         |
 | `retryInterval`  | number  | No       | 0.5     | Retry interval in seconds      |
-| `minimumScore`   | number  | No       | 50      | Minimum window matching score  |
+| `minimumScore`   | number  | No       | 30      | Minimum window matching score  |
 | `enableParallel` | boolean | No       | -       | Enable parallel restoration    |
 
 **Usage example** (ask Claude):
@@ -284,6 +284,48 @@ Check macOS Accessibility permission status.
 ```json
 {
   "accessible": true
+}
+```
+
+---
+
+### 13. `get_locale`
+
+Get the current app language and list of supported languages.
+
+**Parameters**: None
+
+**Response example**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "current": "ko",
+    "supported": ["system", "ko", "en", "ja", "ar", "zh-Hans", "zh-Hant", "fr", "de", "hi", "es"]
+  }
+}
+```
+
+---
+
+### 14. `set_locale`
+
+Change the app display language. Requires app restart to take effect.
+
+**Parameters**:
+
+| Name       | Type   | Required | Description                                      |
+| ---------- | ------ | -------- | ------------------------------------------------ |
+| `language` | string | Yes      | Language code (e.g. "ko", "en", "ja", "system")  |
+
+**Response example**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "language": "en",
+    "restartRequired": true
+  }
 }
 ```
 

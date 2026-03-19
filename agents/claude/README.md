@@ -29,17 +29,30 @@ Save and restore macOS window positions and sizes via the fWarrange REST API.
 /fwarrange:fwarrange capture --name=coding-setup
 /fwarrange:fwarrange restore my-workspace
 /fwarrange:fwarrange list
-/fwarrange:fwarrange status
+/fwarrange:fwarrange detail my-workspace
+/fwarrange:fwarrange rename old-name new-name
+/fwarrange:fwarrange delete my-workspace
+/fwarrange:fwarrange delete-all
+/fwarrange:fwarrange remove-windows my-workspace 14205 5032
 /fwarrange:fwarrange windows
+/fwarrange:fwarrange apps
+/fwarrange:fwarrange status
+/fwarrange:fwarrange locale
+/fwarrange:fwarrange locale --set=en
 ```
 
 **Features:**
 - Guides user to launch fWarrange.app if server is not running
-- Capture current window layout with optional name
-- Restore saved layouts by name
-- List all saved layouts
-- Check accessibility permission status
+- Capture current window layout with optional name and app filter
+- Restore saved layouts with customizable retry settings
+- List all saved layouts with metadata
+- Get detailed layout information (window positions, sizes)
+- Rename and delete layouts
+- Delete all layouts (with safety confirmation)
+- Remove specific windows from a layout by ID
 - View current windows and running apps
+- Check accessibility permission status
+- Get and change app locale/language
 
 **Options:**
 
@@ -47,22 +60,28 @@ Save and restore macOS window positions and sizes via the fWarrange REST API.
 | ------------------- | --------------------- | ----------------------- |
 | `--name=<name>`     | Layout name           | Auto-generated          |
 | `--server=<url>`    | Change server address | `http://localhost:3016` |
+| `--set=<code>`      | Set locale language   | -                       |
 
-**API Summary:**
+**API Summary (14 Endpoints):**
 
-| Method | Endpoint                         | Description            |
-| ------ | -------------------------------- | ---------------------- |
-| POST   | `/api/v1/capture`                | Capture current layout |
-| POST   | `/api/v1/layouts/{name}/restore` | Restore a layout       |
-| GET    | `/api/v1/layouts`                | List all layouts       |
-| GET    | `/api/v1/layouts/{name}`         | Get layout details     |
-| PUT    | `/api/v1/layouts/{name}`         | Rename a layout        |
-| DELETE | `/api/v1/layouts/{name}`         | Delete a layout        |
-| GET    | `/api/v1/windows/current`        | List current windows   |
-| GET    | `/api/v1/windows/apps`           | List running apps      |
-| GET    | `/api/v1/status/accessibility`   | Check permissions      |
-| GET    | `/api/v1/locale`                 | Get locale setting     |
-| PUT    | `/api/v1/locale`                 | Change locale setting  |
+| Method | Endpoint                                | Description                  |
+| ------ | --------------------------------------- | ---------------------------- |
+| GET    | `/`                                     | Health check                 |
+| GET    | `/api/v1/layouts`                       | List all layouts             |
+| DELETE | `/api/v1/layouts`                       | Delete all layouts (*)       |
+| GET    | `/api/v1/layouts/{name}`                | Get layout details           |
+| PUT    | `/api/v1/layouts/{name}`                | Rename a layout              |
+| DELETE | `/api/v1/layouts/{name}`                | Delete a layout              |
+| POST   | `/api/v1/capture`                       | Capture current layout       |
+| POST   | `/api/v1/layouts/{name}/restore`        | Restore a layout             |
+| POST   | `/api/v1/layouts/{name}/windows/remove` | Remove specific windows      |
+| GET    | `/api/v1/windows/current`               | List current windows         |
+| GET    | `/api/v1/windows/apps`                  | List running apps            |
+| GET    | `/api/v1/status/accessibility`          | Check permissions            |
+| GET    | `/api/v1/locale`                        | Get locale setting           |
+| PUT    | `/api/v1/locale`                        | Change locale setting        |
+
+(*) Requires `X-Confirm-Delete-All: true` header.
 
 ---
 
@@ -99,7 +118,7 @@ The fWarrange REST API server must be running:
 
 | Server           | How to Run                                        |
 | ---------------- | ------------------------------------------------- |
-| macOS Native App | Launch fWarrange.app (REST API enabled by default) |
+| macOS Native App | Launch fWarrange.app (REST API is disabled by default. Enable it in Settings > API tab) |
 
 > If the server is not running, the skill will prompt the user to launch fWarrange.app.
 

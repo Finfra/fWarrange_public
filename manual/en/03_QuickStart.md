@@ -92,5 +92,6 @@ curl -X DELETE http://localhost:3016/api/v1/layouts/dailySetup
 ## Next Steps
 
 - [GUI Usage](04_GUI_Usage.md) - Detailed settings guide
-- [CLI Usage](05_CLI_Usage.md) - Script options reference
-- [REST API Usage](06_API_Usage.md) - Full endpoint reference
+- [REST API Usage](05_API_Usage.md) - Full endpoint reference
+- [Skill Usage](06_Skill_Usage.md) - Natural language control via Claude Code
+- [MCP Server Usage](07_MCP_Usage.md) - Native AI tool integration

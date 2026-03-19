@@ -73,6 +73,28 @@ fWarrange can be used in 4 ways:
 3. **REST API** - HTTP calls via curl, Apple Shortcuts, automation scripts
 4. **AI Integration** - Control via Claude Code Skill or MCP server
 
+### CLI Quick Reference
+
+You can use the Swift scripts directly from `lib/wArrange_core/` without the GUI app:
+
+```bash
+# Capture
+swift saveWindowsInfo.swift                     # Save to default file (windowInfo.yml)
+swift saveWindowsInfo.swift --name=myLayout     # Save with a specific name
+swift saveWindowsInfo.swift --app=Safari,iTerm2 # Capture specific apps only
+swift saveWindowsInfo.swift -v                  # Verbose output
+
+# Restore
+swift setWindows.swift                          # Restore from default file
+swift setWindows.swift --name=myLayout          # Restore by name
+swift setWindows.swift -v                       # Verbose (matching scores, etc.)
+
+# Diagnostics
+swift list_apps.swift                           # Window list via Accessibility API
+swift list_all_apps.swift                       # Running apps list
+swift list_cg.swift                             # Window list via CoreGraphics
+```
+
 ## Next Steps
 
 - [Installation & Permissions](02_Install.md)

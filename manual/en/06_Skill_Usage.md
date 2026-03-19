@@ -91,6 +91,55 @@ Shows information about all currently open windows.
 
 Lists all currently running GUI applications.
 
+### Layout Detail
+
+```
+/fwarrange:fwarrange detail my-workspace
+```
+
+Shows all window positions and sizes for a specific layout.
+
+### Rename Layout
+
+```
+/fwarrange:fwarrange rename old-name new-name
+```
+
+Renames a saved layout.
+
+### Delete Layout
+
+```
+/fwarrange:fwarrange delete my-workspace
+```
+
+Deletes a specific layout.
+
+### Delete All Layouts
+
+```
+/fwarrange:fwarrange delete-all
+```
+
+Deletes all saved layouts. Claude will ask for user confirmation before executing.
+
+### Remove Specific Windows
+
+```
+/fwarrange:fwarrange remove-windows my-workspace 14205 5032
+```
+
+Removes specific windows from a layout by Window ID.
+
+### Locale Settings
+
+```
+/fwarrange:fwarrange locale
+/fwarrange:fwarrange locale --set=en
+```
+
+Get or change the app display language.
+
 ## Execution Flow
 
 ```
@@ -126,9 +175,15 @@ REST API endpoints called internally by the Skill:
 | `capture` | POST `/api/v1/capture` |
 | `restore <name>` | POST `/api/v1/layouts/{name}/restore` |
 | `list` | GET `/api/v1/layouts` |
+| `detail <name>` | GET `/api/v1/layouts/{name}` |
+| `rename <name> <newName>` | PUT `/api/v1/layouts/{name}` |
+| `delete <name>` | DELETE `/api/v1/layouts/{name}` |
+| `delete-all` | DELETE `/api/v1/layouts` |
+| `remove-windows <name> <ids...>` | POST `/api/v1/layouts/{name}/windows/remove` |
 | `status` | GET `/api/v1/status/accessibility` |
 | `windows` | GET `/api/v1/windows/current` |
 | `apps` | GET `/api/v1/windows/apps` |
+| `locale` | GET `/api/v1/locale` |
 
 ## Options
 
@@ -147,5 +202,5 @@ REST API endpoints called internally by the Skill:
 
 ## Next Steps
 
-- [MCP Server Usage](08_MCP_Usage.md)
-- [FAQ](09_FAQ.md)
+- [MCP Server Usage](07_MCP_Usage.md)
+- [FAQ](08_FAQ.md)

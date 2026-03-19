@@ -188,7 +188,7 @@ fWarrange 서버 상태를 확인합니다.
 | `name`           | string  | 예     | -      | 복구할 레이아웃 이름       |
 | `maxRetries`     | number  | 아니오 | 5      | 최대 재시도 횟수           |
 | `retryInterval`  | number  | 아니오 | 0.5    | 재시도 간격(초)            |
-| `minimumScore`   | number  | 아니오 | 50     | 최소 창 매칭 점수          |
+| `minimumScore`   | number  | 아니오 | 30     | 최소 창 매칭 점수          |
 | `enableParallel` | boolean | 아니오 | -      | 병렬 복구 활성화 여부      |
 
 **사용 예시** (Claude에게 요청):
@@ -284,6 +284,48 @@ macOS 손쉬운 사용(Accessibility) 권한 상태를 확인합니다.
 ```json
 {
   "accessible": true
+}
+```
+
+---
+
+### 13. `get_locale`
+
+현재 앱 언어 설정과 지원 언어 목록을 조회합니다.
+
+**파라미터**: 없음
+
+**응답 예시**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "current": "ko",
+    "supported": ["system", "ko", "en", "ja", "ar", "zh-Hans", "zh-Hant", "fr", "de", "hi", "es"]
+  }
+}
+```
+
+---
+
+### 14. `set_locale`
+
+앱 표시 언어를 변경합니다. 적용을 위해 앱 재시작이 필요합니다.
+
+**파라미터**:
+
+| 이름       | 타입   | 필수 | 설명                                               |
+| ---------- | ------ | ---- | -------------------------------------------------- |
+| `language` | string | 예   | 언어 코드 (예: "ko", "en", "ja", "system")         |
+
+**응답 예시**:
+```json
+{
+  "status": "ok",
+  "data": {
+    "language": "en",
+    "restartRequired": true
+  }
 }
 ```
 

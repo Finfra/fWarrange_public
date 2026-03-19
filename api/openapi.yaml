@@ -587,7 +587,7 @@ components:
       properties:
         name:
           type: string
-          description: Layout name (auto-generated from date if omitted)
+          description: Layout name (defaults to "windowInfo" if omitted)
         filterApps:
           type: array
           items:
@@ -642,6 +642,9 @@ components:
           type: string
         window:
           type: string
+        matchedTitle:
+          type: string
+          description: Matched window title from the current system
         matchType:
           type: string
           enum: [ID, "Title(Exact)", Regex, "Title(Contains)", Width, Height, Ratio, Area, None]
@@ -651,7 +654,7 @@ components:
           maximum: 100
         success:
           type: boolean
-      required: [app, window, matchType, score, success]
+      required: [app, window, matchedTitle, matchType, score, success]
 
     RestoreResponse:
       type: object

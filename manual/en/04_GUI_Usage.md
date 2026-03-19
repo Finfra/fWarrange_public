@@ -89,5 +89,6 @@ Open the settings window via the menu bar > settings icon.
 
 ## Next Steps
 
-- [CLI Usage](05_CLI_Usage.md)
-- [REST API Usage](06_API_Usage.md)
+- [REST API Usage](05_API_Usage.md)
+- [Skill Usage](06_Skill_Usage.md)
+- [MCP Server Usage](07_MCP_Usage.md)

@@ -142,7 +142,44 @@ CODE=$(echo "$RESP" | tail -1)
 check "DELETE /api/v1/layouts/test-api-renamed" "200" "$CODE" "$BODY"
 echo ""
 
-# 13. 404 Test
+# 13. Locale GET
+echo "--- Locale GET ---"
+RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v1/locale")
+BODY=$(echo "$RESP" | sed '$d')
+CODE=$(echo "$RESP" | tail -1)
+check "GET /api/v1/locale" "200" "$CODE" "$BODY"
+echo "  $BODY"
+echo ""
+
+# 14. Locale PUT
+echo "--- Locale PUT ---"
+RESP=$(curl -s -w "\n%{http_code}" -X PUT "$BASE/api/v1/locale" \
+    -H "Content-Type: application/json" \
+    -d '{"language":"en"}')
+BODY=$(echo "$RESP" | sed '$d')
+CODE=$(echo "$RESP" | tail -1)
+check "PUT /api/v1/locale" "200" "$CODE" "$BODY"
+echo "  $BODY"
+echo ""
+
+# 15. Remove Windows (capture first, then remove)
+echo "--- Remove Windows ---"
+# 캡처하여 테스트용 레이아웃 생성
+curl -s -X POST "$BASE/api/v1/capture" \
+    -H "Content-Type: application/json" \
+    -d '{"name":"test-remove-windows"}' > /dev/null 2>&1
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/v1/layouts/test-remove-windows/windows/remove" \
+    -H "Content-Type: application/json" \
+    -d '{"windowIds":[99999]}')
+BODY=$(echo "$RESP" | sed '$d')
+CODE=$(echo "$RESP" | tail -1)
+check "POST /api/v1/layouts/test-remove-windows/windows/remove" "200" "$CODE" "$BODY"
+echo "  $BODY"
+# 정리
+curl -s -X DELETE "$BASE/api/v1/layouts/test-remove-windows" > /dev/null 2>&1
+echo ""
+
+# 16. 404 Test
 echo "--- 404 Test ---"
 RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v1/layouts/nonexistent")
 BODY=$(echo "$RESP" | sed '$d')
@@ -150,7 +187,7 @@ CODE=$(echo "$RESP" | tail -1)
 check "GET /api/v1/layouts/nonexistent (404)" "404" "$CODE" "$BODY"
 echo ""
 
-# 14. Delete All (without header - should fail)
+# 17. Delete All (without header - should fail)
 echo "--- Delete All (no header) ---"
 RESP=$(curl -s -w "\n%{http_code}" -X DELETE "$BASE/api/v1/layouts")
 BODY=$(echo "$RESP" | sed '$d')

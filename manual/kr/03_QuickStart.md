@@ -94,5 +94,6 @@ curl -X DELETE http://localhost:3016/api/v1/layouts/dailySetup
 ## 다음 단계
 
 - [GUI 사용법](04_GUI_Usage.md) - 설정 탭 상세 안내
-- [CLI 사용법](05_CLI_Usage.md) - 스크립트 옵션 상세
-- [REST API 사용법](06_API_Usage.md) - 전체 엔드포인트 레퍼런스
+- [REST API 사용법](05_API_Usage.md) - 전체 엔드포인트 레퍼런스
+- [Skill 사용법](06_Skill_Usage.md) - Claude Code에서 자연어 제어
+- [MCP 서버 사용법](07_MCP_Usage.md) - AI 도구 네이티브 연동

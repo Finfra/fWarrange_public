@@ -92,6 +92,55 @@ Claude가 현재 화면의 모든 창 배치를 저장합니다.
 
 현재 실행 중인 GUI 앱 목록을 표시합니다.
 
+### 레이아웃 상세 조회
+
+```
+/fwarrange:fwarrange detail my-workspace
+```
+
+특정 레이아웃의 창 목록과 위치/크기 정보를 표시합니다.
+
+### 레이아웃 이름 변경
+
+```
+/fwarrange:fwarrange rename old-name new-name
+```
+
+저장된 레이아웃의 이름을 변경합니다.
+
+### 레이아웃 삭제
+
+```
+/fwarrange:fwarrange delete my-workspace
+```
+
+특정 레이아웃을 삭제합니다.
+
+### 전체 레이아웃 삭제
+
+```
+/fwarrange:fwarrange delete-all
+```
+
+저장된 모든 레이아웃을 삭제합니다. Claude가 실행 전 사용자에게 확인을 요청합니다.
+
+### 특정 창 제거
+
+```
+/fwarrange:fwarrange remove-windows my-workspace 14205 5032
+```
+
+레이아웃에서 특정 Window ID의 창을 제거합니다.
+
+### 언어 설정
+
+```
+/fwarrange:fwarrange locale
+/fwarrange:fwarrange locale --set=en
+```
+
+앱의 표시 언어를 조회하거나 변경합니다.
+
 ## 동작 흐름
 
 ```
@@ -127,9 +176,15 @@ Skill 내부에서 호출하는 REST API 엔드포인트:
 | `capture` | POST `/api/v1/capture` |
 | `restore <name>` | POST `/api/v1/layouts/{name}/restore` |
 | `list` | GET `/api/v1/layouts` |
+| `detail <name>` | GET `/api/v1/layouts/{name}` |
+| `rename <name> <newName>` | PUT `/api/v1/layouts/{name}` |
+| `delete <name>` | DELETE `/api/v1/layouts/{name}` |
+| `delete-all` | DELETE `/api/v1/layouts` |
+| `remove-windows <name> <ids...>` | POST `/api/v1/layouts/{name}/windows/remove` |
 | `status` | GET `/api/v1/status/accessibility` |
 | `windows` | GET `/api/v1/windows/current` |
 | `apps` | GET `/api/v1/windows/apps` |
+| `locale` | GET `/api/v1/locale` |
 
 ## 옵션
 
@@ -148,5 +203,5 @@ Skill 내부에서 호출하는 REST API 엔드포인트:
 
 ## 다음 단계
 
-- [MCP 서버 사용법](08_MCP_Usage.md)
-- [FAQ](09_FAQ.md)
+- [MCP 서버 사용법](07_MCP_Usage.md)
+- [FAQ](08_FAQ.md)

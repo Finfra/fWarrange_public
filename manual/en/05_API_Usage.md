@@ -188,6 +188,17 @@ curl -s http://localhost:3016/api/v1/status/accessibility | python3 -m json.tool
 curl -s http://localhost:3016/api/v1/locale | python3 -m json.tool
 ```
 
+Response:
+```json
+{
+    "status": "ok",
+    "data": {
+        "current": "ko",
+        "supported": ["system", "ko", "en", "ja", "ar", "zh-Hans", "zh-Hant", "fr", "de", "hi", "es"]
+    }
+}
+```
+
 #### PUT /api/v1/locale - Change Language
 
 ```bash
@@ -242,5 +253,5 @@ Full OpenAPI 3.0 spec is available at:
 
 ## Next Steps
 
-- [Skill Usage](07_Skill_Usage.md)
-- [MCP Server Usage](08_MCP_Usage.md)
+- [Skill Usage](06_Skill_Usage.md)
+- [MCP Server Usage](07_MCP_Usage.md)

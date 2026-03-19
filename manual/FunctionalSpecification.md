@@ -182,9 +182,16 @@ cp _public/agents/claude/skills/fwarrange/SKILL.md \
 | `/fwarrange:fwarrange capture --name=dev` | "dev" 이름으로 캡처 |
 | `/fwarrange:fwarrange restore my-workspace` | "my-workspace" 레이아웃 복원 |
 | `/fwarrange:fwarrange list` | 저장된 레이아웃 목록 |
+| `/fwarrange:fwarrange detail my-workspace` | 레이아웃 상세 정보 조회 |
+| `/fwarrange:fwarrange rename old-name new-name` | 레이아웃 이름 변경 |
+| `/fwarrange:fwarrange delete my-workspace` | 레이아웃 삭제 |
+| `/fwarrange:fwarrange delete-all` | 전체 레이아웃 삭제 |
+| `/fwarrange:fwarrange remove-windows name 14205 5032` | 레이아웃에서 특정 창 제거 |
 | `/fwarrange:fwarrange status` | Accessibility 권한 확인 |
 | `/fwarrange:fwarrange windows` | 현재 창 목록 |
 | `/fwarrange:fwarrange apps` | 실행 중 앱 목록 |
+| `/fwarrange:fwarrange locale` | 언어 설정 조회 |
+| `/fwarrange:fwarrange locale --set=en` | 언어 변경 |
 
 ## 6.4. 서버 미실행 시 동작
 
@@ -242,7 +249,7 @@ npm install -g fwarrange-mcp
 }
 ```
 
-## 7.3. 제공 도구 (12개)
+## 7.3. 제공 도구 (14개)
 
 | 도구 | 설명 | 매개변수 |
 |------|------|----------|
@@ -254,6 +261,8 @@ npm install -g fwarrange-mcp
 | `restore_layout` | 레이아웃 복원 | `name`, `maxRetries?`, `retryInterval?`, `minimumScore?` |
 | `rename_layout` | 이름 변경 | `name`, `newName` |
 | `delete_layout` | 삭제 | `name` |
+| `delete_all_layouts` | 전체 레이아웃 삭제 | - |
+| `remove_windows` | 레이아웃에서 특정 창 제거 | `name`, `windowIds` |
 | `get_current_windows` | 현재 창 목록 | `filterApps?` |
 | `get_running_apps` | 실행 중 앱 목록 | - |
 | `get_locale` | 언어 설정 조회 | - |

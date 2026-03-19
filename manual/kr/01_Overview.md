@@ -73,6 +73,28 @@ fWarrange는 4가지 방식으로 사용할 수 있습니다:
 3. **REST API** - curl, Apple Shortcuts, 자동화 스크립트로 HTTP 호출
 4. **AI 연동** - Claude Code Skill 또는 MCP 서버로 AI 에이전트에서 제어
 
+### CLI 스크립트 빠른 참조
+
+GUI 앱 없이 `lib/wArrange_core/` 디렉토리의 Swift 스크립트로 직접 사용할 수 있습니다:
+
+```bash
+# 캡처
+swift saveWindowsInfo.swift                     # 기본 파일(windowInfo.yml)로 저장
+swift saveWindowsInfo.swift --name=myLayout     # 이름 지정 저장
+swift saveWindowsInfo.swift --app=Safari,iTerm2 # 특정 앱만 캡처
+swift saveWindowsInfo.swift -v                  # 상세 출력
+
+# 복원
+swift setWindows.swift                          # 기본 파일에서 복원
+swift setWindows.swift --name=myLayout          # 이름 지정 복원
+swift setWindows.swift -v                       # 매칭 점수 등 상세 출력
+
+# 진단
+swift list_apps.swift                           # Accessibility API 기반 창 목록
+swift list_all_apps.swift                       # 실행 중 앱 목록
+swift list_cg.swift                             # CoreGraphics 기반 창 목록
+```
+
 ## 다음 단계
 
 - [설치 및 권한 설정](02_Install.md)

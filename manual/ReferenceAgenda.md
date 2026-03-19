@@ -51,9 +51,9 @@
 - 통신 구조: Claude Desktop/Code <--stdio--> fwarrange-mcp (Node.js) <--HTTP--> fWarrange App
 - npm 패키지: `fwarrange-mcp`
 - 환경 변수: `FWARRANGE_API_URL` (기본: `http://localhost:3016`)
-### 8-2. 제공 도구 레퍼런스 (12개)
+### 8-2. 제공 도구 레퍼런스 (14개)
 - **상태**: `health_check`, `check_accessibility`
-- **레이아웃**: `list_layouts`, `get_layout`, `capture_layout`, `restore_layout`, `rename_layout`, `delete_layout`
+- **레이아웃**: `list_layouts`, `get_layout`, `capture_layout`, `restore_layout`, `rename_layout`, `delete_layout`, `delete_all_layouts`, `remove_windows`
 - **윈도우**: `get_current_windows`, `get_running_apps`
 - **시스템**: `get_locale`, `set_locale`
 ### 8-3. Claude Desktop 설정

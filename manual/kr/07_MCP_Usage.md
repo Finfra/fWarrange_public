@@ -76,13 +76,44 @@ npm run build
 }
 ```
 
+### 서버 주소 변경
+
+기본값 외의 주소를 사용할 경우, `args`에 `--server=` 옵션을 추가합니다:
+
+```json
+{
+  "mcpServers": {
+    "fwarrange": {
+      "command": "npx",
+      "args": ["-y", "fwarrange-mcp", "--server=http://192.168.0.10:3016"]
+    }
+  }
+}
+```
+
+### 글로벌 설치 후 설정
+
+```bash
+npm install -g fwarrange-mcp
+```
+
+```json
+{
+  "mcpServers": {
+    "fwarrange": {
+      "command": "fwarrange-mcp"
+    }
+  }
+}
+```
+
 ### 환경 변수
 
 | 변수 | 기본값 | 설명 |
 |------|--------|------|
 | `FWARRANGE_API_URL` | `http://localhost:3016` | fWarrange REST API 서버 주소 |
 
-## 제공 도구 (12개)
+## 제공 도구 (14개)
 
 MCP 서버는 다음 도구(Tool)를 AI에게 제공합니다:
 
@@ -103,6 +134,8 @@ MCP 서버는 다음 도구(Tool)를 AI에게 제공합니다:
 | `restore_layout` | 저장된 레이아웃 복원 | `name`, `maxRetries?`, `retryInterval?`, `minimumScore?` |
 | `rename_layout` | 레이아웃 이름 변경 | `name`, `newName` |
 | `delete_layout` | 레이아웃 삭제 | `name` |
+| `delete_all_layouts` | 전체 레이아웃 삭제 | - |
+| `remove_windows` | 레이아웃에서 특정 창 제거 | `name`, `windowIds` |
 
 ### 윈도우 조회
 
@@ -152,6 +185,23 @@ Claude Desktop/Code  <--stdio-->  fwarrange-mcp  <--HTTP-->  fWarrange App
 - AI 클라이언트와 MCP 서버 사이: **stdio** (표준 입출력)
 - MCP 서버와 fWarrange 앱 사이: **HTTP** (REST API)
 
+## 디버깅
+
+### MCP Inspector로 테스트
+
+MCP Inspector를 사용하면 브라우저에서 각 도구를 인터랙티브하게 테스트할 수 있습니다:
+
+```bash
+npx @modelcontextprotocol/inspector npx fwarrange-mcp
+```
+
+### 서버 연결 확인
+
+```bash
+# fWarrange REST API 서버 동작 확인
+curl http://localhost:3016/
+```
+
 ## 트러블슈팅
 
 | 문제 | 해결 |
@@ -160,9 +210,9 @@ Claude Desktop/Code  <--stdio-->  fwarrange-mcp  <--HTTP-->  fWarrange App
 | "서버 응답 없음" | fWarrange 앱 실행 및 REST API 활성화 확인 |
 | 도구가 목록에 안 보임 | Claude Desktop 재시작, 또는 `npx fwarrange-mcp` 직접 실행하여 오류 확인 |
 | 권한 오류 | 손쉬운 사용 권한 확인 (`check_accessibility` 도구 사용) |
-| 포트 충돌 | `FWARRANGE_API_URL` 환경 변수로 포트 변경 |
+| 포트 충돌 | `--server=` 옵션 또는 `FWARRANGE_API_URL` 환경 변수로 포트 변경 |
 
 ## 다음 단계
 
-- [FAQ](09_FAQ.md)
-- [REST API 상세](06_API_Usage.md)
+- [FAQ](08_FAQ.md)
+- [REST API 상세](05_API_Usage.md)

@@ -76,13 +76,44 @@ Add to `.mcp.json` in your project root:
 }
 ```
 
+### Custom Server Address
+
+To use a different server address, add the `--server=` option to `args`:
+
+```json
+{
+  "mcpServers": {
+    "fwarrange": {
+      "command": "npx",
+      "args": ["-y", "fwarrange-mcp", "--server=http://192.168.0.10:3016"]
+    }
+  }
+}
+```
+
+### After Global Install
+
+```bash
+npm install -g fwarrange-mcp
+```
+
+```json
+{
+  "mcpServers": {
+    "fwarrange": {
+      "command": "fwarrange-mcp"
+    }
+  }
+}
+```
+
 ### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `FWARRANGE_API_URL` | `http://localhost:3016` | fWarrange REST API server address |
 
-## Available Tools (12)
+## Available Tools (14)
 
 The MCP server provides the following tools to AI:
 
@@ -103,6 +134,8 @@ The MCP server provides the following tools to AI:
 | `restore_layout` | Restore a saved layout | `name`, `maxRetries?`, `retryInterval?`, `minimumScore?` |
 | `rename_layout` | Rename a layout | `name`, `newName` |
 | `delete_layout` | Delete a layout | `name` |
+| `delete_all_layouts` | Delete all layouts | - |
+| `remove_windows` | Remove specific windows from a layout | `name`, `windowIds` |
 
 ### Window Queries
 
@@ -152,6 +185,23 @@ Claude Desktop/Code  <--stdio-->  fwarrange-mcp  <--HTTP-->  fWarrange App
 - AI client to MCP server: **stdio** (standard I/O)
 - MCP server to fWarrange app: **HTTP** (REST API)
 
+## Debugging
+
+### Test with MCP Inspector
+
+Use the MCP Inspector to interactively test each tool in the browser:
+
+```bash
+npx @modelcontextprotocol/inspector npx fwarrange-mcp
+```
+
+### Verify Server Connection
+
+```bash
+# Check if the fWarrange REST API server is running
+curl http://localhost:3016/
+```
+
 ## Troubleshooting
 
 | Issue | Solution |
@@ -160,9 +210,9 @@ Claude Desktop/Code  <--stdio-->  fwarrange-mcp  <--HTTP-->  fWarrange App
 | "Server not responding" | Verify fWarrange app is running with REST API enabled |
 | Tools not appearing | Restart Claude Desktop, or run `npx fwarrange-mcp` directly to check errors |
 | Permission errors | Check Accessibility permission (use `check_accessibility` tool) |
-| Port conflict | Change port via `FWARRANGE_API_URL` environment variable |
+| Port conflict | Change port via `--server=` option or `FWARRANGE_API_URL` environment variable |
 
 ## Next Steps
 
-- [FAQ](09_FAQ.md)
-- [REST API Reference](06_API_Usage.md)
+- [FAQ](08_FAQ.md)
+- [REST API Reference](05_API_Usage.md)

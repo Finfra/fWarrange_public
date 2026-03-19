@@ -16,6 +16,9 @@ A: Yes, natively supported.
 ### Q: I get an "Accessibility permission required" error.
 A: Go to System Settings > Privacy & Security > Accessibility and add fWarrange (or your terminal app). See the [Installation Guide](02_Install.md#3-accessibility-permission-setup) for details.
 
+### Q: Can I use CLI scripts only, without the GUI?
+A: Yes. You can run the Swift scripts directly from the `lib/wArrange_core/` directory. Use `swift saveWindowsInfo.swift` to capture and `swift setWindows.swift` to restore. CLI options include `--name=<name>`, `--app=<appList>`, and `-v` for verbose output.
+
 ### Q: Permissions are lost after each rebuild.
 A: Xcode generates a different binary signature with each build, so macOS treats it as a new app. During development, re-registration is needed each time. Release builds with stable signing resolve this.
 
@@ -57,7 +60,7 @@ A: Enable external access in Settings > API tab and configure the CIDR whitelist
 A: Yes, via Settings > API tab. Default is 3016.
 
 ### Q: How do I call from Apple Shortcuts?
-A: Use the "Get Contents of URL" action in Shortcuts with `http://localhost:3016/api/v1/layouts/myLayout/restore` as a POST request. See [API Usage](06_API_Usage.md#apple-shortcuts-integration) for details.
+A: Use the "Get Contents of URL" action in Shortcuts with `http://localhost:3016/api/v1/layouts/myLayout/restore` as a POST request. See [API Usage](05_API_Usage.md#apple-shortcuts-integration) for details.
 
 ## Skill / MCP
 
@@ -92,7 +95,6 @@ A: In typical use, YAML files are under a few dozen KB. Periodically deleting un
 - [Product Overview](01_Overview.md)
 - [Installation Guide](02_Install.md)
 - [GUI Usage](04_GUI_Usage.md)
-- [CLI Usage](05_CLI_Usage.md)
-- [REST API Usage](06_API_Usage.md)
-- [Skill Usage](07_Skill_Usage.md)
-- [MCP Server Usage](08_MCP_Usage.md)
+- [REST API Usage](05_API_Usage.md)
+- [Skill Usage](06_Skill_Usage.md)
+- [MCP Server Usage](07_MCP_Usage.md)

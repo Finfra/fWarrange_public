@@ -10,7 +10,7 @@
  *   --server=<url> : (옵션) fWarrange REST API 서버 주소 (기본값: http://localhost:3016)
  *
  * Environment:
- *   FWARRANGE_SERVER : 환경변수 설정 (--server 옵션보다 우선순위 낮음)
+ *   FWARRANGE_API_URL : 환경변수 설정 (--server 옵션보다 우선순위 낮음)
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -21,7 +21,7 @@ import { z } from "zod";
 function getServerUrl() {
   const arg = process.argv.find((a) => a.startsWith("--server="));
   if (arg) return arg.split("=").slice(1).join("=");
-  return process.env.FWARRANGE_SERVER || "http://localhost:3016";
+  return process.env.FWARRANGE_API_URL || "http://localhost:3016";
 }
 
 const SERVER_URL = getServerUrl();
@@ -187,7 +187,7 @@ server.tool(
     minimumScore: z
       .number()
       .optional()
-      .describe("최소 매칭 점수 (기본값: 50)"),
+      .describe("최소 매칭 점수 (기본값: 30)"),
     enableParallel: z
       .boolean()
       .optional()
@@ -304,9 +304,7 @@ server.tool(
   withErrorHandler(async ({ filterApps }) => {
     let path = "/api/v1/windows/current";
     if (filterApps && filterApps.length > 0) {
-      const params = new URLSearchParams();
-      filterApps.forEach((app) => params.append("filterApps", app));
-      path += `?${params.toString()}`;
+      path += `?filterApps=${encodeURIComponent(filterApps.join(","))}`;
     }
     return await apiCall(path);
   })
@@ -333,6 +331,40 @@ server.tool(
   {},
   withErrorHandler(async () => {
     return await apiCall("/api/v1/status/accessibility");
+  })
+);
+
+// ─────────────────────────────────────────────
+// Tool 13: get_locale
+// ─────────────────────────────────────────────
+server.tool(
+  "get_locale",
+  "현재 앱 언어 설정과 지원 언어 목록을 조회합니다",
+  {},
+  withErrorHandler(async () => {
+    return await apiCall("/api/v1/locale");
+  })
+);
+
+// ─────────────────────────────────────────────
+// Tool 14: set_locale
+// ─────────────────────────────────────────────
+server.tool(
+  "set_locale",
+  "앱 표시 언어를 변경합니다 (적용을 위해 앱 재시작 필요)",
+  {
+    language: z
+      .string()
+      .describe(
+        '언어 코드 (예: "ko", "en", "ja", "system" 등)'
+      ),
+  },
+  withErrorHandler(async ({ language }) => {
+    return await apiCall("/api/v1/locale", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ language }),
+    });
   })
 );
 
