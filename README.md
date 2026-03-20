@@ -1,4 +1,8 @@
+[![ko](https://img.shields.io/badge/lang-ko-red.svg)](./README_kr.md)
+
 # fWarrange
+
+<img src="./manual/app-icon.png" width="28" height="28"> [EN](https://finfra.kr/product/fWarrange/en/index.html) | [KR](https://finfra.kr/product/fWarrange/kr/index.html)
 
 > **The Ultimate Mac Window Management, Easy Layout Restoration.**
 
@@ -22,8 +26,25 @@ macOS Window Management & Layout Tool. Save and restore window positions and siz
 
 | Language | Link |
 |----------|------|
-| English | [fWarrange - Product Page](http://finfra.kr/product/fWarrange/en/index.html) |
-| Korean | [fWarrange - 제품 페이지](http://finfra.kr/product/fWarrange/kr/index.html) |
+| English | [fWarrange - Product Page](https://finfra.kr/product/fWarrange/en/index.html) |
+| Korean | [fWarrange - 제품 페이지](https://finfra.kr/product/fWarrange/kr/index.html) |
+
+## Other Finfra Products
+
+### Service
+| Product | Description | Link |
+|---------|-------------|------|
+| Local LLM Agent Coding Support | AI Agent development system & engineer training | [EN](https://finfra.kr/product/LocalLLMAgentCoding/en/index.html) / [KR](https://finfra.kr/product/LocalLLMAgentCoding/kr/index.html) |
+| Mac App Development | macOS app development, consulting & training | [EN](https://finfra.kr/product/MacAppDev/en/index.html) / [KR](https://finfra.kr/product/MacAppDev/kr/index.html) |
+
+### Mac OS App
+| Product | Description | Link |
+|---------|-------------|------|
+| fSnippet | Powerful text expansion & snippet tool | [EN](https://finfra.kr/product/fSnippet/en/index.html) / [KR](https://finfra.kr/product/fSnippet/kr/index.html) |
+| fBanner | Clipboard to banner image, instantly | [EN](https://finfra.kr/product/fBanner/en/index.html) / [KR](https://finfra.kr/product/fBanner/kr/index.html) |
+| fBoard | Your personalized screen board | [EN](https://finfra.kr/product/fBoard/en/index.html) / [KR](https://finfra.kr/product/fBoard/kr/index.html) |
+| fQRGen | Clipboard to QR code, instantly | [EN](https://finfra.kr/product/fQRGen/en/index.html) / [KR](https://finfra.kr/product/fQRGen/kr/index.html) |
+| fGoogleSheet | The fastest Google Sheets menu bar app for Mac | [EN](https://finfra.kr/product/fGoogleSheet/en/index.html) / [KR](https://finfra.kr/product/fGoogleSheet/kr/index.html) |
 
 ## Documentation
 
