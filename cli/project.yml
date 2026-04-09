@@ -1,0 +1,37 @@
+name: fWarrangeCli
+options:
+  bundleIdPrefix: kr.finfra
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    PRODUCT_BUNDLE_IDENTIFIER: kr.finfra.fWarrangeCli
+    INFOPLIST_KEY_LSUIElement: true
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: 1
+    GENERATE_INFOPLIST_FILE: true
+
+targets:
+  fWarrangeCli:
+    type: application
+    platform: macOS
+    sources:
+      - fWarrangeCli
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: kr.finfra.fWarrangeCli
+        INFOPLIST_KEY_LSUIElement: true
+        CODE_SIGN_ENTITLEMENTS: fWarrangeCli/fWarrangeCli.entitlements
+        ENABLE_APP_SANDBOX: false
+    entitlements:
+      path: fWarrangeCli/fWarrangeCli.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+        com.apple.security.network.server: true
+        com.apple.security.network.client: true
+        com.apple.security.files.user-selected.read-write: true

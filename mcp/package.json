@@ -1,0 +1,36 @@
+{
+  "name": "fwarrange-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for fWarrange macOS window layout management via REST API",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "fwarrange-mcp": "./index.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "mcp",
+    "window-manager",
+    "fwarrange",
+    "model-context-protocol",
+    "macos"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nowage/fWarrange.git",
+    "directory": "_public/mcp"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.23.0"
+  },
+  "license": "MIT"
+}
