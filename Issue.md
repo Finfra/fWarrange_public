@@ -6,8 +6,8 @@ date: 2026-04-07
 
 # Issue Management
 
-- Issue HWM: 20
-- Save Point: - 2026-04-12 (4c6fcb1) Fix(Capture): CLI capture 인자 생략 시 날짜별 시퀀스 이름
+- Issue HWM: 21
+- Save Point: - 2026-04-13 (76bb041) Fix(Shortcuts): Issue21 단축키 설정 REST 동기화 엔드포인트 추가
 
 # 🤔 결정사항
 
@@ -22,6 +22,24 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue21: 단축키 설정 REST 동기화 엔드포인트 추가 (등록: 2026-04-12, 해결: 2026-04-13, commit: 76bb041) ✅
+
+* 목적: fWarrange GUI(Sandbox) 설정창에서 단축키를 변경해도 `_config.yml`에 반영되지 않고 CLI 데몬의 `HotKeyService`도 재등록되지 않던 문제 해결
+* 상세:
+    - GUI Shortcuts 탭은 로컬 저장만 수행하고 `fWarrangeCli`로 전파되지 않음
+    - CLI 데몬은 기동 시 한 번만 `_config.yml` 읽어 `CarbonHotKeyService.register(...)` 호출
+    - OpenAPI 명세에 shortcut 업데이트 엔드포인트 부재
+* 구현 명세:
+    - [api/openapi.yaml](api/openapi.yaml): `PUT /settings/shortcuts` 경로 및 `ShortcutsUpdateRequest` / `ShortcutsUpdateResponse` 스키마 추가
+    - [cli/fWarrangeCli/Services/RESTServer.swift](cli/fWarrangeCli/Services/RESTServer.swift):
+        - `RESTServerHandlers.updateShortcuts: ([String: Any]) -> [String: String]` 필드 추가
+        - `Notification.Name.fWarrangeCliShortcutsUpdated` 정의
+        - `PUT /api/v1/settings/shortcuts` 라우팅 및 `handleSetShortcuts` 핸들러 추가
+    - [cli/fWarrangeCli/AppState.swift](cli/fWarrangeCli/AppState.swift):
+        - `updateShortcuts` 클로저 — `settingsService.load()` → 키별 병합(문자열=설정, NSNull=해제, 누락=유지) → `save()` → `.fWarrangeCliShortcutsUpdated` 알림 발송
+        - `initialize()` 에서 해당 알림 관찰 → `settings` 재로딩 + `hotKeyService.register(...)` 재호출
+    - 바디 규칙: `saveShortcut`, `restoreDefaultShortcut`, `restoreLastShortcut`, `showMainWindowShortcut`, `showSettingsShortcut` 키 지원
 
 ## Issue20: CLI `capture` 인자 생략 시 날짜별 시퀀스 이름으로 저장 (등록: 2026-04-12, 해결: 2026-04-12, commit: 4c6fcb1) ✅
 
