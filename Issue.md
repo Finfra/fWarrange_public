@@ -6,7 +6,7 @@ date: 2026-04-07
 
 # Issue Management
 
-- Issue HWM: 21
+- Issue HWM: 22
 - Save Point: - 2026-04-13 (76bb041) Fix(Shortcuts): Issue21 단축키 설정 REST 동기화 엔드포인트 추가
 
 # 🤔 결정사항
@@ -18,6 +18,25 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+
+## Issue22: REST API v2 구현 (Settings 화면 전체 엔드포인트) (등록: 2026-04-13)
+
+* 목적: 설정 화면(General/Restore/API/Advanced) 기능을 REST API v2로 구현하여 fWarrange GUI에서 원격 제어 가능하게 함
+* 상세:
+    - `api/openapi.yaml` → `api/openapi_v1.yaml` 리네임, 신규 `api/openapi_v2.yaml` 작성
+    - `AppSettings` 모델 확장: `restServerEnabled`, `allowExternalAccess`, `allowedCIDR`, `dataDirectoryPath`, `autoSaveOnSleep`, `maxAutoSaves`, `restoreButtonStyle`, `confirmBeforeDelete`, `showInCmdTab`, `clickSwitchToMain`, `theme`
+    - `YAMLSettingsService` 파서/직렬화에 신규 필드 반영
+    - `RESTServer.swift`: `apiV2BasePath` 상수, `routeV2()` 신규 — v2 설정 엔드포인트 처리, 그 외는 v1으로 폴백
+    - v2 엔드포인트:
+        - `GET/PATCH /api/v2/settings` (전체)
+        - `GET/PATCH /api/v2/settings/{general,restore,advanced}`
+        - `GET/PATCH /api/v2/settings/api` (포트/CIDR 변경 시 서버 자동 재시작)
+        - `GET/PUT/POST/DELETE /api/v2/settings/restore/excluded-apps` + `/reset`
+        - `POST /api/v2/settings/factory-reset` (`X-Confirm: true`)
+        - `GET /api/v2/settings/shortcuts`
+    - `AppState.swift`: `fullSettingsDict`/`applySettingsPatch` 헬퍼 + `applyApiSettings`가 포트/CIDR 변경 시 `RESTServer` 자동 재시작
+    - 문서/규칙 참조 경로 `openapi.yaml` → `openapi_v1.yaml` 일괄 갱신 (`api/README*`, `manual/*`, `cli/README*`, `.claude/rules/api-rules.md`, `.wiki-compiler.json`)
+    - Debug 빌드 검증 완료 (BUILD SUCCEEDED)
 
 # 📗 선택
 
