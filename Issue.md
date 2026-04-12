@@ -6,8 +6,8 @@ date: 2026-04-07
 
 # Issue Management
 
-- Issue HWM: 19
-- Save Point: - 2026-04-12 (aa7fd85) Fix(HotKey): 단축키 저장 파일명 날짜별 시퀀스 번호
+- Issue HWM: 20
+- Save Point: - 2026-04-12 (4c6fcb1) Fix(Capture): CLI capture 인자 생략 시 날짜별 시퀀스 이름
 
 # 🤔 결정사항
 
@@ -22,6 +22,20 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue20: CLI `capture` 인자 생략 시 날짜별 시퀀스 이름으로 저장 (등록: 2026-04-12, 해결: 2026-04-12, commit: 4c6fcb1) ✅
+
+* 목적: `$CLI capture`(인자 없음) 실행 시 고정된 이름("default" 또는 이전 `-hotkey`)으로 저장되어 덮어쓰던 문제를 해결하고, `cmd+F7` 단축키 저장과 동일한 명명 규칙(`YYYY-MM-DD-{n}`)을 사용하도록 통일
+* 상세:
+    - `LayoutManager.nextDailySequenceName()` 헬퍼 추가 (오늘 날짜 prefix의 최대 번호+1 산출)
+    - `AppState.handleHotKeyAction(.save)`가 헬퍼 재사용 → 중복 로직 제거
+    - `RESTServer.handleCapture`에서 `name` 누락/빈 문자열 시 `handlers.nextDailySequenceName()` 호출
+    - `CLIHandler` `capture` 커맨드: 인자 없으면 `name` 필드 자체를 전송하지 않음
+* 구현 명세:
+    - [cli/fWarrangeCli/Managers/LayoutManager.swift](cli/fWarrangeCli/Managers/LayoutManager.swift)
+    - [cli/fWarrangeCli/Services/RESTServer.swift](cli/fWarrangeCli/Services/RESTServer.swift)
+    - [cli/fWarrangeCli/CLIHandler.swift](cli/fWarrangeCli/CLIHandler.swift)
+    - [cli/fWarrangeCli/AppState.swift](cli/fWarrangeCli/AppState.swift)
 
 ## Issue19: 단축키 저장 파일명 날짜별 시퀀스 번호로 변경 (등록: 2026-04-12, 해결: 2026-04-12, commit: aa7fd85) ✅
 
