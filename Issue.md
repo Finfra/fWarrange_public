@@ -6,8 +6,8 @@ date: 2026-04-07
 
 # Issue Management
 
-- Issue HWM: 18
-- Save Point: - 2026-04-12 (f127709) Docs: Close Issue18
+- Issue HWM: 19
+- Save Point: - 2026-04-12 (aa7fd85) Fix(HotKey): 단축키 저장 파일명 날짜별 시퀀스 번호
 
 # 🤔 결정사항
 
@@ -22,6 +22,16 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue19: 단축키 저장 파일명 날짜별 시퀀스 번호로 변경 (등록: 2026-04-12, 해결: 2026-04-12, commit: aa7fd85) ✅
+
+* 목적: 단축키(cmd+7) 저장 시 매번 같은 파일명(`YYYY-MM-DD-hotkey.yml`)으로 덮어쓰던 문제 수정
+* 상세:
+    - 원인: `AppState.handleHotKeyAction(.save)`에서 파일명을 `\(date)-hotkey` 고정값으로 생성
+    - 수정: 같은 날짜 prefix 기존 레이아웃을 스캔하여 다음 번호(`YYYY-MM-DD-1`, `-2`, …)로 저장
+* 구현 명세:
+    - 파일: [cli/fWarrangeCli/AppState.swift](cli/fWarrangeCli/AppState.swift#L180-L190)
+    - `layoutManager.layouts`에서 `\(datePrefix)-` prefix 필터 → `Int(suffix)` 파싱 → `max() + 1`
 
 ## Issue18: logLevel 설정이 info로 덮어써지던 버그 수정 (등록: 2026-04-12, 해결: 2026-04-12, commit: f127709) ✅
 
