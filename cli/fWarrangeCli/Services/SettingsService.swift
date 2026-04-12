@@ -56,6 +56,7 @@ final class YAMLSettingsService: SettingsService {
         lines.append("minimumMatchScore: \(s.minimumMatchScore)")
         lines.append("enableParallelRestore: \(s.enableParallelRestore ?? true)")
         lines.append("restServerPort: \(s.restServerPort ?? 3016)")
+        lines.append("# logLevel: 0=verbose, 1=debug, 2=info, 3=warning, 4=error, 5=critical")
         lines.append("logLevel: \(s.logLevel ?? 5)")
         lines.append("dataStorageMode: \(s.dataStorageMode?.rawValue ?? "host")")
         lines.append("launchAtLogin: \(s.launchAtLogin ?? false)")

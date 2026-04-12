@@ -108,7 +108,7 @@ final class AppState {
     }
 
     func initialize() {
-        if let level = LogLevel(rawValue: settings.logLevel ?? 1) {
+        if let level = LogLevel(rawValue: settings.logLevel ?? 5) {
             Logger.shared.setLogLevel(level)
         }
 

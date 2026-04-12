@@ -43,11 +43,7 @@ nonisolated final class Logger: Sendable {
 
     private let queue = DispatchQueue(label: "kr.finfra.fWarrangeCli.logger", qos: .utility)
 
-    #if DEBUG
-    nonisolated(unsafe) var currentLogLevel: LogLevel = .debug
-    #else
-    nonisolated(unsafe) var currentLogLevel: LogLevel = .info
-    #endif
+    nonisolated(unsafe) var currentLogLevel: LogLevel
 
     nonisolated(unsafe) var isFileLoggingEnabled: Bool = true
 
@@ -75,10 +71,35 @@ nonisolated final class Logger: Sendable {
         self.logDirectoryURL = logDir
         self.logFileURL = logDir.appendingPathComponent("wlog.log")
 
+        // config.yml에서 logLevel 읽기
+        let configPath = URL(fileURLWithPath: appRootPath).appendingPathComponent("_config.yml")
+        if let configContent = try? String(contentsOf: configPath, encoding: .utf8),
+           let logLevelLine = configContent.split(separator: "\n").first(where: {
+               let t = $0.trimmingCharacters(in: .whitespaces)
+               return !t.hasPrefix("#") && t.hasPrefix("logLevel:")
+           }),
+           let levelStr = logLevelLine.split(separator: ":").last?.trimmingCharacters(in: .whitespaces),
+           let levelValue = Int(levelStr),
+           let level = LogLevel(rawValue: levelValue) {
+            self.currentLogLevel = level
+        } else {
+            // 파일 읽기 실패 시 기본값
+            #if DEBUG
+            self.currentLogLevel = .debug
+            #else
+            self.currentLogLevel = .info
+            #endif
+        }
+
         createLogFileIfNeeded()
     }
 
     private func createLogFileIfNeeded() {
+        // Info 레벨 미만이면 파일 생성 스킵
+        guard currentLogLevel.rawValue <= LogLevel.info.rawValue else {
+            return
+        }
+
         #if DEBUG
             let startupMessage = "\n=== fWarrangeCli 로그 시작 [\(formatTimestamp(Date()))] ===\n"
             do {
@@ -97,9 +118,8 @@ nonisolated final class Logger: Sendable {
     }
 
     private func writeToLogFile(_ message: String, level: LogLevel? = nil) {
-        let isForceLog = (level == .error || level == .critical)
-
-        guard isFileLoggingEnabled || isForceLog else {
+        // Info 레벨 이상일 때만 파일에 기록 (logLevel >= 2)
+        guard currentLogLevel.rawValue <= LogLevel.info.rawValue else {
             return
         }
 
