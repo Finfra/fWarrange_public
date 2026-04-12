@@ -180,7 +180,12 @@ final class AppState {
         case .save:
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
-            let name = "\(formatter.string(from: Date()))-hotkey"
+            let datePrefix = formatter.string(from: Date())
+            let existingMax = layoutManager.layouts.compactMap { meta -> Int? in
+                guard meta.name.hasPrefix("\(datePrefix)-") else { return nil }
+                return Int(meta.name.dropFirst(datePrefix.count + 1))
+            }.max() ?? 0
+            let name = "\(datePrefix)-\(existingMax + 1)"
             let windows = windowManager.captureCurrentWindows(filterApps: nil)
             try? layoutManager.saveLayout(name: name, windows: windows)
             logI("⌨️ 단축키 저장: '\(name)'")
