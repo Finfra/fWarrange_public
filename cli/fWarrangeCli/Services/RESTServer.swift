@@ -41,6 +41,7 @@ struct RESTServerHandlers {
     var getSettingsBasePath: () -> String
     var getDefaultLayoutName: () -> String?
     var setDefaultLayoutName: (_ name: String?) -> Void
+    var updateShortcuts: (_ body: [String: Any]) -> [String: String]
 }
 
 // MARK: - Notification.Name 확장 (fWarrangeCli용)
@@ -50,6 +51,7 @@ extension Notification.Name {
     static let restRestoreCompleted = Notification.Name("fWarrangeCli.RESTRestoreCompleted")
     static let restLayoutDeleted = Notification.Name("fWarrangeCli.RESTLayoutDeleted")
     static let restLayoutRenamed = Notification.Name("fWarrangeCli.RESTLayoutRenamed")
+    static let fWarrangeCliShortcutsUpdated = Notification.Name("fWarrangeCli.ShortcutsUpdated")
 }
 
 // MARK: - RESTServer
@@ -161,7 +163,7 @@ final class RESTServer: RESTServerProtocol {
                 return
             }
 
-            logD("[RESTServer] \(request.method) \(request.path) from \(connection.endpoint)")
+            logV("[RESTServer] \(request.method) \(request.path) from \(connection.endpoint)")
 
             // CIDR 검사
             if self.allowExternal && !self.isAllowed(endpoint: connection.endpoint) {
@@ -335,6 +337,12 @@ final class RESTServer: RESTServerProtocol {
         // PUT /api/v1/settings/default-layout
         if method == "PUT" && path == "\(base)/settings/default-layout" {
             handleSetDefaultLayout(request: request, completion: completion)
+            return
+        }
+
+        // PUT /api/v1/settings/shortcuts
+        if method == "PUT" && path == "\(base)/settings/shortcuts" {
+            handleSetShortcuts(request: request, completion: completion)
             return
         }
 
@@ -778,6 +786,16 @@ final class RESTServer: RESTServerProtocol {
         }
         handlers.setDefaultLayoutName(name)
         completion(.ok(json: ["status": "ok", "data": ["defaultLayoutName": name]]))
+    }
+
+    /// PUT /api/v1/settings/shortcuts - 단축키 일괄 업데이트 및 HotKeyService 재등록
+    private func handleSetShortcuts(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
+        guard let json = request.jsonBody() else {
+            completion(.badRequest(message: "JSON body가 필요합니다"))
+            return
+        }
+        let applied = handlers.updateShortcuts(json)
+        completion(.ok(json: ["status": "ok", "data": applied]))
     }
 
     // MARK: - UI 상태

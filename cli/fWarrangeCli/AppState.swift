@@ -103,6 +103,41 @@ final class AppState {
                 var s = svc.load()
                 s.defaultLayoutName = name
                 svc.save(s)
+            },
+            updateShortcuts: { [weak settingsService] body -> [String: String] in
+                guard let svc = settingsService else { return [:] }
+                var s = svc.load()
+
+                // 키가 body에 존재할 때만 변경. NSNull = 해제, 문자열 = 설정.
+                func apply(_ key: String, set: (KeyboardShortcutConfig?) -> Void) {
+                    guard let value = body[key] else { return }
+                    if value is NSNull {
+                        set(nil)
+                    } else if let str = value as? String {
+                        let trimmed = str.trimmingCharacters(in: .whitespaces)
+                        if trimmed.isEmpty {
+                            set(nil)
+                        } else if let cfg = KeyboardShortcutConfig.from(displayString: trimmed) {
+                            set(cfg)
+                        }
+                    }
+                }
+                apply("saveShortcut") { s.saveShortcut = $0 }
+                apply("restoreDefaultShortcut") { s.restoreDefaultShortcut = $0 }
+                apply("restoreLastShortcut") { s.restoreLastShortcut = $0 }
+                apply("showMainWindowShortcut") { s.showMainWindowShortcut = $0 }
+                apply("showSettingsShortcut") { s.showSettingsShortcut = $0 }
+
+                svc.save(s)
+                NotificationCenter.default.post(name: .fWarrangeCliShortcutsUpdated, object: nil)
+
+                return [
+                    "saveShortcut": s.saveShortcut?.displayString ?? "",
+                    "restoreDefaultShortcut": s.restoreDefaultShortcut?.displayString ?? "",
+                    "restoreLastShortcut": s.restoreLastShortcut?.displayString ?? "",
+                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? "",
+                    "showSettingsShortcut": s.showSettingsShortcut?.displayString ?? ""
+                ]
             }
         )
         self.restServer = RESTServer(handlers: handlers)
@@ -138,6 +173,22 @@ final class AppState {
         hotKeyService.register(settings: settings) { [weak self] action in
             guard let self else { return }
             self.handleHotKeyAction(action)
+        }
+
+        // REST 경로로 단축키가 갱신되면 재로드 후 재등록
+        NotificationCenter.default.addObserver(
+            forName: .fWarrangeCliShortcutsUpdated,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                self.settings = self.settingsService.load()
+                self.hotKeyService.register(settings: self.settings) { [weak self] action in
+                    self?.handleHotKeyAction(action)
+                }
+                logI("🔁 단축키 재등록 완료 (REST 업데이트 반영)")
+            }
         }
 
         // 우클릭 디스플레이 전환 (설정에 따라)

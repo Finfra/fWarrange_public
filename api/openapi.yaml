@@ -147,6 +147,55 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /settings/shortcuts:
+    put:
+      summary: Update global keyboard shortcuts
+      description: |
+        Updates the global keyboard shortcuts used by the fWarrangeCli daemon.
+        The request body accepts human-readable display strings (e.g. `⌘F7`, `⇧⌘F7`).
+        - A string value sets the shortcut.
+        - `null` clears the shortcut.
+        - An omitted key leaves the shortcut unchanged.
+
+        On success, the daemon persists the change to `_config.yml` and
+        re-registers global hot keys via `CarbonHotKeyService`.
+      operationId: updateShortcuts
+      tags:
+        - Settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShortcutsUpdateRequest'
+            example:
+              saveShortcut: "⌘F7"
+              restoreDefaultShortcut: "⇧⌘F7"
+              restoreLastShortcut: "⌥⌘F7"
+              showMainWindowShortcut: null
+              showSettingsShortcut: null
+      responses:
+        '200':
+          description: Shortcuts updated and re-registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShortcutsUpdateResponse'
+              example:
+                status: ok
+                data:
+                  saveShortcut: "⌘F7"
+                  restoreDefaultShortcut: "⇧⌘F7"
+                  restoreLastShortcut: "⌥⌘F7"
+                  showMainWindowShortcut: ""
+                  showSettingsShortcut: ""
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /health:
     get:
       summary: Health Check
@@ -700,6 +749,49 @@ components:
               enum: [host, share]
               description: Data storage mode (host=per-hostname, share=shared)
           required: [settingsBasePath, dataDirectoryPath, excludedApps, maxRetries, retryInterval, minimumMatchScore]
+      required: [status, data]
+
+    ShortcutsUpdateRequest:
+      type: object
+      description: |
+        Map of shortcut slot → display string (e.g. "⌘F7"), null to clear, or omit to leave unchanged.
+      properties:
+        saveShortcut:
+          type: string
+          nullable: true
+        restoreDefaultShortcut:
+          type: string
+          nullable: true
+        restoreLastShortcut:
+          type: string
+          nullable: true
+        showMainWindowShortcut:
+          type: string
+          nullable: true
+        showSettingsShortcut:
+          type: string
+          nullable: true
+
+    ShortcutsUpdateResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        data:
+          type: object
+          description: Current display strings after update (empty string = unset)
+          properties:
+            saveShortcut:
+              type: string
+            restoreDefaultShortcut:
+              type: string
+            restoreLastShortcut:
+              type: string
+            showMainWindowShortcut:
+              type: string
+            showSettingsShortcut:
+              type: string
       required: [status, data]
 
     # --- Window models ---
