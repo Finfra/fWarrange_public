@@ -6,8 +6,8 @@ date: 2026-04-07
 
 # Issue Management
 
-- Issue HWM: 17
-- Save Point: - 2026-04-08 (d78b046)
+- Issue HWM: 18
+- Save Point: - 2026-04-12 (f127709) Docs: Close Issue18
 
 # 🤔 결정사항
 
@@ -23,7 +23,24 @@ date: 2026-04-07
 
 # ✅ 완료
 
-## Issue17: 에러 메시지 한국어 통일 (등록: 2026-04-08, 해결: 2026-04-09, commit: TBD) ✅
+## Issue18: logLevel 설정이 info로 덮어써지던 버그 수정 (등록: 2026-04-12, 해결: 2026-04-12, commit: f127709) ✅
+
+* 목적: `_config.yml`에 `logLevel: 5`(critical)로 설정해도 실제로는 info 레벨 로그가 `wlog.log`에 기록되던 버그 수정
+* 상세:
+    - 원인1: `AppState.initialize()`의 fallback이 `?? 1`(debug)로 되어 있어 `settings.logLevel`이 nil일 때 debug로 떨어짐
+    - 원인2: Logger 초기화 시 직접 YAML을 파싱하는 로직이 사용자 가독성용 주석 라인(`# logLevel: 0=verbose...`)을 먼저 매칭해 파싱 실패 후 Release 기본값(info)으로 fallback
+    - 사용자가 숫자만 보고 레벨을 알기 어려운 UX 문제도 함께 해결
+* 구현 명세:
+    - `AppState.swift`: `settings.logLevel ?? 1` → `?? 5`로 fallback 통일
+    - `SettingsService.swift`: `_config.yml` 저장 시 `logLevel` 라인 위에 `# logLevel: 0=verbose, 1=debug, 2=info, 3=warning, 4=error, 5=critical` 주석 자동 삽입
+    - `Logger.swift`: `_config.yml` 파싱 시 `#`로 시작하는 주석 라인을 스킵하고 `logLevel:`로 시작하는 실제 설정 라인만 매칭
+* 검증:
+    - Release 빌드 성공, `/Applications/_nowage_app/`에 배포
+    - `_config.yml` 삭제 후 재기동 → 주석 포함된 새 config 생성 확인
+    - `logLevel: 5` 적용 시 `wlog.log` 파일 자체가 생성되지 않음 (info 이하 로그 완전 차단) 확인
+    - REST API `http://localhost:3016/` 정상 응답 확인
+
+ 에러 메시지 한국어 통일 (등록: 2026-04-08, 해결: 2026-04-09, commit: TBD) ✅
 
 * 목적: REST API 및 CLI의 영어 에러 메시지를 한국어로 통일
 * 구현 명세:
