@@ -66,6 +66,7 @@ final class AppState {
             loadMetadataList: { lm.loadMetadataList() },
             storageServiceLoad: { name in try lm.storageServiceLoad(name: name) },
             saveLayout: { name, windows in try lm.saveLayout(name: name, windows: windows) },
+            nextDailySequenceName: { lm.nextDailySequenceName() },
             renameLayout: { oldName, newName in try lm.renameLayout(oldName: oldName, newName: newName) },
             deleteLayout: { name in try lm.deleteLayout(name: name) },
             deleteAllLayouts: { try lm.deleteAllLayouts() },
@@ -178,14 +179,7 @@ final class AppState {
     private func handleHotKeyAction(_ action: HotKeyAction) {
         switch action {
         case .save:
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            let datePrefix = formatter.string(from: Date())
-            let existingMax = layoutManager.layouts.compactMap { meta -> Int? in
-                guard meta.name.hasPrefix("\(datePrefix)-") else { return nil }
-                return Int(meta.name.dropFirst(datePrefix.count + 1))
-            }.max() ?? 0
-            let name = "\(datePrefix)-\(existingMax + 1)"
+            let name = layoutManager.nextDailySequenceName()
             let windows = windowManager.captureCurrentWindows(filterApps: nil)
             try? layoutManager.saveLayout(name: name, windows: windows)
             logI("⌨️ 단축키 저장: '\(name)'")

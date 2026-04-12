@@ -79,8 +79,9 @@ struct CLIHandler {
             guard let name = args.first else { exitError("<name> 필수") }
             fetch("GET", path: "/layouts/\(name.urlEncoded)")
         case "capture":
-            let name = args.first ?? "default"
-            fetch("POST", path: "/capture", body: ["name": name])
+            var body: [String: Any] = [:]
+            if let name = args.first { body["name"] = name }
+            fetch("POST", path: "/capture", body: body)
         case "restore":
             guard let name = args.first else { exitError("<name> 필수") }
             fetch("POST", path: "/layouts/\(name.urlEncoded)/restore")

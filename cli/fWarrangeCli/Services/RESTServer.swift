@@ -29,6 +29,7 @@ struct RESTServerHandlers {
     var loadMetadataList: () -> Void
     var storageServiceLoad: (_ name: String) throws -> Layout
     var saveLayout: (_ name: String, _ windows: [WindowInfo]) throws -> Void
+    var nextDailySequenceName: () -> String
     var renameLayout: (_ oldName: String, _ newName: String) throws -> Void
     var deleteLayout: (_ name: String) throws -> Void
     var deleteAllLayouts: () throws -> Void
@@ -536,7 +537,8 @@ final class RESTServer: RESTServerProtocol {
     /// POST /api/v1/capture - 창 캡처 및 저장
     private func handleCapture(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         let json = request.jsonBody()
-        let name = json?["name"] as? String ?? "default"
+        let rawName = (json?["name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = (rawName?.isEmpty ?? true) ? handlers.nextDailySequenceName() : rawName!
         let filterApps = json?["filterApps"] as? [String]
 
         DispatchQueue.main.async { [weak self] in
@@ -566,24 +568,23 @@ final class RESTServer: RESTServerProtocol {
         let minimumScore = json?["minimumScore"] as? Int ?? 30
         let enableParallel = json?["enableParallel"] as? Bool ?? true
 
-        weak var weakSelf = self
-        Task { @MainActor in
-            guard let strongSelf = weakSelf else {
+        Task { @MainActor [weak self] in
+            guard let self else {
                 completion(.internalError(message: "서버가 해제되었습니다"))
                 return
             }
             do {
                 // 접근성 권한 확인
-                guard strongSelf.handlers.isAccessibilityGranted() else {
+                guard self.handlers.isAccessibilityGranted() else {
                     completion(.forbidden(message: "Accessibility 권한이 필요합니다. 시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용에서 fWarrangeCli를 추가하세요."))
                     return
                 }
 
-                let layout = try strongSelf.handlers.storageServiceLoad(name)
+                let layout = try self.handlers.storageServiceLoad(name)
 
                 logI("[REST] restore 시작 - 레이아웃: '\(name)', 창 수: \(layout.windows.count)")
 
-                let results = await strongSelf.handlers.restoreWindows(
+                let results = await self.handlers.restoreWindows(
                     layout.windows,
                     maxRetries,
                     retryInterval,

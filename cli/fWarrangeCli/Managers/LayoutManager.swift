@@ -16,6 +16,20 @@ final class LayoutManager {
         self.storageService = storageService
     }
 
+    // MARK: - 날짜별 시퀀스 이름 생성
+
+    /// 오늘 날짜 prefix 기준으로 다음 시퀀스 번호가 붙은 레이아웃 이름을 생성함 (ex: "2026-04-12-3")
+    func nextDailySequenceName(date: Date = Date()) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let datePrefix = formatter.string(from: date)
+        let existingMax = layouts.compactMap { meta -> Int? in
+            guard meta.name.hasPrefix("\(datePrefix)-") else { return nil }
+            return Int(meta.name.dropFirst(datePrefix.count + 1))
+        }.max() ?? 0
+        return "\(datePrefix)-\(existingMax + 1)"
+    }
+
     // MARK: - 메타데이터 로드 (경량)
 
     func loadMetadataList() {
