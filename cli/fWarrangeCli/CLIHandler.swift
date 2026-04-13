@@ -14,6 +14,7 @@ struct CLIHandler {
     private static var quiet = false
 
     private static var baseURL: String { "http://\(host):\(port)/api/v1" }
+    private static var baseURLV2: String { "http://\(host):\(port)/api/v2" }
 
     // MARK: - 진입점
 
@@ -37,7 +38,8 @@ struct CLIHandler {
         var filtered: [String] = []
         var i = 0
         while i < args.count {
-            switch args[i] {
+            let arg = args[i]
+            switch arg {
             case "--port":
                 i += 1
                 if i < args.count { port = Int(args[i]) ?? 3016 }
@@ -49,7 +51,14 @@ struct CLIHandler {
             case "--quiet", "-q":
                 quiet = true
             default:
-                filtered.append(args[i])
+                // Xcode 디버거가 주입하는 Cocoa UserDefaults 인자 무시
+                // (ex) -NSDocumentRevisionsDebugMode YES, -ApplePersistenceIgnoreState YES
+                if arg.count >= 2, arg.hasPrefix("-"), !arg.hasPrefix("--"),
+                   let second = arg.dropFirst().first, second.isUppercase {
+                    if i + 1 < args.count { i += 1 }
+                } else {
+                    filtered.append(arg)
+                }
             }
             i += 1
         }
@@ -83,7 +92,7 @@ struct CLIHandler {
             if let name = args.first { body["name"] = name }
             fetch("POST", path: "/capture", body: body)
         case "restore":
-            guard let name = args.first else { exitError("<name> 필수") }
+            let name = args.first ?? "default"
             fetch("POST", path: "/layouts/\(name.urlEncoded)/restore")
         case "rename":
             guard args.count >= 2 else { exitError("<old> <new> 필수") }
@@ -122,10 +131,130 @@ struct CLIHandler {
             guard args.contains("--confirm") else { exitError("--confirm 플래그 필수") }
             fetch("POST", path: "/cli/quit", body: ["confirm": true])
 
+        // v2 API (Settings 탭 전체)
+        case "v2":
+            handleV2(args: args)
+
         default:
             printErr("오류: 알 수 없는 커맨드 '\(command)'")
             printHelp(exitCode: 1)
         }
+    }
+
+    // MARK: - v2 디스패치
+
+    private static func handleV2(args allArgs: [String]) {
+        // allArgs는 "v2" 이후의 인자 배열 (handle(command:args:)에서 "v2"는 이미 소비됨)
+        let args = allArgs
+        guard let sub = args.first else {
+            exitError("v2 서브커맨드 필수 (settings|excluded-apps|shortcuts|factory-reset)")
+        }
+        let rest = Array(args.dropFirst())
+        switch sub {
+        case "settings":
+            handleV2Settings(rest)
+        case "excluded-apps":
+            handleV2ExcludedApps(rest)
+        case "shortcuts":
+            handleV2Shortcuts(rest)
+        case "factory-reset":
+            guard rest.contains("--confirm") else { exitError("--confirm 플래그 필수") }
+            fetch("POST", path: "/settings/factory-reset",
+                  headers: ["X-Confirm": "true"], apiVersion: 2)
+        default:
+            exitError("알 수 없는 v2 서브커맨드: \(sub)")
+        }
+    }
+
+    private static func handleV2Settings(_ args: [String]) {
+        // 사용법:
+        //   v2 settings                       → GET /settings
+        //   v2 settings patch <json>          → PATCH /settings
+        //   v2 settings <tab>                 → GET /settings/<tab>
+        //   v2 settings <tab> patch <json>    → PATCH /settings/<tab>
+        guard let first = args.first else {
+            fetch("GET", path: "/settings", apiVersion: 2)
+            return
+        }
+        if first == "patch" {
+            guard args.count >= 2 else { exitError("patch <json> 필수") }
+            fetch("PATCH", path: "/settings",
+                  body: parseJSONObject(args[1]), apiVersion: 2)
+            return
+        }
+        let tabs = ["general", "restore", "api", "advanced"]
+        guard tabs.contains(first) else {
+            exitError("알 수 없는 settings 탭: \(first) (허용: \(tabs.joined(separator: ","))")
+        }
+        if args.count == 1 {
+            fetch("GET", path: "/settings/\(first)", apiVersion: 2)
+            return
+        }
+        guard args[1] == "patch" else {
+            exitError("사용법: v2 settings \(first) [patch <json>]")
+        }
+        guard args.count >= 3 else { exitError("patch <json> 필수") }
+        fetch("PATCH", path: "/settings/\(first)",
+              body: parseJSONObject(args[2]), apiVersion: 2)
+    }
+
+    private static func handleV2ExcludedApps(_ args: [String]) {
+        // 사용법:
+        //   v2 excluded-apps                  → GET
+        //   v2 excluded-apps get              → GET
+        //   v2 excluded-apps set <app> ...    → PUT (전체 교체)
+        //   v2 excluded-apps add <app> ...    → POST
+        //   v2 excluded-apps remove <app> ... → DELETE
+        //   v2 excluded-apps reset            → POST /reset
+        let base = "/settings/restore/excluded-apps"
+        guard let action = args.first else {
+            fetch("GET", path: base, apiVersion: 2)
+            return
+        }
+        let apps = Array(args.dropFirst())
+        switch action {
+        case "get":
+            fetch("GET", path: base, apiVersion: 2)
+        case "set":
+            guard !apps.isEmpty else { exitError("<app> ... 필수") }
+            fetch("PUT", path: base, body: ["apps": apps], apiVersion: 2)
+        case "add":
+            guard !apps.isEmpty else { exitError("<app> ... 필수") }
+            fetch("POST", path: base, body: ["apps": apps], apiVersion: 2)
+        case "remove":
+            guard !apps.isEmpty else { exitError("<app> ... 필수") }
+            fetch("DELETE", path: base, body: ["apps": apps], apiVersion: 2)
+        case "reset":
+            fetch("POST", path: "\(base)/reset", apiVersion: 2)
+        default:
+            exitError("알 수 없는 excluded-apps 액션: \(action)")
+        }
+    }
+
+    private static func handleV2Shortcuts(_ args: [String]) {
+        // 사용법:
+        //   v2 shortcuts [get]          → GET
+        //   v2 shortcuts set <json>     → PUT
+        if args.isEmpty || args[0] == "get" {
+            fetch("GET", path: "/settings/shortcuts", apiVersion: 2)
+            return
+        }
+        if args[0] == "set" {
+            guard args.count >= 2 else { exitError("set <json> 필수") }
+            fetch("PUT", path: "/settings/shortcuts",
+                  body: parseJSONObject(args[1]), apiVersion: 2)
+            return
+        }
+        exitError("사용법: v2 shortcuts [get|set <json>]")
+    }
+
+    private static func parseJSONObject(_ s: String) -> [String: Any] {
+        guard let data = s.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data),
+              let dict = obj as? [String: Any] else {
+            exitError("유효한 JSON 객체가 아닙니다: \(s)")
+        }
+        return dict
     }
 
     // MARK: - HTTP 요청
@@ -133,14 +262,17 @@ struct CLIHandler {
     private static func fetch(
         _ method: String,
         path: String,
-        body: Any? = nil
+        body: Any? = nil,
+        headers: [String: String] = [:],
+        apiVersion: Int = 1
     ) {
         // health 엔드포인트는 base 없이 root
         let urlString: String
         if path == "/" {
             urlString = "http://\(host):\(port)/"
         } else {
-            urlString = "\(baseURL)\(path)"
+            let base = apiVersion == 2 ? baseURLV2 : baseURL
+            urlString = "\(base)\(path)"
         }
 
         guard let url = URL(string: urlString) else {
@@ -149,7 +281,11 @@ struct CLIHandler {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
-        request.timeoutInterval = 5
+        request.timeoutInterval = 30
+
+        for (key, value) in headers {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
 
         if let body = body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -238,7 +374,7 @@ struct CLIHandler {
           list                            List layouts
           show <name>                     Show layout detail
           capture [name]                  Capture and save current windows
-          restore <name>                  Restore layout
+          restore [name]                  Restore layout (default: 'default')
           rename <old> <new>              Rename layout
           delete <name>                   Delete layout
           delete-all --confirm            Delete all layouts
@@ -247,6 +383,16 @@ struct CLIHandler {
           apps                            List running apps
           accessibility                   Check accessibility permission
           quit --confirm                  Quit daemon
+
+        v2 API (Settings):
+          v2 settings [patch <json>]                       Full settings
+          v2 settings <tab> [patch <json>]                 Tab: general|restore|api|advanced
+          v2 excluded-apps [get]                           List excluded apps
+          v2 excluded-apps set|add|remove <app>...         Update excluded apps
+          v2 excluded-apps reset                           Reset to defaults
+          v2 shortcuts [get]                               Get shortcuts
+          v2 shortcuts set <json>                          Update shortcuts
+          v2 factory-reset --confirm                       Factory reset all settings
 
         Options:
           -h, --help          Show this help
