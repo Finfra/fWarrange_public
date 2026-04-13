@@ -1,0 +1,4 @@
+#!/bin/bash
+# fWarrangeCli settings 테스트 (v2 경로)
+CLI="${FWARRANGE_CLI:-/Applications/_nowage_app/fWarrangeCli.app/Contents/MacOS/fWarrangeCli}"
+$CLI settings | jq .

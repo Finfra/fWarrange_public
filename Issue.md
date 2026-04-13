@@ -6,7 +6,7 @@ date: 2026-04-07
 
 # Issue Management
 
-- Issue HWM: 23
+- Issue HWM: 24
 - Save Point: - 2026-04-13 (76bb041) Fix(Shortcuts): Issue21 단축키 설정 REST 동기화 엔드포인트 추가
 
 # 🤔 결정사항
@@ -22,6 +22,17 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue24: v1 제거 대비 v2 슈퍼셋 업데이트 (등록: 2026-04-13, 해결: 2026-04-13, commit: TBD) ✅
+
+* 목적: v2 API/CLI/테스트가 v1의 모든 기능을 커버하도록 확장하여 향후 v1 제거에 대비
+* 상세:
+    - openapi_v2.yaml에 v1 전체 엔드포인트(layouts, capture, restore, windows, cli, ui, system) 추가
+    - CLIHandler.swift baseURL을 `/api/v1`에서 `/api/v2`로 변경 (apiVersion 파라미터 제거)
+    - apiTest/v2/에 v1 커버리지 스크립트 14개(19~32, E03~E04) 추가
+    - cmdTest/v2/에 v1 CLI 커맨드 커버리지 스크립트 17개(18~32, E03~E04) 추가
+    - RESTServer.swift의 /api/v2 → /api/v1 경로 치환 폴백으로 서버 사이드는 이미 지원됨
+    - Release 빌드 검증 완료
 
 ## Issue23: v2 API 구현 최종 검증 및 Issue22 완료 처리 (등록: 2026-04-13, 해결: 2026-04-13, commit: 21a5229) ✅
 

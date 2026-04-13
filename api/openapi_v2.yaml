@@ -1,0 +1,1255 @@
+openapi: 3.0.3
+info:
+  title: fWarrange REST API (v2)
+  description: |
+    fWarrange REST API v2 — v1의 완전한 슈퍼셋.
+
+    v2는 v1의 모든 기능을 포함하며, 추가로 설정 탭별 세분화된 CRUD 엔드포인트를
+    제공한다. v1 제거 이후에도 v2만으로 전체 기능을 사용할 수 있다.
+
+    ## v1과의 관계
+    - v2는 v1의 슈퍼셋: 모든 v1 엔드포인트가 `/api/v2/*`에서 동일하게 동작.
+    - New in v2: 설정 탭별 GET/PATCH (`/settings/general`, `/settings/restore`, etc.)
+      + excluded-apps CRUD + factory-reset.
+    - v1은 레거시로 유지되며, 향후 제거 예정.
+
+    ## Security
+    Same model as v1. Binds to `127.0.0.1` by default; external access must be
+    explicitly enabled via `PATCH /api/v2/settings/api`.
+  version: 2.0.0
+  contact:
+    name: fWarrange
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3016/api/v2
+    description: API v2 service root
+
+tags:
+  - name: Health
+    description: Health check
+  - name: Settings
+    description: Granular settings endpoints (General, Restore, API, Advanced)
+  - name: Shortcuts
+    description: Keyboard shortcut configuration
+  - name: Layouts
+    description: Layout CRUD (list, detail, rename, delete)
+  - name: Capture
+    description: Capture current window positions and save as layout
+  - name: Restore
+    description: Restore saved window layout
+  - name: Windows
+    description: Query current system windows and running apps
+  - name: UI
+    description: Control app UI state (for capture automation)
+  - name: System
+    description: System status (Accessibility permissions)
+  - name: CLI
+    description: fWarrangeCli helper app management
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: healthV2
+      tags: [Health]
+      responses:
+        '200':
+          description: Server running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  # ---------- Settings: full read ----------
+  /settings:
+    get:
+      summary: Get all settings (full)
+      description: |
+        Returns every persisted field in the AppSettings model.
+        Superset of v1's `/settings` response.
+      operationId: getSettingsV2
+      tags: [Settings]
+      responses:
+        '200':
+          description: Full settings snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FullSettingsResponse'
+
+    patch:
+      summary: Partial update of any settings field
+      description: |
+        Applies any subset of fields in the FullSettings schema.
+        Fields omitted from the body are left unchanged.
+        For structured tab updates prefer the per-tab endpoints below.
+      operationId: patchSettingsV2
+      tags: [Settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FullSettings'
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FullSettingsResponse'
+        '400':
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---------- Settings: General tab ----------
+  /settings/general:
+    get:
+      summary: Get General tab settings
+      operationId: getGeneralSettings
+      tags: [Settings]
+      responses:
+        '200':
+          description: General settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneralSettingsResponse'
+
+    patch:
+      summary: Update General tab settings
+      description: |
+        Updates language, storage mode, data directory path, launch-at-login, theme.
+      operationId: patchGeneralSettings
+      tags: [Settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneralSettings'
+            example:
+              appLanguage: ko
+              dataStorageMode: host
+              dataDirectoryPath: "~/Documents/finfra/fWarrangeData"
+              launchAtLogin: true
+              theme: system
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneralSettingsResponse'
+        '400':
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---------- Settings: Restore tab ----------
+  /settings/restore:
+    get:
+      summary: Get Restore tab settings
+      operationId: getRestoreSettings
+      tags: [Settings]
+      responses:
+        '200':
+          description: Restore settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreSettingsResponse'
+
+    patch:
+      summary: Update Restore tab settings
+      description: |
+        Updates retry policy and matching threshold.
+      operationId: patchRestoreSettings
+      tags: [Settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreSettings'
+            example:
+              maxRetries: 5
+              retryInterval: 0.5
+              minimumMatchScore: 30
+              enableParallelRestore: true
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreSettingsResponse'
+
+  /settings/restore/excluded-apps:
+    get:
+      summary: List excluded apps
+      operationId: getExcludedApps
+      tags: [Settings]
+      responses:
+        '200':
+          description: Excluded app list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExcludedAppsResponse'
+
+    put:
+      summary: Replace excluded apps list
+      operationId: putExcludedApps
+      tags: [Settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                apps:
+                  type: array
+                  items: { type: string }
+              required: [apps]
+            example:
+              apps: ["Activity Monitor", "System Settings", "Finder"]
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExcludedAppsResponse'
+
+    post:
+      summary: Add apps to excluded list
+      operationId: addExcludedApps
+      tags: [Settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                apps:
+                  type: array
+                  items: { type: string }
+              required: [apps]
+            example:
+              apps: ["Xcode"]
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExcludedAppsResponse'
+
+    delete:
+      summary: Remove apps from excluded list
+      operationId: removeExcludedApps
+      tags: [Settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                apps:
+                  type: array
+                  items: { type: string }
+              required: [apps]
+            example:
+              apps: ["Xcode"]
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExcludedAppsResponse'
+
+  /settings/restore/excluded-apps/reset:
+    post:
+      summary: Reset excluded apps to defaults
+      operationId: resetExcludedApps
+      tags: [Settings]
+      responses:
+        '200':
+          description: Reset to defaults
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExcludedAppsResponse'
+
+  # ---------- Settings: API tab ----------
+  /settings/api:
+    get:
+      summary: Get REST API server settings
+      operationId: getApiSettings
+      tags: [Settings]
+      responses:
+        '200':
+          description: API settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSettingsResponse'
+
+    patch:
+      summary: Update REST API server settings
+      description: |
+        Updates port, external access toggle, CIDR whitelist, and enabled flag.
+        Port/allow-external changes require a server restart; the daemon will
+        restart the listener automatically and the response reflects the
+        pending/applied state.
+      operationId: patchApiSettings
+      tags: [Settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiSettings'
+            example:
+              restServerEnabled: true
+              restServerPort: 3016
+              allowExternalAccess: false
+              allowedCIDR: "192.168.0.0/16"
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSettingsResponse'
+        '400':
+          description: Invalid port or CIDR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---------- Settings: Advanced tab ----------
+  /settings/advanced:
+    get:
+      summary: Get Advanced tab settings
+      operationId: getAdvancedSettings
+      tags: [Settings]
+      responses:
+        '200':
+          description: Advanced settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdvancedSettingsResponse'
+
+    patch:
+      summary: Update Advanced tab settings
+      description: |
+        Updates log level, auto-save policy, UI options
+        (restore button style, delete confirmation, Cmd+Tab visibility,
+        click-switch-to-main).
+      operationId: patchAdvancedSettings
+      tags: [Settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdvancedSettings'
+            example:
+              logLevel: 5
+              autoSaveOnSleep: true
+              maxAutoSaves: 5
+              restoreButtonStyle: nameIcon
+              confirmBeforeDelete: true
+              showInCmdTab: true
+              clickSwitchToMain: false
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdvancedSettingsResponse'
+
+  /settings/factory-reset:
+    post:
+      summary: Factory reset all settings
+      description: |
+        Resets every setting to its built-in default.
+        Requires `X-Confirm: true` header.
+      operationId: factoryReset
+      tags: [Settings]
+      parameters:
+        - name: X-Confirm
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: ["true"]
+      responses:
+        '200':
+          description: Reset completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FullSettingsResponse'
+        '400':
+          description: Missing confirmation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---------- Layouts ----------
+  /layouts:
+    get:
+      summary: List layouts
+      description: Returns metadata for all saved layouts.
+      operationId: listLayoutsV2
+      tags: [Layouts]
+      responses:
+        '200':
+          description: Layout list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayoutListResponse'
+    delete:
+      summary: Delete all layouts
+      description: |
+        Deletes all saved layouts.
+        Requires `X-Confirm-Delete-All: true` header as a safety measure.
+      operationId: deleteAllLayoutsV2
+      tags: [Layouts]
+      parameters:
+        - name: X-Confirm-Delete-All
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: ["true"]
+          description: Confirmation header for bulk deletion
+      responses:
+        '200':
+          description: All layouts deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteAllResponse'
+        '400':
+          description: Missing confirmation header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /layouts/{name}:
+    get:
+      summary: Get layout detail
+      operationId: getLayoutV2
+      tags: [Layouts]
+      parameters:
+        - $ref: '#/components/parameters/LayoutName'
+      responses:
+        '200':
+          description: Layout detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayoutDetailResponse'
+        '404':
+          description: Layout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Rename layout
+      operationId: renameLayoutV2
+      tags: [Layouts]
+      parameters:
+        - $ref: '#/components/parameters/LayoutName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenameRequest'
+            example:
+              newName: workSetup-v2
+      responses:
+        '200':
+          description: Rename successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenameResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Layout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete layout
+      operationId: deleteLayoutV2
+      tags: [Layouts]
+      parameters:
+        - $ref: '#/components/parameters/LayoutName'
+      responses:
+        '200':
+          description: Layout deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '404':
+          description: Layout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /layouts/{name}/restore:
+    post:
+      summary: Restore layout
+      description: |
+        Restores window positions and sizes from a saved layout.
+        Processed asynchronously using a score-based window matching algorithm.
+
+        **Prerequisite**: Accessibility permission must be granted.
+      operationId: restoreLayoutV2
+      tags: [Restore]
+      parameters:
+        - $ref: '#/components/parameters/LayoutName'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreRequest'
+      responses:
+        '200':
+          description: Restore completed (may include partial failures)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreResponse'
+        '403':
+          description: Accessibility permission not granted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Layout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /layouts/{name}/windows/remove:
+    post:
+      summary: Remove specific windows from layout
+      operationId: removeWindowsV2
+      tags: [Layouts]
+      parameters:
+        - $ref: '#/components/parameters/LayoutName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveWindowsRequest'
+            example:
+              windowIds: [14205, 5032]
+      responses:
+        '200':
+          description: Windows removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoveWindowsResponse'
+        '404':
+          description: Layout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---------- Capture ----------
+  /capture:
+    post:
+      summary: Capture and save current windows
+      description: |
+        Captures all visible window positions and sizes, then saves them as a layout.
+      operationId: captureAndSaveV2
+      tags: [Capture]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureRequest'
+            examples:
+              named:
+                summary: Capture with a specific name
+                value:
+                  name: myLayout
+              default:
+                summary: Auto-generated name
+                value: {}
+      responses:
+        '200':
+          description: Capture and save successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureResponse'
+        '500':
+          description: Capture failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---------- Windows ----------
+  /windows/current:
+    get:
+      summary: Get current windows (without saving)
+      operationId: getCurrentWindowsV2
+      tags: [Windows]
+      parameters:
+        - name: filterApps
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated app name filter (e.g. Safari,iTerm2)
+      responses:
+        '200':
+          description: Current window list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentWindowsResponse'
+
+  /windows/apps:
+    get:
+      summary: List running apps
+      operationId: getRunningAppsV2
+      tags: [Windows]
+      responses:
+        '200':
+          description: Running app list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunningAppsResponse'
+
+  # ---------- UI ----------
+  /ui/state:
+    put:
+      summary: Set UI state
+      description: |
+        Controls the app UI state for capture automation.
+      operationId: setUIStateV2
+      tags: [UI]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetUIStateRequest'
+      responses:
+        '200':
+          description: UI state changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetUIStateResponse'
+
+  # ---------- CLI ----------
+  /cli/status:
+    get:
+      summary: CLI helper status
+      operationId: getCLIStatusV2
+      tags: [CLI]
+      responses:
+        '200':
+          description: CLI status info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CLIStatusResponse'
+
+  /cli/version:
+    get:
+      summary: CLI helper version
+      operationId: getCLIVersionV2
+      tags: [CLI]
+      responses:
+        '200':
+          description: CLI version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CLIVersionResponse'
+
+  /cli/quit:
+    post:
+      summary: Quit CLI helper
+      description: |
+        Gracefully shuts down the fWarrangeCli helper app.
+        Requires `X-Confirm: true` header as a safety measure.
+      operationId: quitCLIV2
+      tags: [CLI]
+      parameters:
+        - name: X-Confirm
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: ["true"]
+      responses:
+        '200':
+          description: CLI quit initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleOkResponse'
+        '400':
+          description: Missing confirmation header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ---------- System ----------
+  /status/accessibility:
+    get:
+      summary: Accessibility permission status
+      operationId: getAccessibilityStatusV2
+      tags: [System]
+      responses:
+        '200':
+          description: Permission status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessibilityResponse'
+
+  # ---------- Shortcuts ----------
+  /settings/shortcuts:
+    get:
+      summary: Get current shortcuts
+      operationId: getShortcutsV2
+      tags: [Shortcuts]
+      responses:
+        '200':
+          description: Current shortcut display strings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShortcutsResponse'
+    put:
+      summary: Update shortcuts
+      description: Same semantics as v1's PUT /settings/shortcuts.
+      operationId: putShortcutsV2
+      tags: [Shortcuts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShortcutsUpdateRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShortcutsResponse'
+
+components:
+  parameters:
+    LayoutName:
+      name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Layout name (YAML filename without extension)
+      example: myLayout
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        status: { type: string, enum: [error] }
+        error: { type: string }
+      required: [status, error]
+
+    SimpleOkResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+      required: [status]
+
+    HealthResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        app: { type: string }
+        version: { type: string }
+        port: { type: integer }
+
+    # ---- Full settings ----
+    FullSettings:
+      type: object
+      description: All persisted AppSettings fields. All optional for PATCH.
+      properties:
+        appLanguage: { type: string, example: ko }
+        dataStorageMode: { type: string, enum: [host, share] }
+        dataDirectoryPath: { type: string, nullable: true }
+        launchAtLogin: { type: boolean }
+        theme: { type: string, enum: [system, light, dark] }
+        maxRetries: { type: integer, minimum: 0 }
+        retryInterval: { type: number, format: double, minimum: 0 }
+        minimumMatchScore: { type: integer, minimum: 0, maximum: 100 }
+        enableParallelRestore: { type: boolean }
+        excludedApps:
+          type: array
+          items: { type: string }
+        restServerEnabled: { type: boolean }
+        restServerPort: { type: integer, minimum: 1, maximum: 65535 }
+        allowExternalAccess: { type: boolean }
+        allowedCIDR: { type: string }
+        logLevel: { type: integer, minimum: 0, maximum: 5 }
+        autoSaveOnSleep: { type: boolean }
+        maxAutoSaves: { type: integer, minimum: 0 }
+        restoreButtonStyle:
+          type: string
+          enum: [iconOnly, nameIcon, nameOnly]
+        confirmBeforeDelete: { type: boolean }
+        showInCmdTab: { type: boolean }
+        clickSwitchToMain: { type: boolean }
+        defaultLayoutName: { type: string, nullable: true }
+
+    FullSettingsResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          $ref: '#/components/schemas/FullSettings'
+      required: [status, data]
+
+    # ---- General ----
+    GeneralSettings:
+      type: object
+      properties:
+        appLanguage: { type: string }
+        dataStorageMode: { type: string, enum: [host, share] }
+        dataDirectoryPath: { type: string, nullable: true }
+        launchAtLogin: { type: boolean }
+        theme: { type: string, enum: [system, light, dark] }
+
+    GeneralSettingsResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          $ref: '#/components/schemas/GeneralSettings'
+      required: [status, data]
+
+    # ---- Restore ----
+    RestoreSettings:
+      type: object
+      properties:
+        maxRetries: { type: integer }
+        retryInterval: { type: number, format: double }
+        minimumMatchScore: { type: integer }
+        enableParallelRestore: { type: boolean }
+
+    RestoreSettingsResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          allOf:
+            - $ref: '#/components/schemas/RestoreSettings'
+            - type: object
+              properties:
+                excludedApps:
+                  type: array
+                  items: { type: string }
+      required: [status, data]
+
+    ExcludedAppsResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            excludedApps:
+              type: array
+              items: { type: string }
+          required: [excludedApps]
+      required: [status, data]
+
+    # ---- API ----
+    ApiSettings:
+      type: object
+      properties:
+        restServerEnabled: { type: boolean }
+        restServerPort: { type: integer, minimum: 1, maximum: 65535 }
+        allowExternalAccess: { type: boolean }
+        allowedCIDR: { type: string }
+
+    ApiSettingsResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          allOf:
+            - $ref: '#/components/schemas/ApiSettings'
+            - type: object
+              properties:
+                isRunning: { type: boolean }
+                effectivePort: { type: integer }
+      required: [status, data]
+
+    # ---- Advanced ----
+    AdvancedSettings:
+      type: object
+      properties:
+        logLevel: { type: integer }
+        autoSaveOnSleep: { type: boolean }
+        maxAutoSaves: { type: integer }
+        restoreButtonStyle:
+          type: string
+          enum: [iconOnly, nameIcon, nameOnly]
+        confirmBeforeDelete: { type: boolean }
+        showInCmdTab: { type: boolean }
+        clickSwitchToMain: { type: boolean }
+
+    AdvancedSettingsResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          allOf:
+            - $ref: '#/components/schemas/AdvancedSettings'
+            - type: object
+              properties:
+                logFilePath: { type: string }
+      required: [status, data]
+
+    # ---- Shortcuts ----
+    ShortcutsUpdateRequest:
+      type: object
+      description: Map of shortcut slot → display string, null to clear, omit to leave.
+      properties:
+        saveShortcut: { type: string, nullable: true }
+        restoreDefaultShortcut: { type: string, nullable: true }
+        restoreLastShortcut: { type: string, nullable: true }
+        showMainWindowShortcut: { type: string, nullable: true }
+        showSettingsShortcut: { type: string, nullable: true }
+
+    ShortcutsResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            saveShortcut: { type: string }
+            restoreDefaultShortcut: { type: string }
+            restoreLastShortcut: { type: string }
+            showMainWindowShortcut: { type: string }
+            showSettingsShortcut: { type: string }
+      required: [status, data]
+
+    # ---- Window / Layout models (ported from v1) ----
+    WindowPosition:
+      type: object
+      properties:
+        x: { type: number, format: double }
+        y: { type: number, format: double }
+      required: [x, y]
+
+    WindowSize:
+      type: object
+      properties:
+        width: { type: number, format: double }
+        height: { type: number, format: double }
+      required: [width, height]
+
+    WindowInfo:
+      type: object
+      properties:
+        id: { type: integer }
+        app: { type: string }
+        window: { type: string }
+        layer: { type: integer }
+        pos: { $ref: '#/components/schemas/WindowPosition' }
+        size: { $ref: '#/components/schemas/WindowSize' }
+      required: [id, app, window, layer, pos, size]
+
+    LayoutMetadata:
+      type: object
+      properties:
+        name: { type: string }
+        windowCount: { type: integer }
+        fileDate: { type: string, format: date-time }
+      required: [name, windowCount, fileDate]
+
+    LayoutListResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/LayoutMetadata' }
+      required: [status, data]
+
+    LayoutDetailResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            name: { type: string }
+            windowCount: { type: integer }
+            fileDate: { type: string, format: date-time }
+            windows:
+              type: array
+              items: { $ref: '#/components/schemas/WindowInfo' }
+          required: [name, windowCount, fileDate, windows]
+      required: [status, data]
+
+    CaptureRequest:
+      type: object
+      properties:
+        name: { type: string, description: Layout name (defaults to "default" if omitted) }
+        filterApps:
+          type: array
+          items: { type: string }
+
+    CaptureResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            name: { type: string }
+            windowCount: { type: integer }
+            windows:
+              type: array
+              items: { $ref: '#/components/schemas/WindowInfo' }
+          required: [name, windowCount, windows]
+      required: [status, data]
+
+    RestoreRequest:
+      type: object
+      properties:
+        maxRetries: { type: integer, default: 5 }
+        retryInterval: { type: number, format: double, default: 0.5 }
+        minimumScore: { type: integer, default: 30 }
+        enableParallel: { type: boolean, default: true }
+
+    WindowMatchResult:
+      type: object
+      properties:
+        app: { type: string }
+        window: { type: string }
+        matchedTitle: { type: string }
+        matchType:
+          type: string
+          enum: [ID, "Title(Exact)", Regex, "Title(Contains)", Width, Height, Ratio, Area, None]
+        score: { type: integer, minimum: 0, maximum: 100 }
+        success: { type: boolean }
+      required: [app, window, matchedTitle, matchType, score, success]
+
+    RestoreResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            total: { type: integer }
+            succeeded: { type: integer }
+            failed: { type: integer }
+            results:
+              type: array
+              items: { $ref: '#/components/schemas/WindowMatchResult' }
+          required: [total, succeeded, failed, results]
+      required: [status, data]
+
+    RenameRequest:
+      type: object
+      properties:
+        newName: { type: string }
+      required: [newName]
+
+    RenameResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            oldName: { type: string }
+            newName: { type: string }
+          required: [oldName, newName]
+      required: [status, data]
+
+    DeleteResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            deleted: { type: string }
+          required: [deleted]
+      required: [status, data]
+
+    DeleteAllResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            deletedCount: { type: integer }
+          required: [deletedCount]
+      required: [status, data]
+
+    RemoveWindowsRequest:
+      type: object
+      properties:
+        windowIds:
+          type: array
+          items: { type: integer }
+      required: [windowIds]
+
+    RemoveWindowsResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            layout: { type: string }
+            removedCount: { type: integer }
+            remainingCount: { type: integer }
+          required: [layout, removedCount, remainingCount]
+      required: [status, data]
+
+    CurrentWindowsResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            windowCount: { type: integer }
+            windows:
+              type: array
+              items: { $ref: '#/components/schemas/WindowInfo' }
+          required: [windowCount, windows]
+      required: [status, data]
+
+    RunningAppsResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            apps:
+              type: array
+              items: { type: string }
+          required: [apps]
+      required: [status, data]
+
+    AccessibilityResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            granted: { type: boolean }
+          required: [granted]
+      required: [status, data]
+
+    CLIStatusResponse:
+      type: object
+      properties:
+        isRunning: { type: boolean }
+        version: { type: string }
+        uptime: { type: string }
+        port: { type: integer }
+      required: [isRunning, version, uptime, port]
+
+    CLIVersionResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          properties:
+            version: { type: string }
+          required: [version]
+      required: [status, data]
+
+    SetUIStateRequest:
+      type: object
+      properties:
+        hideWindows: { type: boolean }
+        selectApps:
+          oneOf:
+            - type: string
+              enum: ["all", "none"]
+            - type: string
+              pattern: "^top:\\d+$"
+            - type: array
+              items: { type: string }
+        excludeApps:
+          type: array
+          items: { type: string }
+
+    SetUIStateResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        data:
+          type: object
+          description: Echo of the applied UI state changes
+      required: [status, data]

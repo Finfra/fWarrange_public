@@ -13,8 +13,7 @@ struct CLIHandler {
     private static var pretty = false
     private static var quiet = false
 
-    private static var baseURL: String { "http://\(host):\(port)/api/v1" }
-    private static var baseURLV2: String { "http://\(host):\(port)/api/v2" }
+    private static var baseURL: String { "http://\(host):\(port)/api/v2" }
 
     // MARK: - 진입점
 
@@ -160,7 +159,7 @@ struct CLIHandler {
         case "factory-reset":
             guard rest.contains("--confirm") else { exitError("--confirm 플래그 필수") }
             fetch("POST", path: "/settings/factory-reset",
-                  headers: ["X-Confirm": "true"], apiVersion: 2)
+                  headers: ["X-Confirm": "true"])
         default:
             exitError("알 수 없는 v2 서브커맨드: \(sub)")
         }
@@ -173,13 +172,13 @@ struct CLIHandler {
         //   v2 settings <tab>                 → GET /settings/<tab>
         //   v2 settings <tab> patch <json>    → PATCH /settings/<tab>
         guard let first = args.first else {
-            fetch("GET", path: "/settings", apiVersion: 2)
+            fetch("GET", path: "/settings")
             return
         }
         if first == "patch" {
             guard args.count >= 2 else { exitError("patch <json> 필수") }
             fetch("PATCH", path: "/settings",
-                  body: parseJSONObject(args[1]), apiVersion: 2)
+                  body: parseJSONObject(args[1]))
             return
         }
         let tabs = ["general", "restore", "api", "advanced"]
@@ -187,7 +186,7 @@ struct CLIHandler {
             exitError("알 수 없는 settings 탭: \(first) (허용: \(tabs.joined(separator: ","))")
         }
         if args.count == 1 {
-            fetch("GET", path: "/settings/\(first)", apiVersion: 2)
+            fetch("GET", path: "/settings/\(first)")
             return
         }
         guard args[1] == "patch" else {
@@ -195,7 +194,7 @@ struct CLIHandler {
         }
         guard args.count >= 3 else { exitError("patch <json> 필수") }
         fetch("PATCH", path: "/settings/\(first)",
-              body: parseJSONObject(args[2]), apiVersion: 2)
+              body: parseJSONObject(args[2]))
     }
 
     private static func handleV2ExcludedApps(_ args: [String]) {
@@ -208,24 +207,24 @@ struct CLIHandler {
         //   v2 excluded-apps reset            → POST /reset
         let base = "/settings/restore/excluded-apps"
         guard let action = args.first else {
-            fetch("GET", path: base, apiVersion: 2)
+            fetch("GET", path: base)
             return
         }
         let apps = Array(args.dropFirst())
         switch action {
         case "get":
-            fetch("GET", path: base, apiVersion: 2)
+            fetch("GET", path: base)
         case "set":
             guard !apps.isEmpty else { exitError("<app> ... 필수") }
-            fetch("PUT", path: base, body: ["apps": apps], apiVersion: 2)
+            fetch("PUT", path: base, body: ["apps": apps])
         case "add":
             guard !apps.isEmpty else { exitError("<app> ... 필수") }
-            fetch("POST", path: base, body: ["apps": apps], apiVersion: 2)
+            fetch("POST", path: base, body: ["apps": apps])
         case "remove":
             guard !apps.isEmpty else { exitError("<app> ... 필수") }
-            fetch("DELETE", path: base, body: ["apps": apps], apiVersion: 2)
+            fetch("DELETE", path: base, body: ["apps": apps])
         case "reset":
-            fetch("POST", path: "\(base)/reset", apiVersion: 2)
+            fetch("POST", path: "\(base)/reset")
         default:
             exitError("알 수 없는 excluded-apps 액션: \(action)")
         }
@@ -236,13 +235,13 @@ struct CLIHandler {
         //   v2 shortcuts [get]          → GET
         //   v2 shortcuts set <json>     → PUT
         if args.isEmpty || args[0] == "get" {
-            fetch("GET", path: "/settings/shortcuts", apiVersion: 2)
+            fetch("GET", path: "/settings/shortcuts")
             return
         }
         if args[0] == "set" {
             guard args.count >= 2 else { exitError("set <json> 필수") }
             fetch("PUT", path: "/settings/shortcuts",
-                  body: parseJSONObject(args[1]), apiVersion: 2)
+                  body: parseJSONObject(args[1]))
             return
         }
         exitError("사용법: v2 shortcuts [get|set <json>]")
@@ -263,16 +262,14 @@ struct CLIHandler {
         _ method: String,
         path: String,
         body: Any? = nil,
-        headers: [String: String] = [:],
-        apiVersion: Int = 1
+        headers: [String: String] = [:]
     ) {
         // health 엔드포인트는 base 없이 root
         let urlString: String
         if path == "/" {
             urlString = "http://\(host):\(port)/"
         } else {
-            let base = apiVersion == 2 ? baseURLV2 : baseURL
-            urlString = "\(base)\(path)"
+            urlString = "\(baseURL)\(path)"
         }
 
         guard let url = URL(string: urlString) else {
