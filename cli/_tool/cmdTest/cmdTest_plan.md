@@ -47,13 +47,13 @@ CLI=$(cd cli && xcodebuild -scheme fWarrangeCli -configuration Release -showBuil
 
 ## 정보 커맨드
 
-| 번호 | 파일명             | 커맨드                    | 기대 결과                    |
-| ---: | :----------------- | :------------------------ | :--------------------------- |
-|   00 | `00.help.sh`       | `fWarrangeCli --help`     | 도움말 텍스트 출력           |
-|   01 | `01.version.sh`    | `fWarrangeCli --version`  | 버전 JSON                    |
-|   02 | `02.status.sh`     | `fWarrangeCli status`     | 데몬 상태 JSON               |
-|   03 | `03.health.sh`     | `fWarrangeCli health`     | 헬스 체크 JSON               |
-|   04 | `04.settings.sh`   | `fWarrangeCli settings`   | 앱 설정 JSON                 |
+| 번호 | 파일명             | 커맨드                     | 기대 결과                    |
+| ---: | :----------------- | :------------------------- | :--------------------------- |
+|   00 | `00.help.sh`       | `fWarrangeCli --help`      | 도움말 텍스트 출력           |
+|   01 | `01.version.sh`    | `fWarrangeCli --version`   | 버전 JSON                    |
+|   02 | `02.status.sh`     | `fWarrangeCli status`      | 데몬 상태 JSON               |
+|   03 | `03.health.sh`     | `fWarrangeCli health`      | 헬스 체크 JSON               |
+|   04 | `04.settings.sh`   | `fWarrangeCli settings`    | 앱 설정 JSON                 |
 
 ## 레이아웃 커맨드
 
@@ -116,7 +116,9 @@ $CLI health
 ## 4. settings
 
 ```bash
+
 $CLI settings
+
 # 기대: {"settings":{...},"dataPath":"..."}
 ```
 
@@ -124,6 +126,7 @@ $CLI settings
 
 ```bash
 $CLI capture testCmd
+$CLI capture 
 # 기대: {"status":"success","name":"testCmd","windowCount":...}
 ```
 
@@ -131,6 +134,7 @@ $CLI capture testCmd
 
 ```bash
 $CLI list
+
 # 기대: [{"name":"testCmd",...},...]
 ```
 
@@ -138,6 +142,7 @@ $CLI list
 
 ```bash
 $CLI show testCmd
+
 # 기대: {"name":"testCmd","windows":[...]}
 ```
 
@@ -158,9 +163,9 @@ $CLI delete testCmdRenamed
 ## 10. restore
 
 ```bash
-# 사전 조건: 05.capture로 testCmd 레이아웃 존재해야 함
-$CLI capture testCmd  # 재생성
-$CLI restore testCmd
+# 사전 조건: default 레이아웃이 존재해야 함
+$CLI restore          # 파라미터 없으면 'default' 레이아웃으로 복구
+$CLI restore testCmd  # 또는 특정 레이아웃명 지정
 # 기대: {"status":"success","restored":...,"failed":...}
 ```
 
@@ -182,6 +187,7 @@ $CLI delete-all --confirm
 
 ```bash
 $CLI windows
+
 # 기대: [{"app":"Safari","window":"...","pos":{...},...},...]
 ```
 
@@ -239,6 +245,25 @@ $CLI quit --confirm
 | 엔드포인트       | Method | 사유                                      |
 | :--------------- | :----- | :---------------------------------------- |
 | `PUT /ui/state`  | PUT    | GUI 자동화 전용 — CLI 커맨드로 노출 불필요 |
+
+## v2 Settings 엔드포인트 (전체 API 전용)
+
+현재 `CLIHandler.swift`는 `/api/v1`만 호출하며 v2 서브커맨드를 노출하지 않음.
+따라서 다음 v2 엔드포인트는 **apiTest(20~37)로만 검증**되고 cmdTest 대상이 아님.
+
+| 엔드포인트                                    | Method                  | apiTest 스크립트                   |
+| :-------------------------------------------- | :---------------------- | :--------------------------------- |
+| `/settings`                                   | GET, PATCH              | 20, 30                             |
+| `/settings/general`                           | GET, PATCH              | 21, 27                             |
+| `/settings/restore`                           | GET, PATCH              | 22, 28                             |
+| `/settings/restore/excluded-apps`             | GET, PUT, POST, DELETE  | 25, 32, 33, 34                     |
+| `/settings/restore/excluded-apps/reset`       | POST                    | 35                                 |
+| `/settings/api`                               | GET, PATCH              | 23, 31                             |
+| `/settings/advanced`                          | GET, PATCH              | 24, 29                             |
+| `/settings/shortcuts`                         | GET, PUT                | 26, 36                             |
+| `/settings/factory-reset`                     | POST                    | 37 (FORCE=1), E08                  |
+
+> CLI에서 v2 설정 탭을 다루는 서브커맨드(`settings-v2`, `excluded-apps` 등)는 별도 이슈로 분리해 추후 추가.
 
 # 파일 구조
 

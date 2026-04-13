@@ -1,12 +1,12 @@
 ---
 name: apiTest_plan
-description: openapi.yaml 기반 API 테스트 스크립트 생성 계획
+description: openapi_v1.yaml 기반 API 테스트 스크립트 생성 계획
 date: 2026-04-07
 ---
 
 # 개요
 
-`api/openapi.yaml` 분석 결과 총 16개 엔드포인트 → 테스트 스크립트로 매핑.
+`api/openapi_v1.yaml` 분석 결과 총 16개 엔드포인트 → 테스트 스크립트로 매핑.
 
 * 파일명 규칙: `{00-99}.{내역}.sh`
 * 스크립트 위치: `cli/_tool/apiTest/`
@@ -54,6 +54,39 @@ source cli/_tool/apiTestDo.sh all
 |   16 | `16.cli-version.sh`              | GET    | `/api/v1/cli/version`                   | CLI     |
 |   17 | `17.cli-quit.sh`                 | POST   | `/api/v1/cli/quit`                      | CLI     |
 |   18 | `18.accessibility.sh`            | GET    | `/api/v1/status/accessibility`          | System  |
+
+# v2 스크립트 목록
+
+| 번호 | 파일명                                    | Method | Endpoint                                    | Tag      |
+| ---: | :---------------------------------------- | :----- | :------------------------------------------ | :------- |
+|   20 | `20.v2-settings.sh`                       | GET    | `/api/v2/settings`                          | Settings |
+|   21 | `21.v2-settings-general.sh`               | GET    | `/api/v2/settings/general`                  | Settings |
+|   22 | `22.v2-settings-restore.sh`               | GET    | `/api/v2/settings/restore`                  | Settings |
+|   23 | `23.v2-settings-api.sh`                   | GET    | `/api/v2/settings/api`                      | Settings |
+|   24 | `24.v2-settings-advanced.sh`              | GET    | `/api/v2/settings/advanced`                 | Settings |
+|   25 | `25.v2-settings-excluded-apps.sh`         | GET    | `/api/v2/settings/restore/excluded-apps`    | Settings |
+|   26 | `26.v2-settings-shortcuts.sh`             | GET    | `/api/v2/settings/shortcuts`                | Shortcuts |
+|   27 | `27.v2-settings-general-patch.sh`         | PATCH  | `/api/v2/settings/general`                  | Settings |
+|   28 | `28.v2-settings-restore-patch.sh`         | PATCH  | `/api/v2/settings/restore`                  | Settings |
+|   29 | `29.v2-settings-advanced-patch.sh`        | PATCH  | `/api/v2/settings/advanced`                 | Settings |
+|   30 | `30.v2-settings-patch.sh`                 | PATCH  | `/api/v2/settings`                          | Settings |
+|   31 | `31.v2-settings-api-patch.sh`             | PATCH  | `/api/v2/settings/api`                      | Settings |
+|   32 | `32.v2-excluded-apps-put.sh`              | PUT    | `/api/v2/settings/restore/excluded-apps`    | Settings |
+|   33 | `33.v2-excluded-apps-post.sh`             | POST   | `/api/v2/settings/restore/excluded-apps`    | Settings |
+|   34 | `34.v2-excluded-apps-delete.sh`           | DELETE | `/api/v2/settings/restore/excluded-apps`    | Settings |
+|   35 | `35.v2-excluded-apps-reset.sh`            | POST   | `/api/v2/settings/restore/excluded-apps/reset` | Settings |
+|   36 | `36.v2-shortcuts-put.sh`                  | PUT    | `/api/v2/settings/shortcuts`                | Shortcuts |
+|   37 | `37.v2-factory-reset.sh`                  | POST   | `/api/v2/settings/factory-reset` (FORCE=1)  | Settings |
+
+> v2 엔드포인트는 `openapi_v2.yaml` 기준 **모두 커버** (GET/PATCH/PUT/POST/DELETE).
+> 37번은 파괴적이므로 `FORCE=1` 환경변수 설정 시에만 실행됨.
+
+# 에러 테스트 (E prefix) - v2 추가
+
+| 번호 | 파일명                                  | 기대 응답 | 검증 내용                        |
+| :--- | :------------------------------------- | :-------- | :------------------------------- |
+| E08  | `E08.v2-factory-reset-no-confirm.sh`  | 400       | X-Confirm 헤더 없이 초기화      |
+| E09  | `E09.v2-settings-api-invalid-port.sh` | 400       | 범위 초과 포트(65536) 설정 시도 |
 
 # 스크립트 상세
 
