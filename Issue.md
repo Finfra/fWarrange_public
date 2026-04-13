@@ -19,20 +19,17 @@ date: 2026-04-07
 
 # 📙 일반
 
-## Issue25: testDo 스크립트 개선 — run.sh 사전 실행, 로그 확인, 결과 저장 (등록: 2026-04-14)
-
-* 목적: apiTestDo.sh / cmdTestDo.sh 에 run.sh 사전 실행·로그 확인·결과 저장 기능 추가
-* 상세:
-    - 문제1: 테스트 전 run.sh(빌드+배포+실행) 미실행으로 최신 빌드 미반영 가능성
-    - 문제2: 테스트 후 wlog.log 에러 미확인
-    - 문제3: 테스트 결과를 `_doc_work/report`에 저장하지 않아 이력 없음
-    - 구현 명세: `--run` / `--log` / `--report` 옵션 추가 (기존 인자 호환 유지)
-    - 계획 문서: `_doc_work/plan/Issue25_testDo-improvement.md`
-    - 태스크 문서: `_doc_work/tasks/Issue25_tasks.md`
 
 # 📗 선택
 
 # ✅ 완료
+
+## Issue25: testDo 스크립트 개선 — run.sh 사전 실행, 로그 확인, 결과 저장 (등록: 2026-04-14, 해결: 2026-04-14, commit: 24aa888) ✅
+
+* 목적: apiTestDo.sh / cmdTestDo.sh 에 run.sh 사전 실행·로그 확인·결과 저장 기능 추가
+* 상세:
+    - --run / --log / --report 옵션 추가 (기존 인자 호환 유지)
+    - _doc_work/plan/, _doc_work/tasks/, _doc_work/report/ 구조 도입
 
 ## Issue24: v1 제거 대비 v2 슈퍼셋 업데이트 (등록: 2026-04-13, 해결: 2026-04-13, commit: 5db488e) ✅
 
