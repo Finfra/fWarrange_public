@@ -6,7 +6,7 @@ date: 2026-04-07
 
 # Issue Management
 
-- Issue HWM: 22
+- Issue HWM: 23
 - Save Point: - 2026-04-13 (76bb041) Fix(Shortcuts): Issue21 단축키 설정 REST 동기화 엔드포인트 추가
 
 # 🤔 결정사항
@@ -18,6 +18,17 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+
+## Issue23: v2 API 구현 최종 검증 및 Issue22 완료 처리 (등록: 2026-04-13)
+
+* 목적: Issue22에서 구현된 v2 API 전체를 검증 레포트 기준으로 최종 확인하고 Issue22를 완료 처리한다
+* 상세:
+    - 검증 기준 레포트: 2026-04-13 세션에서 생성된 v2 apiTest 검증 결과 (19 PASS, 1 SKIP)
+    - 확인1: `apiTest v2` 전체(00~18 + E01~E02) 재실행 및 PASS 확인
+    - 확인2: `cmdTest v2` 전체(00~17 + E01~E02) 실행 및 PASS 확인
+    - 확인3: `CLIHandler.swift` v2 확장 구현 확인 (`baseURLV2`, `handleV2`, `handleV2Settings`, `handleV2ExcludedApps`, `handleV2Shortcuts`)
+    - 확인4: `apiTest_plan_v2.md` 번호 재배정(00=health, 01~18) 반영 확인
+    - 완료: Issue22를 `✅ 완료` 섹션으로 이동하고 커밋 해시 기록
 
 ## Issue22: REST API v2 구현 (Settings 화면 전체 엔드포인트) (등록: 2026-04-13)
 
