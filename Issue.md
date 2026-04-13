@@ -12,7 +12,7 @@ date: 2026-04-07
 # 🤔 결정사항
 
 # 🌱 이슈후보
-
+1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
 
 # 📕 중요
@@ -37,6 +37,8 @@ date: 2026-04-07
     - `AppState.swift`: `fullSettingsDict`/`applySettingsPatch` 헬퍼 + `applyApiSettings`가 포트/CIDR 변경 시 `RESTServer` 자동 재시작
     - 문서/규칙 참조 경로 `openapi.yaml` → `openapi_v1.yaml` 일괄 갱신 (`api/README*`, `manual/*`, `cli/README*`, `.claude/rules/api-rules.md`, `.wiki-compiler.json`)
     - Debug 빌드 검증 완료 (BUILD SUCCEEDED)
+    - apiTest v2 스크립트 전체 커버리지 추가 (20~37, E08~E09) — commit: dde4cf6
+    - cmdTest는 CLI가 `/api/v1`만 호출하므로 v2 대응 서브커맨드 부재 → plan.md에 API 전용 매핑 기재
 
 # 📗 선택
 
