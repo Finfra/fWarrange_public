@@ -19,7 +19,11 @@ date: 2026-04-07
 
 # 📙 일반
 
-## Issue23: v2 API 구현 최종 검증 및 Issue22 완료 처리 (등록: 2026-04-13)
+# 📗 선택
+
+# ✅ 완료
+
+## Issue23: v2 API 구현 최종 검증 및 Issue22 완료 처리 (등록: 2026-04-13, 해결: 2026-04-13, commit: 21a5229) ✅
 
 * 목적: Issue22에서 구현된 v2 API 전체를 검증 레포트 기준으로 최종 확인하고 Issue22를 완료 처리한다
 * 상세:
@@ -29,8 +33,12 @@ date: 2026-04-07
     - 확인3: `CLIHandler.swift` v2 확장 구현 확인 (`baseURLV2`, `handleV2`, `handleV2Settings`, `handleV2ExcludedApps`, `handleV2Shortcuts`)
     - 확인4: `apiTest_plan_v2.md` 번호 재배정(00=health, 01~18) 반영 확인
     - 완료: Issue22를 `✅ 완료` 섹션으로 이동하고 커밋 해시 기록
+* 구현 명세:
+    - `CLIHandler.swift` `handleV2`에서 중복 `args.removeFirst()` 버그 수정 — `handle(command:args:)`에서 "v2"가 이미 소비되므로 재차 제거 불필요
+    - `18.v2-factory-reset.sh`, `17.v2-factory-reset.sh` SKIP 메시지 경로 수정 (37→정확한 번호)
+    - cmdTest v2 전체 PASS 검증 완료
 
-## Issue22: REST API v2 구현 (Settings 화면 전체 엔드포인트) (등록: 2026-04-13)
+## Issue22: REST API v2 구현 (Settings 화면 전체 엔드포인트) (등록: 2026-04-13, 해결: 2026-04-13, commit: dde4cf6, ab2c302, 21a5229) ✅
 
 * 목적: 설정 화면(General/Restore/API/Advanced) 기능을 REST API v2로 구현하여 fWarrange GUI에서 원격 제어 가능하게 함
 * 상세:
@@ -44,16 +52,13 @@ date: 2026-04-07
         - `GET/PATCH /api/v2/settings/api` (포트/CIDR 변경 시 서버 자동 재시작)
         - `GET/PUT/POST/DELETE /api/v2/settings/restore/excluded-apps` + `/reset`
         - `POST /api/v2/settings/factory-reset` (`X-Confirm: true`)
-        - `GET /api/v2/settings/shortcuts`
+        - `GET/PUT /api/v2/settings/shortcuts`
     - `AppState.swift`: `fullSettingsDict`/`applySettingsPatch` 헬퍼 + `applyApiSettings`가 포트/CIDR 변경 시 `RESTServer` 자동 재시작
     - 문서/규칙 참조 경로 `openapi.yaml` → `openapi_v1.yaml` 일괄 갱신 (`api/README*`, `manual/*`, `cli/README*`, `.claude/rules/api-rules.md`, `.wiki-compiler.json`)
     - Debug 빌드 검증 완료 (BUILD SUCCEEDED)
-    - apiTest v2 스크립트 전체 커버리지 추가 (20~37, E08~E09) — commit: dde4cf6
-    - cmdTest는 CLI가 `/api/v1`만 호출하므로 v2 대응 서브커맨드 부재 → plan.md에 API 전용 매핑 기재
-
-# 📗 선택
-
-# ✅ 완료
+    - apiTest v2 스크립트 전체 커버리지 추가 (00~18 + E01~E02) — commit: dde4cf6
+    - CLIHandler.swift v2 확장: `baseURLV2`, `handleV2`, `handleV2Settings`, `handleV2ExcludedApps`, `handleV2Shortcuts`
+    - cmdTest v2 전체(00~17 + E01~E02) PASS 검증 완료 — commit: 21a5229
 
 ## Issue21: 단축키 설정 REST 동기화 엔드포인트 추가 (등록: 2026-04-12, 해결: 2026-04-13, commit: 76bb041) ✅
 
