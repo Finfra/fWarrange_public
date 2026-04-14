@@ -1,9 +1,9 @@
 # agent
 .claude/
 CLAUDE.md
+wiki/
 
 # claudeCode_xcode_Skel
-Issue.md
 noteForHuman.md
 
 # macOS
@@ -25,7 +25,8 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-# CLI 작업 문서
+# 작업 문서 (_doc_work 루트 포함)
+_doc_work/
 cli/_doc_work/
 cli/_doc_design/
 

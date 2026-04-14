@@ -6,14 +6,31 @@ date: 2026-04-07
 
 # Issue Management
 
-- Issue HWM: 24
+* Issue HWM: 26
 - Save Point: - 2026-04-13 (76bb041) Fix(Shortcuts): Issue21 단축키 설정 REST 동기화 엔드포인트 추가
 
 # 🤔 결정사항
 
 # 🌱 이슈후보
-1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
+1. all clear test할 것. _config.yml기본 값 확인
+2. 클립보드 히스토리 기능 중에서 고급 기능은 Paid 앱이 활성화 되어 있어야 실행 가능하게끔 해 줘 활성화 되어 있지 않다면 활성화 창[기존 코드 찾아서] 열게 해야함. 
+   1. Paid 앱의 기능이 모듈로 구성되어 있는지 확인
+3. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
+
+## Issue26: nPTiR 환경 정비 — _doc_work 구조·gitignore·settings.json 정비 (등록: 2026-04-14) 🚧
+
+* 목적: nPTiR 체계 원활 운용을 위해 잘못된 _doc_work 위치 정리, .gitignore 보완, settings.json 하드코딩 경로 제거
+* plan: `cli/_doc_work/plan/start-nPTiR_plan.md`
+* task: `cli/_doc_work/task/start-nPTiR_task.md`
+* 상세:
+    - `_doc_work/` 루트 파일 3개 `cli/_doc_work/`로 이동 및 빈 폴더 삭제
+    - `cli/_doc_work/tasks/` → `task/` 단수형 리네임
+    - `cli/_doc_work/_rlease/`, `z_done/` 빈 폴더 처리
+    - `.gitignore`에 `_doc_work/` 루트 항목 추가
+    - `Issue.md` gitignore 정책 불일치 해소
+    - `settings.json` 하드코딩 DerivedData 경로 제거
+    - `settings.json` fSnippet 경로 항목 제거
 
 # 📕 중요
 
