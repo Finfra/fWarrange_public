@@ -18,7 +18,16 @@ date: 2026-04-07
 3. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
 
-## Issue26: nPTiR 환경 정비 — _doc_work 구조·gitignore·settings.json 정비 (등록: 2026-04-14) 🚧
+# 📕 중요
+
+# 📙 일반
+
+
+# 📗 선택
+
+# ✅ 완료
+
+## Issue26: nPTiR 환경 정비 — _doc_work 구조·gitignore·settings.json 정비 (등록: 2026-04-14, 해결: 2026-04-14, commit: ad27664) ✅
 
 * 목적: nPTiR 체계 원활 운용을 위해 잘못된 _doc_work 위치 정리, .gitignore 보완, settings.json 하드코딩 경로 제거
 * plan: `cli/_doc_work/plan/start-nPTiR_plan.md`
@@ -28,18 +37,8 @@ date: 2026-04-07
     - `cli/_doc_work/tasks/` → `task/` 단수형 리네임
     - `cli/_doc_work/_rlease/`, `z_done/` 빈 폴더 처리
     - `.gitignore`에 `_doc_work/` 루트 항목 추가
-    - `Issue.md` gitignore 정책 불일치 해소
-    - `settings.json` 하드코딩 DerivedData 경로 제거
-    - `settings.json` fSnippet 경로 항목 제거
-
-# 📕 중요
-
-# 📙 일반
-
-
-# 📗 선택
-
-# ✅ 완료
+    - `Issue.md` gitignore에서 제거 (tracked 상태 유지)
+    - `settings.json` 하드코딩 DerivedData·fSnippet 경로 제거
 
 ## Issue25: testDo 스크립트 개선 — run.sh 사전 실행, 로그 확인, 결과 저장 (등록: 2026-04-14, 해결: 2026-04-14, commit: 24aa888) ✅
 
