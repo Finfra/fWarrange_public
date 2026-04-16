@@ -9,7 +9,6 @@ final class AppState {
     let settingsService: SettingsService
     let restServer: RESTServer
     private let hotKeyService: HotKeyService
-    private let displaySwitchService: DisplaySwitchService
     private let screenMoveService: ScreenMoveService
 
     var isRunning = false
@@ -50,11 +49,11 @@ final class AppState {
         )
         self.layoutManager = LayoutManager(storageService: storageService)
         self.hotKeyService = CarbonHotKeyService()
-        self.displaySwitchService = DisplaySwitchService()
         self.screenMoveService = ScreenMoveService()
 
         let wm = windowManager
         let lm = layoutManager
+        weak var weakSelf: AppState? = nil // set after init
         let handlers = RESTServerHandlers(
             captureCurrentWindows: { filterApps in wm.captureCurrentWindows(filterApps: filterApps) },
             restoreWindows: { windows, maxRetries, retryInterval, minimumScore, enableParallel in
@@ -107,8 +106,6 @@ final class AppState {
             updateShortcuts: { [weak settingsService] body -> [String: String] in
                 guard let svc = settingsService else { return [:] }
                 var s = svc.load()
-
-                // 키가 body에 존재할 때만 변경. NSNull = 해제, 문자열 = 설정.
                 func apply(_ key: String, set: (KeyboardShortcutConfig?) -> Void) {
                     guard let value = body[key] else { return }
                     if value is NSNull {
@@ -127,10 +124,8 @@ final class AppState {
                 apply("restoreLastShortcut") { s.restoreLastShortcut = $0 }
                 apply("showMainWindowShortcut") { s.showMainWindowShortcut = $0 }
                 apply("showSettingsShortcut") { s.showSettingsShortcut = $0 }
-
                 svc.save(s)
                 NotificationCenter.default.post(name: .fWarrangeCliShortcutsUpdated, object: nil)
-
                 return [
                     "saveShortcut": s.saveShortcut?.displayString ?? "",
                     "restoreDefaultShortcut": s.restoreDefaultShortcut?.displayString ?? "",
@@ -138,9 +133,175 @@ final class AppState {
                     "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? "",
                     "showSettingsShortcut": s.showSettingsShortcut?.displayString ?? ""
                 ]
+            },
+            getFullSettings: { [weak settingsService] in
+                guard let svc = settingsService else { return [:] }
+                return AppState.fullSettingsDict(svc.load())
+            },
+            patchSettings: { [weak settingsService] body in
+                guard let svc = settingsService else { return [:] }
+                var s = svc.load()
+                AppState.applySettingsPatch(&s, body: body)
+                svc.save(s)
+                return AppState.fullSettingsDict(s)
+            },
+            getExcludedApps: { [weak settingsService] in
+                settingsService?.load().excludedApps ?? []
+            },
+            setExcludedApps: { [weak settingsService] apps in
+                guard let svc = settingsService else { return apps }
+                var s = svc.load()
+                s.excludedApps = apps
+                svc.save(s)
+                return s.excludedApps
+            },
+            addExcludedApps: { [weak settingsService] apps in
+                guard let svc = settingsService else { return apps }
+                var s = svc.load()
+                var set = Array(s.excludedApps)
+                for a in apps where !set.contains(a) { set.append(a) }
+                s.excludedApps = set
+                svc.save(s)
+                return s.excludedApps
+            },
+            removeExcludedApps: { [weak settingsService] apps in
+                guard let svc = settingsService else { return [] }
+                var s = svc.load()
+                s.excludedApps = s.excludedApps.filter { !apps.contains($0) }
+                svc.save(s)
+                return s.excludedApps
+            },
+            resetExcludedApps: { [weak settingsService] in
+                guard let svc = settingsService else { return AppSettings.defaultExcludedApps }
+                var s = svc.load()
+                s.excludedApps = AppSettings.defaultExcludedApps
+                svc.save(s)
+                return s.excludedApps
+            },
+            factoryResetSettings: { [weak settingsService] in
+                guard let svc = settingsService else { return [:] }
+                svc.resetToDefaults()
+                return AppState.fullSettingsDict(svc.load())
+            },
+            getShortcutsDisplay: { [weak settingsService] in
+                guard let svc = settingsService else { return [:] }
+                let s = svc.load()
+                return [
+                    "saveShortcut": s.saveShortcut?.displayString ?? "",
+                    "restoreDefaultShortcut": s.restoreDefaultShortcut?.displayString ?? "",
+                    "restoreLastShortcut": s.restoreLastShortcut?.displayString ?? "",
+                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? "",
+                    "showSettingsShortcut": s.showSettingsShortcut?.displayString ?? ""
+                ]
+            },
+            getLogFilePath: {
+                let home = FileManager.default.homeDirectoryForCurrentUser.path
+                return "\(home)/Documents/finfra/fWarrangeData/logs/wlog.log"
+            },
+            applyApiSettings: { [weak settingsService] enabled, newPort, external, cidr in
+                let prev = settingsService?.load() ?? AppSettings.defaults
+                var s = prev
+                if let v = enabled { s.restServerEnabled = v }
+                if let v = newPort { s.restServerPort = v }
+                if let v = external { s.allowExternalAccess = v }
+                if let v = cidr, !v.isEmpty { s.allowedCIDR = v }
+                settingsService?.save(s)
+                let targetPort = UInt16(s.restServerPort ?? 3016)
+                let targetExternal = s.allowExternalAccess ?? false
+                let targetCidr = s.allowedCIDR ?? "192.168.0.0/16"
+                let shouldRun = s.restServerEnabled ?? true
+
+                // 재시작 필요 여부 판단: 서버 동작에 영향을 주는 필드가 실제로 변경된 경우에만
+                let prevRun = prev.restServerEnabled ?? true
+                let prevPort = prev.restServerPort ?? 3016
+                let prevExternal = prev.allowExternalAccess ?? false
+                let needsRestart = (prevRun != shouldRun) ||
+                                   (prevPort != Int(targetPort)) ||
+                                   (prevExternal != targetExternal)
+
+                if needsRestart {
+                    // 비동기 재시작 (현재 연결을 바로 끊으면 응답이 유실되므로 지연)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        guard let self = weakSelf else { return }
+                        self.restServer.stop()
+                        self.restServer.allowExternal = targetExternal
+                        self.restServer.allowedCIDR = targetCidr
+                        if shouldRun {
+                            self.restServer.start(port: targetPort)
+                        }
+                    }
+                } else {
+                    // CIDR만 바뀐 경우 listener 재시작 없이 값만 갱신
+                    weakSelf?.restServer.allowedCIDR = targetCidr
+                }
+                return (isRunning: shouldRun, port: Int(targetPort), external: targetExternal, cidr: targetCidr)
+            },
+            setHideMenuBar: { hide in
+                weakSelf?.hideMenuBar = hide
+            },
+            getHideMenuBar: {
+                weakSelf?.hideMenuBar ?? false
             }
         )
         self.restServer = RESTServer(handlers: handlers)
+        weakSelf = self
+    }
+
+    // MARK: - v2 설정 직렬화/패치 헬퍼
+
+    static func fullSettingsDict(_ s: AppSettings) -> [String: Any] {
+        var d: [String: Any] = [
+            "excludedApps": s.excludedApps,
+            "maxRetries": s.maxRetries,
+            "retryInterval": s.retryInterval,
+            "minimumMatchScore": s.minimumMatchScore,
+            "enableParallelRestore": s.enableParallelRestore ?? true,
+            "restServerPort": s.restServerPort ?? 3016,
+            "logLevel": s.logLevel ?? 5,
+            "dataStorageMode": (s.dataStorageMode ?? .host).rawValue,
+            "launchAtLogin": s.launchAtLogin ?? false,
+            "appLanguage": s.appLanguage ?? "system",
+            "restServerEnabled": s.restServerEnabled ?? true,
+            "allowExternalAccess": s.allowExternalAccess ?? false,
+            "allowedCIDR": s.allowedCIDR ?? "192.168.0.0/16",
+            "autoSaveOnSleep": s.autoSaveOnSleep ?? true,
+            "maxAutoSaves": s.maxAutoSaves ?? 5,
+            "restoreButtonStyle": s.restoreButtonStyle ?? "nameIcon",
+            "confirmBeforeDelete": s.confirmBeforeDelete ?? true,
+            "showInCmdTab": s.showInCmdTab ?? true,
+            "clickSwitchToMain": s.clickSwitchToMain ?? false,
+            "theme": s.theme ?? "system"
+        ]
+        if let p = s.dataDirectoryPath { d["dataDirectoryPath"] = p }
+        if let n = s.defaultLayoutName { d["defaultLayoutName"] = n }
+        return d
+    }
+
+    static func applySettingsPatch(_ s: inout AppSettings, body: [String: Any]) {
+        if let v = body["appLanguage"] as? String { s.appLanguage = v }
+        if let v = body["dataStorageMode"] as? String, let m = DataStorageMode(rawValue: v) { s.dataStorageMode = m }
+        if let v = body["dataDirectoryPath"] as? String { s.dataDirectoryPath = v.isEmpty ? nil : v }
+        if body["dataDirectoryPath"] is NSNull { s.dataDirectoryPath = nil }
+        if let v = body["launchAtLogin"] as? Bool { s.launchAtLogin = v }
+        if let v = body["theme"] as? String { s.theme = v }
+        if let v = body["maxRetries"] as? Int { s.maxRetries = v }
+        if let v = body["retryInterval"] as? Double { s.retryInterval = v }
+        if let v = body["retryInterval"] as? Int { s.retryInterval = Double(v) }
+        if let v = body["minimumMatchScore"] as? Int { s.minimumMatchScore = v }
+        if let v = body["enableParallelRestore"] as? Bool { s.enableParallelRestore = v }
+        if let v = body["excludedApps"] as? [String] { s.excludedApps = v }
+        if let v = body["restServerEnabled"] as? Bool { s.restServerEnabled = v }
+        if let v = body["restServerPort"] as? Int { s.restServerPort = v }
+        if let v = body["allowExternalAccess"] as? Bool { s.allowExternalAccess = v }
+        if let v = body["allowedCIDR"] as? String { s.allowedCIDR = v }
+        if let v = body["logLevel"] as? Int { s.logLevel = v }
+        if let v = body["autoSaveOnSleep"] as? Bool { s.autoSaveOnSleep = v }
+        if let v = body["maxAutoSaves"] as? Int { s.maxAutoSaves = v }
+        if let v = body["restoreButtonStyle"] as? String { s.restoreButtonStyle = v }
+        if let v = body["confirmBeforeDelete"] as? Bool { s.confirmBeforeDelete = v }
+        if let v = body["showInCmdTab"] as? Bool { s.showInCmdTab = v }
+        if let v = body["clickSwitchToMain"] as? Bool { s.clickSwitchToMain = v }
+        if let v = body["defaultLayoutName"] as? String { s.defaultLayoutName = v.isEmpty ? nil : v }
     }
 
     func initialize() {
@@ -191,11 +352,33 @@ final class AppState {
             }
         }
 
-        // 우클릭 디스플레이 전환 (설정에 따라)
-        displaySwitchService.registerRightClickMonitor(enabled: false)
-
         // 로그인 시 자동 시작 동기화
         syncLaunchAtLogin(settings.launchAtLogin ?? false)
+
+        // fWarrange(Paid) 종료 감지 → 메뉴바 자동 복원
+        observePaidAppTermination()
+    }
+
+    // MARK: - fWarrange(Paid) 종료 감시
+
+    /// NSWorkspace notification으로 fWarrange 앱 종료를 감지하여 메뉴바를 자동 복원
+    private func observePaidAppTermination() {
+        let center = NSWorkspace.shared.notificationCenter
+        center.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self else { return }
+            guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  app.bundleIdentifier == "kr.finfra.fWarrange" else { return }
+            Task { @MainActor in
+                if self.hideMenuBar {
+                    self.hideMenuBar = false
+                    logI("🔄 fWarrange 종료 감지 → 메뉴바 자동 복원")
+                }
+            }
+        }
     }
 
     // MARK: - Login Item 관리
@@ -233,6 +416,7 @@ final class AppState {
             let name = layoutManager.nextDailySequenceName()
             let windows = windowManager.captureCurrentWindows(filterApps: nil)
             try? layoutManager.saveLayout(name: name, windows: windows)
+            ChangeTracker.shared.record(type: "layout.created", target: name)
             logI("⌨️ 단축키 저장: '\(name)'")
         case .restoreDefault, .restoreLast:
             if let first = layoutManager.layouts.first {
