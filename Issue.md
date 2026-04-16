@@ -7,7 +7,7 @@ date: 2026-04-07
 # Issue Management
 
 * Issue HWM: 28
-- Save Point: - 2026-04-13 (76bb041) Fix(Shortcuts): Issue21 단축키 설정 REST 동기화 엔드포인트 추가
+* Save Point: 2026-04-16 (dff889a) Feat(AppState): Issue28 fWarrange 종료 시 fWarrangeCli 메뉴바 자동 복원
 
 # 🤔 결정사항
 
@@ -21,7 +21,10 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
-## Issue28: fWarrange 종료 시 fWarrangeCli 메뉴바 자동 복원 (등록: 2026-04-16)
+# 📗 선택
+
+# ✅ 완료
+## Issue28: fWarrange 종료 시 fWarrangeCli 메뉴바 자동 복원 (등록: 2026-04-16) (✅ 완료, dff889a) ✅
 * 목적: fWarrange 앱 종료 시 fWarrangeCli 메뉴바가 숨겨진 채 방치되는 문제 해결 — 이중 방어 방식(NSWorkspace 감시 + REST 호출)으로 자동 복원
 * 상세:
     - 방안1: fWarrangeCli의 AppState에 `NSWorkspace.didTerminateApplicationNotification` 감시 추가 — `kr.finfra.fWarrange` 종료 감지 시 `hideMenuBar=false` 복원 (crash 포함 모든 종료 커버)
@@ -32,9 +35,6 @@ date: 2026-04-07
     - 검증: fWarrangeCli Release 빌드 성공, fWarrange Debug 빌드 성공, REST API 정상 동작 확인
 
 
-# 📗 선택
-
-# ✅ 완료
 
 ## Issue27: 변경 시퀀스 API 추가 — 적응형 Polling 서버 측 (등록: 2026-04-16, 해결: 2026-04-16, commit: 이전 구현 완료) ✅
 * 목적: fWarrangeCli에서 데이터 변경 시 시퀀스 번호를 기록하여 fWarrange GUI가 변경 사항을 폴링으로 감지할 수 있게 함
