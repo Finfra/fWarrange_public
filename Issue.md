@@ -6,7 +6,7 @@ date: 2026-04-07
 
 # Issue Management
 
-* Issue HWM: 26
+* Issue HWM: 28
 - Save Point: - 2026-04-13 (76bb041) Fix(Shortcuts): Issue21 단축키 설정 REST 동기화 엔드포인트 추가
 
 # 🤔 결정사항
@@ -19,8 +19,29 @@ date: 2026-04-07
 # 🚧 진행중
 
 # 📕 중요
+## Issue27: 변경 시퀀스 API 추가 — 적응형 Polling 서버 측 (등록: 2026-04-16)
+* 목적: fWarrangeCli에서 데이터 변경 시 시퀀스 번호를 기록하여 fWarrange GUI가 변경 사항을 폴링으로 감지할 수 있게 함
+* 설계: fWarrange 메인 레포 `_doc_design/design_event-notification.md`
+* 상세:
+    - `GET /api/v2/changes?since={seq}` 엔드포인트 추가
+    - 이벤트 유형: `layout.created`, `layout.updated`, `layout.deleted`, `settings.changed`, `shortcuts.changed`
+    - 시퀀스 번호: 단조 증가, 메모리 관리 (재시작 시 0), 최근 100건 이력 유지
+    - GUI 측(Issue186)이 적응형 Polling(3초/30초/중지)으로 이 API를 조회
+* 구현 명세:
+    - `ChangeTracker` 클래스 신규: 시퀀스 카운터 + 링버퍼(100건)
+    - `RESTServer.swift`: `GET /api/v2/changes?since={seq}` 엔드포인트 추가
+    - 레이아웃/설정 변경 핸들러 6곳에서 `ChangeTracker.record()` 호출
+    - `openapi_v2.yaml`에 `/api/v2/changes` 엔드포인트 명세 추가
+    - 검증: 레이아웃 캡처 → `curl /api/v2/changes?since=0`으로 변경 이력 확인
 
 # 📙 일반
+## Issue28: fWarrange 종료 시 fWarrangeCli 메뉴바 자동 복원 (등록: 2026.04.16)
+* 목적: fWarrange 앱 종료 시 fWarrangeCli 메뉴바가 숨겨진 채 방치되는 문제 해결 — 이중 방어 방식(NSWorkspace 감시 + REST 호출)으로 자동 복원
+* 상세: 
+- 방안1: fWarrangeCli의 AppState에 NSWorkspace.didTerminateApplicationNotification 감시 추가 — kr.finfra.fWarrange 종료 감지 시 hideMenuBar=false 복원 (crash 포함 모든 종료 커버)
+- 방안2: fWarrange의 AppDelegate.applicationWillTerminate에서 PUT /api/v1/ui/state {hideMenuBar:false} 동기 전송 (정상 종료 시 즉시 복원)
+- 구현 파일: cli/fWarrangeCli/AppState.swift (observePaidAppTermination 메서드), fWarrangeApp.swift (applicationWillTerminate 메서드)
+
 
 # 📗 선택
 
