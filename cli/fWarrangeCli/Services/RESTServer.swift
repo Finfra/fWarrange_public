@@ -42,6 +42,25 @@ struct RESTServerHandlers {
     var getDefaultLayoutName: () -> String?
     var setDefaultLayoutName: (_ name: String?) -> Void
     var updateShortcuts: (_ body: [String: Any]) -> [String: String]
+
+    // v2 settings
+    var getFullSettings: () -> [String: Any]
+    var patchSettings: (_ body: [String: Any]) -> [String: Any]
+    var getExcludedApps: () -> [String]
+    var setExcludedApps: (_ apps: [String]) -> [String]
+    var addExcludedApps: (_ apps: [String]) -> [String]
+    var removeExcludedApps: (_ apps: [String]) -> [String]
+    var resetExcludedApps: () -> [String]
+    var factoryResetSettings: () -> [String: Any]
+    var getShortcutsDisplay: () -> [String: String]
+    var getLogFilePath: () -> String
+    /// Called when API-tab settings change (port/external/CIDR).
+    /// Returns the effective state after the server applies the change.
+    var applyApiSettings: (_ enabled: Bool?, _ port: Int?, _ external: Bool?, _ cidr: String?) -> (isRunning: Bool, port: Int, external: Bool, cidr: String)
+
+    // UI 상태
+    var setHideMenuBar: (_ hide: Bool) -> Void
+    var getHideMenuBar: () -> Bool
 }
 
 // MARK: - Notification.Name 확장 (fWarrangeCli용)
@@ -75,6 +94,13 @@ final class RESTServer: RESTServerProtocol {
 
     static let apiVersion = "v1"
     static let apiBasePath = "/api/v1"
+    static let apiV2BasePath = "/api/v2"
+
+    // MARK: - SSE (Server-Sent Events)
+
+    /// 연결된 SSE 클라이언트 목록
+    private var sseClients: [NWConnection] = []
+    private let sseQueue = DispatchQueue(label: "kr.finfra.fWarrangeCli.sse", attributes: .concurrent)
 
     // MARK: - CLI 상태
 
@@ -95,6 +121,7 @@ final class RESTServer: RESTServerProtocol {
 
         do {
             let params = NWParameters.tcp
+            params.allowLocalEndpointReuse = true
             guard let nwPort = NWEndpoint.Port(rawValue: self.port) else {
                 logE("[RESTServer] 유효하지 않은 포트: \(self.port)")
                 return
@@ -140,6 +167,11 @@ final class RESTServer: RESTServerProtocol {
     }
 
     func stop() {
+        // SSE 클라이언트 전부 해제
+        sseQueue.async(flags: .barrier) { [weak self] in
+            self?.sseClients.forEach { $0.cancel() }
+            self?.sseClients.removeAll()
+        }
         listener?.cancel()
         listener = nil
         isRunning = false
@@ -163,12 +195,22 @@ final class RESTServer: RESTServerProtocol {
                 return
             }
 
-            logV("[RESTServer] \(request.method) \(request.path) from \(connection.endpoint)")
+            if request.path == "/api/v1/cli/status" || request.path == "/" {
+                logV("[RESTServer] \(request.method) \(request.path) from \(connection.endpoint)")
+            } else {
+                logD("[RESTServer] \(request.method) \(request.path) from \(connection.endpoint)")
+            }
 
             // CIDR 검사
             if self.allowExternal && !self.isAllowed(endpoint: connection.endpoint) {
                 let response = HTTPResponse.forbidden(message: "접근 거부됨")
                 self.sendResponse(connection: connection, response: response)
+                return
+            }
+
+            // SSE 엔드포인트는 연결을 유지해야 하므로 별도 처리
+            if request.method == "GET" && request.path == "\(RESTServer.apiV2BasePath)/events" {
+                self.handleSSEConnection(connection: connection)
                 return
             }
 
@@ -294,9 +336,21 @@ final class RESTServer: RESTServerProtocol {
         let path = request.path
         let base = Self.apiBasePath
 
-        // Health Check (GET / 또는 GET /api/v1/health)
-        if method == "GET" && (path == "/" || path == "\(base)/health") {
+        // Health Check (GET / 또는 GET /api/v1/health, /api/v2/health)
+        if method == "GET" && (path == "/" || path == "\(base)/health" || path == "\(Self.apiV2BasePath)/health") {
             handleHealthCheck(completion: completion)
+            return
+        }
+
+        // v2 라우팅: /api/v2/* (v1 엔드포인트는 경로 치환하여 그대로 재사용)
+        if path.hasPrefix("\(Self.apiV2BasePath)/") {
+            if routeV2(method: method, path: path, request: request, completion: completion) {
+                return
+            }
+            // v2 전용이 아닌 엔드포인트는 v1 라우터로 폴백
+            let rewritten = "\(base)" + String(path.dropFirst(Self.apiV2BasePath.count))
+            let rewrittenRequest = request.withPath(rewritten)
+            routeRequest(rewrittenRequest, completion: completion)
             return
         }
 
@@ -434,6 +488,194 @@ final class RESTServer: RESTServerProtocol {
         completion(.notFound(message: "엔드포인트를 찾을 수 없습니다: \(method) \(path)"))
     }
 
+    // MARK: - v2 라우팅
+
+    /// v2 전용 설정 엔드포인트 라우팅. 처리 여부를 반환.
+    private func routeV2(method: String, path: String, request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) -> Bool {
+        let base = Self.apiV2BasePath
+
+        // 전체 설정
+        if path == "\(base)/settings" {
+            if method == "GET" {
+                completion(.ok(json: ["status": "ok", "data": handlers.getFullSettings()]))
+                return true
+            }
+            if method == "PATCH" {
+                let body = request.jsonBody() ?? [:]
+                let updated = handlers.patchSettings(body)
+                broadcastEvent(type: "settings.changed", data: [
+                    "section": "all",
+                    "changedKeys": Array(body.keys),
+                    "timestamp": ISO8601Formatter.string(from: Date())
+                ])
+                completion(.ok(json: ["status": "ok", "data": updated]))
+                return true
+            }
+        }
+
+        // 탭별 설정: General / Restore / API / Advanced 는 동일 PATCH 경로로 처리
+        let tabPaths: [String: [String]] = [
+            "\(base)/settings/general": ["appLanguage", "dataStorageMode", "dataDirectoryPath", "launchAtLogin", "theme"],
+            "\(base)/settings/restore": ["maxRetries", "retryInterval", "minimumMatchScore", "enableParallelRestore"],
+            "\(base)/settings/advanced": ["logLevel", "autoSaveOnSleep", "maxAutoSaves", "restoreButtonStyle", "confirmBeforeDelete", "showInCmdTab", "clickSwitchToMain"]
+        ]
+        if let fields = tabPaths[path] {
+            if method == "GET" {
+                let full = handlers.getFullSettings()
+                var data: [String: Any] = [:]
+                for k in fields { if let v = full[k] { data[k] = v } }
+                if path.hasSuffix("/restore") { data["excludedApps"] = handlers.getExcludedApps() }
+                if path.hasSuffix("/advanced") { data["logFilePath"] = handlers.getLogFilePath() }
+                completion(.ok(json: ["status": "ok", "data": data]))
+                return true
+            }
+            if method == "PATCH" {
+                guard let body = request.jsonBody() else {
+                    completion(.badRequest(message: "JSON body가 필요합니다"))
+                    return true
+                }
+                // 허용된 필드만 통과
+                var filtered: [String: Any] = [:]
+                for k in fields { if let v = body[k] { filtered[k] = v } }
+                _ = handlers.patchSettings(filtered)
+                // 탭 이름 추출 (ex: /settings/general → general)
+                let section = path.split(separator: "/").last.map(String.init) ?? "unknown"
+                broadcastEvent(type: "settings.changed", data: [
+                    "section": section,
+                    "changedKeys": Array(filtered.keys),
+                    "timestamp": ISO8601Formatter.string(from: Date())
+                ])
+                let full = handlers.getFullSettings()
+                var data: [String: Any] = [:]
+                for k in fields { if let v = full[k] { data[k] = v } }
+                if path.hasSuffix("/restore") { data["excludedApps"] = handlers.getExcludedApps() }
+                if path.hasSuffix("/advanced") { data["logFilePath"] = handlers.getLogFilePath() }
+                completion(.ok(json: ["status": "ok", "data": data]))
+                return true
+            }
+        }
+
+        // API 탭: 서버 재시작 트리거
+        if path == "\(base)/settings/api" {
+            if method == "GET" {
+                let full = handlers.getFullSettings()
+                let data: [String: Any] = [
+                    "restServerEnabled": full["restServerEnabled"] ?? true,
+                    "restServerPort": full["restServerPort"] ?? Int(port),
+                    "allowExternalAccess": full["allowExternalAccess"] ?? allowExternal,
+                    "allowedCIDR": full["allowedCIDR"] ?? allowedCIDR,
+                    "isRunning": isRunning,
+                    "effectivePort": Int(port)
+                ]
+                completion(.ok(json: ["status": "ok", "data": data]))
+                return true
+            }
+            if method == "PATCH" {
+                guard let body = request.jsonBody() else {
+                    completion(.badRequest(message: "JSON body가 필요합니다"))
+                    return true
+                }
+                let enabled = body["restServerEnabled"] as? Bool
+                let newPort = body["restServerPort"] as? Int
+                let external = body["allowExternalAccess"] as? Bool
+                let cidr = body["allowedCIDR"] as? String
+                if let p = newPort, p < 1 || p > 65535 {
+                    completion(.badRequest(message: "포트 범위가 올바르지 않습니다"))
+                    return true
+                }
+                let applied = handlers.applyApiSettings(enabled, newPort, external, cidr)
+                broadcastEvent(type: "settings.changed", data: [
+                    "section": "api",
+                    "changedKeys": Array(body.keys),
+                    "timestamp": ISO8601Formatter.string(from: Date())
+                ])
+                let data: [String: Any] = [
+                    "restServerEnabled": enabled ?? true,
+                    "restServerPort": applied.port,
+                    "allowExternalAccess": applied.external,
+                    "allowedCIDR": applied.cidr,
+                    "isRunning": applied.isRunning,
+                    "effectivePort": applied.port
+                ]
+                completion(.ok(json: ["status": "ok", "data": data]))
+                return true
+            }
+        }
+
+        // Excluded apps CRUD
+        if path == "\(base)/settings/restore/excluded-apps" {
+            switch method {
+            case "GET":
+                completion(.ok(json: ["status": "ok", "data": ["excludedApps": handlers.getExcludedApps()]]))
+                return true
+            case "PUT":
+                let body = request.jsonBody() ?? [:]
+                let apps = body["apps"] as? [String] ?? []
+                let result = handlers.setExcludedApps(apps)
+                broadcastEvent(type: "settings.changed", data: [
+                    "section": "excludedApps", "action": "replace",
+                    "timestamp": ISO8601Formatter.string(from: Date())
+                ])
+                completion(.ok(json: ["status": "ok", "data": ["excludedApps": result]]))
+                return true
+            case "POST":
+                let body = request.jsonBody() ?? [:]
+                let apps = body["apps"] as? [String] ?? []
+                let result = handlers.addExcludedApps(apps)
+                broadcastEvent(type: "settings.changed", data: [
+                    "section": "excludedApps", "action": "add",
+                    "timestamp": ISO8601Formatter.string(from: Date())
+                ])
+                completion(.ok(json: ["status": "ok", "data": ["excludedApps": result]]))
+                return true
+            case "DELETE":
+                let body = request.jsonBody() ?? [:]
+                let apps = body["apps"] as? [String] ?? []
+                let result = handlers.removeExcludedApps(apps)
+                broadcastEvent(type: "settings.changed", data: [
+                    "section": "excludedApps", "action": "remove",
+                    "timestamp": ISO8601Formatter.string(from: Date())
+                ])
+                completion(.ok(json: ["status": "ok", "data": ["excludedApps": result]]))
+                return true
+            default: break
+            }
+        }
+
+        if method == "POST" && path == "\(base)/settings/restore/excluded-apps/reset" {
+            let result = handlers.resetExcludedApps()
+            broadcastEvent(type: "settings.changed", data: [
+                "section": "excludedApps", "action": "reset",
+                "timestamp": ISO8601Formatter.string(from: Date())
+            ])
+            completion(.ok(json: ["status": "ok", "data": ["excludedApps": result]]))
+            return true
+        }
+
+        // Factory reset
+        if method == "POST" && path == "\(base)/settings/factory-reset" {
+            guard request.header("X-Confirm") == "true" else {
+                completion(.badRequest(message: "X-Confirm: true 헤더가 필요합니다"))
+                return true
+            }
+            let data = handlers.factoryResetSettings()
+            broadcastEvent(type: "settings.changed", data: [
+                "section": "all", "action": "factory-reset",
+                "timestamp": ISO8601Formatter.string(from: Date())
+            ])
+            completion(.ok(json: ["status": "ok", "data": data]))
+            return true
+        }
+
+        // 전체 설정의 일부로 취급되는 shortcuts GET
+        if method == "GET" && path == "\(base)/settings/shortcuts" {
+            completion(.ok(json: ["status": "ok", "data": handlers.getShortcutsDisplay()]))
+            return true
+        }
+
+        return false
+    }
+
     // MARK: - CLI 전용 핸들러
 
     /// GET /api/v1/cli/status - 서버 상태 (uptime, 버전, 포트)
@@ -556,6 +798,11 @@ final class RESTServer: RESTServerProtocol {
             do {
                 try self.handlers.saveLayout(name, windows)
                 NotificationCenter.default.post(name: .restCaptureCompleted, object: nil)
+                self.broadcastEvent(type: "layout.created", data: [
+                    "name": name,
+                    "windowCount": windows.count,
+                    "timestamp": ISO8601Formatter.string(from: Date())
+                ])
                 let data: [String: Any] = [
                     "name": name,
                     "windowCount": windows.count,
@@ -642,6 +889,11 @@ final class RESTServer: RESTServerProtocol {
             do {
                 try self.handlers.renameLayout(name, newName)
                 NotificationCenter.default.post(name: .restLayoutRenamed, object: nil)
+                self.broadcastEvent(type: "layout.updated", data: [
+                    "oldName": name,
+                    "newName": newName,
+                    "timestamp": ISO8601Formatter.string(from: Date())
+                ])
                 completion(.ok(json: [
                     "status": "ok",
                     "data": ["oldName": name, "newName": newName]
@@ -667,6 +919,10 @@ final class RESTServer: RESTServerProtocol {
             do {
                 try self.handlers.deleteLayout(name)
                 NotificationCenter.default.post(name: .restLayoutDeleted, object: nil)
+                self.broadcastEvent(type: "layout.deleted", data: [
+                    "name": name,
+                    "timestamp": ISO8601Formatter.string(from: Date())
+                ])
                 completion(.ok(json: ["status": "ok", "data": ["deleted": name]]))
             } catch {
                 completion(.internalError(message: "레이아웃 '\(name)' 삭제 중 오류가 발생했습니다"))
@@ -687,6 +943,11 @@ final class RESTServer: RESTServerProtocol {
                 let count = self.handlers.getLayouts().count
                 try self.handlers.deleteAllLayouts()
                 NotificationCenter.default.post(name: .restLayoutDeleted, object: nil)
+                self.broadcastEvent(type: "layout.deleted", data: [
+                    "name": "*",
+                    "deletedCount": count,
+                    "timestamp": ISO8601Formatter.string(from: Date())
+                ])
                 completion(.ok(json: ["status": "ok", "data": ["deletedCount": count]]))
             } catch {
                 completion(.internalError(message: "레이아웃 전체 삭제에 실패했습니다"))
@@ -795,19 +1056,128 @@ final class RESTServer: RESTServerProtocol {
             return
         }
         let applied = handlers.updateShortcuts(json)
+        broadcastEvent(type: "shortcuts.changed", data: [
+            "changedKeys": Array(json.keys),
+            "timestamp": ISO8601Formatter.string(from: Date())
+        ])
         completion(.ok(json: ["status": "ok", "data": applied]))
     }
 
     // MARK: - UI 상태
 
-    /// PUT /api/v1/ui/state - UI 상태 변경 (캡처 자동화용)
+    /// PUT /api/v1/ui/state - UI 상태 변경
     private func handleSetUIState(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         guard let body = request.jsonBody() else {
             completion(.badRequest(message: "JSON body가 필요합니다"))
             return
         }
-        // body를 그대로 echo하여 적용된 상태 반환
-        completion(.ok(json: ["status": "ok", "data": body]))
+        if let hide = body["hideMenuBar"] as? Bool {
+            DispatchQueue.main.async {
+                self.handlers.setHideMenuBar(hide)
+            }
+        }
+        let current = handlers.getHideMenuBar()
+        completion(.ok(json: ["status": "ok", "data": ["hideMenuBar": current]]))
+    }
+
+    // MARK: - SSE (Server-Sent Events)
+
+    /// SSE 연결 수립: HTTP 응답 헤더 전송 후 연결 유지
+    private func handleSSEConnection(connection: NWConnection) {
+        let header = "HTTP/1.1 200 OK\r\n" +
+            "Content-Type: text/event-stream\r\n" +
+            "Cache-Control: no-cache\r\n" +
+            "Connection: keep-alive\r\n" +
+            "Access-Control-Allow-Origin: *\r\n" +
+            "\r\n"
+
+        connection.send(content: Data(header.utf8), completion: .contentProcessed { [weak self] error in
+            if let error = error {
+                logE("[SSE] 헤더 전송 실패: \(error)")
+                connection.cancel()
+                return
+            }
+
+            guard let self = self else { return }
+
+            // 클라이언트 등록
+            self.sseQueue.async(flags: .barrier) {
+                self.sseClients.append(connection)
+                logI("[SSE] 클라이언트 연결 (총 \(self.sseClients.count)명)")
+            }
+
+            // 연결 상태 모니터링 → 해제 시 목록에서 제거
+            connection.stateUpdateHandler = { [weak self] state in
+                if case .cancelled = state {
+                    self?.removeSSEClient(connection)
+                } else if case .failed = state {
+                    self?.removeSSEClient(connection)
+                }
+            }
+
+            // 초기 연결 확인 이벤트
+            let welcomeEvent = self.formatSSEEvent(
+                type: "connected",
+                data: ["message": "SSE 스트림 연결됨", "timestamp": ISO8601Formatter.string(from: Date())]
+            )
+            connection.send(content: Data(welcomeEvent.utf8), completion: .contentProcessed { _ in })
+
+            // 클라이언트 연결 끊김 감지를 위한 수신 대기
+            self.monitorSSEClient(connection)
+        })
+    }
+
+    /// SSE 클라이언트 연결 끊김 감지
+    private func monitorSSEClient(_ connection: NWConnection) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 1) { [weak self] _, _, isComplete, error in
+            if isComplete || error != nil {
+                self?.removeSSEClient(connection)
+                connection.cancel()
+            } else {
+                // 계속 모니터링
+                self?.monitorSSEClient(connection)
+            }
+        }
+    }
+
+    /// SSE 클라이언트 제거
+    private func removeSSEClient(_ connection: NWConnection) {
+        sseQueue.async(flags: .barrier) { [weak self] in
+            guard let self = self else { return }
+            if let idx = self.sseClients.firstIndex(where: { $0 === connection }) {
+                self.sseClients.remove(at: idx)
+                logI("[SSE] 클라이언트 해제 (남은 \(self.sseClients.count)명)")
+            }
+        }
+    }
+
+    /// SSE 이벤트 포맷팅 (text/event-stream 규격)
+    private func formatSSEEvent(type: String, data: [String: Any]) -> String {
+        let json = (try? JSONSerialization.data(withJSONObject: data, options: [.sortedKeys]))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        return "event: \(type)\ndata: \(json)\n\n"
+    }
+
+    /// 모든 SSE 클라이언트에 이벤트 브로드캐스트
+    func broadcastEvent(type: String, data: [String: Any]) {
+        let event = formatSSEEvent(type: type, data: data)
+        let eventData = Data(event.utf8)
+
+        sseQueue.async { [weak self] in
+            guard let self = self else { return }
+            let clients = self.sseClients
+            for client in clients {
+                client.send(content: eventData, completion: .contentProcessed { error in
+                    if error != nil {
+                        self.removeSSEClient(client)
+                        client.cancel()
+                    }
+                })
+            }
+            if !clients.isEmpty {
+                logD("[SSE] 이벤트 브로드캐스트: \(type) → \(clients.count)명")
+            }
+        }
     }
 
     // MARK: - 유틸리티
@@ -918,6 +1288,11 @@ private struct HTTPRequest {
     func jsonBody() -> [String: Any]? {
         guard let body = body, !body.isEmpty else { return nil }
         return try? JSONSerialization.jsonObject(with: body) as? [String: Any]
+    }
+
+    /// 새 path로 복제 (v2→v1 경로 재작성용)
+    func withPath(_ newPath: String) -> HTTPRequest {
+        return HTTPRequest(method: method, path: newPath, queryString: queryString, headers: headers, body: body)
     }
 
     /// 헤더 값 조회 (대소문자 무시)
