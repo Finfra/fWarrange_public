@@ -20,10 +20,12 @@
 		83167584CB3AC9496AFA89A6 /* DisplayNumberHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA88D59968E1BC4657A3D8B4 /* DisplayNumberHelper.swift */; };
 		8CA4F284AB6BBB5352D573D7 /* ScreenMoveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95BA5BF6280F4128EDF4285D /* ScreenMoveService.swift */; };
 		90C424F1307327D09016FD68 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 99611EC4488DE1DB48B6797F /* Assets.xcassets */; };
+		9347927C5890D11DB089E08D /* ModeStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7AA13BAF31243DB7F07719F /* ModeStorageService.swift */; };
 		990554852C9F96E6CA46180A /* ChangeTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCB3C72133309202D83DC44 /* ChangeTracker.swift */; };
 		B40020566EC37D6524BBB1CD /* RESTServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF65497BEF50CBB7CED8F81 /* RESTServer.swift */; };
 		BC5A6F4B54C6220CFF559455 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEC521474E835C8993023C58 /* WindowManager.swift */; };
 		C3679BE6E8D43FFC3CC11276 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 484BEF5CA60BA4E18244F756 /* SettingsService.swift */; };
+		D552584C661C9FB653657DBF /* Mode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E0460B68C5CE5C8544611FF /* Mode.swift */; };
 		D6FEA787E06D6083A8E2C995 /* fWarrangeCliApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 332CF3D58195D4A7F7B2836F /* fWarrangeCliApp.swift */; };
 		D99357465706732DF4B1F558 /* AccessibilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30239289D5D096DA900F198 /* AccessibilityService.swift */; };
 		DA8C1D721A4DDE07B0E8FB9C /* RestoreStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 633BCF8630F3A9F5B69FE7E8 /* RestoreStatus.swift */; };
@@ -36,6 +38,7 @@
 
 /* Begin PBXFileReference section */
 		25E958C235A2113119D12901 /* HotKeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyService.swift; sourceTree = "<group>"; };
+		2E0460B68C5CE5C8544611FF /* Mode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mode.swift; sourceTree = "<group>"; };
 		3048E8064D2360477D20FE4D /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		332CF3D58195D4A7F7B2836F /* fWarrangeCliApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = fWarrangeCliApp.swift; sourceTree = "<group>"; };
 		3905C8AF01D881D7B779A6C3 /* fWarrangeCli.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = fWarrangeCli.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -61,6 +64,7 @@
 		D014B086F458FF9FFCC06DFF /* WindowRestoreService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowRestoreService.swift; sourceTree = "<group>"; };
 		D31B8437208F5CA7719348B1 /* fWarrangeCli.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = fWarrangeCli.entitlements; sourceTree = "<group>"; };
 		DCF65497BEF50CBB7CED8F81 /* RESTServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RESTServer.swift; sourceTree = "<group>"; };
+		E7AA13BAF31243DB7F07719F /* ModeStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModeStorageService.swift; sourceTree = "<group>"; };
 		F264201EE001BF2B3032FC78 /* AXPrivateAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AXPrivateAPI.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -117,6 +121,7 @@
 				5CCB3C72133309202D83DC44 /* ChangeTracker.swift */,
 				25E958C235A2113119D12901 /* HotKeyService.swift */,
 				662A96F421AC4E825C14B86F /* LayoutStorageService.swift */,
+				E7AA13BAF31243DB7F07719F /* ModeStorageService.swift */,
 				DCF65497BEF50CBB7CED8F81 /* RESTServer.swift */,
 				95BA5BF6280F4128EDF4285D /* ScreenMoveService.swift */,
 				484BEF5CA60BA4E18244F756 /* SettingsService.swift */,
@@ -132,6 +137,7 @@
 				B103338C6EF3DA1021783071 /* AppSettings.swift */,
 				5448F7DE624FDC82BC3D385C /* Layout.swift */,
 				881D6E417915BBA037DF45F8 /* MatchType.swift */,
+				2E0460B68C5CE5C8544611FF /* Mode.swift */,
 				633BCF8630F3A9F5B69FE7E8 /* RestoreStatus.swift */,
 				CC65FB4F55C0366BCFD541BA /* WindowInfo.swift */,
 			);
@@ -228,6 +234,8 @@
 				440182E77EAB89FAECDACE27 /* Logger.swift in Sources */,
 				223AD549DFBFB55E28282C17 /* MatchType.swift in Sources */,
 				47AEC5453C5C9C1488ABFEE3 /* MenuBarView.swift in Sources */,
+				D552584C661C9FB653657DBF /* Mode.swift in Sources */,
+				9347927C5890D11DB089E08D /* ModeStorageService.swift in Sources */,
 				B40020566EC37D6524BBB1CD /* RESTServer.swift in Sources */,
 				DA8C1D721A4DDE07B0E8FB9C /* RestoreStatus.swift in Sources */,
 				8CA4F284AB6BBB5352D573D7 /* ScreenMoveService.swift in Sources */,

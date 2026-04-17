@@ -61,6 +61,15 @@ struct RESTServerHandlers {
     // UI 상태
     var setHideMenuBar: (_ hide: Bool) -> Void
     var getHideMenuBar: () -> Bool
+
+    // Mode 관련
+    var listModes: () throws -> [ModeMetadata]
+    var loadMode: (_ name: String) throws -> Mode
+    var createMode: (_ name: String, _ icon: String, _ shortcut: String?, _ layoutRef: String) throws -> Mode
+    var updateMode: (_ name: String, _ body: [String: Any]) throws -> Mode
+    var deleteMode: (_ name: String) throws -> Void
+    var activateMode: (_ name: String) async throws -> (mode: Mode, restoreResults: [WindowMatchResult])
+    var getActiveModeName: () -> String?
 }
 
 // MARK: - Notification.Name 확장 (fWarrangeCli용)
@@ -95,12 +104,6 @@ final class RESTServer: RESTServerProtocol {
     static let apiVersion = "v1"
     static let apiBasePath = "/api/v1"
     static let apiV2BasePath = "/api/v2"
-
-    // MARK: - SSE (Server-Sent Events)
-
-    /// 연결된 SSE 클라이언트 목록
-    private var sseClients: [NWConnection] = []
-    private let sseQueue = DispatchQueue(label: "kr.finfra.fWarrangeCli.sse", attributes: .concurrent)
 
     // MARK: - CLI 상태
 
@@ -167,11 +170,6 @@ final class RESTServer: RESTServerProtocol {
     }
 
     func stop() {
-        // SSE 클라이언트 전부 해제
-        sseQueue.async(flags: .barrier) { [weak self] in
-            self?.sseClients.forEach { $0.cancel() }
-            self?.sseClients.removeAll()
-        }
         listener?.cancel()
         listener = nil
         isRunning = false
@@ -205,12 +203,6 @@ final class RESTServer: RESTServerProtocol {
             if self.allowExternal && !self.isAllowed(endpoint: connection.endpoint) {
                 let response = HTTPResponse.forbidden(message: "접근 거부됨")
                 self.sendResponse(connection: connection, response: response)
-                return
-            }
-
-            // SSE 엔드포인트는 연결을 유지해야 하므로 별도 처리
-            if request.method == "GET" && request.path == "\(RESTServer.apiV2BasePath)/events" {
-                self.handleSSEConnection(connection: connection)
                 return
             }
 
@@ -494,6 +486,14 @@ final class RESTServer: RESTServerProtocol {
     private func routeV2(method: String, path: String, request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) -> Bool {
         let base = Self.apiV2BasePath
 
+        // 변경 시퀀스 조회
+        if method == "GET" && path == "\(base)/changes" {
+            let since = request.queryString.flatMap { parseQueryParam($0, key: "since") }.flatMap { Int($0) }
+            let result = ChangeTracker.shared.changes(since: since)
+            completion(.ok(json: ["currentSeq": result.currentSeq, "changes": result.changes]))
+            return true
+        }
+
         // 전체 설정
         if path == "\(base)/settings" {
             if method == "GET" {
@@ -503,11 +503,7 @@ final class RESTServer: RESTServerProtocol {
             if method == "PATCH" {
                 let body = request.jsonBody() ?? [:]
                 let updated = handlers.patchSettings(body)
-                broadcastEvent(type: "settings.changed", data: [
-                    "section": "all",
-                    "changedKeys": Array(body.keys),
-                    "timestamp": ISO8601Formatter.string(from: Date())
-                ])
+                ChangeTracker.shared.record(type: "settings.changed", target: "all")
                 completion(.ok(json: ["status": "ok", "data": updated]))
                 return true
             }
@@ -540,11 +536,7 @@ final class RESTServer: RESTServerProtocol {
                 _ = handlers.patchSettings(filtered)
                 // 탭 이름 추출 (ex: /settings/general → general)
                 let section = path.split(separator: "/").last.map(String.init) ?? "unknown"
-                broadcastEvent(type: "settings.changed", data: [
-                    "section": section,
-                    "changedKeys": Array(filtered.keys),
-                    "timestamp": ISO8601Formatter.string(from: Date())
-                ])
+                ChangeTracker.shared.record(type: "settings.changed", target: section)
                 let full = handlers.getFullSettings()
                 var data: [String: Any] = [:]
                 for k in fields { if let v = full[k] { data[k] = v } }
@@ -584,11 +576,7 @@ final class RESTServer: RESTServerProtocol {
                     return true
                 }
                 let applied = handlers.applyApiSettings(enabled, newPort, external, cidr)
-                broadcastEvent(type: "settings.changed", data: [
-                    "section": "api",
-                    "changedKeys": Array(body.keys),
-                    "timestamp": ISO8601Formatter.string(from: Date())
-                ])
+                ChangeTracker.shared.record(type: "settings.changed", target: "api")
                 let data: [String: Any] = [
                     "restServerEnabled": enabled ?? true,
                     "restServerPort": applied.port,
@@ -612,30 +600,21 @@ final class RESTServer: RESTServerProtocol {
                 let body = request.jsonBody() ?? [:]
                 let apps = body["apps"] as? [String] ?? []
                 let result = handlers.setExcludedApps(apps)
-                broadcastEvent(type: "settings.changed", data: [
-                    "section": "excludedApps", "action": "replace",
-                    "timestamp": ISO8601Formatter.string(from: Date())
-                ])
+                ChangeTracker.shared.record(type: "settings.changed", target: "excludedApps")
                 completion(.ok(json: ["status": "ok", "data": ["excludedApps": result]]))
                 return true
             case "POST":
                 let body = request.jsonBody() ?? [:]
                 let apps = body["apps"] as? [String] ?? []
                 let result = handlers.addExcludedApps(apps)
-                broadcastEvent(type: "settings.changed", data: [
-                    "section": "excludedApps", "action": "add",
-                    "timestamp": ISO8601Formatter.string(from: Date())
-                ])
+                ChangeTracker.shared.record(type: "settings.changed", target: "excludedApps")
                 completion(.ok(json: ["status": "ok", "data": ["excludedApps": result]]))
                 return true
             case "DELETE":
                 let body = request.jsonBody() ?? [:]
                 let apps = body["apps"] as? [String] ?? []
                 let result = handlers.removeExcludedApps(apps)
-                broadcastEvent(type: "settings.changed", data: [
-                    "section": "excludedApps", "action": "remove",
-                    "timestamp": ISO8601Formatter.string(from: Date())
-                ])
+                ChangeTracker.shared.record(type: "settings.changed", target: "excludedApps")
                 completion(.ok(json: ["status": "ok", "data": ["excludedApps": result]]))
                 return true
             default: break
@@ -644,10 +623,7 @@ final class RESTServer: RESTServerProtocol {
 
         if method == "POST" && path == "\(base)/settings/restore/excluded-apps/reset" {
             let result = handlers.resetExcludedApps()
-            broadcastEvent(type: "settings.changed", data: [
-                "section": "excludedApps", "action": "reset",
-                "timestamp": ISO8601Formatter.string(from: Date())
-            ])
+            ChangeTracker.shared.record(type: "settings.changed", target: "excludedApps")
             completion(.ok(json: ["status": "ok", "data": ["excludedApps": result]]))
             return true
         }
@@ -659,10 +635,7 @@ final class RESTServer: RESTServerProtocol {
                 return true
             }
             let data = handlers.factoryResetSettings()
-            broadcastEvent(type: "settings.changed", data: [
-                "section": "all", "action": "factory-reset",
-                "timestamp": ISO8601Formatter.string(from: Date())
-            ])
+            ChangeTracker.shared.record(type: "settings.changed", target: "all")
             completion(.ok(json: ["status": "ok", "data": data]))
             return true
         }
@@ -673,7 +646,198 @@ final class RESTServer: RESTServerProtocol {
             return true
         }
 
+        // --- Mode 엔드포인트 ---
+
+        // GET /api/v2/modes — 모드 목록
+        if method == "GET" && path == "\(base)/modes" {
+            handleListModes(completion: completion)
+            return true
+        }
+
+        // POST /api/v2/modes — 모드 생성
+        if method == "POST" && path == "\(base)/modes" {
+            handleCreateMode(request: request, completion: completion)
+            return true
+        }
+
+        // /api/v2/modes/{name}/... 패턴 처리
+        let modesPrefix = "\(base)/modes/"
+        if path.hasPrefix(modesPrefix) {
+            let remaining = String(path.dropFirst(modesPrefix.count))
+            let parts = remaining.split(separator: "/", maxSplits: 2).map { String($0) }
+
+            guard let modeName = parts.first?.removingPercentEncoding, !modeName.isEmpty else {
+                completion(.badRequest(message: "모드 이름이 필요합니다"))
+                return true
+            }
+
+            if parts.count == 1 {
+                switch method {
+                case "GET":
+                    handleGetMode(name: modeName, completion: completion)
+                case "PATCH":
+                    handleUpdateMode(name: modeName, request: request, completion: completion)
+                case "DELETE":
+                    handleDeleteMode(name: modeName, completion: completion)
+                default:
+                    completion(.methodNotAllowed())
+                }
+                return true
+            }
+
+            if parts.count >= 2 && parts[1] == "activate" && method == "POST" {
+                handleActivateMode(name: modeName, request: request, completion: completion)
+                return true
+            }
+        }
+
+        // GET /api/v2/status — 현재 활성 모드 포함
+        if method == "GET" && path == "\(base)/status" {
+            handleV2Status(completion: completion)
+            return true
+        }
+
         return false
+    }
+
+    // MARK: - Mode 핸들러
+
+    /// GET /api/v2/modes
+    private func handleListModes(completion: @escaping (HTTPResponse) -> Void) {
+        do {
+            let modes = try handlers.listModes()
+            let data = modes.map { meta -> [String: Any] in
+                var d: [String: Any] = [
+                    "name": meta.name,
+                    "icon": meta.icon,
+                    "layoutRef": meta.layoutRef,
+                    "fileDate": ISO8601Formatter.string(from: meta.fileDate)
+                ]
+                if let sc = meta.shortcut { d["shortcut"] = sc }
+                return d
+            }
+            let activeMode = handlers.getActiveModeName()
+            var response: [String: Any] = ["status": "ok", "data": data]
+            if let active = activeMode { response["activeMode"] = active }
+            completion(.ok(json: response))
+        } catch {
+            completion(.internalError(message: "모드 목록 조회 실패: \(error.localizedDescription)"))
+        }
+    }
+
+    /// POST /api/v2/modes
+    private func handleCreateMode(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
+        guard let json = request.jsonBody(),
+              let name = json["name"] as? String, !name.isEmpty else {
+            completion(.badRequest(message: "name 필드가 필요합니다"))
+            return
+        }
+        let icon = json["icon"] as? String ?? "rectangle.3.group"
+        let shortcut = json["shortcut"] as? String
+        let layoutRef = json["layout"] as? String ?? name
+
+        do {
+            let mode = try handlers.createMode(name, icon, shortcut, layoutRef)
+            ChangeTracker.shared.record(type: "mode.created", target: name)
+            completion(.ok(json: ["status": "ok", "data": modeToDict(mode)]))
+        } catch {
+            completion(.internalError(message: "모드 생성 실패: \(error.localizedDescription)"))
+        }
+    }
+
+    /// GET /api/v2/modes/{name}
+    private func handleGetMode(name: String, completion: @escaping (HTTPResponse) -> Void) {
+        do {
+            let mode = try handlers.loadMode(name)
+            completion(.ok(json: ["status": "ok", "data": modeToDict(mode)]))
+        } catch {
+            completion(.notFound(message: "모드를 찾을 수 없습니다: '\(name)'"))
+        }
+    }
+
+    /// PATCH /api/v2/modes/{name}
+    private func handleUpdateMode(name: String, request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
+        guard let body = request.jsonBody() else {
+            completion(.badRequest(message: "JSON body가 필요합니다"))
+            return
+        }
+        do {
+            let mode = try handlers.updateMode(name, body)
+            ChangeTracker.shared.record(type: "mode.updated", target: name)
+            completion(.ok(json: ["status": "ok", "data": modeToDict(mode)]))
+        } catch {
+            completion(.notFound(message: "모드 수정 실패: '\(name)'"))
+        }
+    }
+
+    /// DELETE /api/v2/modes/{name}
+    private func handleDeleteMode(name: String, completion: @escaping (HTTPResponse) -> Void) {
+        do {
+            try handlers.deleteMode(name)
+            ChangeTracker.shared.record(type: "mode.deleted", target: name)
+            completion(.ok(json: ["status": "ok", "data": ["deleted": name]]))
+        } catch {
+            completion(.notFound(message: "모드를 찾을 수 없습니다: '\(name)'"))
+        }
+    }
+
+    /// POST /api/v2/modes/{name}/activate
+    private func handleActivateMode(name: String, request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
+        Task { @MainActor [weak self] in
+            guard let self else {
+                completion(.internalError(message: "서버가 해제되었습니다"))
+                return
+            }
+            do {
+                let result = try await self.handlers.activateMode(name)
+                ChangeTracker.shared.record(type: "mode.activated", target: name)
+
+                let succeeded = result.restoreResults.filter { $0.success }.count
+                let total = result.restoreResults.count
+
+                let data: [String: Any] = [
+                    "mode": self.modeToDict(result.mode),
+                    "restore": [
+                        "total": total,
+                        "succeeded": succeeded,
+                        "failed": total - succeeded
+                    ] as [String: Any]
+                ]
+                completion(.ok(json: ["status": "ok", "data": data]))
+            } catch is ModeActivationError {
+                completion(.conflict(message: "모드 전환이 이미 진행 중입니다"))
+            } catch {
+                completion(.notFound(message: "모드 전환 실패: \(error.localizedDescription)"))
+            }
+        }
+    }
+
+    /// GET /api/v2/status
+    private func handleV2Status(completion: @escaping (HTTPResponse) -> Void) {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        let uptime = Int(Date().timeIntervalSince(startedAt))
+        var data: [String: Any] = [
+            "status": "ok",
+            "app": "fWarrangeCli",
+            "version": version,
+            "port": Int(port),
+            "uptimeSeconds": uptime,
+            "isRunning": isRunning
+        ]
+        if let active = handlers.getActiveModeName() {
+            data["activeMode"] = active
+        }
+        completion(.ok(json: data))
+    }
+
+    private func modeToDict(_ mode: Mode) -> [String: Any] {
+        var d: [String: Any] = [
+            "name": mode.name,
+            "icon": mode.icon,
+            "layoutRef": mode.layoutRef
+        ]
+        if let sc = mode.shortcut { d["shortcut"] = sc }
+        return d
     }
 
     // MARK: - CLI 전용 핸들러
@@ -798,11 +962,7 @@ final class RESTServer: RESTServerProtocol {
             do {
                 try self.handlers.saveLayout(name, windows)
                 NotificationCenter.default.post(name: .restCaptureCompleted, object: nil)
-                self.broadcastEvent(type: "layout.created", data: [
-                    "name": name,
-                    "windowCount": windows.count,
-                    "timestamp": ISO8601Formatter.string(from: Date())
-                ])
+                ChangeTracker.shared.record(type: "layout.created", target: name)
                 let data: [String: Any] = [
                     "name": name,
                     "windowCount": windows.count,
@@ -889,11 +1049,8 @@ final class RESTServer: RESTServerProtocol {
             do {
                 try self.handlers.renameLayout(name, newName)
                 NotificationCenter.default.post(name: .restLayoutRenamed, object: nil)
-                self.broadcastEvent(type: "layout.updated", data: [
-                    "oldName": name,
-                    "newName": newName,
-                    "timestamp": ISO8601Formatter.string(from: Date())
-                ])
+                ChangeTracker.shared.record(type: "layout.deleted", target: name)
+                ChangeTracker.shared.record(type: "layout.created", target: newName)
                 completion(.ok(json: [
                     "status": "ok",
                     "data": ["oldName": name, "newName": newName]
@@ -919,10 +1076,7 @@ final class RESTServer: RESTServerProtocol {
             do {
                 try self.handlers.deleteLayout(name)
                 NotificationCenter.default.post(name: .restLayoutDeleted, object: nil)
-                self.broadcastEvent(type: "layout.deleted", data: [
-                    "name": name,
-                    "timestamp": ISO8601Formatter.string(from: Date())
-                ])
+                ChangeTracker.shared.record(type: "layout.deleted", target: name)
                 completion(.ok(json: ["status": "ok", "data": ["deleted": name]]))
             } catch {
                 completion(.internalError(message: "레이아웃 '\(name)' 삭제 중 오류가 발생했습니다"))
@@ -943,11 +1097,7 @@ final class RESTServer: RESTServerProtocol {
                 let count = self.handlers.getLayouts().count
                 try self.handlers.deleteAllLayouts()
                 NotificationCenter.default.post(name: .restLayoutDeleted, object: nil)
-                self.broadcastEvent(type: "layout.deleted", data: [
-                    "name": "*",
-                    "deletedCount": count,
-                    "timestamp": ISO8601Formatter.string(from: Date())
-                ])
+                ChangeTracker.shared.record(type: "layout.deleted", target: "*")
                 completion(.ok(json: ["status": "ok", "data": ["deletedCount": count]]))
             } catch {
                 completion(.internalError(message: "레이아웃 전체 삭제에 실패했습니다"))
@@ -1056,10 +1206,7 @@ final class RESTServer: RESTServerProtocol {
             return
         }
         let applied = handlers.updateShortcuts(json)
-        broadcastEvent(type: "shortcuts.changed", data: [
-            "changedKeys": Array(json.keys),
-            "timestamp": ISO8601Formatter.string(from: Date())
-        ])
+        ChangeTracker.shared.record(type: "shortcuts.changed", target: "shortcuts")
         completion(.ok(json: ["status": "ok", "data": applied]))
     }
 
@@ -1078,106 +1225,6 @@ final class RESTServer: RESTServerProtocol {
         }
         let current = handlers.getHideMenuBar()
         completion(.ok(json: ["status": "ok", "data": ["hideMenuBar": current]]))
-    }
-
-    // MARK: - SSE (Server-Sent Events)
-
-    /// SSE 연결 수립: HTTP 응답 헤더 전송 후 연결 유지
-    private func handleSSEConnection(connection: NWConnection) {
-        let header = "HTTP/1.1 200 OK\r\n" +
-            "Content-Type: text/event-stream\r\n" +
-            "Cache-Control: no-cache\r\n" +
-            "Connection: keep-alive\r\n" +
-            "Access-Control-Allow-Origin: *\r\n" +
-            "\r\n"
-
-        connection.send(content: Data(header.utf8), completion: .contentProcessed { [weak self] error in
-            if let error = error {
-                logE("[SSE] 헤더 전송 실패: \(error)")
-                connection.cancel()
-                return
-            }
-
-            guard let self = self else { return }
-
-            // 클라이언트 등록
-            self.sseQueue.async(flags: .barrier) {
-                self.sseClients.append(connection)
-                logI("[SSE] 클라이언트 연결 (총 \(self.sseClients.count)명)")
-            }
-
-            // 연결 상태 모니터링 → 해제 시 목록에서 제거
-            connection.stateUpdateHandler = { [weak self] state in
-                if case .cancelled = state {
-                    self?.removeSSEClient(connection)
-                } else if case .failed = state {
-                    self?.removeSSEClient(connection)
-                }
-            }
-
-            // 초기 연결 확인 이벤트
-            let welcomeEvent = self.formatSSEEvent(
-                type: "connected",
-                data: ["message": "SSE 스트림 연결됨", "timestamp": ISO8601Formatter.string(from: Date())]
-            )
-            connection.send(content: Data(welcomeEvent.utf8), completion: .contentProcessed { _ in })
-
-            // 클라이언트 연결 끊김 감지를 위한 수신 대기
-            self.monitorSSEClient(connection)
-        })
-    }
-
-    /// SSE 클라이언트 연결 끊김 감지
-    private func monitorSSEClient(_ connection: NWConnection) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 1) { [weak self] _, _, isComplete, error in
-            if isComplete || error != nil {
-                self?.removeSSEClient(connection)
-                connection.cancel()
-            } else {
-                // 계속 모니터링
-                self?.monitorSSEClient(connection)
-            }
-        }
-    }
-
-    /// SSE 클라이언트 제거
-    private func removeSSEClient(_ connection: NWConnection) {
-        sseQueue.async(flags: .barrier) { [weak self] in
-            guard let self = self else { return }
-            if let idx = self.sseClients.firstIndex(where: { $0 === connection }) {
-                self.sseClients.remove(at: idx)
-                logI("[SSE] 클라이언트 해제 (남은 \(self.sseClients.count)명)")
-            }
-        }
-    }
-
-    /// SSE 이벤트 포맷팅 (text/event-stream 규격)
-    private func formatSSEEvent(type: String, data: [String: Any]) -> String {
-        let json = (try? JSONSerialization.data(withJSONObject: data, options: [.sortedKeys]))
-            .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
-        return "event: \(type)\ndata: \(json)\n\n"
-    }
-
-    /// 모든 SSE 클라이언트에 이벤트 브로드캐스트
-    func broadcastEvent(type: String, data: [String: Any]) {
-        let event = formatSSEEvent(type: type, data: data)
-        let eventData = Data(event.utf8)
-
-        sseQueue.async { [weak self] in
-            guard let self = self else { return }
-            let clients = self.sseClients
-            for client in clients {
-                client.send(content: eventData, completion: .contentProcessed { error in
-                    if error != nil {
-                        self.removeSSEClient(client)
-                        client.cancel()
-                    }
-                })
-            }
-            if !clients.isEmpty {
-                logD("[SSE] 이벤트 브로드캐스트: \(type) → \(clients.count)명")
-            }
-        }
     }
 
     // MARK: - 유틸리티
@@ -1360,6 +1407,11 @@ private struct HTTPResponse {
     static func methodNotAllowed() -> HTTPResponse {
         let body = try? JSONSerialization.data(withJSONObject: ["status": "error", "error": "허용되지 않는 HTTP 메서드입니다"], options: .sortedKeys)
         return HTTPResponse(statusCode: 405, statusMessage: "Method Not Allowed", headers: [:], body: body)
+    }
+
+    static func conflict(message: String) -> HTTPResponse {
+        let body = try? JSONSerialization.data(withJSONObject: ["status": "error", "error": message], options: .sortedKeys)
+        return HTTPResponse(statusCode: 409, statusMessage: "Conflict", headers: [:], body: body)
     }
 
     static func internalError(message: String) -> HTTPResponse {

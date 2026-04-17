@@ -10,12 +10,15 @@ final class AppState {
     let restServer: RESTServer
     private let hotKeyService: HotKeyService
     private let screenMoveService: ScreenMoveService
+    private let modeStorageService: ModeStorageService
 
     var isRunning = false
     var connectionCount = 0
     var startTime = Date()
     var settings: AppSettings
     var hideMenuBar = false
+    var activeModeName: String?
+    private var modeActivationInProgress = false
 
     init() {
         let baseDir = YAMLLayoutStorageService.resolveDefaultBaseDirectory()
@@ -48,6 +51,7 @@ final class AppState {
             accessibilityService: accessService
         )
         self.layoutManager = LayoutManager(storageService: storageService)
+        self.modeStorageService = YAMLModeStorageService(baseDirectory: baseDir)
         self.hotKeyService = CarbonHotKeyService()
         self.screenMoveService = ScreenMoveService()
 
@@ -241,6 +245,61 @@ final class AppState {
             },
             getHideMenuBar: {
                 weakSelf?.hideMenuBar ?? false
+            },
+            // Mode 핸들러
+            listModes: {
+                guard let self = weakSelf else { return [] }
+                return try self.modeStorageService.listModeMetadata()
+            },
+            loadMode: { name in
+                guard let self = weakSelf else { throw ModeStorageError.notFound(name) }
+                return try self.modeStorageService.load(name: name)
+            },
+            createMode: { name, icon, shortcut, layoutRef in
+                guard let self = weakSelf else { throw ModeStorageError.notFound(name) }
+                let mode = Mode(name: name, icon: icon, shortcut: shortcut, layoutRef: layoutRef)
+                try self.modeStorageService.save(mode)
+                return mode
+            },
+            updateMode: { name, body in
+                guard let self = weakSelf else { throw ModeStorageError.notFound(name) }
+                var mode = try self.modeStorageService.load(name: name)
+                if let icon = body["icon"] as? String { mode.icon = icon }
+                if let shortcut = body["shortcut"] as? String { mode.shortcut = shortcut.isEmpty ? nil : shortcut }
+                if body["shortcut"] is NSNull { mode.shortcut = nil }
+                if let layout = body["layout"] as? String { mode.layoutRef = layout }
+                try self.modeStorageService.save(mode)
+                return mode
+            },
+            deleteMode: { name in
+                guard let self = weakSelf else { throw ModeStorageError.notFound(name) }
+                try self.modeStorageService.delete(name: name)
+                if weakSelf?.activeModeName == name {
+                    weakSelf?.activeModeName = nil
+                }
+            },
+            activateMode: { name in
+                guard let self = weakSelf else { throw ModeStorageError.notFound(name) }
+                guard !self.modeActivationInProgress else {
+                    throw ModeActivationError.alreadyInProgress
+                }
+                self.modeActivationInProgress = true
+                defer { self.modeActivationInProgress = false }
+
+                let mode = try self.modeStorageService.load(name: name)
+                let layout = try self.layoutManager.storageServiceLoad(name: mode.layoutRef)
+                let results = await self.windowManager.restoreWindows(
+                    layout.windows,
+                    maxRetries: self.settings.maxRetries,
+                    retryInterval: self.settings.retryInterval,
+                    minimumScore: self.settings.minimumMatchScore,
+                    enableParallel: self.settings.enableParallelRestore ?? true
+                )
+                self.activeModeName = name
+                return (mode: mode, restoreResults: results)
+            },
+            getActiveModeName: {
+                weakSelf?.activeModeName
             }
         )
         self.restServer = RESTServer(handlers: handlers)

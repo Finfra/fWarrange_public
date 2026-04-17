@@ -130,13 +130,64 @@ struct CLIHandler {
             guard args.contains("--confirm") else { exitError("--confirm 플래그 필수") }
             fetch("POST", path: "/cli/quit", body: ["confirm": true])
 
-        // v2 API (Settings 탭 전체)
+        // 모드
+        case "mode":
+            handleMode(args: args)
+        case "switch":
+            guard let name = args.first else { exitError("<name> 필수") }
+            fetch("POST", path: "/modes/\(name.urlEncoded)/activate")
+
+        // v2 API (Settings 탭 전���)
         case "v2":
             handleV2(args: args)
 
         default:
             printErr("오류: 알 수 없는 커맨드 '\(command)'")
             printHelp(exitCode: 1)
+        }
+    }
+
+    // MARK: - Mode 디스패치
+
+    private static func handleMode(args: [String]) {
+        guard let sub = args.first else {
+            // mode 단독 → 목록 표시
+            fetch("GET", path: "/modes")
+            return
+        }
+        let rest = Array(args.dropFirst())
+        switch sub {
+        case "list":
+            fetch("GET", path: "/modes")
+        case "create":
+            guard let name = rest.first else { exitError("mode create <name> [--layout <layout>] [--icon <icon>] [--shortcut <shortcut>]") }
+            var body: [String: Any] = ["name": name]
+            var i = 1
+            while i < rest.count {
+                switch rest[i] {
+                case "--layout":
+                    i += 1; if i < rest.count { body["layout"] = rest[i] }
+                case "--icon":
+                    i += 1; if i < rest.count { body["icon"] = rest[i] }
+                case "--shortcut":
+                    i += 1; if i < rest.count { body["shortcut"] = rest[i] }
+                default: break
+                }
+                i += 1
+            }
+            fetch("POST", path: "/modes", body: body)
+        case "show":
+            guard let name = rest.first else { exitError("mode show <name> 필수") }
+            fetch("GET", path: "/modes/\(name.urlEncoded)")
+        case "delete":
+            guard let name = rest.first else { exitError("mode delete <name> 필수") }
+            fetch("DELETE", path: "/modes/\(name.urlEncoded)")
+        case "edit":
+            guard let name = rest.first else { exitError("mode edit <name> <json> 필수") }
+            guard rest.count >= 2 else { exitError("mode edit <name> <json> 필수") }
+            fetch("PATCH", path: "/modes/\(name.urlEncoded)", body: parseJSONObject(rest[1]))
+        default:
+            exitError("알 수 없는 mode 서브커맨드: \(sub) (허용: list|create|show|delete|edit)")
         }
     }
 
@@ -380,6 +431,14 @@ struct CLIHandler {
           apps                            List running apps
           accessibility                   Check accessibility permission
           quit --confirm                  Quit daemon
+
+        Modes:
+          mode [list]                       List modes
+          mode create <name> [options]      Create mode (--layout, --icon, --shortcut)
+          mode show <name>                  Show mode detail
+          mode edit <name> <json>           Edit mode (JSON patch)
+          mode delete <name>                Delete mode
+          switch <name>                     Switch to mode (restore layout)
 
         v2 API (Settings):
           v2 settings [patch <json>]                       Full settings
