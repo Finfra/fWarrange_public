@@ -6,24 +6,30 @@ date: 2026-04-07
 
 # Issue Management
 
-* Issue HWM: 28
-* Save Point: 2026-04-16 (dff889a) Feat(AppState): Issue28 fWarrange 종료 시 fWarrangeCli 메뉴바 자동 복원
+* Issue HWM: 29
+* Save Point: 2026-04-17 (77fabbd) Feat(Tool): /run full All Clear Test 통합 테스트 파이프라인 추가 (Issue29)
 
 # 🤔 결정사항
 
 # 🌱 이슈후보
-1. all clear test할 것. _config.yml기본 값 확인
-2. 클립보드 히스토리 기능 중에서 고급 기능은 Paid 앱이 활성화 되어 있어야 실행 가능하게끔 해 줘 활성화 되어 있지 않다면 활성화 창[기존 코드 찾아서] 열게 해야함. 
-   1. Paid 앱의 기능이 모듈로 구성되어 있는지 확인
-3. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
+1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
 
 # 📕 중요
 
 # 📙 일반
+
 # 📗 선택
 
 # ✅ 완료
+## Issue29: /run full All Clear Test 통합 테스트 파이프라인 (등록: 2026-04-17, 해결: 2026-04-17, commit: 77fabbd) ✅
+* 목적: project 25의 /run full 패턴을 참고하여 fWarrangeCli의 빌드→배포→_config.yml 기본값 검증→API/CMD 전체 테스트→로그 검사를 자동화하는 통합 테스트 파이프라인 구현
+* 상세:
+    - `cli/_tool/run.sh`에 `full` 모드 추가 (10단계 자동 검증)
+    - Step 0: 프로세스 종료 → Step 1: _config.yml 백업 & 삭제 → Step 2: Debug 빌드 & 배포 → Step 3: 앱 실행 → Step 4: REST API 헬스 체크 (10초 대기) → Step 5: _config.yml 기본값 검증 (19개 필드 + excludedApps + 단축키) → Step 6: API 테스트 all (v1+v2, 62개) → Step 7: CMD 테스트 all (v1+v2, 62개) → Step 8: 로그 ERROR/CRITICAL 검사 → Step 9: _config.yml 복원 & 재시작
+    - `.claude/commands/run.md` 문서에 full 옵션 추가
+    - 검증: ALL CLEAR 6 PASS / 0 FAIL
+
 ## Issue28: fWarrange 종료 시 fWarrangeCli 메뉴바 자동 복원 (등록: 2026-04-16) (✅ 완료, dff889a) ✅
 * 목적: fWarrange 앱 종료 시 fWarrangeCli 메뉴바가 숨겨진 채 방치되는 문제 해결 — 이중 방어 방식(NSWorkspace 감시 + REST 호출)으로 자동 복원
 * 상세:
