@@ -16,11 +16,11 @@
 		47AEC5453C5C9C1488ABFEE3 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FE7B6EF2174224C37FA6F0 /* MenuBarView.swift */; };
 		4926C654E290CAB561309435 /* Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5448F7DE624FDC82BC3D385C /* Layout.swift */; };
 		5550D4E9E811C42F638DA161 /* HotKeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25E958C235A2113119D12901 /* HotKeyService.swift */; };
-		643B6D75ADB7101DD84A08F2 /* DisplaySwitchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 262F827F495484C303726D4B /* DisplaySwitchService.swift */; };
 		80592DA154C35E61440B959E /* LayoutStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 662A96F421AC4E825C14B86F /* LayoutStorageService.swift */; };
 		83167584CB3AC9496AFA89A6 /* DisplayNumberHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA88D59968E1BC4657A3D8B4 /* DisplayNumberHelper.swift */; };
 		8CA4F284AB6BBB5352D573D7 /* ScreenMoveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95BA5BF6280F4128EDF4285D /* ScreenMoveService.swift */; };
 		90C424F1307327D09016FD68 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 99611EC4488DE1DB48B6797F /* Assets.xcassets */; };
+		990554852C9F96E6CA46180A /* ChangeTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCB3C72133309202D83DC44 /* ChangeTracker.swift */; };
 		B40020566EC37D6524BBB1CD /* RESTServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF65497BEF50CBB7CED8F81 /* RESTServer.swift */; };
 		BC5A6F4B54C6220CFF559455 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEC521474E835C8993023C58 /* WindowManager.swift */; };
 		C3679BE6E8D43FFC3CC11276 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 484BEF5CA60BA4E18244F756 /* SettingsService.swift */; };
@@ -36,7 +36,6 @@
 
 /* Begin PBXFileReference section */
 		25E958C235A2113119D12901 /* HotKeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyService.swift; sourceTree = "<group>"; };
-		262F827F495484C303726D4B /* DisplaySwitchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplaySwitchService.swift; sourceTree = "<group>"; };
 		3048E8064D2360477D20FE4D /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		332CF3D58195D4A7F7B2836F /* fWarrangeCliApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = fWarrangeCliApp.swift; sourceTree = "<group>"; };
 		3905C8AF01D881D7B779A6C3 /* fWarrangeCli.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = fWarrangeCli.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -44,6 +43,7 @@
 		484BEF5CA60BA4E18244F756 /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
 		515D9B634FB2FCE99FBCBABB /* CLIHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIHandler.swift; sourceTree = "<group>"; };
 		5448F7DE624FDC82BC3D385C /* Layout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Layout.swift; sourceTree = "<group>"; };
+		5CCB3C72133309202D83DC44 /* ChangeTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangeTracker.swift; sourceTree = "<group>"; };
 		633BCF8630F3A9F5B69FE7E8 /* RestoreStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestoreStatus.swift; sourceTree = "<group>"; };
 		662A96F421AC4E825C14B86F /* LayoutStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutStorageService.swift; sourceTree = "<group>"; };
 		791814979BEAEF63CC0C95C8 /* LayoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutManager.swift; sourceTree = "<group>"; };
@@ -114,7 +114,7 @@
 			isa = PBXGroup;
 			children = (
 				B30239289D5D096DA900F198 /* AccessibilityService.swift */,
-				262F827F495484C303726D4B /* DisplaySwitchService.swift */,
+				5CCB3C72133309202D83DC44 /* ChangeTracker.swift */,
 				25E958C235A2113119D12901 /* HotKeyService.swift */,
 				662A96F421AC4E825C14B86F /* LayoutStorageService.swift */,
 				DCF65497BEF50CBB7CED8F81 /* RESTServer.swift */,
@@ -175,6 +175,8 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = FF6073DFC6F550541CD2EA44 /* Build configuration list for PBXProject "fWarrangeCli" */;
 			developmentRegion = en;
@@ -217,8 +219,8 @@
 				363BF8287FD23580D3FB33E4 /* AppSettings.swift in Sources */,
 				463D7F8F385E5DA1F5E40501 /* AppState.swift in Sources */,
 				FBAEC90B3AA0B434235470D6 /* CLIHandler.swift in Sources */,
+				990554852C9F96E6CA46180A /* ChangeTracker.swift in Sources */,
 				83167584CB3AC9496AFA89A6 /* DisplayNumberHelper.swift in Sources */,
-				643B6D75ADB7101DD84A08F2 /* DisplaySwitchService.swift in Sources */,
 				5550D4E9E811C42F638DA161 /* HotKeyService.swift in Sources */,
 				4926C654E290CAB561309435 /* Layout.swift in Sources */,
 				18C22AC105FA8DF6951C2633 /* LayoutManager.swift in Sources */,
@@ -316,6 +318,7 @@
 				CODE_SIGN_ENTITLEMENTS = fWarrangeCli/fWarrangeCli.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -331,18 +334,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = fWarrangeCli/fWarrangeCli.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = BZDZFZWF6K;
 				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCli;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 			};
 			name = Debug;

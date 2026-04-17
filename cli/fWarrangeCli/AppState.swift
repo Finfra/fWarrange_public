@@ -324,10 +324,10 @@ final class AppState {
         isRunning = true
         startTime = Date()
 
-        // 접근성 권한 확인
+        // 접근성 권한 확인 (prompt:false — ad-hoc 서명에서는 시스템 프롬프트 무효)
         if !windowManager.isAccessibilityGranted() {
             logW("⚠️ Accessibility 권한이 필요합니다")
-            windowManager.requestAccessibility()
+            showAccessibilityGuide()
         }
 
         // 글로벌 단축키 등록
@@ -487,5 +487,29 @@ final class AppState {
             return "\(hours)h \(minutes)m"
         }
         return "\(minutes)m"
+    }
+
+    // MARK: - Accessibility 권한 안내 (Issue189)
+
+    /// Accessibility 권한 미부여 시 NSAlert 안내 + 시스템 설정 deep link
+    private func showAccessibilityGuide() {
+        DispatchQueue.main.async { [weak self] in
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = "Accessibility 권한 필요"
+            alert.informativeText = """
+                fWarrangeCli가 창 위치를 제어하려면 접근성 권한이 필요합니다.
+
+                시스템 설정 > 개인정보 보호 및 보안 > 접근성에서
+                fWarrangeCli를 추가하고 허용해주세요.
+                """
+            alert.addButton(withTitle: "설정 열기")
+            alert.addButton(withTitle: "나중에")
+
+            let response = alert.runModal()
+            if response == .alertFirstButtonReturn {
+                self?.windowManager.openAccessibilitySettings()
+            }
+        }
     }
 }
