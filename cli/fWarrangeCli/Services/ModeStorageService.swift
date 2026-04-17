@@ -38,6 +38,13 @@ final class YAMLModeStorageService: ModeStorageService {
             yaml += "  shortcut: \"\(escapeYAML(shortcut))\"\n"
         }
         yaml += "  layout: \"\(escapeYAML(mode.layoutRef))\"\n"
+        if !mode.requiredApps.isEmpty {
+            yaml += "  apps:\n"
+            for app in mode.requiredApps {
+                yaml += "    - bundleId: \"\(escapeYAML(app.bundleId))\"\n"
+                yaml += "      action: \"\(app.action.rawValue)\"\n"
+            }
+        }
         return yaml
     }
 
@@ -53,11 +60,42 @@ final class YAMLModeStorageService: ModeStorageService {
         var icon = "rectangle.3.group"
         var shortcut: String?
         var layoutRef: String?
+        var requiredApps: [AppConfig] = []
+
+        // apps 블록 파싱 상태
+        var inAppsBlock = false
+        var currentBundleId: String?
+        var currentAction: AppAction?
 
         for line in content.components(separatedBy: .newlines) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
 
-            if trimmed.hasPrefix("name:") {
+            // apps 블록 종료 판별 — apps 내부가 아닌 최상위 키 만나면 종료
+            if inAppsBlock && !trimmed.isEmpty && !trimmed.hasPrefix("-") && !trimmed.hasPrefix("bundleId:") && !trimmed.hasPrefix("action:") {
+                // 마지막 앱 저장
+                if let bid = currentBundleId {
+                    requiredApps.append(AppConfig(bundleId: bid, action: currentAction ?? .launch))
+                    currentBundleId = nil
+                    currentAction = nil
+                }
+                inAppsBlock = false
+            }
+
+            if inAppsBlock {
+                if trimmed.hasPrefix("- bundleId:") {
+                    // 이전 앱 저장
+                    if let bid = currentBundleId {
+                        requiredApps.append(AppConfig(bundleId: bid, action: currentAction ?? .launch))
+                    }
+                    currentBundleId = parseStringValue(String(trimmed.dropFirst(11)))
+                    currentAction = nil
+                } else if trimmed.hasPrefix("bundleId:") {
+                    currentBundleId = parseStringValue(String(trimmed.dropFirst(9)))
+                } else if trimmed.hasPrefix("action:") {
+                    let actionStr = parseStringValue(String(trimmed.dropFirst(7)))
+                    currentAction = AppAction(rawValue: actionStr)
+                }
+            } else if trimmed.hasPrefix("name:") {
                 name = parseStringValue(String(trimmed.dropFirst(5)))
             } else if trimmed.hasPrefix("icon:") {
                 icon = parseStringValue(String(trimmed.dropFirst(5)))
@@ -65,7 +103,14 @@ final class YAMLModeStorageService: ModeStorageService {
                 shortcut = parseStringValue(String(trimmed.dropFirst(9)))
             } else if trimmed.hasPrefix("layout:") {
                 layoutRef = parseStringValue(String(trimmed.dropFirst(7)))
+            } else if trimmed == "apps:" {
+                inAppsBlock = true
             }
+        }
+
+        // 파일 끝에서 마지막 앱 저장
+        if let bid = currentBundleId {
+            requiredApps.append(AppConfig(bundleId: bid, action: currentAction ?? .launch))
         }
 
         // name 없으면 파일명 사용
@@ -73,7 +118,7 @@ final class YAMLModeStorageService: ModeStorageService {
         // layoutRef 없으면 name과 동일하게 설정
         let ref = layoutRef ?? modeName
 
-        return Mode(name: modeName, icon: icon, shortcut: shortcut, layoutRef: ref)
+        return Mode(name: modeName, icon: icon, shortcut: shortcut, layoutRef: ref, requiredApps: requiredApps)
     }
 
     /// version 필드 확인 — v2 스키마인지 판별
@@ -156,6 +201,7 @@ final class YAMLModeStorageService: ModeStorageService {
                     icon: mode.icon,
                     shortcut: mode.shortcut,
                     layoutRef: mode.layoutRef,
+                    requiredApps: mode.requiredApps,
                     fileDate: fileDate
                 )
             }

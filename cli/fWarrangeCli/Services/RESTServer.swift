@@ -837,6 +837,11 @@ final class RESTServer: RESTServerProtocol {
             "layoutRef": mode.layoutRef
         ]
         if let sc = mode.shortcut { d["shortcut"] = sc }
+        if !mode.requiredApps.isEmpty {
+            d["requiredApps"] = mode.requiredApps.map { app in
+                ["bundleId": app.bundleId, "action": app.action.rawValue] as [String: Any]
+            }
+        }
         return d
     }
 

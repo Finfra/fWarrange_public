@@ -183,9 +183,24 @@ struct CLIHandler {
             guard let name = rest.first else { exitError("mode delete <name> 필수") }
             fetch("DELETE", path: "/modes/\(name.urlEncoded)")
         case "edit":
-            guard let name = rest.first else { exitError("mode edit <name> <json> 필수") }
-            guard rest.count >= 2 else { exitError("mode edit <name> <json> 필수") }
-            fetch("PATCH", path: "/modes/\(name.urlEncoded)", body: parseJSONObject(rest[1]))
+            guard let name = rest.first else { exitError("mode edit <name> <json|--add-app|--remove-app> 필수") }
+            guard rest.count >= 2 else { exitError("mode edit <name> <json|--add-app|--remove-app> 필수") }
+            if rest[1] == "--add-app" {
+                // mode edit <name> --add-app <bundleId> [--action launch|hide|ignore]
+                guard rest.count >= 3 else { exitError("--add-app <bundleId> 필수") }
+                let bundleId = rest[2]
+                var action = "launch"
+                if rest.count >= 5 && rest[3] == "--action" { action = rest[4] }
+                // 먼저 현재 모드 조회 → requiredApps에 추가 → PATCH
+                fetchModeAndUpdateApps(name: name, addBundleId: bundleId, action: action)
+            } else if rest[1] == "--remove-app" {
+                // mode edit <name> --remove-app <bundleId>
+                guard rest.count >= 3 else { exitError("--remove-app <bundleId> 필수") }
+                let bundleId = rest[2]
+                fetchModeAndUpdateApps(name: name, removeBundleId: bundleId)
+            } else {
+                fetch("PATCH", path: "/modes/\(name.urlEncoded)", body: parseJSONObject(rest[1]))
+            }
         default:
             exitError("알 수 없는 mode 서브커맨드: \(sub) (허용: list|create|show|delete|edit)")
         }
@@ -296,6 +311,47 @@ struct CLIHandler {
             return
         }
         exitError("사용법: v2 shortcuts [get|set <json>]")
+    }
+
+    /// 모드의 requiredApps에 앱 추가/제거 후 PATCH 요청
+    private static func fetchModeAndUpdateApps(name: String, addBundleId: String? = nil, action: String = "launch", removeBundleId: String? = nil) {
+        // 1. 현재 모드 조회
+        let urlString = "\(baseURL)/modes/\(name.urlEncoded)"
+        guard let url = URL(string: urlString) else { exitError("유효하지 않은 URL") }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 10
+
+        let semaphore = DispatchSemaphore(value: 0)
+        var responseData: Data?
+        let task = URLSession.shared.dataTask(with: request) { data, _, _ in
+            responseData = data
+            semaphore.signal()
+        }
+        task.resume()
+        semaphore.wait()
+
+        guard let data = responseData,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let modeData = json["data"] as? [String: Any] else {
+            exitError("모드 조회 실패: \(name)")
+        }
+
+        // 2. 현재 requiredApps 파싱
+        var apps = (modeData["requiredApps"] as? [[String: Any]]) ?? []
+
+        // 3. 추가 또는 제거
+        if let addId = addBundleId {
+            // 중복 제거 후 추가
+            apps.removeAll { ($0["bundleId"] as? String) == addId }
+            apps.append(["bundleId": addId, "action": action])
+        }
+        if let removeId = removeBundleId {
+            apps.removeAll { ($0["bundleId"] as? String) == removeId }
+        }
+
+        // 4. PATCH 요청
+        fetch("PATCH", path: "/modes/\(name.urlEncoded)", body: ["requiredApps": apps])
     }
 
     private static func parseJSONObject(_ s: String) -> [String: Any] {

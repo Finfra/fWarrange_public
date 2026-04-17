@@ -11,6 +11,7 @@ final class AppState {
     private let hotKeyService: HotKeyService
     private let screenMoveService: ScreenMoveService
     private let modeStorageService: ModeStorageService
+    private let appLauncherService: AppLauncherService
 
     var isRunning = false
     var connectionCount = 0
@@ -54,6 +55,7 @@ final class AppState {
         self.modeStorageService = YAMLModeStorageService(baseDirectory: baseDir)
         self.hotKeyService = CarbonHotKeyService()
         self.screenMoveService = ScreenMoveService()
+        self.appLauncherService = NSWorkspaceAppLauncherService()
 
         let wm = windowManager
         let lm = layoutManager
@@ -268,6 +270,15 @@ final class AppState {
                 if let shortcut = body["shortcut"] as? String { mode.shortcut = shortcut.isEmpty ? nil : shortcut }
                 if body["shortcut"] is NSNull { mode.shortcut = nil }
                 if let layout = body["layout"] as? String { mode.layoutRef = layout }
+                // requiredApps 수정 지원
+                if let apps = body["requiredApps"] as? [[String: Any]] {
+                    mode.requiredApps = apps.compactMap { dict in
+                        guard let bundleId = dict["bundleId"] as? String else { return nil }
+                        let actionStr = dict["action"] as? String ?? "launch"
+                        let action = AppAction(rawValue: actionStr) ?? .launch
+                        return AppConfig(bundleId: bundleId, action: action)
+                    }
+                }
                 try self.modeStorageService.save(mode)
                 return mode
             },
@@ -295,6 +306,8 @@ final class AppState {
                     minimumScore: self.settings.minimumMatchScore,
                     enableParallel: self.settings.enableParallelRestore ?? true
                 )
+                // Phase 2B: requiredApps 자동 실행/숨기기
+                await self.appLauncherService.applyAppConfigs(mode.requiredApps)
                 self.activeModeName = name
                 return (mode: mode, restoreResults: results)
             },
