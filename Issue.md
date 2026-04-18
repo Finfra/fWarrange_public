@@ -4,9 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-# Issue Management
-
-* Issue HWM: 29
+* Issue HWM: 30
 * Save Point: 2026-04-17 (77fabbd) Feat(Tool): /run full All Clear Test 통합 테스트 파이프라인 추가 (Issue29)
 
 # 🤔 결정사항
@@ -15,9 +13,22 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
 
-# 📕 중요
-
-# 📙 일반
+## Issue30: paidApp_version.md 설계 문서 정합성 개선 (등록: 2026-04-18)
+* 목적: `cli/_doc_design/paidApp_version.md` 설계 문서를 실제 `AppState.swift` 구현 및 프로젝트 규칙과 일치하도록 정비
+* 관련 파일: `cli/_doc_design/paidApp_version.md`, `cli/fWarrangeCli/AppState.swift`
+* 연계 이슈: paidApp `Issue191` (paidApp 측 참조 링크 정비)
+* 상세:
+    - `isPaidAppRunning` 섹션(문서 L189-196)이 실제 `AppState.swift`에 구현되어 있지 않음 — "향후 활용 가능"만 기재되어 오해 소지
+    - `observePaidAppTermination` 예제 코드(L120-132)가 실제 구현(`[weak self]` + `Task { @MainActor in ... }`, L437-454)과 달리 단순화됨
+    - Free 기능 테이블 마지막 행(L29-30 "화면 이동"/"자동 실행 관리")의 셀 폭이 다른 행들과 불일치 — `md-rules.md` Table 정렬 규칙 위반
+    - API 엔드포인트 표기(L24, L26)가 `/api/v1`만 언급 — 현재 v1/v2 공존 구조(`.claude/rules/api-rules.md`) 미반영
+    - Issue9/10/11 상태 기록(L216-220)이 현재 Issue.md와 동기화되어 있는지 재확인 필요
+* 구현 명세:
+    - `isPaidAppRunning` 섹션: 미구현 상태 명시("현재 미구현, 필요 시 추가") 또는 섹션 제거
+    - `observePaidAppTermination` 예제: 실제 구현 그대로 반영하거나 "의사 코드" 명시
+    - Free 기능 테이블: 모든 행을 열 최대 너비로 재정렬
+    - API 표기: "v1 (v2에서도 제공)" 또는 "v1/v2 공존" 형태로 보강
+    - 이슈 상태 표: 현재 Issue.md와 재동기화 (Issue9/10/11 최종 상태 확인)
 
 # 📗 선택
 
@@ -222,9 +233,9 @@ date: 2026-04-07
 
 ## Issue13: Paid 버전 관련 불필요 코드 삭제 (등록: 2026-04-08, 해결: 2026-04-09, commit: TBD) ✅
 
-* 목적: `paid_version.md` 설계 문서 기준으로 불필요한 Paid 관련 코드 정리
+* 목적: `paidApp_version.md` 설계 문서 기준으로 불필요한 Paid 관련 코드 정리
 * 구현 명세:
-    - `paid_version.md`: 관련 소스 파일 테이블에서 실제 미존재 함수 `isPaidAppRunning` 참조 삭제
+    - `paidApp_version.md`: 관련 소스 파일 테이블에서 실제 미존재 함수 `isPaidAppRunning` 참조 삭제
     - Swift 소스에는 삭제 대상 없음 (모든 함수가 실제 사용 중)
     - `com.finfra` 레거시 번들ID 없음 확인
 * 검증:
