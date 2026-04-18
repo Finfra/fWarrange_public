@@ -145,6 +145,25 @@ struct AppSettings: Codable {
     // 언어 설정 (locale 엔드포인트 호환용)
     var appLanguage: String?
 
+    // REST API 서버 (API 탭)
+    var restServerEnabled: Bool?       // nil = 기본 true
+    var allowExternalAccess: Bool?     // nil = 기본 false
+    var allowedCIDR: String?           // nil = "192.168.0.0/16"
+
+    // 데이터 경로 오버라이드 (General 탭)
+    var dataDirectoryPath: String?
+
+    // 자동 저장 (Advanced 탭)
+    var autoSaveOnSleep: Bool?         // 슬립/종료 시 자동 저장
+    var maxAutoSaves: Int?             // 최대 보관 개수
+
+    // UI 옵션 (Advanced 탭, GUI 앱이 읽어가는 설정)
+    var restoreButtonStyle: String?    // "iconOnly" | "nameIcon" | "nameOnly"
+    var confirmBeforeDelete: Bool?
+    var showInCmdTab: Bool?
+    var clickSwitchToMain: Bool?
+    var theme: String?                 // "system" | "light" | "dark"
+
     static let defaultExcludedApps: [String] = [
         "Activity Monitor",
         "System Settings"
@@ -183,6 +202,17 @@ struct AppSettings: Codable {
         showSettingsShortcut: nil,     // fWarrangeCli에서는 미사용
         launchAtLogin: false,
         defaultLayoutName: nil,
-        appLanguage: nil
+        appLanguage: nil,
+        restServerEnabled: true,
+        allowExternalAccess: false,
+        allowedCIDR: "192.168.0.0/16",
+        dataDirectoryPath: nil,
+        autoSaveOnSleep: true,
+        maxAutoSaves: 5,
+        restoreButtonStyle: "nameIcon",
+        confirmBeforeDelete: true,
+        showInCmdTab: true,
+        clickSwitchToMain: false,
+        theme: "system"
     )
 }

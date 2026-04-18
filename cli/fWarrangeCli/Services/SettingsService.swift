@@ -64,6 +64,25 @@ final class YAMLSettingsService: SettingsService {
             lines.append("defaultLayoutName: \"\(defaultLayout)\"")
         }
         lines.append("appLanguage: \(s.appLanguage ?? "system")")
+        lines.append("")
+        lines.append("# REST API Server")
+        lines.append("restServerEnabled: \(s.restServerEnabled ?? true)")
+        lines.append("allowExternalAccess: \(s.allowExternalAccess ?? false)")
+        lines.append("allowedCIDR: \"\(s.allowedCIDR ?? "192.168.0.0/16")\"")
+        if let p = s.dataDirectoryPath, !p.isEmpty {
+            lines.append("dataDirectoryPath: \"\(p)\"")
+        }
+        lines.append("")
+        lines.append("# Auto save")
+        lines.append("autoSaveOnSleep: \(s.autoSaveOnSleep ?? true)")
+        lines.append("maxAutoSaves: \(s.maxAutoSaves ?? 5)")
+        lines.append("")
+        lines.append("# UI options")
+        lines.append("restoreButtonStyle: \(s.restoreButtonStyle ?? "nameIcon")")
+        lines.append("confirmBeforeDelete: \(s.confirmBeforeDelete ?? true)")
+        lines.append("showInCmdTab: \(s.showInCmdTab ?? true)")
+        lines.append("clickSwitchToMain: \(s.clickSwitchToMain ?? false)")
+        lines.append("theme: \(s.theme ?? "system")")
         // 단축키 설정 (ex: ⌘F7, ⇧⌘F7, ⌃⌥S)
         lines.append("")
         lines.append("# Shortcuts (⌃=Control, ⌥=Option, ⇧=Shift, ⌘=Command)")
@@ -123,24 +142,35 @@ final class YAMLSettingsService: SettingsService {
             }
         }
 
-        return AppSettings(
-            excludedApps: excludedApps.isEmpty ? AppSettings.defaultExcludedApps : excludedApps,
-            maxRetries: Int(dict["maxRetries"] ?? "") ?? AppSettings.defaults.maxRetries,
-            retryInterval: Double(dict["retryInterval"] ?? "") ?? AppSettings.defaults.retryInterval,
-            minimumMatchScore: Int(dict["minimumMatchScore"] ?? "") ?? AppSettings.defaults.minimumMatchScore,
-            enableParallelRestore: dict["enableParallelRestore"].flatMap { Bool($0) } ?? true,
-            restServerPort: Int(dict["restServerPort"] ?? "") ?? 3016,
-            logLevel: Int(dict["logLevel"] ?? "") ?? 5,
-            dataStorageMode: dict["dataStorageMode"].flatMap { DataStorageMode(rawValue: $0) } ?? .host,
-            saveShortcut: parseShortcut(dict["saveShortcut"]) ?? AppSettings.defaults.saveShortcut,
-            restoreDefaultShortcut: parseShortcut(dict["restoreDefaultShortcut"]) ?? AppSettings.defaults.restoreDefaultShortcut,
-            restoreLastShortcut: parseShortcut(dict["restoreLastShortcut"]) ?? AppSettings.defaults.restoreLastShortcut,
-            showMainWindowShortcut: parseShortcut(dict["showMainWindowShortcut"]),
-            showSettingsShortcut: parseShortcut(dict["showSettingsShortcut"]),
-            launchAtLogin: dict["launchAtLogin"].flatMap { Bool($0) } ?? false,
-            defaultLayoutName: dict["defaultLayoutName"].flatMap { parseStringValue($0) }.flatMap { $0.isEmpty ? nil : $0 },
-            appLanguage: dict["appLanguage"]
-        )
+        var s = AppSettings.defaults
+        s.excludedApps = excludedApps.isEmpty ? AppSettings.defaultExcludedApps : excludedApps
+        if let v = dict["maxRetries"], let i = Int(v) { s.maxRetries = i }
+        if let v = dict["retryInterval"], let d = Double(v) { s.retryInterval = d }
+        if let v = dict["minimumMatchScore"], let i = Int(v) { s.minimumMatchScore = i }
+        if let v = dict["enableParallelRestore"], let b = Bool(v) { s.enableParallelRestore = b }
+        if let v = dict["restServerPort"], let i = Int(v) { s.restServerPort = i }
+        if let v = dict["logLevel"], let i = Int(v) { s.logLevel = i }
+        if let v = dict["dataStorageMode"], let m = DataStorageMode(rawValue: v) { s.dataStorageMode = m }
+        if let sc = parseShortcut(dict["saveShortcut"]) { s.saveShortcut = sc }
+        if let sc = parseShortcut(dict["restoreDefaultShortcut"]) { s.restoreDefaultShortcut = sc }
+        if let sc = parseShortcut(dict["restoreLastShortcut"]) { s.restoreLastShortcut = sc }
+        s.showMainWindowShortcut = parseShortcut(dict["showMainWindowShortcut"])
+        s.showSettingsShortcut = parseShortcut(dict["showSettingsShortcut"])
+        if let v = dict["launchAtLogin"], let b = Bool(v) { s.launchAtLogin = b }
+        if let v = dict["defaultLayoutName"].map(parseStringValue), !v.isEmpty { s.defaultLayoutName = v }
+        if let v = dict["appLanguage"] { s.appLanguage = v }
+        if let v = dict["restServerEnabled"], let b = Bool(v) { s.restServerEnabled = b }
+        if let v = dict["allowExternalAccess"], let b = Bool(v) { s.allowExternalAccess = b }
+        if let v = dict["allowedCIDR"].map(parseStringValue) { s.allowedCIDR = v }
+        if let v = dict["dataDirectoryPath"].map(parseStringValue), !v.isEmpty { s.dataDirectoryPath = v }
+        if let v = dict["autoSaveOnSleep"], let b = Bool(v) { s.autoSaveOnSleep = b }
+        if let v = dict["maxAutoSaves"], let i = Int(v) { s.maxAutoSaves = i }
+        if let v = dict["restoreButtonStyle"].map(parseStringValue) { s.restoreButtonStyle = v }
+        if let v = dict["confirmBeforeDelete"], let b = Bool(v) { s.confirmBeforeDelete = b }
+        if let v = dict["showInCmdTab"], let b = Bool(v) { s.showInCmdTab = b }
+        if let v = dict["clickSwitchToMain"], let b = Bool(v) { s.clickSwitchToMain = b }
+        if let v = dict["theme"].map(parseStringValue) { s.theme = v }
+        return s
     }
 
     /// 단축키 파싱: human-readable ("⌘F7") 또는 레거시 ("98:1048576") 형식 지원
