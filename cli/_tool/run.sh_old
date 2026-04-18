@@ -1,24 +1,18 @@
 #!/bin/bash
-# Issue31: Xcode GUI 기반 빌드 래퍼 (기존 xcodebuild CLI → AppleScript 전환)
-# Usage: ./run.sh [build-run|run-only|full|kill]
-#   build-run (기본): Xcode 빌드 → Applications 배포 → 실행
-#   run-only        : 빌드 없이 기존 배포 앱 실행
-#   full            : All Clear Test — 빌드→배포→_config.yml 초기화→기본값 검증→API/CMD 전체 테스트
-#   kill            : 프로세스 종료만
-#
-# 기본 빌드·배포·실행 로직은 run-xcode.sh에 위임 (TCC 회피 — Issue31)
+# Usage: ./run.sh [run-only|full]
+#   run-only: 빌드 없이 실행만
+#   full: 빌드→배포→_config.yml 초기화→기본값 검증→API/CMD 전체 테스트
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLI_DIR="$(dirname "$SCRIPT_DIR")"
-RUN_XCODE="$SCRIPT_DIR/run-xcode.sh"
 APP_PATH="/Applications/_nowage_app/fWarrangeCli.app"
 MODE="${1:-build-run}"
 DATA_DIR="$HOME/Documents/finfra/fWarrangeData"
 CONFIG_FILE="$DATA_DIR/_config.yml"
 LOG_FILE="$DATA_DIR/logs/wlog.log"
 
-# ========== full 모드 (All Clear Test) ==========
+# full 모드 분기 (set -e 비활성화 — 개별 step에서 에러 핸들링)
 if [ "$MODE" = "full" ]; then
     set +e
     TOTAL_PASS=0
@@ -58,21 +52,32 @@ if [ "$MODE" = "full" ]; then
         echo "_config.yml 없음 (신규 생성 테스트)"
     fi
 
-    # --- Step 2: Xcode 빌드 & 배포 & 실행 (Issue31: run-xcode.sh 위임) ---
+    # --- Step 2: Debug 빌드 & 배포 ---
     echo ""
-    echo "=== Step 2: Xcode 빌드 & 배포 & 실행 ==="
-    if bash "$RUN_XCODE" build-deploy; then
-        record_result "빌드 & 배포" "PASS" "Xcode Debug 빌드 성공"
+    echo "=== Step 2: Debug 빌드 & 배포 ==="
+    cd "$CLI_DIR"
+    if xcodebuild -scheme fWarrangeCli -configuration Debug build -quiet 2>&1; then
+        BUILD_DIR=$(xcodebuild -scheme fWarrangeCli -showBuildSettings 2>/dev/null | grep " TARGET_BUILD_DIR =" | awk -F " = " '{print $2}' | xargs)
+        mkdir -p /Applications/_nowage_app
+        rm -rf "$APP_PATH"
+        cp -R "$BUILD_DIR/fWarrangeCli.app" "$APP_PATH"
+        xattr -cr "$APP_PATH"
+        record_result "빌드 & 배포" "PASS" "Debug 빌드 성공"
     else
-        record_result "빌드 & 배포" "FAIL" "빌드 또는 배포 실패"
+        record_result "빌드 & 배포" "FAIL" "빌드 실패"
         echo ""; echo "❌ 빌드 실패 — 중단"
         [ -n "$CONFIG_BACKUP" ] && mv "$CONFIG_BACKUP" "$CONFIG_FILE"
         exit 1
     fi
 
-    # --- Step 3: REST API 헬스 체크 (최대 10초 대기) ---
+    # --- Step 3: 앱 실행 ---
     echo ""
-    echo "=== Step 3: REST API 헬스 체크 ==="
+    echo "=== Step 3: 앱 실행 ==="
+    open "$APP_PATH"
+
+    # --- Step 4: REST API 헬스 체크 (최대 10초 대기) ---
+    echo ""
+    echo "=== Step 4: REST API 헬스 체크 ==="
     HEALTH=""
     for _i in $(seq 1 10); do
         HEALTH=$(curl -s --connect-timeout 2 http://localhost:3016/ 2>/dev/null)
@@ -91,9 +96,9 @@ if [ "$MODE" = "full" ]; then
         exit 1
     fi
 
-    # --- Step 4: _config.yml 기본값 검증 ---
+    # --- Step 5: _config.yml 기본값 검증 ---
     echo ""
-    echo "=== Step 4: _config.yml 기본값 검증 ==="
+    echo "=== Step 5: _config.yml 기본값 검증 ==="
     if [ -f "$CONFIG_FILE" ]; then
         echo "_config.yml 자동 생성 확인 ✓"
         CONFIG_CONTENT=$(cat "$CONFIG_FILE")
@@ -134,6 +139,7 @@ if [ "$MODE" = "full" ]; then
 
         printf "%b" "$DEFAULTS_DETAIL"
 
+        # excludedApps 확인
         EA_COUNT=$(echo "$CONFIG_CONTENT" | grep -c '  - "' || true)
         if [ "$EA_COUNT" -ge 2 ]; then
             echo "  ✓ excludedApps: ${EA_COUNT}개 항목"
@@ -142,6 +148,7 @@ if [ "$MODE" = "full" ]; then
             DEFAULTS_OK=false
         fi
 
+        # 단축키 확인
         SC_SAVE=$(echo "$CONFIG_CONTENT" | grep "^saveShortcut:" | head -1)
         SC_RESTORE=$(echo "$CONFIG_CONTENT" | grep "^restoreDefaultShortcut:" | head -1)
         if [ -n "$SC_SAVE" ] && [ -n "$SC_RESTORE" ]; then
@@ -160,9 +167,9 @@ if [ "$MODE" = "full" ]; then
         record_result "_config.yml 기본값" "FAIL" "_config.yml 자동 생성 안 됨"
     fi
 
-    # --- Step 5: API 테스트 (all) ---
+    # --- Step 6: API 테스트 (all) ---
     echo ""
-    echo "=== Step 5: API 테스트 (all) ==="
+    echo "=== Step 6: API 테스트 (all) ==="
     API_RESULT=$(bash "$SCRIPT_DIR/apiTestDo.sh" all 2>&1)
     echo "$API_RESULT"
     API_TOTAL=$(echo "$API_RESULT" | grep -c '^\[' || true)
@@ -174,9 +181,9 @@ if [ "$MODE" = "full" ]; then
         record_result "API 테스트" "FAIL" "테스트 실행 안 됨"
     fi
 
-    # --- Step 6: CMD 테스트 (all) ---
+    # --- Step 7: CMD 테스트 (all) ---
     echo ""
-    echo "=== Step 6: CMD 테스트 (all) ==="
+    echo "=== Step 7: CMD 테스트 (all) ==="
     CMD_RESULT=$(bash "$SCRIPT_DIR/cmdTestDo.sh" all 2>&1)
     echo "$CMD_RESULT"
     CMD_TOTAL=$(echo "$CMD_RESULT" | grep -c '^\[' || true)
@@ -186,9 +193,9 @@ if [ "$MODE" = "full" ]; then
         record_result "CMD 테스트" "FAIL" "테스트 실행 안 됨"
     fi
 
-    # --- Step 7: 로그 확인 ---
+    # --- Step 8: 로그 확인 ---
     echo ""
-    echo "=== Step 7: 로그 확인 ==="
+    echo "=== Step 8: 로그 확인 ==="
     if [ -f "$LOG_FILE" ]; then
         LOG_ERRORS=$(grep -c "ERROR\|CRITICAL" "$LOG_FILE" 2>/dev/null || true)
         LOG_LINES=$(wc -l < "$LOG_FILE" | tr -d ' ')
@@ -205,9 +212,9 @@ if [ "$MODE" = "full" ]; then
         record_result "로그 검사" "PASS" "로그 파일 미생성 (logLevel=5, critical 전용)"
     fi
 
-    # --- Step 8: _config.yml 복원 & 재시작 ---
+    # --- Step 9: _config.yml 복원 & 최종 결과 ---
     echo ""
-    echo "=== Step 8: _config.yml 복원 ==="
+    echo "=== Step 9: _config.yml 복원 ==="
     if [ -n "$CONFIG_BACKUP" ]; then
         mv "$CONFIG_BACKUP" "$CONFIG_FILE"
         echo "원본 _config.yml 복원 완료"
@@ -215,7 +222,9 @@ if [ "$MODE" = "full" ]; then
         echo "복원 대상 없음 (기존 파일 없었음)"
     fi
 
-    bash "$RUN_XCODE" run-only
+    # 프로세스 종료 후 원본 설정으로 재시작
+    bash "$SCRIPT_DIR/kill.sh"
+    open "$APP_PATH"
 
     # --- 최종 리포트 ---
     echo ""
@@ -242,34 +251,33 @@ if [ "$MODE" = "full" ]; then
     exit "$TOTAL_FAIL"
 fi
 
-# ========== 일반 모드 (build-run / run-only / kill) ==========
+# --- 기존 모드 (build-run / run-only) ---
 
-case "$MODE" in
-    build-run)
-        bash "$RUN_XCODE" build-deploy
-        ;;
-    run-only)
-        bash "$RUN_XCODE" run-only
-        ;;
-    kill)
-        bash "$SCRIPT_DIR/kill.sh"
-        ;;
-    *)
-        # 기타 인자는 run-xcode.sh에 전달 (open/stop/build/deploy-run 등)
-        bash "$RUN_XCODE" "$MODE"
-        ;;
-esac
+echo "=== Step 1: 기존 프로세스 종료 ==="
+bash "$SCRIPT_DIR/kill.sh"
 
-# 동작 확인 (build-run / run-only 후)
-if [ "$MODE" = "build-run" ] || [ "$MODE" = "run-only" ]; then
-    echo ""
-    echo "=== 동작 확인 ==="
-    sleep 3
-    HEALTH=$(curl -s --connect-timeout 3 http://localhost:3016/ 2>/dev/null)
-    if [ -n "$HEALTH" ]; then
-        echo "✅ REST API 정상"
-        echo "$HEALTH" | python3 -m json.tool 2>/dev/null || echo "$HEALTH"
-    else
-        echo "❌ REST API 응답 없음 (포트 3016)"
-    fi
+if [ "$MODE" != "run-only" ]; then
+    echo "=== Step 2: Debug 빌드 ==="
+    cd "$CLI_DIR"
+    xcodebuild -scheme fWarrangeCli -configuration Debug build -quiet
+
+    echo "=== Step 3: 배포 ==="
+    BUILD_DIR=$(xcodebuild -scheme fWarrangeCli -showBuildSettings 2>/dev/null | grep " TARGET_BUILD_DIR =" | awk -F " = " '{print $2}' | xargs)
+    mkdir -p /Applications/_nowage_app
+    rm -rf "$APP_PATH"
+    cp -R "$BUILD_DIR/fWarrangeCli.app" "$APP_PATH"
+    xattr -cr "$APP_PATH"
+fi
+
+echo "=== Step 4: 실행 ==="
+open "$APP_PATH"
+
+echo "=== Step 5: 동작 확인 ==="
+sleep 3
+HEALTH=$(curl -s --connect-timeout 3 http://localhost:3016/ 2>/dev/null)
+if [ -n "$HEALTH" ]; then
+    echo "✅ REST API 정상"
+    echo "$HEALTH" | python3 -m json.tool 2>/dev/null || echo "$HEALTH"
+else
+    echo "❌ REST API 응답 없음 (포트 3016)"
 fi

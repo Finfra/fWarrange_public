@@ -13,34 +13,83 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
 
-## Issue31: run.sh 스크립트 Xcode 기반 빌드 단일화 (등록: 2026-04-18)
-* 목적: 현재 스크립트 기반 빌드의 TCC 문제 해결, Xcode 기반 빌드로 단일화 — 자동화는 유지하되 빌드 프로세스만 CLI/AppleScript로 제어
+## Issue31: run.sh 스크립트 제거 후 Xcode 기반 빌드 단일화 (등록: 2026-04-18)
+* 목적: 현재 스크립트 기반 빌드의 TCC 문제 해결, Xcode 기반 빌드로 단일화 — 자동화는 유지하되 빌드 프로세스만 AppleScript 기반으로 제어
 * 상세:
-    - **문제**: 스크립트(`xcodebuild`) 직접 실행 시 매번 TCC(Transparency, Consent, and Control) 권한 문제 발생
-    - **원인**: Xcode GUI를 통한 빌드와 CLI 기반 빌드의 권한 컨텍스트 차이
-    - **목표**: Xcode GUI를 직접 제어(`/run` 커맨드 → AppleScript/CLI)하여 TCC 문제 제거, 자동 배포 유지
-    - **범위**: fWarrangeCli만 적용 (pairApp과 함께만), 기존 `run.sh` 유지 (충돌 방지)
+    - **문제**: `xcodebuild` 기반 빌드·배포 후 앱 **실행 시점에** TCC(Transparency, Consent, and Control) 권한 재요청 발생 (Accessibility 추정, 근본 원인 진단은 별도 이슈 예정)
+    - **원인 가설**: Xcode GUI 빌드와 CLI 빌드의 권한 컨텍스트(서명 identifier·배포 경로·TCC 캐시) 차이
+    - **목표**: Xcode GUI를 AppleScript로 제어하여 빌드 수행 → TCC 문제 제거 + 자동 배포 유지
+    - **범위**: fWarrangeCli만 적용. pairApp(fWarrange)·fSnippetCli(#25)는 별도 이슈로 분리 (본 이슈 완료 후 동기화 예정)
+* 실무 방침 (POC 중 확인된 AppleScript 제약 반영):
+    - **Debug 빌드 + Applications 배포 + 실행**: `run-xcode.sh` 필수 (TCC 이슈 지점)
+    - **Release 빌드 + Applications 배포** (`/deploy`, `/brew-apply`): xcodebuild 유지 — Xcode AppleScript scheme class에 `configuration` 속성 없음 → 동적 전환 불가. Release 경로 TCC 재현 여부는 **별도 이슈로 분리**
+    - **빌드만 (`/build`, `/verify`)**: xcodebuild 유지 (실행 없음 → TCC 무관)
+    - **`xcodebuild -showBuildSettings`**: 유지 (메타 조회, TCC 무관)
+* 실제 수정 대상 파일:
+    - Script (신규): `cli/_tool/run-xcode.sh`, `cli/_tool/config.sh`
+    - Script (교체): `cli/_tool/run.sh` (기존은 `run.sh_old`로 보존)
+    - Command: `.claude/commands/run.md`
+    - Agent: `.claude/agents/build.md` (Debug 빌드 섹션)
+    - Skill: `.claude/skills/dev/SKILL.md` (Debug 빌드 섹션)
+    - Settings: `.claude/settings.local.json` (`Bash(osascript:*)`, `Bash(open:*)` 추가)
+    - Config: `.gitignore` (`_tool/.last_build_path` 추가)
+* 유지 파일 (xcodebuild Release/메타 조회 — TCC 무관):
+    - Command: `build.md`, `deploy.md`, `verify.md`, `refactor.md`, `issue-fix.md`, `brew-apply.md`
+    - Agent: `build-doctor.md`, `verify.md`, `deployment.md`, `refactor.md`
+    - Rule: `coding-rules.md`, `deploy-rules.md`, `path-rules.md`
 * 구현 명세:
-    - Step 1: 기존 `xcodebuild` 호출 대신 AppleScript 또는 CLI로 Xcode 제어
-        * AppleScript: `osascript -e 'tell application "Xcode" to stop'` (기존 빌드 중단)
-        * CLI: `pkill -f xcodebuild` (더 안정적)
-        * AppleScript: `osascript -e 'tell application "Xcode" to run'` (빌드 시작) 또는 `xcodebuild` CLI 직접 호출
+    - **Step 0: 프로젝트 사전 오픈** (AppleScript 오류 예방)
+        * Xcode 미실행·프로젝트 미오픈 상태에서 `tell application "Xcode" to ...` 호출 시 AppleScript 오류 발생
+        * CLI: `open -a Xcode cli/fWarrangeCli.xcodeproj` (또는 AppleScript `tell application "Xcode" to open POSIX file "..."`)
+        * 이미 열려 있으면 idempotent — 중복 오픈 없이 통과
+        * Xcode 실행·프로젝트 로드 완료까지 polling 대기 (`osascript -e 'application "Xcode" is running'` 등)
+    - Step 1: Xcode 빌드 제어
+        * 기존 빌드 중단: `osascript -e 'tell application "Xcode" to stop'` + `pkill -f xcodebuild` (보조)
+        * 빌드 시작: `build workspace document` (AppleScript)
+        * 빌드 완료 대기: `scheme action result.completed` 폴링, `status`/`error message` 판정
+        * **제약 (수용)**: 외부에서 소스 파일을 수정한 직후 Xcode가 "Revert/Keep Xcode Version" 다이얼로그를 띄우면 AppleScript가 `-1728 (Can't get scheme action result id)` 에러로 실패. 사용자가 Xcode 창에서 수동으로 "Revert" 클릭 후 재실행하면 정상 동작 (스크립트에서 안내 메시지 출력)
     - Step 2: 빌드 완료 후 자동 배포
         * 빌드 경로 동적 계산 (또는 `_tool/.last_build_path` 캐시)
-        * 바이너리 타임스탠프 비교로 변경 감지
+        * 바이너리 타임스탬프 비교로 변경 감지
         * `/Applications/_nowage_app/fWarrangeCli.app`으로 복사
     - Step 3: `/run run-only` 최적화
-        * `/Applications/_nowage_app` 앱과 `$BUILD_DIR` 앱의 바이너리 MD5/타임스탠프 비교
+        * `/Applications/_nowage_app` 앱과 `$BUILD_DIR` 앱의 바이너리 MD5/타임스탬프 비교
         * 동일하면 바로 실행, 다르면 재배포 후 실행
     - Step 4: 설정 추상화 (다중 프로젝트 확장 대비)
-        * `_tool/config.sh`: 프로젝트명, Bundle ID, Scheme, 배포 경로 정의
-        * `_tool/run-xcode.sh` (신규): 공용 로직 (Xcode 제어, 배포, 캐싱)
+        * `_tool/config.sh`: 프로젝트명, Bundle ID, Scheme, 배포 경로, `.xcodeproj` 경로 정의
+        * `_tool/run-xcode.sh` (신규): 공용 로직 (사전 오픈 → 빌드 → 배포 → 캐싱)
         * `.gitignore` 추가: `_tool/.last_build_path`
+    - Step 5: 대상 파일 업데이트 (실무 방침에 따라 축소)
+        * Debug 빌드 SCAR (`agents/build.md`, `skills/dev/SKILL.md`): Debug 빌드 섹션을 `run-xcode.sh` 경로로 안내 추가
+        * `settings.local.json`: `Bash(osascript:*)`, `Bash(open:*)` 추가 (`Bash(xcodebuild:*)` 유지 — Release/메타 조회 용도)
+        * Release 빌드 SCAR는 수정 없음 (TCC 무관, 또는 별도 이슈로 분리)
 * 검증:
-    - [ ] `/run` 실행 → TCC 문제 없음 + 빌드 성공 + 배포 완료
-    - [ ] `/run run-only` 실행 → 재빌드 없이 기존 앱 실행
-    - [ ] `/run restart` 가능 (기타 인자 통과)
-    - [ ] 기존 `_tool/run.sh` 정상 작동 (충돌 없음)
+    - [x] Xcode 실행 중 상태에서 `run-xcode.sh build-deploy` 실행 → 빌드 + 배포 성공 (2026-04-18 POC)
+    - [x] `/run` 실행 후 앱 기동 시 TCC 재요청 없음 (2026-04-18 실측 — 설계 유효)
+    - [x] 기존 `_tool/run.sh` 이동 확인(`_tool/run.sh_old`)
+    - [x] Debug 빌드 SCAR (`agents/build.md`, `skills/dev/SKILL.md`)에 `run-xcode.sh` 안내 반영
+    - [x] `settings.local.json`에 `Bash(osascript:*)` 권한 추가 (`xcodebuild`·`open`은 기존 허용)
+    - [x] `run-xcode.sh build` 재검증 → `[build] ✅ 빌드 성공` + REST API `status: ok`
+    - [ ] Xcode 미실행 상태에서 `/run` 실행 → 자동 프로젝트 오픈 → 빌드 + 배포 성공 (향후 실사용 중 검증)
+    - [ ] `/run full` 실행 → All Clear Test 통과 (테스트 인프라 소요 시간 때문에 별도 세션)
+    - [ ] Release 빌드 경로(`/deploy`, `/brew-apply`) TCC 재현 여부는 별도 이슈로 분리 등록
+* 구현 명세:
+    - **신규**: `cli/_tool/run-xcode.sh` (171 lines) — Xcode GUI를 AppleScript로 제어하는 빌드·배포·실행 스크립트. 명령: `open/stop/build/build-deploy/deploy-run/run-only/kill`
+    - **신규**: `cli/_tool/config.sh` — 프로젝트 변수 분리 (fSnippetCli 동기화 시 값만 교체)
+    - **교체**: `cli/_tool/run.sh` — 기존 파일을 `run.sh_old`로 보존하고, `run-xcode.sh`를 래핑하는 진입점으로 재작성. `full` 모드(9단계 All Clear Test)는 기존 로직 유지하되 "빌드·배포·실행" 단계를 `bash run-xcode.sh build-deploy` 한 줄로 축약
+    - **수정**: `.gitignore` — `cli/_tool/.last_build_path` 캐시 제외
+    - **수정**: `.claude/commands/run.md` — `run.sh` 래퍼 구조 설명 + Xcode Revert 다이얼로그 대응 안내 추가
+    - **수정**: `.claude/agents/build.md` — Debug 빌드 섹션을 `run-xcode.sh` 경로로 전환 (Release는 xcodebuild 유지)
+    - **수정**: `.claude/skills/dev/SKILL.md` — 빌드 명령 예시를 `run-xcode.sh` + xcodebuild 병행 표기
+    - **수정**: `.claude/settings.local.json` — `Bash(osascript:*)` 권한 추가
+    - **핵심 기술**:
+        * 사전 오픈: `loaded of workspace document` 폴링 (idempotent)
+        * 빌드 완료 감지: `scheme action result.completed` 루프 + `status` 판정
+        * Revert 다이얼로그 충돌: `-1728 (Can't get scheme action result id)` 에러 시 사용자 안내
+        * mtime 비교: `date -r file +%s` 사용 (GNU stat 간섭 회피)
+    - **제약** (추후 개선 과제):
+        * AppleScript `scheme` class는 `name`/`id`만 노출 → Configuration(Debug/Release) 동적 전환 불가
+        * Release 빌드 경로는 xcodebuild CLI 유지 (별도 이슈로 분리)
 
 # 📗 선택
 
