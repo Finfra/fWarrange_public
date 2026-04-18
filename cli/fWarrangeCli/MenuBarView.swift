@@ -61,6 +61,7 @@ struct MenuBarView: View {
         alert.alertStyle = .informational
         alert.addButton(withTitle: "App Store")
         alert.addButton(withTitle: "Locate...")
+        alert.addButton(withTitle: "Open Config in Finder")
         alert.addButton(withTitle: "Cancel")
 
         let response = alert.runModal()
@@ -90,6 +91,15 @@ struct MenuBarView: View {
                     errorAlert.alertStyle = .warning
                     errorAlert.runModal()
                 }
+            }
+        case .alertThirdButtonReturn:
+            // 설정 파일을 Finder에서 보기
+            let configPath = appState.settingsService.configFilePath
+            let configURL = URL(fileURLWithPath: configPath)
+            if FileManager.default.fileExists(atPath: configPath) {
+                NSWorkspace.shared.activateFileViewerSelecting([configURL])
+            } else {
+                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: configURL.deletingLastPathComponent().path)
             }
         default:
             break
