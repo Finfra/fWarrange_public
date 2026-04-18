@@ -5,9 +5,10 @@ date: 2026-04-07
 ---
 
 * Issue HWM: 33
-* Save Point: 2026-04-18 (0713f46) Docs(Issue30): paidApp_version.md 설계 정합성 개선
+* Save Point: 2026-04-18 (cc29453) Fix(Script)(Issue33): fwc-run-xcode.sh 자기완결 build 패턴 전환
   - 6872be0 (2026-04-18) - Docs: Close Issue31
   - 9d48324 (2026-04-18) - Refactor(Issue32): run.sh 완전 제거 + fwc- 접두어 네이밍 전환
+  - cc29453 (2026-04-18) - Fix(Script)(Issue33): fwc-run-xcode.sh 자기완결 build 패턴 전환
 
 # 🤔 결정사항
 
@@ -18,7 +19,7 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
-## Issue33: fwc-run-xcode.sh 구조를 pairApp 자기완결 패턴으로 수렴 (등록: 2026-04-18) (✅ 완료) ✅
+## Issue33: fwc-run-xcode.sh 구조를 pairApp 자기완결 패턴으로 수렴 (등록: 2026-04-18) (✅ 완료, cc29453) ✅
 * 목적: `xcode_build()` 내부에서 `xcode_stop()` 을 선행 호출하도록 재편하여 dispatcher 단순화 + build 진입 시 stop 누락 가능성 원천 차단
 * 배경: 2026-04-18 run_diff_pairApp 레포트로 양쪽 구조 비교 결과, pairApp은 자기완결 build, cliApp은 dispatcher 선행 stop 패턴. 실제 "stop 없는 build" 사용 케이스가 없으므로 자기완결이 실무상 유리
 * report: `cli/_doc_work/report/run_diff_pairApp.md`
