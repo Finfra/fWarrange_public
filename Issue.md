@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 30
+* Issue HWM: 31
 * Save Point: 2026-04-18 (0713f46) Docs(Issue30): paidApp_version.md 설계 정합성 개선
 
 # 🤔 결정사항
@@ -12,6 +12,35 @@ date: 2026-04-07
 # 🌱 이슈후보
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
+
+## Issue31: run.sh 스크립트 Xcode 기반 빌드 단일화 (등록: 2026-04-18)
+* 목적: 현재 스크립트 기반 빌드의 TCC 문제 해결, Xcode 기반 빌드로 단일화 — 자동화는 유지하되 빌드 프로세스만 CLI/AppleScript로 제어
+* 상세:
+    - **문제**: 스크립트(`xcodebuild`) 직접 실행 시 매번 TCC(Transparency, Consent, and Control) 권한 문제 발생
+    - **원인**: Xcode GUI를 통한 빌드와 CLI 기반 빌드의 권한 컨텍스트 차이
+    - **목표**: Xcode GUI를 직접 제어(`/run` 커맨드 → AppleScript/CLI)하여 TCC 문제 제거, 자동 배포 유지
+    - **범위**: fWarrangeCli만 적용 (pairApp과 함께만), 기존 `run.sh` 유지 (충돌 방지)
+* 구현 명세:
+    - Step 1: 기존 `xcodebuild` 호출 대신 AppleScript 또는 CLI로 Xcode 제어
+        * AppleScript: `osascript -e 'tell application "Xcode" to stop'` (기존 빌드 중단)
+        * CLI: `pkill -f xcodebuild` (더 안정적)
+        * AppleScript: `osascript -e 'tell application "Xcode" to run'` (빌드 시작) 또는 `xcodebuild` CLI 직접 호출
+    - Step 2: 빌드 완료 후 자동 배포
+        * 빌드 경로 동적 계산 (또는 `_tool/.last_build_path` 캐시)
+        * 바이너리 타임스탠프 비교로 변경 감지
+        * `/Applications/_nowage_app/fWarrangeCli.app`으로 복사
+    - Step 3: `/run run-only` 최적화
+        * `/Applications/_nowage_app` 앱과 `$BUILD_DIR` 앱의 바이너리 MD5/타임스탠프 비교
+        * 동일하면 바로 실행, 다르면 재배포 후 실행
+    - Step 4: 설정 추상화 (다중 프로젝트 확장 대비)
+        * `_tool/config.sh`: 프로젝트명, Bundle ID, Scheme, 배포 경로 정의
+        * `_tool/run-xcode.sh` (신규): 공용 로직 (Xcode 제어, 배포, 캐싱)
+        * `.gitignore` 추가: `_tool/.last_build_path`
+* 검증:
+    - [ ] `/run` 실행 → TCC 문제 없음 + 빌드 성공 + 배포 완료
+    - [ ] `/run run-only` 실행 → 재빌드 없이 기존 앱 실행
+    - [ ] `/run restart` 가능 (기타 인자 통과)
+    - [ ] 기존 `_tool/run.sh` 정상 작동 (충돌 없음)
 
 # 📗 선택
 
@@ -65,7 +94,7 @@ date: 2026-04-07
 
 * 목적: nPTiR 체계 원활 운용을 위해 잘못된 _doc_work 위치 정리, .gitignore 보완, settings.json 하드코딩 경로 제거
 * plan: `cli/_doc_work/plan/start-nPTiR_plan.md`
-* task: `cli/_doc_work/task/start-nPTiR_task.md`
+* task: `cli/_doc_work/tasks/start-nPTiR_task.md`
 * 상세:
     - `_doc_work/` 루트 파일 3개 `cli/_doc_work/`로 이동 및 빈 폴더 삭제
     - `cli/_doc_work/tasks/` → `task/` 단수형 리네임
