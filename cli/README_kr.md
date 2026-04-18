@@ -58,11 +58,11 @@ open /Applications/_nowage_app/fWarrangeCli.app
 * **기본 포트**: `3016`
 * **API 버전**: `v1`
 * **서비스 루트**: `http://localhost:3016/api/v1`
-* **OpenAPI 명세**: [`api/openapi.yaml`](../api/openapi.yaml)
+* **OpenAPI 명세**: [`api/openapi_v1.yaml`](../api/openapi_v1.yaml)
 
 ## 엔드포인트
 
-모든 경로는 서비스 루트 `/api/v1` 기준. 전체 명세: [`api/openapi.yaml`](../api/openapi.yaml)
+모든 경로는 서비스 루트 `/api/v1` 기준. 전체 명세: [`api/openapi_v1.yaml`](../api/openapi_v1.yaml)
 
 ### 상태
 

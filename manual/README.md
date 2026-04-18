@@ -89,7 +89,7 @@ manual/
 * [x] Glossary.md - 용어 사전 (REST API, Skill, MCP 용어 포함)
 
 # 관련 문서(핵심 링크)
-* **API 스펙**: `api/openapi.yaml`
+* **API 스펙**: `api/openapi_v1.yaml`
 * **API 테스트 스크립트**: `api/test-api.sh`
 * **Skill 정의**: `agents/claude/skills/fwarrange/SKILL.md`
 * **Plugin 설정**: `agents/claude/.claude-plugin/plugin.json`

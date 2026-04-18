@@ -14,7 +14,7 @@ fWarrange는 macOS 윈도우 창 위치/크기를 저장하고 복구하는 REST
 
 모든 응답은 `{"status": "ok", "data": ...}` 래퍼 형식을 따릅니다. API는 기본적으로 **비활성화** 상태이며, 앱 설정에서 활성화해야 합니다.
 
-> OpenAPI 3.0 스펙: [openapi.yaml](./openapi.yaml)
+> OpenAPI 3.0 스펙: [openapi_v1.yaml](./openapi_v1.yaml)
 
 ---
 

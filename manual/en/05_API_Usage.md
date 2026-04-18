@@ -254,7 +254,7 @@ Automate fWarrange via the macOS Shortcuts app:
 ## API Specification
 
 Full OpenAPI 3.0 spec is available at:
-* `api/openapi.yaml`
+* `api/openapi_v1.yaml`
 
 ## Next Steps
 

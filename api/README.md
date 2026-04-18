@@ -14,7 +14,7 @@ fWarrange provides a REST API for saving and restoring macOS window positions an
 
 All responses follow the `{"status": "ok", "data": ...}` wrapper format. The API is **disabled** by default and must be enabled in the app settings.
 
-> OpenAPI 3.0 Spec: [openapi.yaml](./openapi.yaml)
+> OpenAPI 3.0 Spec: [openapi_v1.yaml](./openapi_v1.yaml)
 
 ---
 
