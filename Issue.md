@@ -7,6 +7,7 @@ date: 2026-04-07
 * Issue HWM: 32
 * Save Point: 2026-04-18 (0713f46) Docs(Issue30): paidApp_version.md 설계 정합성 개선
   - 6872be0 (2026-04-18) - Docs: Close Issue31
+  - 9d48324 (2026-04-18) - Refactor(Issue32): run.sh 완전 제거 + fwc- 접두어 네이밍 전환
 
 # 🤔 결정사항
 
@@ -17,7 +18,7 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
-## Issue32: run.sh 완전 제거 + fwc- 접두어 네이밍 전환 (등록: 2026-04-18) (✅ 완료) ✅
+## Issue32: run.sh 완전 제거 + fwc- 접두어 네이밍 전환 (등록: 2026-04-18) (✅ 완료, 9d48324) ✅
 * 목적: Issue31 후속 정리 — `run.sh` 래퍼를 완전히 제거하고 pairApp(fSnippetCli #25) 패턴과 동일한 `fwc-` 접두어 네이밍으로 통일
 * 배경: Issue31은 제목("run.sh 스크립트 제거")과 구현("래퍼로 교체")이 불일치한 상태로 완료됨. pairApp은 이미 `run.sh`를 완전 제거하고 `fsc-config.sh`/`fsc-run-xcode.sh`/`fsc-test.sh` 3개로 분리함. 본 이슈는 동일 패턴을 fWarrangeCli에 적용
 * 상세:
