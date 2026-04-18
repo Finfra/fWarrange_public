@@ -5,7 +5,7 @@ date: 2026-04-07
 ---
 
 * Issue HWM: 30
-* Save Point: 2026-04-17 (77fabbd) Feat(Tool): /run full All Clear Test 통합 테스트 파이프라인 추가 (Issue29)
+* Save Point: 2026-04-18 (0713f46) Docs(Issue30): paidApp_version.md 설계 정합성 개선
 
 # 🤔 결정사항
 
@@ -13,7 +13,10 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
 
-## Issue30: paidApp_version.md 설계 문서 정합성 개선 (등록: 2026-04-18)
+# 📗 선택
+
+# ✅ 완료
+## Issue30: paidApp_version.md 설계 문서 정합성 개선 (등록: 2026-04-18) (✅ 완료, 0713f46) ✅
 * 목적: `cli/_doc_design/paidApp_version.md` 설계 문서를 실제 `AppState.swift` 구현 및 프로젝트 규칙과 일치하도록 정비
 * 관련 파일: `cli/_doc_design/paidApp_version.md`, `cli/fWarrangeCli/AppState.swift`
 * 연계 이슈: paidApp `Issue191` (paidApp 측 참조 링크 정비)
@@ -30,9 +33,6 @@ date: 2026-04-07
     - API 표기: "v1 (v2에서도 제공)" 또는 "v1/v2 공존" 형태로 보강
     - 이슈 상태 표: 현재 Issue.md와 재동기화 (Issue9/10/11 최종 상태 확인)
 
-# 📗 선택
-
-# ✅ 완료
 ## Issue29: /run full All Clear Test 통합 테스트 파이프라인 (등록: 2026-04-17, 해결: 2026-04-17, commit: 77fabbd) ✅
 * 목적: project 25의 /run full 패턴을 참고하여 fWarrangeCli의 빌드→배포→_config.yml 기본값 검증→API/CMD 전체 테스트→로그 검사를 자동화하는 통합 테스트 파이프라인 구현
 * 상세:
