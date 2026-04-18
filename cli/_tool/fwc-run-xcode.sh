@@ -1,6 +1,6 @@
 #!/bin/bash
-# Issue31: Xcode GUI 기반 빌드·배포 스크립트 (TCC 회피 목적)
-# Usage: ./run-xcode.sh [build|build-deploy|run-only|deploy-run|stop|kill|open]
+# Issue31/32: Xcode GUI 기반 빌드·배포 스크립트 (TCC 회피 목적, fWarrangeCli)
+# Usage: ./fwc-run-xcode.sh [build|build-deploy|run-only|deploy-run|stop|kill|open]
 #
 #   open         : .xcodeproj 사전 오픈 + 로드 대기 (idempotent)
 #   build        : Xcode GUI 빌드만 (배포 없음)
@@ -10,15 +10,15 @@
 #   stop         : Xcode의 현재 scheme action 중단
 #   kill         : 배포 앱 프로세스 종료
 #
-# 설계 근거: Issue.md Issue31
+# 설계 근거: Issue.md Issue31 (POC), Issue32 (네이밍 정리)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLI_DIR="$(dirname "$SCRIPT_DIR")"
 
-# shellcheck source=config.sh
-source "$SCRIPT_DIR/config.sh"
+# shellcheck source=fwc-config.sh
+source "$SCRIPT_DIR/fwc-config.sh"
 
 XCODEPROJ="$CLI_DIR/$XCODEPROJ_NAME"
 CACHE_FILE="$SCRIPT_DIR/$CACHE_FILE_NAME"
@@ -64,8 +64,11 @@ APPLESCRIPT
 }
 
 # ---------- Step 1: Xcode 빌드 제어 ----------
+# 다른 Xcode 프로젝트의 빌드에 영향을 주지 않도록 해당 workspace document만 stop.
+# pkill -f xcodebuild 같은 전역 종료 사용 금지 — 다른 프로젝트 CLI 빌드까지 죽임.
 xcode_stop() {
-    echo "[stop] 기존 scheme action 중단"
+    open_project
+    echo "[stop] $XCODEPROJ_NAME scheme action 중단 (해당 workspace 한정)"
     osascript 2>/dev/null <<APPLESCRIPT || true
 tell application "Xcode"
     try
@@ -73,11 +76,10 @@ tell application "Xcode"
     end try
 end tell
 APPLESCRIPT
-    pkill -f xcodebuild 2>/dev/null || true
 }
 
 xcode_build() {
-    open_project
+    xcode_stop
     # Xcode에 포커스 — 외부 파일 변경 감지 시 Revert 다이얼로그가 보이도록
     osascript -e 'tell application "Xcode" to activate' 2>/dev/null || true
     echo "[build] Xcode 빌드 시작 ($SCHEME)"
@@ -185,11 +187,9 @@ case "$CMD" in
         xcode_stop
         ;;
     build)
-        xcode_stop
         xcode_build
         ;;
     build-deploy)
-        xcode_stop
         xcode_build
         deploy
         run_app

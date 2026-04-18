@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 32
+* Issue HWM: 33
 * Save Point: 2026-04-18 (0713f46) Docs(Issue30): paidApp_version.md 설계 정합성 개선
   - 6872be0 (2026-04-18) - Docs: Close Issue31
   - 9d48324 (2026-04-18) - Refactor(Issue32): run.sh 완전 제거 + fwc- 접두어 네이밍 전환
@@ -18,6 +18,28 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue33: fwc-run-xcode.sh 구조를 pairApp 자기완결 패턴으로 수렴 (등록: 2026-04-18) (✅ 완료) ✅
+* 목적: `xcode_build()` 내부에서 `xcode_stop()` 을 선행 호출하도록 재편하여 dispatcher 단순화 + build 진입 시 stop 누락 가능성 원천 차단
+* 배경: 2026-04-18 run_diff_pairApp 레포트로 양쪽 구조 비교 결과, pairApp은 자기완결 build, cliApp은 dispatcher 선행 stop 패턴. 실제 "stop 없는 build" 사용 케이스가 없으므로 자기완결이 실무상 유리
+* report: `cli/_doc_work/report/run_diff_pairApp.md`
+* 상세:
+    - `fwc-run-xcode.sh`:
+        * `xcode_stop()` 진입부에 `open_project` 호출 추가 (단독 실행 안전성 확보)
+        * `xcode_build()` 진입부에서 `xcode_stop` 함수 호출로 변경 (기존 dispatcher 선행 호출 대체)
+        * dispatcher `build` case: `xcode_stop` 선행 호출 제거 → `xcode_build` 단독
+        * dispatcher `build-deploy` case: `xcode_stop` 선행 호출 제거 → `xcode_build` → `deploy` → `run_app`
+    - pairApp(Issue41)와 동일 설계 — 차이점은 pairApp이 inline AppleScript 중복을 가지고 있어 본 이슈 수렴 형태가 양 레포 최종 표준이 됨
+* 구현 명세:
+    - DRY 원칙: stop AppleScript는 `xcode_stop()` 한 곳에만 존재
+    - `xcode_stop`은 외부 `/run stop` 서브커맨드 + `xcode_build` 내부 호출 양쪽에서 공유
+    - `pkill -f xcodebuild` 재도입 절대 금지 (2026-04-18 수정 합의 유지)
+    - 상단 주석에 workspace document 한정 stop 설계 의도 명시 (pkill 전역 종료 금지 사유 포함)
+* 검증:
+    - [x] `/run` (build-deploy) REST 3016 정상 응답 (status=ok, version=1.0.0, uptime=6s)
+    - [x] `/run kill` → fWarrangeCli만 종료 (post-kill REST 3016 응답 없음 확인)
+    - [x] `bash cli/_tool/fwc-run-xcode.sh stop` 단독 실행 → xcodeproj 로드 상태에서 정상 종료 (open_project idempotent)
+    - [ ] `bash cli/_tool/fwc-test.sh` 전체 통과 (별도 세션 필요, 시간 소요)
+
 ## Issue32: run.sh 완전 제거 + fwc- 접두어 네이밍 전환 (등록: 2026-04-18) (✅ 완료, 9d48324) ✅
 * 목적: Issue31 후속 정리 — `run.sh` 래퍼를 완전히 제거하고 pairApp(fSnippetCli #25) 패턴과 동일한 `fwc-` 접두어 네이밍으로 통일
 * 배경: Issue31은 제목("run.sh 스크립트 제거")과 구현("래퍼로 교체")이 불일치한 상태로 완료됨. pairApp은 이미 `run.sh`를 완전 제거하고 `fsc-config.sh`/`fsc-run-xcode.sh`/`fsc-test.sh` 3개로 분리함. 본 이슈는 동일 패턴을 fWarrangeCli에 적용
