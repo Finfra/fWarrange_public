@@ -16,13 +16,19 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
 
+# 📕 중요
+
+# 📙 일반
+
 # 📗 선택
 
 # ✅ 완료
 ## Issue33: fwc-run-xcode.sh 구조를 pairApp 자기완결 패턴으로 수렴 (등록: 2026-04-18) (✅ 완료, cc29453) ✅
 * 목적: `xcode_build()` 내부에서 `xcode_stop()` 을 선행 호출하도록 재편하여 dispatcher 단순화 + build 진입 시 stop 누락 가능성 원천 차단
 * 배경: 2026-04-18 run_diff_pairApp 레포트로 양쪽 구조 비교 결과, pairApp은 자기완결 build, cliApp은 dispatcher 선행 stop 패턴. 실제 "stop 없는 build" 사용 케이스가 없으므로 자기완결이 실무상 유리
-* report: `cli/_doc_work/report/run_diff_pairApp.md`
+* report:
+    - 배경 비교: `cli/_doc_work/report/run_diff_pairApp.md`
+    - 구현 보고: `cli/_doc_work/report/fwc-run-self-contained_issue33_report.md`
 * 상세:
     - `fwc-run-xcode.sh`:
         * `xcode_stop()` 진입부에 `open_project` 호출 추가 (단독 실행 안전성 확보)
