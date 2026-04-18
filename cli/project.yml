@@ -36,3 +36,23 @@ targets:
         com.apple.security.network.server: true
         com.apple.security.network.client: true
         com.apple.security.files.user-selected.read-write: true
+    scheme:
+      testTargets:
+        - fWarrangeCliTests
+      gatherCoverageData: true
+
+  fWarrangeCliTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - fWarrangeCliTests
+    dependencies:
+      - target: fWarrangeCli
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: kr.finfra.fWarrangeCliTests
+        GENERATE_INFOPLIST_FILE: true
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/fWarrangeCli.app/Contents/MacOS/fWarrangeCli"
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"

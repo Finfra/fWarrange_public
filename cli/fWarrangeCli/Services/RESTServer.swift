@@ -109,10 +109,27 @@ final class RESTServer: RESTServerProtocol {
 
     private let startedAt = Date()
 
+    // MARK: - PaidApp 라이프사이클 (Issue192 Phase A)
+
+    /// paidApp 라이프사이클 상태 저장소. register/unregister/status 엔드포인트 백엔드.
+    let paidAppStore: PaidAppStateStore
+
+    /// paidApp 라우터. HTTP 파싱은 RESTServer, 비즈니스 로직은 Router가 담당.
+    private let paidAppRouter: PaidAppRouter
+
     // MARK: - 초기화
 
-    init(handlers: RESTServerHandlers) {
+    init(
+        handlers: RESTServerHandlers,
+        paidAppStore: PaidAppStateStore = PaidAppStateStore(),
+        paidAppSenderResolver: @escaping PaidAppRouter.SenderBundleIdResolver = PaidAppRouter.defaultSenderResolver
+    ) {
         self.handlers = handlers
+        self.paidAppStore = paidAppStore
+        self.paidAppRouter = PaidAppRouter(
+            store: paidAppStore,
+            senderBundleIdResolver: paidAppSenderResolver
+        )
     }
 
     // MARK: - 서버 시작/중지
@@ -697,7 +714,121 @@ final class RESTServer: RESTServerProtocol {
             return true
         }
 
+        // --- PaidApp 라이프사이클 엔드포인트 (Issue192 Phase A) ---
+
+        // POST /api/v2/paidapp/register
+        if method == "POST" && path == "\(base)/paidapp/register" {
+            handlePaidAppRegister(request: request, completion: completion)
+            return true
+        }
+
+        // POST /api/v2/paidapp/unregister
+        if method == "POST" && path == "\(base)/paidapp/unregister" {
+            handlePaidAppUnregister(request: request, completion: completion)
+            return true
+        }
+
+        // GET /api/v2/paidapp/status
+        if method == "GET" && path == "\(base)/paidapp/status" {
+            handlePaidAppStatus(completion: completion)
+            return true
+        }
+
         return false
+    }
+
+    // MARK: - PaidApp 핸들러 (Issue192 Phase A)
+
+    private func handlePaidAppRegister(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
+        guard let body = request.body, !body.isEmpty else {
+            completion(.badRequest(message: "JSON body가 필요합니다"))
+            return
+        }
+        let decoder = JSONDecoder()
+        let req: PaidAppRegisterRequest
+        do {
+            req = try decoder.decode(PaidAppRegisterRequest.self, from: body)
+        } catch {
+            completion(.badRequest(message: "PaidAppRegisterRequest 파싱 실패: \(error)"))
+            return
+        }
+        let result = paidAppRouter.register(request: req)
+        switch result {
+        case let .success(resp):
+            completion(.ok(json: [
+                "sessionId": resp.sessionId,
+                "registeredAt": resp.registeredAt
+            ]))
+            logStateTransition(event: "register", pid: req.pid, sessionId: resp.sessionId)
+        case let .forbidden(reason):
+            logW(reason)
+            completion(.forbidden(message: reason))
+        case let .badRequest(reason):
+            completion(.badRequest(message: reason))
+        case let .notFound(reason):
+            completion(.notFound(message: reason))
+        }
+    }
+
+    private func handlePaidAppUnregister(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
+        guard let body = request.body, !body.isEmpty else {
+            completion(.badRequest(message: "JSON body가 필요합니다"))
+            return
+        }
+        let decoder = JSONDecoder()
+        let req: PaidAppUnregisterRequest
+        do {
+            req = try decoder.decode(PaidAppUnregisterRequest.self, from: body)
+        } catch {
+            completion(.badRequest(message: "PaidAppUnregisterRequest 파싱 실패: \(error)"))
+            return
+        }
+        let result = paidAppRouter.unregister(request: req)
+        switch result {
+        case let .success(resp):
+            completion(.ok(json: ["unregisteredAt": resp.unregisteredAt]))
+            logStateTransition(event: "unregister", pid: req.pid, sessionId: req.sessionId)
+        case let .forbidden(reason):
+            logW(reason)
+            completion(.forbidden(message: reason))
+        case let .badRequest(reason):
+            completion(.badRequest(message: reason))
+        case let .notFound(reason):
+            completion(.notFound(message: reason))
+        }
+    }
+
+    private func handlePaidAppStatus(completion: @escaping (HTTPResponse) -> Void) {
+        let resp = paidAppRouter.status()
+        var json: [String: Any] = ["state": resp.state.rawValue]
+        if let pid = resp.pid { json["pid"] = pid }
+        if let v = resp.version { json["version"] = v }
+        if let bp = resp.bundlePath { json["bundlePath"] = bp }
+        if let sid = resp.sessionId { json["sessionId"] = sid }
+        if let ra = resp.registeredAt { json["registeredAt"] = ra }
+        completion(.ok(json: json))
+    }
+
+    /// `paidapp_state_transitions.log`에 상태 전환 기록 (Phase A-8 infra).
+    /// 파일 쓰기 실패는 조용히 무시 (로깅 실패가 서버 동작을 막지 않음).
+    private func logStateTransition(event: String, pid: Int32, sessionId: String) {
+        let timestamp = ISO8601Formatter.string(from: Date())
+        let logDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Documents/finfra/fWarrangeData/logs", isDirectory: true)
+        try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true)
+        let logFile = logDir.appendingPathComponent("paidapp_state_transitions.log")
+        let line = "\(timestamp) event=\(event) pid=\(pid) sessionId=\(sessionId)\n"
+        if let data = line.data(using: .utf8) {
+            if FileManager.default.fileExists(atPath: logFile.path) {
+                if let handle = try? FileHandle(forWritingTo: logFile) {
+                    handle.seekToEndOfFile()
+                    handle.write(data)
+                    try? handle.close()
+                }
+            } else {
+                try? data.write(to: logFile)
+            }
+        }
     }
 
     // MARK: - Mode 핸들러
