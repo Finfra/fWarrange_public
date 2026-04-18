@@ -22,7 +22,7 @@ else
 fi
 TOOL_DIR="$(cd "$(dirname "$_SELF")" && pwd)"
 ROOT_DIR="$TOOL_DIR/apiTest"
-REPORT_DIR="$(cd "$TOOL_DIR/../.." && pwd)/_doc_work/report"
+REPORT_DIR="$(cd "$TOOL_DIR/.." && pwd)/_doc_work/report"
 LOG_FILE="$HOME/Documents/finfra/fWarrangeData/logs/wlog.log"
 
 # 옵션 파싱

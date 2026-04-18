@@ -1,33 +1,32 @@
 ---
-name: cmdTest_plan
-description: fWarrangeCli CLI 커맨드 테스트 계획 (cmd_design.md 기반)
-date: 2026-04-08
+name: cmdTest_plan_v1
+description: fWarrangeCli CLI v1 커맨드 테스트 계획 (cmd_design.md 기반)
+date: 2026-04-13
 ---
 
 # 개요
 
-`cli/_doc_design/cmd_design.md` 기반 CLI 커맨드 테스트 스크립트 매핑.
+`cli/_doc_design/cmd_design.md` 기반 CLI **v1** 커맨드 테스트 스크립트 매핑.
+v2 커맨드는 [cmdTest_plan_v2.md](cmdTest_plan_v2.md) 참조.
 
 * 파일명 규칙: `{00-99}.{내역}.sh`
-* 스크립트 위치: `cli/_tool/cmdTest/`
+* 스크립트 위치: `cli/_tool/cmdTest/v1/`
 * 실행 대상: `fWarrangeCli` 바이너리 (Homebrew 설치 또는 빌드 결과물)
 * 전제 조건: fWarrangeCli 데몬이 실행 중이어야 함 (CLI는 REST API 호출)
 
 # 실행 방법
 
 ```bash
-# 전체 실행
+# v1 전체 (하위 호환 기본값)
 source cli/_tool/cmdTestDo.sh
+source cli/_tool/cmdTestDo.sh v1
 
 # 특정 번호만 실행
-source cli/_tool/cmdTestDo.sh 0      # 00.help
-source cli/_tool/cmdTestDo.sh 5      # 05.capture
+source cli/_tool/cmdTestDo.sh v1 0      # v1/00.help
 
-# 에러 테스트 전체 실행
-source cli/_tool/cmdTestDo.sh E
-
-# 정상 + 에러 전체 실행
-source cli/_tool/cmdTestDo.sh all
+# 에러 테스트
+source cli/_tool/cmdTestDo.sh v1 E      # v1 에러 전체
+source cli/_tool/cmdTestDo.sh v1 E01    # v1/E01만
 ```
 
 # 바이너리 경로
@@ -240,43 +239,16 @@ $CLI quit --confirm
 * **삭제 (위험)**: 9, 12
 * **앱 종료 (최후)**: 17
 
-# API 전용 엔드포인트 (CLI 미대응)
+# API 전용 엔드포인트 (v1 CLI 미대응)
 
 | 엔드포인트       | Method | 사유                                      |
 | :--------------- | :----- | :---------------------------------------- |
 | `PUT /ui/state`  | PUT    | GUI 자동화 전용 — CLI 커맨드로 노출 불필요 |
 
-## v2 Settings 엔드포인트 (전체 API 전용)
-
-현재 `CLIHandler.swift`는 `/api/v1`만 호출하며 v2 서브커맨드를 노출하지 않음.
-따라서 다음 v2 엔드포인트는 **apiTest(20~37)로만 검증**되고 cmdTest 대상이 아님.
-
-| 엔드포인트                                    | Method                  | apiTest 스크립트                   |
-| :-------------------------------------------- | :---------------------- | :--------------------------------- |
-| `/settings`                                   | GET, PATCH              | 20, 30                             |
-| `/settings/general`                           | GET, PATCH              | 21, 27                             |
-| `/settings/restore`                           | GET, PATCH              | 22, 28                             |
-| `/settings/restore/excluded-apps`             | GET, PUT, POST, DELETE  | 25, 32, 33, 34                     |
-| `/settings/restore/excluded-apps/reset`       | POST                    | 35                                 |
-| `/settings/api`                               | GET, PATCH              | 23, 31                             |
-| `/settings/advanced`                          | GET, PATCH              | 24, 29                             |
-| `/settings/shortcuts`                         | GET, PUT                | 26, 36                             |
-| `/settings/factory-reset`                     | POST                    | 37 (FORCE=1), E08                  |
-
-> CLI에서 v2 설정 탭을 다루는 서브커맨드(`settings-v2`, `excluded-apps` 등)는 별도 이슈로 분리해 추후 추가.
-
 # 파일 구조
 
 ```
-cli/_tool/
-├── cmdTestDo.sh              # 실행기 (전체/개별)
-└── cmdTest/
-    ├── cmdTest_plan.md        # 이 문서
-    ├── 00.help.sh
-    ├── 01.version.sh
-    ├── ...
-    ├── 17.quit.sh
-    ├── E01.unknown-command.sh
-    ├── ...
-    └── E07.daemon-not-running.sh
+cli/_tool/cmdTest/v1/
+├── 00.help.sh ~ 17.quit.sh
+└── E01.unknown-command.sh ~ E07.daemon-not-running.sh
 ```
