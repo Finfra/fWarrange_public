@@ -6,6 +6,7 @@ date: 2026-04-07
 
 * Issue HWM: 31
 * Save Point: 2026-04-18 (0713f46) Docs(Issue30): paidApp_version.md 설계 정합성 개선
+  - 6872be0 (2026-04-18) - Docs: Close Issue31
 
 # 🤔 결정사항
 
@@ -13,7 +14,10 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
 
-## Issue31: run.sh 스크립트 제거 후 Xcode 기반 빌드 단일화 (등록: 2026-04-18)
+# 📗 선택
+
+# ✅ 완료
+## Issue31: run.sh 스크립트 제거 후 Xcode 기반 빌드 단일화 (등록: 2026-04-18) (✅ 완료, 6872be0) ✅
 * 목적: 현재 스크립트 기반 빌드의 TCC 문제 해결, Xcode 기반 빌드로 단일화 — 자동화는 유지하되 빌드 프로세스만 AppleScript 기반으로 제어
 * 상세:
     - **문제**: `xcodebuild` 기반 빌드·배포 후 앱 **실행 시점에** TCC(Transparency, Consent, and Control) 권한 재요청 발생 (Accessibility 추정, 근본 원인 진단은 별도 이슈 예정)
@@ -91,9 +95,6 @@ date: 2026-04-07
         * AppleScript `scheme` class는 `name`/`id`만 노출 → Configuration(Debug/Release) 동적 전환 불가
         * Release 빌드 경로는 xcodebuild CLI 유지 (별도 이슈로 분리)
 
-# 📗 선택
-
-# ✅ 완료
 ## Issue30: paidApp_version.md 설계 문서 정합성 개선 (등록: 2026-04-18) (✅ 완료, 0713f46) ✅
 * 목적: `cli/_doc_design/paidApp_version.md` 설계 문서를 실제 `AppState.swift` 구현 및 프로젝트 규칙과 일치하도록 정비
 * 관련 파일: `cli/_doc_design/paidApp_version.md`, `cli/fWarrangeCli/AppState.swift`
