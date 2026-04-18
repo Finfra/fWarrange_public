@@ -9,7 +9,7 @@
 #   bash cli/_tool/apiTestDo.sh v1 E                     # v1 에러 전체
 #   bash cli/_tool/apiTestDo.sh v2 E01                   # v2 E01번
 #   bash cli/_tool/apiTestDo.sh all                      # v1 + v2 정상 + 에러 전체
-#   bash cli/_tool/apiTestDo.sh --run all                # run.sh 실행 후 전체 테스트
+#   bash cli/_tool/apiTestDo.sh --run all                # fwc-run-xcode.sh 실행 후 전체 테스트
 #   bash cli/_tool/apiTestDo.sh --log all                # 테스트 후 로그 확인
 #   bash cli/_tool/apiTestDo.sh --report all             # 테스트 결과 저장
 #   bash cli/_tool/apiTestDo.sh --run --log --report all # 전체 자동화
@@ -77,8 +77,8 @@ run_error() {
 }
 
 pre_flight() {
-    echo "=== Pre-flight: run.sh 실행 ==="
-    bash "$TOOL_DIR/run.sh"
+    echo "=== Pre-flight: fwc-run-xcode.sh build-deploy 실행 ==="
+    bash "$TOOL_DIR/fwc-run-xcode.sh" build-deploy
     echo ""
 }
 
