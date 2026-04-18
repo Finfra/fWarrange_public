@@ -6,6 +6,7 @@ date: 2026-04-07
 
 * Issue HWM: 33
 * Save Point: 2026-04-18 (cc29453) Fix(Script)(Issue33): fwc-run-xcode.sh 자기완결 build 패턴 전환
+  - 4ba84fc (2026-04-19) - Docs(Issue33): report 경로 연결
   - 6872be0 (2026-04-18) - Docs: Close Issue31
   - 9d48324 (2026-04-18) - Refactor(Issue32): run.sh 완전 제거 + fwc- 접두어 네이밍 전환
   - cc29453 (2026-04-18) - Fix(Script)(Issue33): fwc-run-xcode.sh 자기완결 build 패턴 전환
