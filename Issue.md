@@ -7,20 +7,21 @@ date: 2026-04-07
 * Issue HWM: 37
 * Save Point: 2026-04-19 (f797821) Chore: 선행 인프라 — xcodeproj Tests 타겟 코드사인 + VERSION 1.0.0 SSOT
   - f797821 (2026-04-19) - Chore: 선행 인프라 — xcodeproj Tests 타겟 코드사인 + VERSION 1.0.0 SSOT
-  - c68e70f (2026-04-19) - Docs: Close Issue36
-  - 4ba84fc (2026-04-19) - Docs(Issue33): report 경로 연결
-  - 6872be0 (2026-04-18) - Docs: Close Issue31
-  - 9d48324 (2026-04-18) - Refactor(Issue32): run.sh 완전 제거 + fwc- 접두어 네이밍 전환
-  - cc29453 (2026-04-18) - Fix(Script)(Issue33): fwc-run-xcode.sh 자기완결 build 패턴 전환
-  - 7a582c2 (2026-04-19) - Feat(Issue34)(Phase A): /deploy brew 서브커맨드 + pairApp 패턴 수렴
-  - 464053a (2026-04-19) - Docs(Issue34/35): pairApp 심링크 전략 역채택 반영 + Issue35 선수 이슈 신설
-  - cf32673 (2026-04-19) - Docs(Issue34/35): Login Item 방식 obsolete + brew services 단일 표준 번복
-  - fb48173 (2026-04-19) - Refactor(Issue34/35): brew package명 fwarrangecli → fwarrange-cli (kebab-case 표준)
-
+  
 # 🤔 결정사항
 
 # 🌱 이슈후보
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
+2. `/run` 계열 전 경로에 brew service 존재 기반 분기 로직 도입 (pairApp fSnippetCli #25에서 선행 구현·검증 완료)
+    - 대상 경로: `run-only`, `build-deploy`, `deploy-run`, `tcc`
+    - 배경: `/deploy brew local`로 설치된 LaunchAgent가 `keep_alive { successful_exit: false }` 상태에서 `/run` 계열의 `pkill`을 crash로 오인 → Cellar/Release 바이너리를 즉시 respawn → 포트 단일 인스턴스 가드가 Release를 먼저 잡아 Debug 거부
+    - 이식 대상: pairApp fSnippetCli #25 이슈후보 3번과 동일 구조 Full Mirror
+        - `fwc-config.sh`에 `BREW_FORMULA`, `BREW_SERVICE_LABEL`, `BREW_SERVICE_PLIST` + `brew_service_running()` 헬퍼 추가 (포트 3016, Formula명 `fwarrange-cli`로 치환)
+        - `fwc-run-xcode.sh`의 `run_app_only`: 실행 중이면 `brew services restart`, 정지/미등록이면 `kill + open` (sleep 0.5 + 3회 retry)
+        - `build-deploy` / `deploy-run` / `tcc` 분기 상단에 `brew_service_stop_for_debug()` 선행 호출
+    - 판정 기준: plist 존재가 아닌 `launchctl list` 로드 상태 — `brew services stop` 후에도 plist는 남으므로 plist 기반 판정 시 Debug 세션 중 run-only가 의도치 않게 Release를 복원하는 오작동 발생
+    - 참조 커밋: pairApp fSnippetCli#25 `2d4ec67` — Feat(Script)(Issue49): /run 계열 brew service 존재 기반 분기 로직
+
 # 🚧 진행중
 
 
