@@ -33,7 +33,7 @@ source cli/_tool/cmdTestDo.sh v1 E01    # v1/E01만
 
 ```bash
 # Homebrew 설치 시
-CLI="/opt/homebrew/opt/fwarrangecli/fWarrangeCli.app/Contents/MacOS/fWarrangeCli"
+CLI="/opt/homebrew/opt/fwarrange-cli/fWarrangeCli.app/Contents/MacOS/fWarrangeCli"
 
 # 로컬 빌드 시
 CLI="/Applications/_nowage_app/fWarrangeCli.app/Contents/MacOS/fWarrangeCli"

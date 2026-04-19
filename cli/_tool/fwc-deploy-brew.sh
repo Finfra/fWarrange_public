@@ -29,10 +29,10 @@ ROOT_DIR="$(dirname "$CLI_DIR")"
 source "$SCRIPT_DIR/fwc-config.sh"
 
 TAP_DIR="/opt/homebrew/Library/Taps/finfra/homebrew-tap"
-TAP_FORMULA="$TAP_DIR/Formula/fwarrangecli.rb"
+TAP_FORMULA="$TAP_DIR/Formula/fwarrange-cli.rb"
 TARBALL="/tmp/fWarrangeCli-local.tar.gz"
 LOCAL_VERSION="0.0.0-local"
-FORMULA_NAME="fwarrangecli"
+FORMULA_NAME="fwarrange-cli"
 APP_LINK="${DEPLOY_DIR}/${APP_NAME}"
 REMOTE_TAP="finfra/tap"
 PORT="3016"
@@ -165,7 +165,7 @@ cmd_local() {
     echo "=== Step 5: 로컬 tap Formula 갱신 ==="
     mkdir -p "$(dirname "$TAP_FORMULA")"
     cat > "$TAP_FORMULA" <<FORMULA
-class Fwarrangecli < Formula
+class FwarrangeCli < Formula
   desc "Window arrangement helper daemon for fWarrange (local build)"
   homepage "https://github.com/Finfra/fWarrange_public"
   url "file://$TARBALL"

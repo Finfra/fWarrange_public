@@ -1,4 +1,4 @@
-class Fwarrangecli < Formula
+class FwarrangeCli < Formula
   desc "Window arrangement helper daemon for fWarrange"
   homepage "https://github.com/Finfra/fWarrange_public"
   url "https://github.com/Finfra/fWarrange_public/archive/refs/tags/cli-v1.0.0.tar.gz"
@@ -10,8 +10,8 @@ class Fwarrangecli < Formula
     prefix.install "fWarrangeCli.app"
   end
 
-  # service 블록 제거: 자동 시작은 앱 내 SMAppService(LoginItem)로 관리
-  # 향후 배포 시 필요하면 service 블록 재추가 예정
+  # service 블록: Issue35에서 `brew services` 단일 표준 채택 시 추가 예정
+  # 참조: ~/_doc/3.Resource/_ICT/_OS/MacOS/homebrew_tap_deploy.md §7-5-A
 
   test do
     assert_predicate prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli", :exist?
