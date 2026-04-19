@@ -4,23 +4,15 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 37
-* Save Point: 2026-04-19 (f797821) Chore: 선행 인프라 — xcodeproj Tests 타겟 코드사인 + VERSION 1.0.0 SSOT
+* Issue HWM: 38
+* Save Point: 2026-04-19 (9ca2c27) Docs: 이슈후보 #2 확장 — /run 계열 전 경로 brew service 분기
+  - 9ca2c27 (2026-04-19) - Docs: 이슈후보 #2 확장 — /run 계열 전 경로 brew service 분기
   - f797821 (2026-04-19) - Chore: 선행 인프라 — xcodeproj Tests 타겟 코드사인 + VERSION 1.0.0 SSOT
   
 # 🤔 결정사항
 
 # 🌱 이슈후보
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
-2. `/run` 계열 전 경로에 brew service 존재 기반 분기 로직 도입 (pairApp fSnippetCli #25에서 선행 구현·검증 완료)
-    - 대상 경로: `run-only`, `build-deploy`, `deploy-run`, `tcc`
-    - 배경: `/deploy brew local`로 설치된 LaunchAgent가 `keep_alive { successful_exit: false }` 상태에서 `/run` 계열의 `pkill`을 crash로 오인 → Cellar/Release 바이너리를 즉시 respawn → 포트 단일 인스턴스 가드가 Release를 먼저 잡아 Debug 거부
-    - 이식 대상: pairApp fSnippetCli #25 이슈후보 3번과 동일 구조 Full Mirror
-        - `fwc-config.sh`에 `BREW_FORMULA`, `BREW_SERVICE_LABEL`, `BREW_SERVICE_PLIST` + `brew_service_running()` 헬퍼 추가 (포트 3016, Formula명 `fwarrange-cli`로 치환)
-        - `fwc-run-xcode.sh`의 `run_app_only`: 실행 중이면 `brew services restart`, 정지/미등록이면 `kill + open` (sleep 0.5 + 3회 retry)
-        - `build-deploy` / `deploy-run` / `tcc` 분기 상단에 `brew_service_stop_for_debug()` 선행 호출
-    - 판정 기준: plist 존재가 아닌 `launchctl list` 로드 상태 — `brew services stop` 후에도 plist는 남으므로 plist 기반 판정 시 Debug 세션 중 run-only가 의도치 않게 Release를 복원하는 오작동 발생
-    - 참조 커밋: pairApp fSnippetCli#25 `2d4ec67` — Feat(Script)(Issue49): /run 계열 brew service 존재 기반 분기 로직
 
 # 🚧 진행중
 
@@ -29,6 +21,42 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+
+## Issue38: `/run` 계열 전 경로에 brew service 존재 기반 분기 로직 도입 (등록: 2026-04-19)
+* 목적: `/deploy brew local` 로 설치된 LaunchAgent 가 실행 중인 상태에서 `/run` 계열(`build-deploy`, `deploy-run`, `tcc`, `run-only`)을 호출할 때 발생하는 launchd respawn 경합 / 포트 단일 인스턴스 충돌을 제거. brew service 실행 여부에 따라 Debug 오버라이드 경로를 명시적으로 분기. pairApp(fSnippetCli #25) Issue49 에서 선행 구현·검증 완료된 구조를 Full Mirror 이식.
+* 참조 원본: pairApp fSnippetCli#25 `2d4ec67` — Feat(Script)(Issue49)
+* 배경:
+    - Issue36(c68e70f) 완료 후 `brew services` 단일 표준 확립 → Formula `keep_alive { successful_exit: false }` 설정 (pairApp Issue46 대응)
+    - pairApp 실측: `/run run-only` 호출 시 `pkill` 은 launchd 입장에서 crash 로 분류 → Cellar/Release 바이너리가 즉시 respawn → `open` 으로 요청한 Debug 바이너리와 포트 단일 인스턴스 가드 경합 발생
+    - 동일 원인이 `build-deploy` / `deploy-run` / `tcc` 경로에도 존재 — 이들은 `cp -R` 로 덮어쓰기까지 진행하므로 Release 바이너리가 먼저 포트를 잡으면 Debug 기동 자체가 실패
+    - fWarrangeCli 는 Issue37 Full Mirror 진행 중이므로 동일 패턴 이식 필요
+* 원인 분석:
+    - **원인 1 — `pkill` 의 launchd 해석**: SIGTERM/SIGKILL 로 프로세스를 죽여도 `successful_exit: false` 규칙상 launchd 는 비정상 종료로 간주. `brew services stop` 로 명시적으로 unload 해야만 재기동하지 않음
+    - **원인 2 — plist 존재 기반 판정의 한계**: `~/Library/LaunchAgents/homebrew.mxcl.fwarrange-cli.plist` 는 `brew services stop` 후에도 남음. plist 존재를 기준으로 "service 있음 → restart" 분기를 하면, Debug 세션 중 `/run run-only` 가 의도치 않게 Release 바이너리를 복원시키는 오작동 발생
+    - **원인 3 — Launch Services `-600`**: `pkill` 직후 같은 경로로 `open` 을 호출하면 macOS Launch Services 내부 정리 전이어서 `-600 (procNotFound)` 반환 — 앱이 기동되지 않음
+* 구현 명세 (pairApp 2d4ec67 기준 Full Mirror):
+    - **Phase 1 (Config)**: `fwc-config.sh` 에 다음 추가
+        - `BREW_FORMULA="fwarrange-cli"` (kebab-case, pairApp 의 `fsnippet-cli` 치환)
+        - `BREW_SERVICE_LABEL="homebrew.mxcl.${BREW_FORMULA}"`
+        - `BREW_SERVICE_PLIST="${HOME}/Library/LaunchAgents/${BREW_SERVICE_LABEL}.plist"`
+        - `brew_service_running()` 헬퍼 — `launchctl list` 에 라벨이 로드되어 있는지로 판정
+    - **Phase 2 (Run)**: `fwc-run-xcode.sh` 수정
+        - `brew_service_stop_for_debug()` 신규 함수 — `brew_service_running` 이면 `brew services stop` 선행 + 복원 안내
+        - `build-deploy` / `deploy-run` / `tcc` 분기 상단에서 호출 → `pkill` 이전에 launchd 로부터 서비스 분리
+        - `run_app_only` 재작성:
+            - 실행 중(`brew_service_running`): `brew services restart` (launchd 단일 경로)
+            - 정지/미등록: `kill + sleep 0.5 + open` (3회 retry, `-600` 회피)
+    - **Phase 3 (검증)**: 아래 3가지 시나리오 회귀 통과 필수
+        - `brew services start` 상태에서 `/run build-deploy` → stop 메시지 출력 후 Debug 빌드/기동 정상
+        - `brew services stop` 상태(정지됨)에서 `/run run-only` → 직접 `open` 분기 진입, REST API (port 3016) 응답 확인
+        - `brew services start` 상태에서 `/run run-only` → `brew services restart` 분기 진입, uptime 리셋 확인
+* 치환 규칙 (pairApp → fWarrangeCli):
+    - 포트: `3015` → `3016`
+    - Formula: `fsnippet-cli` → `fwarrange-cli`
+    - Prefix: `fsc-` → `fwc-`
+    - Bundle ID: `kr.finfra.fSnippetCli` → `kr.finfra.fWarrangeCli`
+    - 그 외 로직·함수명·단계 번호·주석 구조 100% 동일 유지
+* 연관: Issue37(Full Mirror 이식)의 Phase 2(Run) 보완 — Issue37 진행 중 본 이슈가 식별됨. Issue37 완료 전 선행 또는 동시 처리 권장
 
 ## Issue37: pairApp(fSnippetCli) 검증 완료된 deploy/run 스크립트 구조 Full Mirror 이식 (등록: 2026-04-19)
 * 목적: pairApp(fSnippetCli #25)에서 리팩터링 + 안전성 테스트 완료된 `fsc-*.sh` 6종 구조를 `fwc-*.sh` 로 Full Mirror 이식 — prefix/Bundle ID/포트(3015→3016)/Formula명만 치환, 로직·함수·단계 번호 100% 일치시켜 양 프로젝트 구조 수렴 지속
