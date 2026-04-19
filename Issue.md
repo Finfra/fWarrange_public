@@ -11,6 +11,7 @@ date: 2026-04-07
   - 9d48324 (2026-04-18) - Refactor(Issue32): run.sh 완전 제거 + fwc- 접두어 네이밍 전환
   - cc29453 (2026-04-18) - Fix(Script)(Issue33): fwc-run-xcode.sh 자기완결 build 패턴 전환
   - 7a582c2 (2026-04-19) - Feat(Issue34)(Phase A): /deploy brew 서브커맨드 + pairApp 패턴 수렴
+  - 464053a (2026-04-19) - Docs(Issue34/35): pairApp 심링크 전략 역채택 반영 + Issue35 선수 이슈 신설
 
 # 🤔 결정사항
 
