@@ -1,41 +1,35 @@
 #!/bin/bash
-# Issue34: /deploy brew 서브커맨드 라우터 (pairApp fsc-deploy-brew.sh 수렴)
+# Issue43: /deploy brew 서브커맨드 라우터
 # Usage: ./fwc-deploy-brew.sh [local|publish|status|uninstall]
 #
 # 목적:
 #   - 단독 호출 금지 — 반드시 서브커맨드 동반
-#   - local:     로컬 Homebrew tap 재설치 (원격 tap 생성 전 테스트 경로)
-#   - publish:   원격 finfra/homebrew-tap 저장소에 Formula 반영 (🚧 TODO)
-#   - status:    설치/tap/프로세스/REST 상태 조회 (+ 심링크, 원격 tap 체크)
-#   - uninstall: brew 제거 + 로컬 tap Formula 파일 정리 + 심링크 제거
+#   - local: 로컬 Homebrew tap 재설치 (원격 tap 생성 전 테스트 경로)
+#   - publish: 원격 finfra/homebrew-tap 저장소에 Formula 반영 (🚧 TODO)
+#   - status: 설치/tap/프로세스/REST 상태 조회
+#   - uninstall: brew 제거 + 로컬 tap Formula 파일 정리
 #
-# 설계 근거:
-#   - ~/_doc/3.Resource/_ICT/_OS/MacOS/homebrew_tap_deploy.md
-#   - pairApp(fSnippetCli #25) fsc-deploy-brew.sh 구조 수렴
+# 설계 근거: ~/_doc/3.Resource/_ICT/_OS/MacOS/homebrew_tap_deploy.md
 # 설계 메모:
-#   - Formula version은 URL에서 추출되지 않으므로 LOCAL_VERSION 명시 필수
-#   - PIPESTATUS로 xcodebuild/brew 실제 exit code 포착 (tail 파이프 회피)
+#   - Formula version이 URL로부터 추출되지 않으므로 version "0.0.0-local" 명시 필수
+#   - PIPESTATUS로 xcodebuild/brew 실제 exit code 포착 (tail 파이프에 가려지지 않도록)
 #   - 메뉴바 GUI 앱(LSUIElement)은 brew services 대신 open으로 직접 실행
-#   - 우리 고유: /Applications/_nowage_app/ 심링크 (개발자 테스트 편의)
 #   - brew 재설치 후 새 서명 바이너리로 TCC 권한 꼬임 가능 → /run tcc 안내
 
 set +e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLI_DIR="$(dirname "$SCRIPT_DIR")"
-ROOT_DIR="$(dirname "$CLI_DIR")"
-
-# shellcheck source=fwc-config.sh
-source "$SCRIPT_DIR/fwc-config.sh"
-
 TAP_DIR="/opt/homebrew/Library/Taps/finfra/homebrew-tap"
 TAP_FORMULA="$TAP_DIR/Formula/fwarrange-cli.rb"
 TARBALL="/tmp/fWarrangeCli-local.tar.gz"
-LOCAL_VERSION="0.0.0-local"
-FORMULA_NAME="fwarrange-cli"
-APP_LINK="${DEPLOY_DIR}/${APP_NAME}"
-REMOTE_TAP="finfra/tap"
-PORT="3016"
+# VERSION 파일에서 읽기 (없으면 0.0.0-local 폴백)
+_VERSION_FILE="$(git -C "$CLI_DIR" rev-parse --show-toplevel 2>/dev/null)/VERSION"
+LOCAL_VERSION="$(cat "$_VERSION_FILE" 2>/dev/null | tr -d '[:space:]')"
+[ -z "$LOCAL_VERSION" ] && LOCAL_VERSION="0.0.0-local"
+
+# shellcheck source=fwc-config.sh
+source "$SCRIPT_DIR/fwc-config.sh"
 
 usage() {
   cat <<'USAGE'
@@ -46,10 +40,10 @@ Usage: /deploy brew <sub>       ⚠️ 서브커맨드 필수 — 단독 호출 
 
   sub         설명                                                         상태
   ---------   -----------------------------------------------------------  -----
-  local       Release 빌드 → 로컬 finfra/tap 재설치 + 심링크 + 앱 실행     ✅
+  local       Release 빌드 → 로컬 tap 재설치 + 심링크 + (옵트인 brew services) + 앱 실행 (9단계)  ✅
   publish     원격 finfra/homebrew-tap 저장소에 Formula 반영 + push        🚧 TODO
-  status      brew 설치·tap·심링크·프로세스·REST API 상태 조회             ✅
-  uninstall   brew uninstall + 로컬 tap Formula + 심링크 정리              ✅
+  status      brew 설치·tap·프로세스·REST API 상태 조회                    ✅
+  uninstall   brew uninstall + 로컬 tap Formula 파일 정리                  ✅
 
 예시:
   /deploy brew local       # 로컬 재설치 (개발 반복)
@@ -65,16 +59,16 @@ tcc_notice() {
     echo ""
     echo "⚠️ TCC 안내"
     echo "   brew 재설치로 새 서명 바이너리가 생기면 접근성 권한이 분리되어"
-    echo "   창 캡처·복구가 동작하지 않을 수 있습니다."
+    echo "   키 이벤트 감지가 동작하지 않을 수 있습니다."
     echo ""
     echo "   해결책 중 하나:"
-    echo "     1) 시스템 설정 > 개인정보 보호 및 보안 > 손쉬운 사용 > fWarrangeCli 체크"
+    echo "     1) 시스템 설정 > 개인정보 보호 및 보안 > 접근성 > fWarrangeCli 체크"
     echo "     2) Xcode Debug 경로로 재설정: /run tcc"
-    echo "        (kill + tccutil reset Accessibility kr.finfra.fWarrangeCli + build-deploy)"
+    echo "        (fwc-run-xcode.sh tcc = kill + tccutil reset + build-deploy)"
 }
 
 # ==========================================
-# 서브커맨드: local (9단계)
+# 서브커맨드: local (기존 8단계)
 # ==========================================
 cmd_local() {
     local TOTAL_PASS=0
@@ -93,14 +87,14 @@ cmd_local() {
     }
 
     echo "╔══════════════════════════════════════════╗"
-    echo "║  fWarrangeCli Brew Deploy (local)        ║"
+    echo "║  fWarrangeCli Brew Deploy (local)         ║"
     echo "╚══════════════════════════════════════════╝"
 
     # Step 1: Release 빌드
     echo ""
     echo "=== Step 1: Release 빌드 ==="
     pushd "$CLI_DIR" > /dev/null || { record_result "Release 빌드" "FAIL" "cd $CLI_DIR 실패"; return 1; }
-    xcodebuild -scheme "$SCHEME" -configuration Release build 2>&1 | tail -8
+    xcodebuild -scheme fWarrangeCli -configuration Release build 2>&1 | tail -8
     local BUILD_STATUS=${PIPESTATUS[0]}
     popd > /dev/null || true
     if [ "$BUILD_STATUS" -eq 0 ]; then
@@ -111,24 +105,35 @@ cmd_local() {
         return 1
     fi
 
-    # Step 2: 기존 프로세스 정리 + 심링크 제거
+    # Step 2: 기존 설치 완전 정리 (launchd bootout + pkill + brew uninstall)
+    # 목적: stale launchd 등록으로 인한 bootstrap EIO(5) 예방 및 새 서명 바이너리 clean install
     echo ""
-    echo "=== Step 2: 기존 프로세스 정리 ==="
-    if pgrep -f "MacOS/$PROJECT_NAME" > /dev/null 2>&1; then
-        echo "$PROJECT_NAME 프로세스 감지 — pkill"
-        pkill -f "MacOS/$PROJECT_NAME" 2>/dev/null || true
+    echo "=== Step 2: 기존 설치 완전 정리 ==="
+    # 2-1: brew services stop (launchd 정상 경로)
+    brew services stop fwarrange-cli 2>/dev/null || true
+    # 2-2: stale LaunchAgent 잔존 시 강제 bootout (idempotent — 미등록 상태여도 무해)
+    launchctl bootout "gui/$(id -u)/homebrew.mxcl.fwarrange-cli" 2>/dev/null || true
+    sleep 0.3
+    # 2-3: 잔여 프로세스 강제 종료
+    if pgrep -f "MacOS/fWarrangeCli" > /dev/null 2>&1; then
+        echo "fWarrangeCli 프로세스 감지 — pkill"
+        pkill -f "MacOS/fWarrangeCli" 2>/dev/null || true
         sleep 0.5
     fi
-    [ -e "$APP_LINK" ] && rm -rf "$APP_LINK"
-    record_result "기존 프로세스 정리" "PASS" "pkill + 심링크 제거"
+    # 2-4: brew uninstall (재설치 전 완전 제거 — 새 서명 바이너리 clean swap 보장)
+    if brew list fwarrange-cli &>/dev/null; then
+        echo "── brew uninstall fwarrange-cli (선행)"
+        brew uninstall fwarrange-cli 2>&1 | tail -3
+    fi
+    record_result "기존 설치 완전 정리" "PASS" "services stop + bootout + pkill + uninstall"
 
     # Step 3: 로컬 tap 확인·생성
     echo ""
-    echo "=== Step 3: 로컬 tap 확인·생성 ($REMOTE_TAP) ==="
+    echo "=== Step 3: 로컬 tap 확인·생성 (finfra/tap) ==="
     if [ ! -d "$TAP_DIR" ]; then
         echo "tap 미존재 — 생성 시도"
-        if brew tap-new "$REMOTE_TAP" 2>/dev/null; then
-            record_result "로컬 tap" "PASS" "brew tap-new $REMOTE_TAP"
+        if brew tap-new finfra/tap 2>/dev/null; then
+            record_result "로컬 tap" "PASS" "brew tap-new finfra/tap"
         else
             echo "brew tap-new 실패 — 수동 mkdir fallback"
             mkdir -p "$TAP_DIR/Formula"
@@ -141,32 +146,46 @@ cmd_local() {
         record_result "로컬 tap" "PASS" "이미 존재: $TAP_DIR"
     fi
 
-    # Step 4: 로컬 tarball 생성 (source tarball)
+    # Step 4: 로컬 tarball 생성 (서명된 .app 포함 — A-2 방식)
     echo ""
-    echo "=== Step 4: 로컬 tarball 생성 ==="
-    pushd "$ROOT_DIR" > /dev/null || { record_result "tarball 생성" "FAIL" "cd $ROOT_DIR 실패"; print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"; return 1; }
-    tar czf "$TARBALL" cli/
+    echo "=== Step 4: 로컬 tarball 생성 (서명된 .app 포함) ==="
+    # Step 1에서 빌드된 .app 경로 조회
+    local BUILT_APP
+    BUILT_APP=$(cd "$CLI_DIR" && xcodebuild -scheme fWarrangeCli -configuration Release -showBuildSettings 2>/dev/null | awk -F ' = ' '/ TARGET_BUILD_DIR =/ {print $2}' | xargs)
+    if [ -z "$BUILT_APP" ] || [ ! -d "$BUILT_APP/fWarrangeCli.app" ]; then
+        record_result "tarball 생성" "FAIL" "빌드된 .app 미존재: $BUILT_APP/fWarrangeCli.app"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    # 서명 유지를 위해 -p (permissions) 옵션 사용
+    # Homebrew가 단일 루트 디렉토리를 buildpath로 인식하므로
+    # .app를 감싸는 디렉토리(fwarrange-cli-pkg)를 추가하여 정상 unpack 유도
+    local TAR_STAGE
+    TAR_STAGE=$(mktemp -d)
+    mkdir -p "$TAR_STAGE/fwarrange-cli-pkg"
+    cp -R "$BUILT_APP/fWarrangeCli.app" "$TAR_STAGE/fwarrange-cli-pkg/"
+    tar -C "$TAR_STAGE" -czpf "$TARBALL" fwarrange-cli-pkg
     local TAR_STATUS=$?
-    popd > /dev/null || true
+    rm -rf "$TAR_STAGE"
     if [ "$TAR_STATUS" -eq 0 ]; then
         local SHA
         SHA=$(shasum -a 256 "$TARBALL" | awk '{print $1}')
-        echo "tarball: $TARBALL"
+        echo "tarball: $TARBALL (from $BUILT_APP)"
         echo "sha256 : $SHA"
-        record_result "tarball 생성" "PASS" "$(du -h "$TARBALL" | awk '{print $1}')"
+        record_result "tarball 생성" "PASS" "$(du -h "$TARBALL" | awk '{print $1}') (서명된 .app)"
     else
-        record_result "tarball 생성" "FAIL" "tar czf 실패 (exit=$TAR_STATUS)"
+        record_result "tarball 생성" "FAIL" "tar czpf 실패 (exit=$TAR_STATUS)"
         print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
         return 1
     fi
 
-    # Step 5: 로컬 tap Formula 작성 (source build + caveats)
+    # Step 5: 로컬 tap Formula 작성
     echo ""
     echo "=== Step 5: 로컬 tap Formula 갱신 ==="
     mkdir -p "$(dirname "$TAP_FORMULA")"
     cat > "$TAP_FORMULA" <<FORMULA
 class FwarrangeCli < Formula
-  desc "Window arrangement helper daemon for fWarrange (local build)"
+  desc "Window layout management daemon for fWarrange (local build)"
   homepage "https://github.com/Finfra/fWarrange_public"
   url "file://$TARBALL"
   version "$LOCAL_VERSION"
@@ -174,29 +193,30 @@ class FwarrangeCli < Formula
   license "MIT"
 
   depends_on :macos
-  depends_on xcode: ["15.0", :build]
 
   def install
-    # Homebrew가 tarball의 최상위 'cli/' 폴더로 자동 진입한 상태로 install 호출됨
-    system "xcodebuild", "-project", "fWarrangeCli.xcodeproj",
-           "-scheme", "fWarrangeCli",
-           "-configuration", "Release",
-           "-derivedDataPath", buildpath/"build",
-           "MACOSX_DEPLOYMENT_TARGET=14.0",
-           "SYMROOT=#{buildpath}/build",
-           "CODE_SIGN_IDENTITY=-",
-           "CODE_SIGNING_REQUIRED=NO",
-           "CODE_SIGNING_ALLOWED=NO"
-    prefix.install Dir["build/Release/fWarrangeCli.app"]
+    # tarball에 사전 빌드된 fWarrangeCli.app 포함됨 (Apple Development 서명 유지).
+    # brew sandbox에서는 키체인 접근이 제한되므로 재빌드하지 않고 그대로 복사.
+    prefix.install "fWarrangeCli.app"
+  end
+
+  service do
+    run [opt_prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli"]
+    keep_alive successful_exit: false
+    log_path var/"log/fwarrange-cli.log"
+    error_log_path var/"log/fwarrange-cli.err.log"
+    process_type :interactive
   end
 
   def caveats
     <<~EOS
-      fWarrangeCli는 창 캡처·복구에 Accessibility(손쉬운 사용) 권한이 필요합니다.
+      fWarrangeCli는 접근성(Accessibility) 권한이 필요합니다.
 
-      설치 후 다음 단계를 수행하세요:
-        1. 시스템 설정 > 개인정보 보호 및 보안 > 손쉬운 사용
-        2. fWarrangeCli.app 항목에 체크
+      설치 후 자동 시작 등록:
+        brew services start finfra/tap/fwarrange-cli
+
+      권한 승인:
+        시스템 설정 > 개인정보 보호 및 보안 > 접근성 > fWarrangeCli 체크
 
       TCC 권한이 꼬이면 Xcode Debug 경로로 재설정: /run tcc
     EOS
@@ -210,66 +230,76 @@ FORMULA
     echo "$TAP_FORMULA"
     record_result "Formula 갱신" "PASS" "file:// URL + SHA256 + version=$LOCAL_VERSION"
 
-    # Step 6: brew uninstall + install
+    # Step 6: brew install (uninstall은 Step 2에서 선행 완료)
     echo ""
-    echo "=== Step 6: brew uninstall + install ==="
-    brew uninstall "$FORMULA_NAME" 2>/dev/null || true
-    brew install --build-from-source "$REMOTE_TAP/$FORMULA_NAME" 2>&1 | tail -20
+    echo "=== Step 6: brew install ==="
+    brew install --build-from-source finfra/tap/fwarrange-cli 2>&1 | tail -20
     local INSTALL_STATUS=${PIPESTATUS[0]}
     if [ "$INSTALL_STATUS" -eq 0 ]; then
-        record_result "brew install" "PASS" "$REMOTE_TAP/$FORMULA_NAME"
+        record_result "brew install" "PASS" "finfra/tap/fwarrange-cli"
     else
         record_result "brew install" "FAIL" "exit=$INSTALL_STATUS"
     fi
 
-    # Step 7: 심링크 생성 (/Applications/_nowage_app → brew prefix)
+    # Step 7: /Applications/_nowage_app 심링크 생성 (Spotlight·Finder 편의용)
+    # Issue46: TCC 3회 요청 회피를 위해 직접 open 실행은 제거. 실제 기동은 Step 8 LaunchAgent 단일 경로로 위임
     echo ""
-    echo "=== Step 7: 심링크 생성 ==="
+    echo "=== Step 7: 심링크 생성 (Finder·Spotlight 편의용) ==="
+    local STABLE_APP="$STABLE_LINK"
     if [ "$INSTALL_STATUS" -ne 0 ]; then
-        record_result "심링크 생성" "FAIL" "brew install 실패로 skip"
+        record_result "심링크" "FAIL" "brew install 실패로 skip"
     else
-        local BREW_PREFIX
-        BREW_PREFIX=$(brew --prefix "$FORMULA_NAME" 2>/dev/null)
-        if [ -n "$BREW_PREFIX" ] && [ -d "$BREW_PREFIX/$APP_NAME" ]; then
-            mkdir -p "$DEPLOY_DIR"
-            ln -sfn "$BREW_PREFIX/$APP_NAME" "$APP_LINK"
-            echo "[symlink] $APP_LINK → $BREW_PREFIX/$APP_NAME"
-            record_result "심링크 생성" "PASS" "$APP_LINK"
+        local INSTALLED_APP
+        INSTALLED_APP="$(brew --prefix fwarrange-cli 2>/dev/null)/fWarrangeCli.app"
+        if [ -d "$INSTALLED_APP" ]; then
+            mkdir -p /Applications/_nowage_app
+            ln -sfn "$INSTALLED_APP" "$STABLE_APP"
+            echo "[symlink] $STABLE_APP → $INSTALLED_APP"
+            record_result "심링크" "PASS" "$STABLE_APP"
         else
-            record_result "심링크 생성" "FAIL" "brew prefix 또는 .app 없음: $BREW_PREFIX"
+            record_result "심링크" "FAIL" "설치 경로 미존재: $INSTALLED_APP"
         fi
     fi
 
-    # Step 8: 앱 실행
+    # Step 8: brew services 자동 등록 (기본 ON — FWC_AUTOSTART=0 으로 opt-out)
+    # Formula의 service do 블록을 LaunchAgent plist로 변환 + load
+    # Step 2에서 bootout + uninstall 완료 상태이므로 stale 잔존 우려 없음
     echo ""
-    echo "=== Step 8: 앱 실행 (open via symlink) ==="
-    if [ ! -L "$APP_LINK" ] && [ ! -d "$APP_LINK" ]; then
-        record_result "앱 실행" "FAIL" "심링크/앱 없음으로 skip"
-    else
-        echo "[open] $APP_LINK"
-        open "$APP_LINK"
-        local OPEN_STATUS=$?
-        if [ "$OPEN_STATUS" -eq 0 ]; then
-            record_result "앱 실행" "PASS" "$APP_LINK"
+    echo "=== Step 8: brew services 자동 시작 등록 ==="
+    if [ "${FWC_AUTOSTART:-1}" = "1" ]; then
+        brew services start finfra/tap/fwarrange-cli 2>&1 | tail -3
+        local SVC_STATUS=${PIPESTATUS[0]}
+        if [ "$SVC_STATUS" -eq 0 ]; then
+            record_result "brew services start" "PASS" "finfra/tap/fwarrange-cli"
         else
-            record_result "앱 실행" "FAIL" "open 실패 (exit=$OPEN_STATUS)"
+            record_result "brew services start" "FAIL" "exit=$SVC_STATUS"
         fi
+    else
+        echo "ℹ️  FWC_AUTOSTART=0 — 자동 기동 skip (수동 기동: brew services start fwarrange-cli)"
+        record_result "brew services" "PASS" "skip (FWC_AUTOSTART=0)"
     fi
 
-    # Step 9: REST API 헬스 체크
+    # Step 9: REST API 헬스 체크 (자동 기동된 경우에만 실측)
     echo ""
-    echo "=== Step 9: REST API 헬스 체크 (port $PORT) ==="
-    local HEALTH=""
-    for _i in $(seq 1 10); do
-        HEALTH=$(curl -s --connect-timeout 2 http://localhost:$PORT/ 2>/dev/null)
-        [ -n "$HEALTH" ] && break
-        sleep 1
-    done
-    if [ -n "$HEALTH" ]; then
-        echo "$HEALTH" | python3 -m json.tool 2>/dev/null || echo "$HEALTH"
-        record_result "REST API" "PASS" "포트 $PORT 응답 정상"
+    echo "=== Step 9: REST API 헬스 체크 ==="
+    if [ "${FWC_AUTOSTART:-1}" != "1" ]; then
+        echo "ℹ️  FWC_AUTOSTART=0 — 앱 미기동 상태. 검증을 원하면:"
+        echo "    brew services start fwarrange-cli  (LaunchAgent 경유 기동)"
+        echo "  또는 Finder·Spotlight 로 /Applications/_nowage_app/fWarrangeCli.app 실행"
+        record_result "REST API" "PASS" "skip (앱 미기동 상태)"
     else
-        record_result "REST API" "FAIL" "10초 내 응답 없음 (접근성 미승인 가능성)"
+        local HEALTH=""
+        for _i in $(seq 1 10); do
+            HEALTH=$(curl -s --connect-timeout 2 http://localhost:3016/ 2>/dev/null)
+            [ -n "$HEALTH" ] && break
+            sleep 1
+        done
+        if [ -n "$HEALTH" ]; then
+            echo "$HEALTH" | python3 -m json.tool 2>/dev/null || echo "$HEALTH"
+            record_result "REST API" "PASS" "포트 3016 응답 정상"
+        else
+            record_result "REST API" "FAIL" "10초 내 응답 없음 (접근성 미승인 가능성)"
+        fi
     fi
 
     print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
@@ -281,12 +311,12 @@ FORMULA
 # 서브커맨드: publish (TODO)
 # ==========================================
 cmd_publish() {
-    echo "🚧 /deploy brew publish 는 아직 미구현 (Issue34 Phase B)"
+    echo "🚧 /deploy brew publish 는 아직 미구현 (Issue43 Phase B)"
     echo ""
     echo "예정 동작:"
-    echo "  1. GitHub 태그 생성 (예: cli-v1.0.0)"
+    echo "  1. GitHub 태그 생성 (예: cli-v0.0.1)"
     echo "  2. gh release create + tarball 업로드"
-    echo "  3. cli/Formula/fWarrangeCli.rb 'url'/'sha256'/'version' 갱신"
+    echo "  3. Formula 'url'/'sha256'/'version' 갱신"
     echo "  4. 원격 finfra/homebrew-tap 저장소 push"
     echo ""
     echo "사전 조건:"
@@ -303,25 +333,25 @@ cmd_publish() {
 # ==========================================
 cmd_status() {
     echo "╔══════════════════════════════════════════╗"
-    echo "║  fWarrangeCli Brew Status                ║"
+    echo "║  fWarrangeCli Brew Status                 ║"
     echo "╚══════════════════════════════════════════╝"
     echo ""
 
     echo "── brew 설치 ──"
-    if brew list "$FORMULA_NAME" &>/dev/null; then
+    if brew list fwarrange-cli &>/dev/null; then
         local VERSION
-        VERSION=$(brew list --versions "$FORMULA_NAME" | awk '{print $2}')
+        VERSION=$(brew list --versions fwarrange-cli | awk '{print $2}')
         local PREFIX
-        PREFIX=$(brew --prefix "$FORMULA_NAME" 2>/dev/null)
-        echo "✅ 설치됨: $FORMULA_NAME $VERSION"
+        PREFIX=$(brew --prefix fwarrange-cli 2>/dev/null)
+        echo "✅ 설치됨: fwarrange-cli $VERSION"
         echo "   prefix : $PREFIX"
-        [ -d "$PREFIX/$APP_NAME" ] && echo "   .app   : $PREFIX/$APP_NAME"
+        [ -d "$PREFIX/fWarrangeCli.app" ] && echo "   .app   : $PREFIX/fWarrangeCli.app"
     else
         echo "❌ 미설치"
     fi
     echo ""
 
-    echo "── 로컬 tap ($REMOTE_TAP) ──"
+    echo "── 로컬 tap ──"
     if [ -d "$TAP_DIR" ]; then
         echo "✅ 존재: $TAP_DIR"
         if [ -f "$TAP_FORMULA" ]; then
@@ -335,35 +365,48 @@ cmd_status() {
     fi
     echo ""
 
-    echo "── 원격 tap 등록 ──"
-    if brew tap 2>/dev/null | grep -q "^${REMOTE_TAP}$"; then
-        echo "✅ $REMOTE_TAP 등록됨"
+    # Issue44: /Applications/_nowage_app 심링크 상태
+    echo "── 심링크 (/Applications/_nowage_app) ──"
+    local STABLE_APP="$STABLE_LINK"
+    if [ -L "$STABLE_APP" ]; then
+        local target
+        target="$(readlink "$STABLE_APP")"
+        echo "✅ 심링크 존재: $STABLE_APP"
+        echo "   → $target"
+        [ -d "$target" ] || echo "   ⚠️  타겟 미존재 (stale 심링크)"
+    elif [ -e "$STABLE_APP" ]; then
+        echo "⚠️  실제 파일/디렉토리 존재 (심링크 아님): $STABLE_APP"
     else
-        echo "❌ $REMOTE_TAP 미등록 (원격 tap repo 미생성 또는 미연결)"
+        echo "❌ 미생성 — /deploy brew local 실행 시 Step 7에서 자동 생성됨"
     fi
     echo ""
 
-    echo "── 심링크 (/Applications/_nowage_app) ──"
-    if [ -L "$APP_LINK" ]; then
-        echo "✅ $APP_LINK → $(readlink "$APP_LINK")"
-    elif [ -e "$APP_LINK" ]; then
-        echo "⚠️  $APP_LINK 존재하지만 심링크 아님 (실제 파일/디렉토리)"
+    # Issue45: brew services 상태
+    echo "── brew services ──"
+    local svc_info
+    svc_info=$(brew services info fwarrange-cli 2>&1)
+    if echo "$svc_info" | grep -q "Loaded: true"; then
+        echo "✅ LaunchAgent 등록됨"
+        echo "$svc_info" | grep -E "^(fwarrange-cli|Running|Loaded|Schedulable|File|User):" | sed 's/^/  /'
+    elif brew list fwarrange-cli &>/dev/null; then
+        echo "ℹ️  설치됐으나 brew services 미등록"
+        echo "   등록: brew services start finfra/tap/fwarrange-cli"
     else
-        echo "❌ $APP_LINK 없음"
+        echo "❌ 미설치"
     fi
     echo ""
 
     echo "── 프로세스 ──"
-    if pgrep -fl "MacOS/$PROJECT_NAME" 2>/dev/null; then
+    if pgrep -fl "MacOS/fWarrangeCli" 2>/dev/null; then
         :
     else
         echo "(실행 중 아님)"
     fi
     echo ""
 
-    echo "── REST API (port $PORT) ──"
+    echo "── REST API (port 3016) ──"
     local HEALTH
-    HEALTH=$(curl -s --connect-timeout 2 http://localhost:$PORT/ 2>/dev/null)
+    HEALTH=$(curl -s --connect-timeout 2 http://localhost:3016/ 2>/dev/null)
     if [ -n "$HEALTH" ]; then
         echo "✅ 응답 정상"
         echo "$HEALTH" | python3 -m json.tool 2>/dev/null | sed 's/^/  /'
@@ -377,26 +420,31 @@ cmd_status() {
 # ==========================================
 cmd_uninstall() {
     echo "╔══════════════════════════════════════════╗"
-    echo "║  fWarrangeCli Brew Uninstall             ║"
+    echo "║  fWarrangeCli Brew Uninstall              ║"
     echo "╚══════════════════════════════════════════╝"
 
-    # 프로세스 종료
-    if pgrep -f "MacOS/$PROJECT_NAME" > /dev/null 2>&1; then
+    # Issue45: brew services 선행 중지 (launchd 경로)
+    echo "── brew services stop (선행)"
+    brew services stop fwarrange-cli 2>/dev/null || true
+    sleep 0.3
+
+    # 프로세스 종료 (services stop 실패 대비)
+    if pgrep -f "MacOS/fWarrangeCli" > /dev/null 2>&1; then
         echo "── 프로세스 종료"
-        pkill -f "MacOS/$PROJECT_NAME" 2>/dev/null || true
+        pkill -f "MacOS/fWarrangeCli" 2>/dev/null || true
         sleep 0.3
     fi
 
-    echo "── brew uninstall $FORMULA_NAME"
-    brew uninstall "$FORMULA_NAME" 2>&1 | tail -5
-
-    echo "── 심링크 제거"
-    if [ -e "$APP_LINK" ]; then
-        rm -rf "$APP_LINK"
-        echo "✅ 제거: $APP_LINK"
-    else
-        echo "(없음: $APP_LINK)"
+    # Issue44 (obsolete): /Applications/_nowage_app 심링크 제거 (§7-4 심링크 전략은 유지, 파일만 정리)
+    local STABLE_APP="$STABLE_LINK"
+    if [ -L "$STABLE_APP" ] || [ -e "$STABLE_APP" ]; then
+        echo "── 심링크 제거"
+        rm -f "$STABLE_APP"
+        echo "✅ 제거: $STABLE_APP"
     fi
+
+    echo "── brew uninstall fwarrange-cli"
+    brew uninstall fwarrange-cli 2>&1 | tail -5
 
     echo "── 로컬 tap Formula 제거"
     if [ -f "$TAP_FORMULA" ]; then
@@ -415,8 +463,8 @@ cmd_uninstall() {
     fi
 
     echo ""
-    echo "ℹ️  $REMOTE_TAP 디렉토리($TAP_DIR)는 유지함 — 완전 제거하려면:"
-    echo "    brew untap $REMOTE_TAP"
+    echo "ℹ️  finfra/tap 디렉토리($TAP_DIR)는 유지함 — 완전 제거하려면:"
+    echo "    brew untap finfra/tap"
 }
 
 # ==========================================
