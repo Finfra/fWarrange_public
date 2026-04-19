@@ -1,17 +1,22 @@
 #!/bin/bash
-# Usage: ./kill.sh
-#   fWarrangeCli 프로세스를 종료함 (다른 Xcode 워크스페이스 영향 금지)
+# Usage: kill.sh
+#   fWarrangeCli 프로세스 종료
+#
+# Issue37: 다른 Xcode 프로젝트에 영향 없도록 해당 workspace document만 stop.
+# `every workspace document` 전역 stop 사용 금지.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=fwc-config.sh
 source "$SCRIPT_DIR/fwc-config.sh"
 
+echo "🔄 기존 프로세스 종료..."
 pkill -9 -f "MacOS/$PROJECT_NAME" 2>/dev/null || true
 sleep 1
 
-# Xcode 디버거에 잡힌 경우 — 특정 워크스페이스만 stop
-if pgrep -f "MacOS/$PROJECT_NAME" > /dev/null 2>&1; then
-    echo "⚠️  잔존 프로세스 발견 — $XCODEPROJ_NAME stop 시도"
+# 잔존 프로세스 확인 — Xcode Run scheme으로 실행 중인 경우 해당 workspace만 stop
+REMAIN=$(pgrep -f "MacOS/$PROJECT_NAME" | wc -l | tr -d ' ')
+if [ "$REMAIN" -gt 0 ]; then
+    echo "⚠️ 잔존 프로세스 감지 — $XCODEPROJ_NAME workspace만 stop"
     osascript 2>/dev/null <<APPLESCRIPT || true
 tell application "Xcode"
     try
@@ -22,4 +27,4 @@ APPLESCRIPT
     sleep 2
 fi
 
-echo "✅ $PROJECT_NAME 프로세스 종료 완료"
+echo "✅ 프로세스 종료 완료"
