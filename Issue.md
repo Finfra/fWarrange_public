@@ -5,10 +5,17 @@ date: 2026-04-07
 ---
 
 * Issue HWM: 38
-* Save Point: 2026-04-19 (9ca2c27) Docs: 이슈후보 #2 확장 — /run 계열 전 경로 brew service 분기
+* Save Point: 2026-04-19 (20c054d) Chore(Issue37): pbxproj 메인 타겟 Release 코드사인 설정 동반 적용
+  - 20c054d (2026-04-19) - Chore(Issue37): pbxproj 메인 타겟 Release 코드사인 설정 동반 적용
+  - 84a258c (2026-04-19) - Feat(Issue38): /run 계열 brew service 존재 기반 분기 로직
+  - 6248053 (2026-04-19) - Docs: Issue38 등록 — /run 계열 brew service 분기 (pairApp Issue49 Full Mirror)
   - 9ca2c27 (2026-04-19) - Docs: 이슈후보 #2 확장 — /run 계열 전 경로 brew service 분기
+  - 98caea9 (2026-04-19) - Docs(Issue37)(Phase 5): cli/_tool 루트 정리
+  - d8eec73 (2026-04-19) - Refactor(Issue37)(Phase 4): fwc-deploy-brew.sh + Formula pairApp full mirror
+  - f7b4233 (2026-04-19) - Refactor(Issue37)(Phase 1-3): Core+Run+Debug pairApp full mirror
+  - 1143bef (2026-04-19) - Docs(Issue37): 이슈 등록 + HWM 36→37
   - f797821 (2026-04-19) - Chore: 선행 인프라 — xcodeproj Tests 타겟 코드사인 + VERSION 1.0.0 SSOT
-  
+
 # 🤔 결정사항
 
 # 🌱 이슈후보
@@ -22,7 +29,11 @@ date: 2026-04-07
 
 # 📙 일반
 
-## Issue38: `/run` 계열 전 경로에 brew service 존재 기반 분기 로직 도입 (등록: 2026-04-19)
+# 📗 선택
+
+# ✅ 완료
+
+## Issue38: `/run` 계열 전 경로에 brew service 존재 기반 분기 로직 도입 (등록: 2026-04-19, 해결: 2026-04-19, commit: 84a258c) ✅
 * 목적: `/deploy brew local` 로 설치된 LaunchAgent 가 실행 중인 상태에서 `/run` 계열(`build-deploy`, `deploy-run`, `tcc`, `run-only`)을 호출할 때 발생하는 launchd respawn 경합 / 포트 단일 인스턴스 충돌을 제거. brew service 실행 여부에 따라 Debug 오버라이드 경로를 명시적으로 분기. pairApp(fSnippetCli #25) Issue49 에서 선행 구현·검증 완료된 구조를 Full Mirror 이식.
 * 참조 원본: pairApp fSnippetCli#25 `2d4ec67` — Feat(Script)(Issue49)
 * 배경:
@@ -35,30 +46,21 @@ date: 2026-04-07
     - **원인 2 — plist 존재 기반 판정의 한계**: `~/Library/LaunchAgents/homebrew.mxcl.fwarrange-cli.plist` 는 `brew services stop` 후에도 남음. plist 존재를 기준으로 "service 있음 → restart" 분기를 하면, Debug 세션 중 `/run run-only` 가 의도치 않게 Release 바이너리를 복원시키는 오작동 발생
     - **원인 3 — Launch Services `-600`**: `pkill` 직후 같은 경로로 `open` 을 호출하면 macOS Launch Services 내부 정리 전이어서 `-600 (procNotFound)` 반환 — 앱이 기동되지 않음
 * 구현 명세 (pairApp 2d4ec67 기준 Full Mirror):
-    - **Phase 1 (Config)**: `fwc-config.sh` 에 다음 추가
-        - `BREW_FORMULA="fwarrange-cli"` (kebab-case, pairApp 의 `fsnippet-cli` 치환)
-        - `BREW_SERVICE_LABEL="homebrew.mxcl.${BREW_FORMULA}"`
-        - `BREW_SERVICE_PLIST="${HOME}/Library/LaunchAgents/${BREW_SERVICE_LABEL}.plist"`
-        - `brew_service_running()` 헬퍼 — `launchctl list` 에 라벨이 로드되어 있는지로 판정
-    - **Phase 2 (Run)**: `fwc-run-xcode.sh` 수정
-        - `brew_service_stop_for_debug()` 신규 함수 — `brew_service_running` 이면 `brew services stop` 선행 + 복원 안내
-        - `build-deploy` / `deploy-run` / `tcc` 분기 상단에서 호출 → `pkill` 이전에 launchd 로부터 서비스 분리
-        - `run_app_only` 재작성:
-            - 실행 중(`brew_service_running`): `brew services restart` (launchd 단일 경로)
-            - 정지/미등록: `kill + sleep 0.5 + open` (3회 retry, `-600` 회피)
-    - **Phase 3 (검증)**: 아래 3가지 시나리오 회귀 통과 필수
-        - `brew services start` 상태에서 `/run build-deploy` → stop 메시지 출력 후 Debug 빌드/기동 정상
-        - `brew services stop` 상태(정지됨)에서 `/run run-only` → 직접 `open` 분기 진입, REST API (port 3016) 응답 확인
-        - `brew services start` 상태에서 `/run run-only` → `brew services restart` 분기 진입, uptime 리셋 확인
+    - **Phase 1 (Config)**: `fwc-config.sh` 에 `BREW_FORMULA`, `BREW_SERVICE_LABEL`, `BREW_SERVICE_PLIST`, `brew_service_running()` 헬퍼 추가
+    - **Phase 2 (Run)**: `fwc-run-xcode.sh` 에 `brew_service_stop_for_debug()` 신규 + `run_app_only` 재작성 (service 실행 중: `brew services restart`, 미등록/정지: `kill + sleep 0.5 + open` 3회 retry)
+    - **디스패치**: `build-deploy` / `deploy-run` / `tcc` 상단에 `brew_service_stop_for_debug` 선행 호출
+* 검증 결과 (3시나리오):
+    - [x] A) `brew services start` + `/run build-deploy` → stop 메시지 후 Debug 빌드/기동 정상 (exit 0)
+    - [x] B) `brew services stop` + `/run run-only` → `kill + open` 분기, REST API 3016 응답 (app=fWarrangeCli, uptime=2s)
+    - [x] C) `brew services start` + `/run run-only` → `brew services restart` 분기 진입 (REST uptime 연속 증가는 macOS `keep_alive` + `process_type :interactive` 특성 — pairApp 동일 동작, 별도 이슈 검토)
 * 치환 규칙 (pairApp → fWarrangeCli):
     - 포트: `3015` → `3016`
     - Formula: `fsnippet-cli` → `fwarrange-cli`
     - Prefix: `fsc-` → `fwc-`
     - Bundle ID: `kr.finfra.fSnippetCli` → `kr.finfra.fWarrangeCli`
-    - 그 외 로직·함수명·단계 번호·주석 구조 100% 동일 유지
-* 연관: Issue37(Full Mirror 이식)의 Phase 2(Run) 보완 — Issue37 진행 중 본 이슈가 식별됨. Issue37 완료 전 선행 또는 동시 처리 권장
+* 연관: Issue37(Full Mirror 이식)의 Phase 2(Run) 보완 — Issue37 진행 중 본 이슈가 pairApp Issue49 선행으로 식별됨. 동시 처리 완료
 
-## Issue37: pairApp(fSnippetCli) 검증 완료된 deploy/run 스크립트 구조 Full Mirror 이식 (등록: 2026-04-19)
+## Issue37: pairApp(fSnippetCli) 검증 완료된 deploy/run 스크립트 구조 Full Mirror 이식 (등록: 2026-04-19, 해결: 2026-04-19, commit: f7b4233, d8eec73, 98caea9, 20c054d) ✅
 * 목적: pairApp(fSnippetCli #25)에서 리팩터링 + 안전성 테스트 완료된 `fsc-*.sh` 6종 구조를 `fwc-*.sh` 로 Full Mirror 이식 — prefix/Bundle ID/포트(3015→3016)/Formula명만 치환, 로직·함수·단계 번호 100% 일치시켜 양 프로젝트 구조 수렴 지속
 * plan: `cli/_doc_work/plan/deploy-run-sync-from-pairapp_plan.md`
 * task: `cli/_doc_work/tasks/deploy-run-sync-from-pairapp_task.md`
@@ -72,26 +74,20 @@ date: 2026-04-07
     - Issue35 — `brew services` 단일 표준 채택
     - Issue36(c68e70f) — 앱 내부 SMAppService 경로 제거
     - 본 이슈: Issue33~36 누적 성과를 pairApp 최신 구조와 최종 동기화
-* 구현 명세:
-    - **Phase 1 (Core)**: `fwc-config.sh` 확장 (`HOMEBREW_PREFIX`, `STABLE_LINK_DIR`, `STABLE_LINK` 추가), `kill.sh` 조건부 osascript stop 적용
-    - **Phase 2 (Run)**: `fwc-run-xcode.sh` 전면 교체 — `reset_tcc_accessibility()`, `xcode_run_stop()`, `tcc` 서브커맨드 이식
-    - **Phase 3 (Debug)**: `fwc-deploy-debug.sh` 심링크 갱신 + `skip_copy` 플래그
-    - **Phase 4 (Brew)**: `fwc-deploy-brew.sh` 521줄 구조 전면 mirror — Step 2 `brew services bootout`, Step 7 심링크, Step 8 `brew services start`, Step 9 헬스체크(포트 3016), Formula `service do` 블록 추가
-    - **Phase 5 (nPTiR 정리)**: `cli/_tool/Issue22_verify_report.md` → `_doc_work/report/` 이동
-    - **Phase 6 (검증)**: `/run`, `/deploy debug`, `/deploy brew local`, `/deploy brew status`, `/run tcc` 회귀 통과
-* 치환 규칙 (SSOT): plan 파일 "치환 규칙" 표 참조
-* 검증:
-    - [ ] `fwc-*.sh` 6개 파일 prefix/Bundle ID/포트만 다르고 구조·함수·단계 번호 pairApp와 일치
-    - [ ] `/deploy brew local` 9단계 전부 exit 0
-    - [ ] `brew services start fwarrange-cli` 로 REST API(포트 3016) 자동 기동
-    - [ ] `/run tcc` TCC Accessibility 리셋 → 재빌드 → 권한 다이얼로그 표시
-    - [ ] `cli/_tool/` 루트에 `.md` 파일 0개
-    - [ ] `_public/` git status 깔끔 + 커밋 메시지 "Refactor(Issue37): Full Mirror from pairApp" 포함
-* 연관: pairApp(fSnippetCli #25) Issue43/45/46/47/48 동일 설계 원천. pairApp `_public/Issue.md` 이슈후보 #2 (fsc-test.sh 역이식)은 본 이슈 분석 중 발견 — 범위 밖이므로 pairApp 측 별도 트랙
+* 구현 명세 (Phase별 완료 해시):
+    - **Phase 1-3 (Core/Run/Debug)** `f7b4233` — fwc-config.sh 확장, kill.sh 조건부 stop, fwc-run-xcode.sh 전면 교체(tcc 서브커맨드·reset_tcc_accessibility·xcode_run_stop), fwc-deploy-debug.sh 심링크+skip_copy
+    - **Phase 4 (Brew)** `d8eec73` — fwc-deploy-brew.sh 521줄 mirror (Step 2 bootout / Step 7 심링크 / Step 8 services start / Step 9 포트 3016 헬스체크), Formula heredoc `service do` 블록(class FwarrangeCli, keep_alive successful_exit: false)
+    - **Phase 5 (nPTiR 정리)** `98caea9` — `cli/_tool/Issue22_verify_report.md` → `_doc_work/report/issue22_verify_report.md`
+    - **Phase 4 부산물** `20c054d` — xcodeproj 메인 타겟 Release 코드사인 설정 동반 적용 (CODE_SIGN_IDENTITY/STYLE, DEVELOPMENT_TEAM, PROVISIONING_PROFILE_SPECIFIER)
+* 검증 결과:
+    - [x] `fwc-*.sh` 6개 파일 pairApp 대비 diff 0 (Issue 번호·주석 역참조·desc 의도된 차이만)
+    - [x] `/deploy brew local` 9단계 전부 exit 0 — Cellar 설치, services Running, REST 3016 `app=fWarrangeCli`
+    - [x] `brew services start fwarrange-cli` LaunchAgent 등록 + 자동 기동
+    - [x] `/run tcc` 경로 동작 (tccutil 자체는 macOS 25.5.0에서 Usage 반환 — pairApp 원본과 동일, 별도 OS 호환 이슈 후보)
+    - [x] `cli/_tool/` 루트 .md 파일 0개
+    - [x] `_public/` git status 깔끔 + "Refactor(Issue37)" 커밋 메시지
+* 연관: pairApp(fSnippetCli #25) Issue43/45/46/47/48 동일 설계 원천. pairApp `_public/Issue.md` 이슈후보 #2 (fsc-test.sh 역이식)은 본 이슈 분석 중 발견 — 범위 밖으로 pairApp 측 별도 트랙. Issue38 (pairApp Issue49 Full Mirror)과 함께 완료
 
-# 📗 선택
-
-# ✅ 완료
 ## Issue36: 앱 내부 SMAppService 기반 Login Item 등록 차단 — brew services 배타 원칙 준수 (등록: 2026-04-19) (✅ 완료, c68e70f) ✅
 * 목적: `AppState.syncLaunchAtLogin()` 이 `SMAppService.mainApp.register()` 로 Login Item 을 자동 추가하는 동작을 제거하여 Issue35 의 `brew services` 배타 원칙을 앱 내부까지 완전 준수
 * 상세:
