@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 35
+* Issue HWM: 36
 * Save Point: 2026-04-18 (cc29453) Fix(Script)(Issue33): fwc-run-xcode.sh 자기완결 build 패턴 전환
   - 4ba84fc (2026-04-19) - Docs(Issue33): report 경로 연결
   - 6872be0 (2026-04-18) - Docs: Close Issue31
@@ -20,6 +20,58 @@ date: 2026-04-07
 # 🌱 이슈후보
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
+
+## Issue36: 앱 내부 SMAppService 기반 Login Item 등록 차단 — brew services 배타 원칙 준수 (등록: 2026-04-19)
+* 목적: `AppState.syncLaunchAtLogin()` 이 `SMAppService.mainApp.register()` 로 Login Item 을 자동 추가하는 동작을 제거하여 Issue35 의 `brew services` 배타 원칙을 앱 내부까지 완전 준수
+* 배경:
+    - Issue34(commit 7a582c2) — `/deploy brew local` 서브커맨드로 `brew services` 기반 배포 인프라 구축
+    - Issue35(진행중) — Formula `service do` 블록 + `brew services` 단일 표준 채택 선언
+    - Issue35 구현 명세에 **"`brew services`(LaunchAgent) 단일 표준 — Login Item/SMAppService/수동 등록과 동시 사용 금지"** 명문화
+    - 그러나 Issue35 커밋 범위는 **배포 스크립트/Formula 레벨**에만 적용 → 앱 내부 `AppState.syncLaunchAtLogin()` (SMAppService 기반) 는 잔존
+    - pairApp(fSnippetCli #25) Issue47 동일 패턴 선행 등록 (2026-04-19) — 본 이슈는 fWarrangeCli 측 pair 대응
+* 원인 분석:
+    - **원인 1 — `AppState.syncLaunchAtLogin()` SMAppService 호출**: `cli/fWarrangeCli/AppState.swift` L458-477 이 `SMAppService.mainApp.register()` 호출 → macOS 가 "Login Item Added" 시스템 알림 표시 + 시스템 설정 > 로그인 항목 목록에 추가
+    - **원인 2 — `AppState.init()` 진입점**: L428 `syncLaunchAtLogin(settings.launchAtLogin ?? false)` 호출 → autoStart 가 `true` 이면 기동 시마다 재등록
+    - **원인 3 — `setLaunchAtLogin()` 경유**: MenuBarView 토글 → `AppState.setLaunchAtLogin(true)` → `syncLaunchAtLogin(true)` → SMAppService 등록
+    - **구조적 배경**: Issue34 이전에는 앱 내부 SMAppService 기반 Login Item 과 `brew services` LaunchAgent 가 동일 목적(로그인 시 자동 기동)을 이중 관리. Issue35 에서 배포 스크립트 경로만 제거 → 앱 내부 경로는 배타 원칙 위배 상태로 방치
+* 설계 근거: `~/_doc/3.Resource/_ICT/_OS/MacOS/homebrew_tap_deploy.md` §7-5-C "배타 원칙"
+    - LaunchAgent(brew services) 와 SMAppService 는 **동일 바이너리 이중 등록** 형태가 되어 launchd 가 예측 불가능한 타이밍으로 프로세스 2회 기동 시도
+    - 오픈소스 배포 표준은 `brew services` 이므로 SMAppService 경로는 제거가 원칙
+* 해결 전략:
+    - **전략 A (no-op + 유지)**: `AppState.syncLaunchAtLogin()` 내부를 no-op 로 변경 + `init()` 호출부 제거. API v2 `launchAtLogin` prefs 는 backward compat 유지 (읽기/쓰기는 prefs 값만 단순 저장, 실 등록은 안 함)
+    - **전략 B (전면 제거)**: `launchAtLogin` 프로퍼티 + API 필드 전체 삭제
+    - **채택**: 전략 A (최소 침습 + backward compat + API v2 호환 유지). 전략 B 는 API 클라이언트 breaking change 유발
+    - pairApp Issue47 과 동일 전략
+* 구현 명세:
+    - `cli/fWarrangeCli/AppState.swift`:
+        - L428 `init()` 말미 `syncLaunchAtLogin(settings.launchAtLogin ?? false)` 호출 제거
+        - L458-477 `syncLaunchAtLogin(_:)` 내부 SMAppService 호출 전부 제거 → no-op + 경고 로그 "Issue36: brew services 배타 원칙, SMAppService 경로 obsolete"
+        - L479-483 `setLaunchAtLogin(_:)` 은 유지 (prefs 저장 + syncLaunchAtLogin no-op 호출)
+        - 함수 상단에 obsolete 주석 추가
+    - `cli/fWarrangeCli/MenuBarView.swift`: 수정 없음 (토글 UI 유지, silent no-op)
+    - `cli/fWarrangeCli/Models/AppSettings.swift`: 수정 없음 (`launchAtLogin: Bool?` 프로퍼티 유지)
+    - API v2 `launchAtLogin` 필드 및 `SettingsService` 영속화 유지 (backward compat)
+* 설계 원칙:
+    - **배타 원칙 완전 이행**: 앱 내부까지 `brew services` 일원화
+    - **최소 침습**: API/Settings 시그니처 변경 없음 → v2 클라이언트 호환
+    - **이력 보존**: `syncLaunchAtLogin` 함수 유지 + obsolete 사유 주석
+* 검증:
+    - [ ] Release 빌드 성공 (`xcodebuild -scheme fWarrangeCli -configuration Release build`)
+    - [ ] `/deploy brew local` 재설치 후 `brew services start fwarrange-cli` 기동
+    - [ ] 시스템 설정 > 일반 > 로그인 항목에 **fWarrangeCli 가 추가되지 않음** 확인 (기존 항목은 사용자가 수동 제거)
+    - [ ] macOS "Login Item Added" 시스템 알림 미노출 확인
+    - [ ] API `GET /api/v2/settings` 응답에 `launchAtLogin` 필드 존재 (backward compat)
+    - [ ] API `PUT /api/v2/settings` 로 `launchAtLogin=true` 설정 후에도 실제 등록 안 됨 (silent no-op)
+* 관련 파일:
+    - `cli/fWarrangeCli/AppState.swift` (L428 호출 제거 + L458-477 no-op 전환)
+    - `cli/fWarrangeCli/MenuBarView.swift` (수정 없음, 참고)
+    - `cli/fWarrangeCli/Models/AppSettings.swift` (수정 없음, 참고)
+    - `cli/fWarrangeCli/Services/RESTServer.swift` (수정 없음, 참고)
+* 참조:
+    - Issue34 (/deploy brew 서브커맨드 확장)
+    - Issue35 (brew services 자동 시작 + 배타 원칙 선언)
+    - pairApp Issue47 (fSnippetCli 동일 패턴, 2026-04-19 등록)
+    - homebrew_tap_deploy.md §7-5-C 배타 원칙
 
 ## Issue35: brew services 자동 시작 — Formula service 블록 + /deploy brew autostart 서브커맨드 (등록: 2026-04-19)
 * 목적: `/deploy brew local`로 설치된 `fWarrangeCli.app`을 **`brew services`(launchd LaunchAgent)** 경로로 사용자 로그인 시 자동 기동하도록 Formula `service do` 블록 + 배포 CLI 통합 구현

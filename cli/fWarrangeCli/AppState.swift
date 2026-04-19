@@ -424,8 +424,8 @@ final class AppState {
             }
         }
 
-        // 로그인 시 자동 시작 동기화
-        syncLaunchAtLogin(settings.launchAtLogin ?? false)
+        // Issue36: brew services 배타 원칙 — 앱 내부 SMAppService 자동 등록 경로 제거
+        // launchAtLogin prefs 는 backward compat 유지, 실제 Login Item 등록은 brew services 가 담당
 
         // fWarrange(Paid) 종료 감지 → 메뉴바 자동 복원
         observePaidAppTermination()
@@ -453,27 +453,13 @@ final class AppState {
         }
     }
 
-    // MARK: - Login Item 관리
+    // MARK: - Login Item 관리 (Issue36: obsolete, brew services 배타 원칙)
 
+    // Issue36: `brew services`(LaunchAgent) 가 Login Item 역할 전담 → 앱 내부 SMAppService 경로는 obsolete.
+    // 함수 시그니처 유지 (backward compat), 내부는 no-op + 경고 로그.
+    // API v2 `launchAtLogin` prefs 는 단순 저장만 수행하고 실제 Login Item 등록/해제는 하지 않음.
     func syncLaunchAtLogin(_ enabled: Bool) {
-        if #available(macOS 13.0, *) {
-            let service = SMAppService.mainApp
-            do {
-                if enabled {
-                    if service.status != .enabled {
-                        try service.register()
-                        logI("✅ 로그인 시 자동 시작 등록")
-                    }
-                } else {
-                    if service.status == .enabled {
-                        try service.unregister()
-                        logI("✅ 로그인 시 자동 시작 해제")
-                    }
-                }
-            } catch {
-                logE("❌ LoginItem 설정 실패: \(error)")
-            }
-        }
+        logW("⚠️ Issue36: brew services 배타 원칙, SMAppService 경로 obsolete (enabled=\(enabled))")
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
