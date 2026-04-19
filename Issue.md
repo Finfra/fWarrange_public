@@ -494,7 +494,7 @@ date: 2026-04-07
 * 구현 명세:
     - `paidApp_version.md`: 관련 소스 파일 테이블에서 실제 미존재 함수 `isPaidAppRunning` 참조 삭제
     - Swift 소스에는 삭제 대상 없음 (모든 함수가 실제 사용 중)
-    - `com.finfra` 레거시 번들ID 없음 확인
+    - 번들ID `kr.finfra.*` 단독 표준 확인 (레거시 prefix는 폐기, 2026-04-19 재확인)
 * 검증:
     - Release 빌드 성공
 
