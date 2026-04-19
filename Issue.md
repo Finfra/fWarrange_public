@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 34
+* Issue HWM: 35
 * Save Point: 2026-04-18 (cc29453) Fix(Script)(Issue33): fwc-run-xcode.sh 자기완결 build 패턴 전환
   - 4ba84fc (2026-04-19) - Docs(Issue33): report 경로 연결
   - 6872be0 (2026-04-18) - Docs: Close Issue31
@@ -18,8 +18,77 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
 
+## Issue35: brew services 자동 시작 — Formula service 블록 + /deploy brew autostart 서브커맨드 (등록: 2026-04-19)
+* 목적: `/deploy brew local`로 설치된 `fWarrangeCli.app`을 **`brew services`(launchd LaunchAgent)** 경로로 사용자 로그인 시 자동 기동하도록 Formula `service do` 블록 + 배포 CLI 통합 구현
+* 관계: **Issue34의 선수 이슈** — `brew local` 완료 후 자동 시작 흐름이 완성되려면 본 이슈 구현 필요
+* 배경:
+    - `brew install`만으로는 앱이 기동되지 않음 — 로그인 후 매번 수동 `open` 필요 → 헬퍼 데몬 성격과 맞지 않음
+    - fWarrangeCli는 REST 서버(port 3016) + Accessibility API(창 캡처/복구) 기반 **헬퍼 데몬** — GUI 세션 전용 기능(CGEventTap 등) 없음 → `brew services`(launchd LaunchAgent) 경로 적합 가능성
+    - Homebrew 관행상 `service do` 블록 + `brew services start <formula>`가 표준 자동 시작 수단
+    - **심링크 엔트리 포인트 활용**: Issue34에서 확립한 `/Applications/_nowage_app/fWarrangeCli.app` 심링크는 Cellar 경로 교체와 무관하게 유지됨. `brew services`의 `run` 경로로 `opt_prefix` 사용 시 동일한 안정성 확보 (opt_prefix도 Cellar 경로를 심링크로 가리킴)
+* pairApp 대비 차이점 (중요):
+    - pairApp(fSnippetCli #25) **Issue44는 `brew services` 부적합 판정** — 이유: CGEventTap이 GUI 세션 컨텍스트를 요구 + TCC 주체 꼬임
+    - pairApp은 Login Item(`osascript System Events`) 경로 선택
+    - fWarrangeCli는 CGEventTap 없음 → `brew services` 경로 시도 가치 있음
+    - 단, Accessibility API는 daemon에서도 동작하나 TCC 승인 귀속 주체가 바뀌면 재요청 가능 — 실측 검증 필요
+* 설계 근거: `~/_doc/3.Resource/_ICT/_OS/MacOS/homebrew_tap_deploy.md` §7-5 "자동 시작 등록" (확장 필요)
+    - Homebrew 공식 `service do` 블록 패턴
+    - `launchctl` LaunchAgent 원리: `~/Library/LaunchAgents/homebrew.mxcl.<formula>.plist` 자동 생성·로드
+    - 로그인 시 자동 기동: LaunchAgent의 `RunAtLoad` + `KeepAlive`
+* 구현 명세:
+    - **Formula `service do` 블록** (`cli/_tool/fwc-deploy-brew.sh` cmd_local의 임시 Formula 생성부):
+        ```ruby
+        service do
+          run [opt_prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli"]
+          keep_alive true
+          log_path var/"log/fwarrangecli.log"
+          error_log_path var/"log/fwarrangecli.err.log"
+        end
+        ```
+    - `fwc-deploy-brew.sh` `cmd_local` Step 통합:
+        - Step 8 (신규): `brew services start fwarrangecli` — 환경변수 `FWC_AUTOSTART=1` 또는 `/deploy brew local --autostart` 옵션 지정 시 자동 수행
+        - 기본값은 **안내만 출력** (사용자 실수 방지 — 암묵적 시스템 변경 금지 원칙)
+        - pairApp Issue44와 동일 정책 (opt-in)
+    - `fwc-deploy-brew.sh` `cmd_uninstall` 통합: `brew services stop fwarrangecli` 자동 호출 (등록된 경우만) — 이미 구현됨
+    - `fwc-deploy-brew.sh` `cmd_status` 통합: `brew services info fwarrangecli` 섹션 추가
+    - 신규 서브커맨드 `/deploy brew autostart`:
+        - `enable`: `brew services start fwarrangecli`
+        - `disable`: `brew services stop fwarrangecli`
+        - `status`: `brew services info fwarrangecli`
+    - `cli/Formula/fWarrangeCli.rb` (원본, 원격 배포용)에도 `service do` 블록 추가 (Phase B publish 시 동일 구조 유지)
+* 설계 원칙:
+    - **`brew services`(LaunchAgent)** 와 **Login Item(osascript)** 는 **배타적** — 동시 등록 금지 (중복 기동)
+    - Homebrew 배포본은 `brew services` 우선, 실패 시 Login Item 대안 (pairApp 패턴)
+    - LaunchAgent 등록 실패 시 수동 안내 (시스템 설정 → 일반 → 로그인 항목)
+    - TCC 재요청: daemon 프로세스로 전환 시 Accessibility 권한이 사용자 앱 세션 권한과 별도로 관리될 수 있음 → `/run tcc` 안내 병행
+* Phase 구분:
+    - Phase A (Formula service 블록 + 수동 start/stop): 🚧 착수 예정
+        * Formula에 `service do` 추가
+        * `fwc-deploy-brew.sh` autostart 서브커맨드 신설
+        * 수동 `brew services start/stop/info` 래퍼
+    - Phase B (opt-in 자동 통합 + 검증): 미착수
+        * `FWC_AUTOSTART=1` 환경변수 또는 `--autostart` 플래그
+        * 실측: 로그아웃 → 재로그인 시 자동 기동 + REST 3016 응답 + Accessibility 동작 확인
+        * TCC 재요청 발생 여부 기록
+* 검증:
+    - [ ] `brew services list` 에 `fwarrangecli` 항목 표시 (`brew local` 후)
+    - [ ] `brew services start fwarrangecli` → `~/Library/LaunchAgents/homebrew.mxcl.fwarrangecli.plist` 자동 생성
+    - [ ] `brew services info fwarrangecli` → `Running: ✔`, PID 표시
+    - [ ] 로그아웃 → 재로그인 시 자동 기동 + REST 3016 응답 + 메뉴바 아이콘 표시
+    - [ ] Accessibility(창 캡처/복구) 동작 확인 — TCC 재요청 없거나 1회만
+    - [ ] `brew services stop fwarrangecli` → LaunchAgent unload
+    - [ ] `/deploy brew uninstall` → `brew services stop` 선행 호출 확인
+    - [ ] `/deploy brew status` → `brew services` 섹션 노출
+    - [ ] `brew services` 실패 시 Login Item fallback 설계 안내 (pairApp Issue44 패턴)
+* 관련 파일:
+    - `cli/_tool/fwc-deploy-brew.sh` (cmd_local Formula 생성부 + autostart 서브커맨드 신설)
+    - `cli/Formula/fWarrangeCli.rb` (원본, `service do` 블록 추가)
+    - `~/_doc/3.Resource/_ICT/_OS/MacOS/homebrew_tap_deploy.md` §7-5 "자동 시작 등록" 확장
+    - 연계: pairApp `fSnippet/_public` Issue44 (Login Item 경로, 본 이슈는 `brew services` 경로로 분기)
+
 ## Issue34: /deploy brew 서브커맨드 확장 (local/publish/status/uninstall + TCC 안내, pairApp 패턴 수렴) (등록: 2026-04-19)
 * 목적: `/deploy brew` 단독 호출 금지, 4개 서브커맨드로 분기하고 brew 재설치 후 TCC 권한 꼬임 가능성을 `/run tcc` 안내로 유도. pairApp(fSnippetCli #25 Issue43) 패턴과 수렴하여 원격 tap repo 생성 전/후 모두 단일 커맨드로 운용
+* 선수: **Issue35 (brew services 자동 시작)** — `brew local` 완료 후 사용자 로그인 시 자동 기동 흐름이 완성되려면 Issue35 구현 필요. pairApp Issue43-Issue44 선수 관계와 동일 구조 (pairApp은 Login Item 경로, 본 프로젝트는 `brew services` 경로로 분기)
 * 배경:
     - 현재 `/deploy`는 로컬 복사만 수행 — 원격 tap 반영/상태 조회/정리 기능이 섞여 있지 않아 확장성 부족
     - brew 재설치 후 새 서명 바이너리로 TCC Accessibility 권한이 꼬일 가능성 (Release 서명 분리, Issue31 실무 방침 참조)
@@ -46,7 +115,8 @@ date: 2026-04-07
     - 신규: `cli/_tool/fwc-deploy-brew.sh` — `brew` 서브커맨드 라우터 (case dispatcher)
     - `.claude/commands/deploy.md` 얇은 디스패처로 재작성 (type/sub 이중 파싱, 4 type: debug/release/brew/dmg)
     - `§7-6` 체크리스트 9/9 항목 일치 (단독 호출 차단, 4종 구현, 🚫 이모지, LOCAL_VERSION, PIPESTATUS, REST 10초 대기, /run tcc 안내, 공통 경로 규약)
-    - **우리 고유 유지**: `/Applications/_nowage_app/fWarrangeCli.app` 심링크 전략 (pairApp은 brew prefix 직접 실행), status에서 원격 tap 등록 체크
+    - **양 프로젝트 공통 — 심링크 전략**: `/Applications/_nowage_app/fWarrangeCli.app` → `$(brew --prefix fwarrangecli)/fWarrangeCli.app`. pairApp(fSnippetCli #25)도 **Issue44에서 동일 채택** — 사유는 **Cellar 경로 stale 문제 회피**(brew reinstall 시 `1.0.0/_0/` → `1.0.0/_1/` 식으로 바뀌어 `open` 실패). 안정적 엔트리 포인트 확보 목적. fWarrangeCli는 본 전략을 먼저 도입했고 pairApp이 역채택
+    - **우리 고유 유지**: status에서 원격 tap 등록 체크 (`publish` 준비 가시성)
 * Phase B (publish 구현): 🚧 미착수
     - GitHub 태그 + Release 자동 생성 (`gh release create cli-v<ver> --generate-notes`)
     - `cli/Formula/fWarrangeCli.rb` 원격용 Formula 복원 (GitHub Release URL + SHA256, `version`)
