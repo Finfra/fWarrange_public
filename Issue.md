@@ -18,41 +18,63 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 # 🚧 진행중
 
-## Issue34: `/deploy brew <sub>` 서브커맨드 아키텍처 + pairApp 패턴 수렴 (등록: 2026-04-19)
-* 목적: `/deploy` 커맨드를 서브커맨드 기반으로 재구성하여 로컬·원격·조회·제거 4가지 배포 액션을 명확히 분리. pairApp(fSnippetCli #25) 패턴과 수렴하여 원격 tap repo 생성 전/후 모두 단일 커맨드로 운용
-* 배경: 원격 `finfra/tap` repo 미생성 상태에서 로컬 `cli/Formula/fWarrangeCli.rb` 테스트 중. 현재 `/deploy`는 로컬 복사만 수행. pairApp의 `/brew-apply`도 원격 tap 경로 전제라 현재 상황과 불일치. pairApp은 이미 `fsc-deploy-debug.sh` + `fsc-deploy-brew.sh` 분리형 아키텍처로 정착 → 동일 패턴 적용
-* 참조 문서: `~/_doc/3.Resource/_ICT/_OS/MacOS/homebrew_tap_deploy.md` (Tap 레포 생성·Formula 작성·릴리스 자동화 가이드)
-* pairApp 수렴 원칙:
-    - `deploy.md`는 얇은 디스패처 (type/sub 파싱 + 하위 스크립트 호출만)
-    - 실제 로직은 `cli/_tool/fwc-deploy-debug.sh` + `cli/_tool/fwc-deploy-brew.sh`로 외부화
-    - 로컬 tap 네임스페이스(`finfra/tap`) 사용 — publish 전환 시 `url`만 교체
-    - Formula 내부 source build (`xcodebuild` 실행) — Cookbook 관행 부합
-    - `caveats` 블록으로 접근성 안내 명시
-    - **우리 고유 유지**: `/Applications/_nowage_app/fWarrangeCli.app` 심링크 (개발자 편의), status에서 원격 tap 체크
-* 서브커맨드 명세:
-    - `/deploy brew local` — 로컬 Formula 기반 재설치 (기본). Release 빌드 → pre-built tarball → `/tmp/fWarrangeCli.rb` 임시 Formula(`file://` url) → `brew install --build-from-source` → `/Applications/_nowage_app/fWarrangeCli.app` 심링크
-    - `/deploy brew publish` — 원격 `finfra/tap` repo에 Formula 반영 + push (🚧 TODO, 원격 tap repo 생성 후 구현)
-    - `/deploy brew status` — 설치/tap 상태 조회 (`brew list`, `brew --prefix`, tap 존재 여부, Formula 경로, sha256 대조 등)
-    - `/deploy brew uninstall` — 로컬 brew 제거 + 로컬 tap Formula 정리 (심링크 제거, `/tmp/fwarrange-*` 임시 파일 정리 포함)
-* 사용 제약:
-    - `/deploy brew` 단독 사용 금지 — 반드시 서브커맨드 명시
-    - 서브커맨드 미지정 시 Usage 출력 후 exit 1
-* TCC 연동:
-    - `/deploy brew local` 실행 후 앱 기동 시 TCC(Accessibility) 권한 재요청 발생 가능 — Release 빌드 경로 특성 (Issue31 실무 방침 참조)
-    - TCC 꼬임 해소는 **`/run tcc`** 커맨드 사용 (kill → `tccutil reset Accessibility kr.finfra.fWarrangeCli` → Debug 재빌드·실행)
-    - `/deploy brew local` 문서에 TCC 회피 안내 반드시 명시
+## Issue34: /deploy brew 서브커맨드 확장 (local/publish/status/uninstall + TCC 안내, pairApp 패턴 수렴) (등록: 2026-04-19)
+* 목적: `/deploy brew` 단독 호출 금지, 4개 서브커맨드로 분기하고 brew 재설치 후 TCC 권한 꼬임 가능성을 `/run tcc` 안내로 유도. pairApp(fSnippetCli #25 Issue43) 패턴과 수렴하여 원격 tap repo 생성 전/후 모두 단일 커맨드로 운용
+* 배경:
+    - 현재 `/deploy`는 로컬 복사만 수행 — 원격 tap 반영/상태 조회/정리 기능이 섞여 있지 않아 확장성 부족
+    - brew 재설치 후 새 서명 바이너리로 TCC Accessibility 권한이 꼬일 가능성 (Release 서명 분리, Issue31 실무 방침 참조)
+    - `fwc-run-xcode.sh tcc` 서브커맨드로 `tccutil reset Accessibility kr.finfra.fWarrangeCli` 자동화 완료 (사용자 별도 수정)
+    - pairApp(#25)은 이미 `fsc-deploy-debug.sh` + `fsc-deploy-brew.sh` 라우터 분리 아키텍처로 정착 → Issue34에서 동일 패턴 적용
+* 설계 근거: `~/_doc/3.Resource/_ICT/_OS/MacOS/homebrew_tap_deploy.md` §7 "내부 배포 CLI 커맨드 설계 원칙" SSOT
+    - §7-1 표준 서브커맨드 셋 (local/publish/status/uninstall 4종)
+    - §7-2 단독 호출 차단 규칙 (암시적 기본값 불가, 🚫 이모지 + 사유 명시)
+    - §7-3 로컬 재설치 권장 절차 (9-step, 양 프로젝트 공통)
+    - §7-4 공통 산출물 경로 규약 (tap/Formula/심링크/tarball)
+    - §7-5 TCC 재설정 (`/run tcc` 연동)
+    - §7-6 체크리스트 (양 프로젝트 수렴 지표)
+    - 자동화: `dawidd6/action-homebrew-bump-formula` GitHub Action (Phase B 구현 시)
+* 서브커맨드 스펙:
+
+    | 서브커맨드                | 동작                                                                                        | 상태        |
+    | :------------------------ | :------------------------------------------------------------------------------------------ | :---------- |
+    | `/deploy brew local`      | Release 빌드 + 로컬 tap(`finfra/tap`) 재설치 + 심링크 + 앱 실행 (9단계)                     | ✅ Phase A   |
+    | `/deploy brew publish`    | 원격 `finfra/homebrew-tap` 저장소 생성/푸시, 태그 기반 Formula 업데이트                     | 🚧 Phase B  |
+    | `/deploy brew status`     | brew list, brew --prefix, 로컬/원격 tap, 심링크, 프로세스·REST 상태 조회                    | ✅ Phase A   |
+    | `/deploy brew uninstall`  | brew uninstall + 심링크 + 로컬 tap Formula + tarball 정리                                   | ✅ Phase A   |
+* Phase A (local/status/uninstall + Usage 강제, pairApp 수렴): ✅ 구현 완료 (`7a582c2`, `ddc56c1`)
+    - 신규: `cli/_tool/fwc-deploy-debug.sh` — `/deploy debug` 및 Debug 배포용 유틸
+    - 신규: `cli/_tool/fwc-deploy-brew.sh` — `brew` 서브커맨드 라우터 (case dispatcher)
+    - `.claude/commands/deploy.md` 얇은 디스패처로 재작성 (type/sub 이중 파싱, 4 type: debug/release/brew/dmg)
+    - `§7-6` 체크리스트 9/9 항목 일치 (단독 호출 차단, 4종 구현, 🚫 이모지, LOCAL_VERSION, PIPESTATUS, REST 10초 대기, /run tcc 안내, 공통 경로 규약)
+    - **우리 고유 유지**: `/Applications/_nowage_app/fWarrangeCli.app` 심링크 전략 (pairApp은 brew prefix 직접 실행), status에서 원격 tap 등록 체크
+* Phase B (publish 구현): 🚧 미착수
+    - GitHub 태그 + Release 자동 생성 (`gh release create cli-v<ver> --generate-notes`)
+    - `cli/Formula/fWarrangeCli.rb` 원격용 Formula 복원 (GitHub Release URL + SHA256, `version`)
+    - 원격 `finfra/homebrew-tap` 레포 푸시 스크립트
+    - 사전 조건:
+        * 원격 `github.com/finfra/homebrew-tap` public repo 생성
+        * `gh` CLI 인증 (`gh auth login`)
+        * `HOMEBREW_TAP_TOKEN` (tap 레포 write 권한 fine-grained PAT)
+    - 자동화 옵션: `dawidd6/action-homebrew-bump-formula@v4` GitHub Action (태그 push 시 자동 bump)
 * 구현 명세:
-    - `.claude/commands/deploy.md`: 서브커맨드 디스패처(case) 추가, 각 서브커맨드별 절차 분리
-    - 원본 `cli/Formula/fWarrangeCli.rb`는 GitHub URL 유지 (원격 배포용). 로컬 테스트는 `/tmp/fWarrangeCli.rb` 임시본만 사용
-    - `brew uninstall` 시 `.app` 심링크 `/Applications/_nowage_app/fWarrangeCli.app`도 함께 제거
-    - `brew status` 출력 정보: installed version, formula path, linked target, brew prefix, tap 존재 여부
+    - Phase A만 먼저 완료·검증·커밋 (단계 분리, pairApp Issue43 패턴 동일)
+    - Phase B는 별도 커밋으로 진행
+    - TCC 안내는 로그·출력에 한국어로 표시, `/run tcc` 커맨드를 해결책으로 제시
+    - 원본 `cli/Formula/fWarrangeCli.rb`는 GitHub URL 유지 (Phase B에서 실사용), 로컬 재설치는 `$TAP_FORMULA` 로컬 tap 내부 Formula만 갱신 (원본 오염 방지)
+    - 심링크 갱신: `brew local` Step 7에서 `ln -sfn`, `brew uninstall`에서 `rm -rf`
 * 검증:
-    - [ ] `/deploy brew` (인자 없음) → Usage 출력 + exit 1
-    - [ ] `/deploy brew local` → 빌드 + 설치 + 심링크 + REST 헬스 OK
-    - [ ] `/deploy brew status` → 현재 설치 상태 요약 출력
-    - [ ] `/deploy brew uninstall` → brew 제거 + 심링크 제거 + 임시 파일 정리
-    - [ ] `/deploy brew publish` → TODO 안내 출력 (원격 tap repo 생성 후 구현)
-    - [ ] 문서에 `/run tcc` 안내 명시 확인
+    - [x] `/deploy brew` 단독 → Usage 출력 + exit 1 (경량 검증 확인)
+    - [x] `/deploy brew status` → brew/tap/심링크/프로세스/REST 한눈에 조회 (실측 확인)
+    - [x] `/deploy brew publish` → 🚧 TODO 메시지 + 향후 구현 가이드 링크 (실측 확인)
+    - [ ] `/deploy brew local` → 9단계 실측 (Release 빌드 + brew install + 심링크 + REST 헬스) — 별도 세션 (수 분 소요)
+    - [ ] `/deploy brew uninstall` → brew uninstall + 심링크 + Formula + tarball 정리 — local 완료 후 검증
+    - [x] 문서에 `/run tcc` 안내 명시 확인 (deploy.md + fwc-deploy-brew.sh `tcc_notice()`)
+* 관련 파일:
+    - `cli/_tool/fwc-deploy-debug.sh` (신규, Debug 배포)
+    - `cli/_tool/fwc-deploy-brew.sh` (신규, brew 서브커맨드 라우터)
+    - `.claude/commands/deploy.md` (얇은 디스패처, type/sub 이중 파싱)
+    - 참고: `~/_doc/3.Resource/_ICT/_OS/MacOS/homebrew_tap_deploy.md` §7 SSOT
+    - 연계: pairApp `fSnippet/_public` Issue43 (동일 패턴 선행 구현)
 
 # 📕 중요
 
