@@ -6,11 +6,13 @@ date: 2026-04-07
 
 * Issue HWM: 42
 * Save Point: 2026-04-20 (3867459) Feat(Issue39): brew services ↔ menubar 4-quadrant 상태 매트릭스 동기화
+  - 65c593a (2026-04-20) - Docs: Close Issue42 (pairApp Issue52 Full Mirror — shutdown API + 호환성 필드 완결)
 
 # 🤔 결정사항
 
 # 🌱 이슈후보
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
+2. REST API Issue196 신규 필드 미구현 — effectiveLogLevel, effectiveHotkeysEnabled 응답 누락 (2026-04-20 QA-C)
 
 # 🚧 진행중
 # 📕 중요
