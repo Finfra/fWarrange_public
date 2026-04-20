@@ -7,6 +7,12 @@ struct AppEntry {
         if CLIHandler.handleIfNeeded() {
             return
         }
+        // Issue39 Phase4: 동일 Bundle ID 중복 인스턴스 차단.
+        // LaunchServices 가 심링크/경로 차이로 별개 인스턴스를 허용하는 경우
+        // (`open _nowage_app/...` + `brew services start` 조합) 를 런타임에서 방어.
+        if SingleInstanceGuard.shouldTerminateAsDuplicate() {
+            exit(0)
+        }
         fWarrangeCliApp.main()
     }
 }

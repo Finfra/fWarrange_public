@@ -32,6 +32,7 @@
 		C28393B14CC286D469E07E9C /* AppLauncherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D270864BCD38A2A937F22A /* AppLauncherService.swift */; };
 		C2E99C28DED595BC47482405 /* PaidAppAPIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40B1E8D2101B5ED1FD42A60 /* PaidAppAPIModels.swift */; };
 		C3679BE6E8D43FFC3CC11276 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 484BEF5CA60BA4E18244F756 /* SettingsService.swift */; };
+		CE2A10A1CBC6C57013BF7BA9 /* BrewServiceSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EA8523BB57D0B3157DFB6B5 /* BrewServiceSync.swift */; };
 		D552584C661C9FB653657DBF /* Mode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E0460B68C5CE5C8544611FF /* Mode.swift */; };
 		D6BBE10639BAFBC04E911FA7 /* PaidAppStateStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D9BE8B5B15A0FC8367FE33 /* PaidAppStateStoreTests.swift */; };
 		D6FEA787E06D6083A8E2C995 /* fWarrangeCliApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 332CF3D58195D4A7F7B2836F /* fWarrangeCliApp.swift */; };
@@ -40,6 +41,7 @@
 		DF36E5E2B8875DDC165C24BD /* WindowInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC65FB4F55C0366BCFD541BA /* WindowInfo.swift */; };
 		E58108B1DF458379DB3E8C90 /* WindowCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF3DC701F6F34498C5A607B /* WindowCaptureService.swift */; };
 		EFEA32B3FCD8D5FF47E461F1 /* WindowRestoreService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D014B086F458FF9FFCC06DFF /* WindowRestoreService.swift */; };
+		F878E1D3666F861CF06C0ABA /* SingleInstanceGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F1B359E8EBF17D392F07492 /* SingleInstanceGuard.swift */; };
 		FBA6A026682AD9E9385AAF3A /* AboutWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD1899FC99C3EB25ADABF2A0 /* AboutWindowManager.swift */; };
 		FBAEC90B3AA0B434235470D6 /* CLIHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 515D9B634FB2FCE99FBCBABB /* CLIHandler.swift */; };
 /* End PBXBuildFile section */
@@ -57,6 +59,7 @@
 /* Begin PBXFileReference section */
 		0C7DF7ED030EBBAC16FD552B /* PaidAppStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppStateStore.swift; sourceTree = "<group>"; };
 		0CF39B73806C305D1DA7D76C /* FWarrangeCliSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FWarrangeCliSmokeTests.swift; sourceTree = "<group>"; };
+		0EA8523BB57D0B3157DFB6B5 /* BrewServiceSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrewServiceSync.swift; sourceTree = "<group>"; };
 		253297DD533C3B9B8146AED5 /* fWarrangeCliTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = fWarrangeCliTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		25E958C235A2113119D12901 /* HotKeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyService.swift; sourceTree = "<group>"; };
 		2E0460B68C5CE5C8544611FF /* Mode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mode.swift; sourceTree = "<group>"; };
@@ -70,6 +73,7 @@
 		5CCB3C72133309202D83DC44 /* ChangeTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangeTracker.swift; sourceTree = "<group>"; };
 		633BCF8630F3A9F5B69FE7E8 /* RestoreStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestoreStatus.swift; sourceTree = "<group>"; };
 		662A96F421AC4E825C14B86F /* LayoutStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutStorageService.swift; sourceTree = "<group>"; };
+		6F1B359E8EBF17D392F07492 /* SingleInstanceGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingleInstanceGuard.swift; sourceTree = "<group>"; };
 		791814979BEAEF63CC0C95C8 /* LayoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutManager.swift; sourceTree = "<group>"; };
 		85FE7B6EF2174224C37FA6F0 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		881D6E417915BBA037DF45F8 /* MatchType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchType.swift; sourceTree = "<group>"; };
@@ -148,6 +152,7 @@
 			children = (
 				B30239289D5D096DA900F198 /* AccessibilityService.swift */,
 				95D270864BCD38A2A937F22A /* AppLauncherService.swift */,
+				0EA8523BB57D0B3157DFB6B5 /* BrewServiceSync.swift */,
 				5CCB3C72133309202D83DC44 /* ChangeTracker.swift */,
 				25E958C235A2113119D12901 /* HotKeyService.swift */,
 				662A96F421AC4E825C14B86F /* LayoutStorageService.swift */,
@@ -156,6 +161,7 @@
 				DCF65497BEF50CBB7CED8F81 /* RESTServer.swift */,
 				95BA5BF6280F4128EDF4285D /* ScreenMoveService.swift */,
 				484BEF5CA60BA4E18244F756 /* SettingsService.swift */,
+				6F1B359E8EBF17D392F07492 /* SingleInstanceGuard.swift */,
 				3CF3DC701F6F34498C5A607B /* WindowCaptureService.swift */,
 				D014B086F458FF9FFCC06DFF /* WindowRestoreService.swift */,
 			);
@@ -242,7 +248,9 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2640;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = FF6073DFC6F550541CD2EA44 /* Build configuration list for PBXProject "fWarrangeCli" */;
 			developmentRegion = en;
@@ -297,6 +305,7 @@
 				C28393B14CC286D469E07E9C /* AppLauncherService.swift in Sources */,
 				363BF8287FD23580D3FB33E4 /* AppSettings.swift in Sources */,
 				463D7F8F385E5DA1F5E40501 /* AppState.swift in Sources */,
+				CE2A10A1CBC6C57013BF7BA9 /* BrewServiceSync.swift in Sources */,
 				FBAEC90B3AA0B434235470D6 /* CLIHandler.swift in Sources */,
 				990554852C9F96E6CA46180A /* ChangeTracker.swift in Sources */,
 				83167584CB3AC9496AFA89A6 /* DisplayNumberHelper.swift in Sources */,
@@ -316,6 +325,7 @@
 				DA8C1D721A4DDE07B0E8FB9C /* RestoreStatus.swift in Sources */,
 				8CA4F284AB6BBB5352D573D7 /* ScreenMoveService.swift in Sources */,
 				C3679BE6E8D43FFC3CC11276 /* SettingsService.swift in Sources */,
+				F878E1D3666F861CF06C0ABA /* SingleInstanceGuard.swift in Sources */,
 				E58108B1DF458379DB3E8C90 /* WindowCaptureService.swift in Sources */,
 				DF36E5E2B8875DDC165C24BD /* WindowInfo.swift in Sources */,
 				BC5A6F4B54C6220CFF559455 /* WindowManager.swift in Sources */,
@@ -339,13 +349,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = BZDZFZWF6K;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSUIElement = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -353,7 +358,6 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCliTests;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.9;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fWarrangeCli.app/Contents/MacOS/fWarrangeCli";
@@ -395,11 +399,9 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -424,7 +426,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCli;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
@@ -436,11 +437,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = fWarrangeCli/fWarrangeCli.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = BZDZFZWF6K;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -449,7 +446,6 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCli;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -459,11 +455,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = fWarrangeCli/fWarrangeCli.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = BZDZFZWF6K;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -472,7 +464,6 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCli;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -481,21 +472,15 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = BZDZFZWF6K;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSUIElement = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCli;
-				PROVISIONING_PROFILE_SPECIFIER = "";
+				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCliTests;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.9;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fWarrangeCli.app/Contents/MacOS/fWarrangeCli";
@@ -537,11 +522,9 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -559,7 +542,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCli;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;

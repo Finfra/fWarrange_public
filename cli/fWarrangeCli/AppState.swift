@@ -396,6 +396,11 @@ final class AppState {
         isRunning = true
         startTime = Date()
 
+        // Issue39 매트릭스: app start × brew=stopped → brew services start 호출.
+        // launchd 기동 / 옵트아웃 / 이미 로드 / brew 미설치는 내부에서 skip.
+        // 중복 인스턴스는 SingleInstanceGuard 가 exit(0) 으로 차단.
+        BrewServiceSync.onAppStart()
+
         // 접근성 권한 확인 (prompt:false — ad-hoc 서명에서는 시스템 프롬프트 무효)
         if !windowManager.isAccessibilityGranted() {
             logW("⚠️ Accessibility 권한이 필요합니다")

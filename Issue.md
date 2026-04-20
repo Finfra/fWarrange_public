@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 38
+* Issue HWM: 39
 * Save Point: 2026-04-19 (20c054d) Chore(Issue37): pbxproj 메인 타겟 Release 코드사인 설정 동반 적용
   - 20c054d (2026-04-19) - Chore(Issue37): pbxproj 메인 타겟 Release 코드사인 설정 동반 적용
   - 84a258c (2026-04-19) - Feat(Issue38): /run 계열 brew service 존재 기반 분기 로직
@@ -22,6 +22,41 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 
 # 🚧 진행중
+
+## Issue39: brew services ↔ 메뉴바 앱 상태 동기화 재설계 — 4-quadrant 상태 매트릭스 기반 (등록: 2026-04-20, 재설계: 2026-04-20)
+* 목적: `brew services` (launchd) 와 메뉴바 GUI 앱의 수명주기를 **4-quadrant 상태 매트릭스**로 명시 정의하고, 4개 트리거(brew start / brew stop / app start / app stop) 각각에서 상대 상태를 양방향 동기화. `/opt/homebrew/var/fWarrangeCli/` 경로 원천 차단(Phase 1) 과 Bundle ID 기반 단일 인스턴스 가드(Phase 4) 를 기반으로 각 전이를 no-double-start/no-ghost-state 로 수렴.
+* plan: `cli/_doc_work/plan/brew-service-menubar-sync_plan.md`
+* 재설계 상태 매트릭스 (2026-04-20 사용자 결정):
+
+    | Trigger          | 상대 상태             | 기대 동작                                            |
+    | :--------------- | :-------------------- | :--------------------------------------------------- |
+    | **brew start**   | 앱 실행 중             | brew state 만 `started` 로 이동 (앱 재기동 없음)       |
+    | **brew start**   | 앱 정지                | 앱 시작 + brew state `started`                        |
+    | **brew stop**    | 앱 정지                | brew state `stopped`                                  |
+    | **brew stop**    | 앱 실행 중             | brew state `stopped` (launchctl unload, 앱 종료 동반) |
+    | **app start**    | brew `started`        | 앱만 시작, brew 호출 skip                             |
+    | **app start**    | brew `stopped`        | 앱 시작 + `brew services start` 호출 (state 동기화)   |
+    | **app stop**     | brew `started`        | `brew services stop` 호출 + `NSApplication.terminate` |
+    | **app stop**     | brew `stopped`        | `terminate` 만 (brew 호출 skip)                       |
+
+* 집행 지점 (3개 코드 포인트로 매트릭스 전체 커버):
+    - **SingleInstanceGuard** — `brew start` × 앱 실행 중 → 신규 프로세스가 `exit(0)`, 기존 앱 유지 + plist `keep_alive: successful_exit: false` 로 launchd 재기동 억제 → brew state 만 `started` 수렴
+    - **BrewServiceSync.onAppStart** — `app start` × brew `stopped` → `brew services start` 호출. 이미 `started` 면 skip (launchctl list 검사)
+    - **BrewServiceSync.onAppStop** — `app stop` × brew `started` → `brew services stop` 호출 후 terminate. 이미 `stopped` 면 skip
+* 증상 (사용자 실측 2026-04-20):
+    - case 2: 메뉴바 종료 후 `brew services start` → `Bootstrap failed: 5: Input/output error`. `stop` 후 `start` 하면 복구 — Phase 2 (onAppStop) 로 해결
+    - case 3: `open` 으로 앱 기동 시 `brew services list` `stopped` 로 남음 — Phase 3 (onAppStart) 로 해결
+    - case 4: `open` 선행 + `brew services start` → 2개 바이너리 (var 경로 vs Formula 경로) 동시 실행 — Phase 1 (var 경로 제거) + Phase 4 (SingleInstanceGuard) 로 해결
+* 구현 명세:
+    - Phase 1 (`cli/_tool/fwc-config.sh`, `fwc-deploy-debug.sh`, `fwc-run-xcode.sh`): DerivedData 직접 실행, `/opt/homebrew/var/fWarrangeCli/` 미생성, `_nowage_app` 심링크 갱신
+    - Phase 2 (`cli/fWarrangeCli/MenuBarView.swift` 종료 액션): `BrewServiceSync.onAppStop(timeout: 2.0)` → `NSApplication.terminate`. 내부에서 launchctl 로드 상태 확인 후 조건부 `brew services stop`
+    - Phase 3 (`cli/fWarrangeCli/AppState.initialize()`): `BrewServiceSync.onAppStart()` 호출. 내부에서 (a) launchd 기동 프로세스면 skip, (b) 이미 로드됐으면 skip, (c) `UserDefaults` `fwc.autoStartBrewService == false` 면 skip, (d) brew 바이너리 미존재 시 skip, 그 외 `brew services start` 비동기 호출. Formula/Debug 경로 구분 제거 — SingleInstanceGuard 가 중복 제거 담당
+    - Phase 4 (`cli/fWarrangeCli/Services/SingleInstanceGuard.swift` + `fWarrangeCliApp.swift` `AppEntry.main`): **launchd-bootstrap 프로세스 우선권** 규칙 적용. `XPC_SERVICE_NAME == "homebrew.mxcl.fwarrange-cli"` 로 자기 자신이 launchd-spawned 인지 판정. launchd-spawned 면 기존 인스턴스를 `terminate()` 후 자신이 survive (brew state `started` 수렴), 아니면 기존 인스턴스 유지 + 자신 `exit(0)`. 승자 경로는 REST 포트 3016 bind 경합 방지를 위해 기존 프로세스 완전 종료까지 최대 3초 폴링 대기 포함. `CLIHandler.handleIfNeeded()` 이후, `fWarrangeCliApp.main()` 이전 시점
+    - 실측 버그 (2026-04-20):
+        1. `getParentPID() == 1` 으로 launchd 기동 판정 시 macOS 모든 GUI 앱 PPID=1 특성상 상시 true → `onAppStart` 무한 skip. `XPC_SERVICE_NAME` 매칭만으로 판정하도록 단순화
+        2. 초기 Phase 4 구현(신규 프로세스가 무조건 exit) 에서는 open-기동분이 survive 하여 launchd 가 띄운 프로세스가 즉시 사라짐 → plist 로드됐지만 `brew services list` 는 `stopped` 로 표시. 승자 규칙 반전으로 해결
+    - 검증: `cli/_tool/fwc-sync-verify.sh` 신규 작성 — 8개 매트릭스 셀 자동 재현 후 `brew services list` · `pgrep` · `curl :3016` 3종 확인. 결과 `_doc_work/report/brew-service-menubar-sync_issue39_report.md` 기록
+    - pairApp 이식: fSnippetCli(#25) — 본 이슈 해결 후 재현 여부 확인. 재현 시 Full Mirror 이슈 신규 등록
 
 
 

@@ -48,6 +48,9 @@ struct MenuBarView: View {
         Button("종료") {
             logI("👋 fWarrangeCli 종료")
             appState.restServer.stop()
+            // Issue39 매트릭스: app stop × brew=started → brew services stop 선행.
+            // brew=stopped 또는 brew 미설치 시 내부에서 skip. 타임아웃 2초 후 강제 진행.
+            BrewServiceSync.onAppStop()
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")

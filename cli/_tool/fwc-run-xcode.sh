@@ -224,17 +224,19 @@ run_app_only() {
         echo "[run-only] ⚠️ brew services restart 실패 — fallback: 직접 실행"
     fi
 
-    if [ ! -d "$APP_PATH" ]; then
-        echo "[run-only] ❌ 배포된 앱 없음: $APP_PATH"
+    # Issue39 Phase1: $APP_PATH (var 경로) 참조 제거 — DerivedData 실물을 동적으로 resolve
+    local app_path
+    app_path=$(resolve_app_path) || {
+        echo "[run-only] ❌ 배포된 앱 없음 — DerivedData 빌드 부재"
         echo "            먼저 /run build-deploy 또는 /deploy debug 실행 필요"
         return 1
-    fi
+    }
     kill_app
     # pkill 직후 macOS Launch Services 내부 정리 대기 (-600 회피)
     sleep 0.5
-    echo "[run-only] $APP_PATH 실행"
+    echo "[run-only] $app_path 실행"
     for attempt in 1 2 3; do
-        if open "$APP_PATH" 2>&1; then
+        if open "$app_path" 2>&1; then
             return 0
         fi
         echo "[run-only] ⚠️ open 실패 (attempt $attempt/3) — retry"
