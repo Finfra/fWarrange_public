@@ -12,7 +12,6 @@ date: 2026-04-07
 
 # 🌱 이슈후보
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
-2. PaidAppStateStore 자동 재기동 이슈 — paidApp kill -9 후 cliApp이 즉시 새 프로세스 생성. 기대: .cliOnly 모드 전환 (2026-04-20 QA-D)
 
 # 🚧 진행중
 # 📕 중요
