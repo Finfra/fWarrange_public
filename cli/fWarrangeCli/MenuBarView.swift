@@ -4,12 +4,8 @@ struct MenuBarView: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        switch appState.paidAppMonitor.state {
-        case .paidAppActive:
-            paidAppActiveSection
-        case .cliOnly:
-            cliOnlySection
-        }
+        // Issue46: cliApp은 paidApp 미실행 시에만 표시됨 — cliOnly 섹션만 렌더링
+        cliOnlySection
 
         Divider()
 
@@ -39,21 +35,6 @@ struct MenuBarView: View {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
-    }
-
-    // MARK: - paidAppActive 모드
-
-    @ViewBuilder
-    private var paidAppActiveSection: some View {
-        Button("설정 열기") {
-            appState.openPaidApp(action: "settings")
-        }
-        Button("레이아웃 목록") {
-            appState.openPaidApp(action: "layouts")
-        }
-        Button("About fWarrange") {
-            appState.openPaidApp(action: "about")
-        }
     }
 
     // MARK: - cliOnly 모드

@@ -29,7 +29,11 @@ struct fWarrangeCliApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra {
+        // Issue46: paidApp 실행 중이면 paidApp이 자체 MenuBarExtra를 소유하므로 cliApp 메뉴바 숨김
+        MenuBarExtra(isInserted: Binding(
+            get: { appState.paidAppMonitor.state == .cliOnly },
+            set: { _ in }
+        )) {
             MenuBarView()
                 .environment(appState)
         } label: {

@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 45
+* Issue HWM: 46
 * Save Point: 2026-04-20 (58cd86f) Fix(Issue43): PATCH /settings/{advanced,general} effectiveLogLevel·effectiveHotkeysEnabled 추가
   - 9e9b577 (2026-04-20) - Docs: Close Issue44
   - f297278 (2026-04-20) - Fix: Close Issue45 (deploy symlink 중첩 버그 수정)
@@ -16,11 +16,28 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 
 # 🚧 진행중
+* 목적: paidApp(fWarrange)이 자체 MenuBarExtra를 소유하는 구조로 복원. cliApp은 paidApp 미실행 시에만 메뉴바 아이콘 표시
+* 연관 이슈: paidApp Issue201
+* 상세:
+    - `fWarrangeCliApp.swift`: `paidAppMonitor.state == .cliOnly`일 때만 `MenuBarExtra` 렌더링
+    - `MenuBarView.swift`: `paidAppActive` 모드 제거 (cliOnly 단독 운영)
+* 구현 명세:
+    - `appState.paidAppMonitor.state == .cliOnly` 조건부로 `MenuBarExtra` Scene 포함
+    - paidApp 기동 시 NSWorkspace 알림으로 state `.paidAppActive` 전환 → cliApp 메뉴바 숨김
+    - paidApp 종료 시 state `.cliOnly` 전환 → cliApp 메뉴바 복원
+
 # 📕 중요
 # 📙 일반
 # 📗 선택
 
 # ✅ 완료
+## Issue46: paidApp 실행 시 cliApp MenuBarExtra 조건부 숨김 (등록: 2026.04.20) (✅ 완료, TBD) ✅
+* 목적: paidApp(fWarrange)이 자체 MenuBarExtra를 소유하는 구조로 복원. cliApp은 paidApp 미실행 시에만 메뉴바 아이콘 표시
+* 연관 이슈: paidApp Issue201
+* 상세:
+    - `fWarrangeCliApp.swift`: `MenuBarExtra(isInserted:)` Binding으로 `paidAppMonitor.state == .cliOnly`일 때만 표시
+    - `MenuBarView.swift`: `paidAppActive` 모드 제거 (cliOnly 단독 운영)
+
 ## Issue44: PaidAppLifecycleNotifier paidApp 방식 통일 대응 (등록: 2026.04.20) (✅ 완료, 9e9b577) ✅
 * 목적: paidApp(fWarrange) PaidAppLifecycleNotifier 변경에 따라 cliApp register 엔드포인트가 client-side sessionId를 수용하도록 수정
 * 상세: 
