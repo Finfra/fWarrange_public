@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 43
+* Issue HWM: 44
 * Save Point: 2026-04-20 (58cd86f) Fix(Issue43): PATCH /settings/{advanced,general} effectiveLogLevel·effectiveHotkeysEnabled 추가
   - 65c593a (2026-04-20) - Docs: Close Issue42 (pairApp Issue52 Full Mirror — shutdown API + 호환성 필드 완결)
 
@@ -16,6 +16,13 @@ date: 2026-04-07
 # 🚧 진행중
 # 📕 중요
 # 📙 일반
+## Issue44: PaidAppLifecycleNotifier paidApp 방식 통일 대응 (등록: 2026.04.20)
+* 목적: paidApp(fWarrange) PaidAppLifecycleNotifier 변경에 따라 cliApp register 엔드포인트가 client-side sessionId를 수용하도록 수정
+* 상세: 
+    - POST /api/v2/paidapp/register: 요청 body의 sessionId를 그대로 사용 (현재는 서버가 생성)
+    - GET /api/v2/cli/version 응답에 minPaidAppVersion 필드 포함 여부 확인 및 추가
+    - fSnippet cliApp(fSnippetCli)과 동일한 API 계약 유지
+
 # 📗 선택
 
 # ✅ 완료
