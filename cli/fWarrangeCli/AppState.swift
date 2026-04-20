@@ -9,6 +9,7 @@ final class AppState {
     let settingsService: SettingsService
     let restServer: RESTServer
     let paidAppStore: PaidAppStateStore
+    let paidAppMonitor: PaidAppMonitor
     private let hotKeyService: HotKeyService
     private let screenMoveService: ScreenMoveService
     private let modeStorageService: ModeStorageService
@@ -318,6 +319,7 @@ final class AppState {
         )
         let paidAppStore = PaidAppStateStore()
         self.paidAppStore = paidAppStore
+        self.paidAppMonitor = PaidAppMonitor()
         self.restServer = RESTServer(handlers: handlers, paidAppStore: paidAppStore)
         weakSelf = self
     }
@@ -384,13 +386,15 @@ final class AppState {
             Logger.shared.setLogLevel(level)
         }
 
-        // Issue10 — Paid 버전 감지 시 실행하고, 성공하면 메뉴바만 숨김
+        // Issue195: 2-모드 메뉴바 — cliApp이 직접 관리. paidApp 실행 여부는 PaidAppMonitor로 감지.
+        // 레거시 hideMenuBar 로직(Issue10)은 Issue196에서 완전 제거 예정.
         if detectPaidApp() != nil {
-            if launchPaidApp() {
-                logI("✅ fWarrange(Paid) 실행 성공 → 메뉴바 숨김, REST 서버 유지")
-                hideMenuBar = true
-            }
+            _ = launchPaidApp()
+            logI("✅ fWarrange(Paid) 실행 — cliApp 메뉴바 유지 (2-모드 관리)")
         }
+
+        // PaidAppMonitor NSWorkspace 구독 시작
+        paidAppMonitor.startObserving()
 
         layoutManager.loadMetadataList()
 
@@ -532,6 +536,18 @@ final class AppState {
             logW("⚠️ fWarrange 실행 실패: \(url.path)")
         }
         return success
+    }
+
+    /// Issue195: fwarrange:// URL Scheme으로 paidApp 특정 화면 열기.
+    /// paidApp 미설치 시 `launchPaidApp()`이 false를 반환하며 UI에서 안내 처리.
+    func openPaidApp(action: String) {
+        guard let url = URL(string: "fwarrange://command?action=\(action)") else { return }
+        let opened = NSWorkspace.shared.open(url)
+        if opened {
+            logI("🔗 paidApp URL Scheme 호출 성공: action=\(action)")
+        } else {
+            logW("⚠️ paidApp URL Scheme 호출 실패: action=\(action) — paidApp 미등록 또는 미설치")
+        }
     }
 
     /// 기능 실행 시 호출: 감지 → 실행 → 안내 알림. 감지 실패 시 false 반환

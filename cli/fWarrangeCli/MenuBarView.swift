@@ -4,29 +4,16 @@ struct MenuBarView: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        Button("About fWarrangeCli") {
-            AboutWindowManager.shared.showAbout()
-        }
-
-        Button("Settings") {
-            if !appState.tryLaunchPaidFeature() {
-                showPaidOnlyAlert()
-            }
-        }
-
-        Button("Management Window") {
-            if !appState.tryLaunchPaidFeature() {
-                showPaidOnlyAlert()
-            }
+        switch appState.paidAppMonitor.state {
+        case .paidAppActive:
+            paidAppActiveSection
+        case .cliOnly:
+            cliOnlySection
         }
 
         Divider()
 
-        Text("상태: \(appState.isRunning ? "실행 중" : "중지됨")")
-        if appState.isRunning {
-            Text("포트: \(appState.restServer.port)")
-            Text("Uptime: \(appState.uptimeString)")
-        }
+        statusSection
 
         Divider()
 
@@ -48,61 +35,95 @@ struct MenuBarView: View {
         Button("종료") {
             logI("👋 fWarrangeCli 종료")
             appState.restServer.stop()
-            // Issue39 매트릭스: app stop × brew=started → brew services stop 선행.
-            // brew=stopped 또는 brew 미설치 시 내부에서 skip. 타임아웃 2초 후 강제 진행.
             BrewServiceSync.onAppStop()
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
     }
 
-    private func showPaidOnlyAlert() {
-        NSApplication.shared.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "Only support the paid version"
-        alert.informativeText = "This feature requires fWarrange (App Store version).\nYou can get it from the App Store or locate an already installed copy."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "App Store")
-        alert.addButton(withTitle: "Locate...")
-        alert.addButton(withTitle: "Open Config in Finder")
-        alert.addButton(withTitle: "Cancel")
+    // MARK: - paidAppActive 모드
 
-        let response = alert.runModal()
-        switch response {
-        case .alertFirstButtonReturn:
-            // App Store 페이지 열기
-            if let url = URL(string: "macappstore://apps.apple.com/app/fwarrange/id6744105753") {
-                NSWorkspace.shared.open(url)
+    @ViewBuilder
+    private var paidAppActiveSection: some View {
+        Button("설정 열기") {
+            appState.openPaidApp(action: "settings")
+        }
+        Button("레이아웃 목록") {
+            appState.openPaidApp(action: "layouts")
+        }
+        Button("About fWarrange") {
+            appState.openPaidApp(action: "about")
+        }
+    }
+
+    // MARK: - cliOnly 모드
+
+    @ViewBuilder
+    private var cliOnlySection: some View {
+        Button("fWarrange 앱 열기") {
+            if !appState.launchPaidApp() {
+                showPaidOnlyAlert()
             }
-        case .alertSecondButtonReturn:
-            // 파일 선택 패널로 fWarrange.app 찾기
-            let panel = NSOpenPanel()
-            panel.title = "Select fWarrange.app"
-            panel.allowedContentTypes = [.application]
-            panel.allowsMultipleSelection = false
-            panel.canChooseDirectories = false
-            panel.directoryURL = URL(fileURLWithPath: "/Applications")
-            if panel.runModal() == .OK, let selectedURL = panel.url {
-                // 선택한 앱의 Bundle ID 검증
-                if let bundle = Bundle(url: selectedURL),
-                   bundle.bundleIdentifier == "kr.finfra.fWarrange" {
-                    NSWorkspace.shared.open(selectedURL)
-                } else {
-                    let errorAlert = NSAlert()
-                    errorAlert.messageText = "Invalid application"
-                    errorAlert.informativeText = "The selected app is not fWarrange."
-                    errorAlert.alertStyle = .warning
-                    errorAlert.runModal()
-                }
-            }
-        case .alertThirdButtonReturn:
-            // 설정 파일을 Finder에서 보기
+        }
+
+        Button("설정 파일 폴더 열기") {
             let configPath = appState.settingsService.configFilePath
             let configURL = URL(fileURLWithPath: configPath)
             if FileManager.default.fileExists(atPath: configPath) {
                 NSWorkspace.shared.activateFileViewerSelecting([configURL])
             } else {
                 NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: configURL.deletingLastPathComponent().path)
+            }
+        }
+    }
+
+    // MARK: - 공통 상태 섹션
+
+    @ViewBuilder
+    private var statusSection: some View {
+        Text("상태: \(appState.isRunning ? "실행 중" : "중지됨")")
+        if appState.isRunning {
+            Text("포트: \(appState.restServer.port)")
+            Text("Uptime: \(appState.uptimeString)")
+        }
+    }
+
+    // MARK: - fWarrange 미설치 안내
+
+    private func showPaidOnlyAlert() {
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "fWarrange를 찾을 수 없습니다"
+        alert.informativeText = "fWarrange (App Store 버전)가 설치되어 있지 않습니다.\nApp Store에서 설치하거나, 이미 설치된 경우 앱을 직접 선택해주세요."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "App Store")
+        alert.addButton(withTitle: "직접 찾기...")
+        alert.addButton(withTitle: "취소")
+
+        let response = alert.runModal()
+        switch response {
+        case .alertFirstButtonReturn:
+            if let url = URL(string: "macappstore://apps.apple.com/app/fwarrange/id6744105753") {
+                NSWorkspace.shared.open(url)
+            }
+        case .alertSecondButtonReturn:
+            let panel = NSOpenPanel()
+            panel.title = "fWarrange.app 선택"
+            panel.allowedContentTypes = [.application]
+            panel.allowsMultipleSelection = false
+            panel.canChooseDirectories = false
+            panel.directoryURL = URL(fileURLWithPath: "/Applications")
+            if panel.runModal() == .OK, let selectedURL = panel.url {
+                if let bundle = Bundle(url: selectedURL),
+                   bundle.bundleIdentifier == "kr.finfra.fWarrange" {
+                    NSWorkspace.shared.open(selectedURL)
+                } else {
+                    let errorAlert = NSAlert()
+                    errorAlert.messageText = "잘못된 앱"
+                    errorAlert.informativeText = "선택한 앱이 fWarrange가 아닙니다."
+                    errorAlert.alertStyle = .warning
+                    errorAlert.runModal()
+                }
             }
         default:
             break

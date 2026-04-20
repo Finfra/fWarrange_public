@@ -18,6 +18,7 @@
 		4926C654E290CAB561309435 /* Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5448F7DE624FDC82BC3D385C /* Layout.swift */; };
 		5550D4E9E811C42F638DA161 /* HotKeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25E958C235A2113119D12901 /* HotKeyService.swift */; };
 		638565B82365C5E0C2944001 /* PaidAppAPIModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA432610AC9B58EA3638AEBA /* PaidAppAPIModelsTests.swift */; };
+		66EA8ECE678E75D6BBC6EF56 /* PaidAppMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1919E0DE2282826243C9BF78 /* PaidAppMonitor.swift */; };
 		6E8CAAC3C32A6DFFC0772B6A /* PaidAppRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F83A9BD5E1D62D0865CA6E8 /* PaidAppRouterTests.swift */; };
 		777BCC6E3242282BF52941EC /* PaidAppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E137415D6E8C59805CCF00 /* PaidAppRouter.swift */; };
 		80592DA154C35E61440B959E /* LayoutStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 662A96F421AC4E825C14B86F /* LayoutStorageService.swift */; };
@@ -61,6 +62,7 @@
 		0C7DF7ED030EBBAC16FD552B /* PaidAppStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppStateStore.swift; sourceTree = "<group>"; };
 		0CF39B73806C305D1DA7D76C /* FWarrangeCliSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FWarrangeCliSmokeTests.swift; sourceTree = "<group>"; };
 		0EA8523BB57D0B3157DFB6B5 /* BrewServiceSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrewServiceSync.swift; sourceTree = "<group>"; };
+		1919E0DE2282826243C9BF78 /* PaidAppMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppMonitor.swift; sourceTree = "<group>"; };
 		253297DD533C3B9B8146AED5 /* fWarrangeCliTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = fWarrangeCliTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		25E958C235A2113119D12901 /* HotKeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyService.swift; sourceTree = "<group>"; };
 		2E0460B68C5CE5C8544611FF /* Mode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mode.swift; sourceTree = "<group>"; };
@@ -107,6 +109,7 @@
 			children = (
 				BD1899FC99C3EB25ADABF2A0 /* AboutWindowManager.swift */,
 				791814979BEAEF63CC0C95C8 /* LayoutManager.swift */,
+				1919E0DE2282826243C9BF78 /* PaidAppMonitor.swift */,
 				0C7DF7ED030EBBAC16FD552B /* PaidAppStateStore.swift */,
 				AEC521474E835C8993023C58 /* WindowManager.swift */,
 			);
@@ -331,6 +334,7 @@
 				D552584C661C9FB653657DBF /* Mode.swift in Sources */,
 				9347927C5890D11DB089E08D /* ModeStorageService.swift in Sources */,
 				C2E99C28DED595BC47482405 /* PaidAppAPIModels.swift in Sources */,
+				66EA8ECE678E75D6BBC6EF56 /* PaidAppMonitor.swift in Sources */,
 				777BCC6E3242282BF52941EC /* PaidAppRouter.swift in Sources */,
 				A31091E371A2B7483343A1DD /* PaidAppStateStore.swift in Sources */,
 				B40020566EC37D6524BBB1CD /* RESTServer.swift in Sources */,
