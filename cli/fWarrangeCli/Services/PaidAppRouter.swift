@@ -67,9 +67,15 @@ final class PaidAppRouter {
             return .badRequest(reason: "상태 저장 실패 (concurrent)")
         }
 
+        let cliVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+        let minPaidAppVersion: String? = nil  // 추후 설정 연동
         return .success(PaidAppRegisterResponse(
             sessionId: sessionId,
-            registeredAt: runtime.registeredAt
+            registeredAt: runtime.registeredAt,
+            ok: true,
+            cliVersion: cliVersion,
+            minPaidAppVersion: minPaidAppVersion,
+            compatible: true
         ))
     }
 

@@ -52,12 +52,20 @@ final class PaidAppAPIModelsTests: XCTestCase {
     func testRegisterResponseRoundTrip() throws {
         let response = PaidAppRegisterResponse(
             sessionId: "550e8400-e29b-41d4-a716-446655440000",
-            registeredAt: "2026-04-18T09:15:42Z"
+            registeredAt: "2026-04-18T09:15:42Z",
+            ok: true,
+            cliVersion: "1.2.3",
+            minPaidAppVersion: nil,
+            compatible: true
         )
         let data = try encoder.encode(response)
         let decoded = try decoder.decode(PaidAppRegisterResponse.self, from: data)
         XCTAssertEqual(decoded.sessionId, "550e8400-e29b-41d4-a716-446655440000")
         XCTAssertEqual(decoded.registeredAt, "2026-04-18T09:15:42Z")
+        XCTAssertTrue(decoded.ok)
+        XCTAssertEqual(decoded.cliVersion, "1.2.3")
+        XCTAssertNil(decoded.minPaidAppVersion)
+        XCTAssertTrue(decoded.compatible)
     }
 
     // MARK: - PaidAppUnregisterRequest

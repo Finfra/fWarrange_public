@@ -15,6 +15,10 @@ struct PaidAppRegisterRequest: Codable, Equatable {
 struct PaidAppRegisterResponse: Codable, Equatable {
     let sessionId: String   // cliApp이 발급한 UUID
     let registeredAt: String
+    let ok: Bool
+    let cliVersion: String
+    let minPaidAppVersion: String?  // nil = 버전 제한 없음
+    let compatible: Bool
 }
 
 struct PaidAppUnregisterRequest: Codable, Equatable {
@@ -24,6 +28,18 @@ struct PaidAppUnregisterRequest: Codable, Equatable {
 
 struct PaidAppUnregisterResponse: Codable, Equatable {
     let unregisteredAt: String
+}
+
+// MARK: - Shutdown (Issue42 Phase 1)
+
+struct ShutdownRequest: Codable {
+    let reason: String?
+    let delayMs: Int?
+}
+
+struct ShutdownResponse: Codable {
+    let accepted: Bool
+    let message: String
 }
 
 enum PaidAppLifecycleState: String, Codable, Equatable {

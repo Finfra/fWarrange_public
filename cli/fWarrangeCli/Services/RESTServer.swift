@@ -734,6 +734,12 @@ final class RESTServer: RESTServerProtocol {
             return true
         }
 
+        // POST /api/v2/shutdown (Issue42 Phase 1)
+        if method == "POST" && path == "\(base)/shutdown" {
+            handleShutdown(request: request, completion: completion)
+            return true
+        }
+
         return false
     }
 
@@ -755,10 +761,15 @@ final class RESTServer: RESTServerProtocol {
         let result = paidAppRouter.register(request: req)
         switch result {
         case let .success(resp):
-            completion(.ok(json: [
+            var body: [String: Any] = [
                 "sessionId": resp.sessionId,
-                "registeredAt": resp.registeredAt
-            ]))
+                "registeredAt": resp.registeredAt,
+                "ok": resp.ok,
+                "cliVersion": resp.cliVersion,
+                "compatible": resp.compatible
+            ]
+            if let min = resp.minPaidAppVersion { body["minPaidAppVersion"] = min }
+            completion(.ok(json: body))
             logStateTransition(event: "register", pid: req.pid, sessionId: resp.sessionId)
         case let .forbidden(reason):
             logW(reason)
@@ -807,6 +818,21 @@ final class RESTServer: RESTServerProtocol {
         if let sid = resp.sessionId { json["sessionId"] = sid }
         if let ra = resp.registeredAt { json["registeredAt"] = ra }
         completion(.ok(json: json))
+    }
+
+    // MARK: - Shutdown 핸들러 (Issue42 Phase 1)
+
+    /// POST /api/v2/shutdown — cliApp 프로세스 종료 (paidApp 종료 연동용)
+    private func handleShutdown(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
+        let body = request.body.flatMap { try? JSONDecoder().decode(ShutdownRequest.self, from: $0) }
+        let reason = body?.reason ?? "unspecified"
+        let delayMs = max(0, body?.delayMs ?? 0)
+        logI("[RESTServer] shutdown 요청: reason=\(reason), delayMs=\(delayMs)")
+        completion(.ok(json: ["accepted": true, "message": "cliApp 종료 예약됨 (delay=\(delayMs)ms)"] as [String: Any]))
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(delayMs + 100)) {
+            logI("[RESTServer] cliApp 종료 실행 (reason=\(reason))")
+            NSApplication.shared.terminate(nil)
+        }
     }
 
     /// `paidapp_state_transitions.log`에 상태 전환 기록 (Phase A-8 infra).
