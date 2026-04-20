@@ -10,6 +10,7 @@ struct PaidAppRegisterRequest: Codable, Equatable {
     let version: String
     let bundlePath: String
     let startTime: String  // ISO8601 초 정밀도 (PID 재사용 cycle 대응 2중 검증 핵심)
+    let sessionId: String  // client-side UUID (paidApp이 생성해서 전송)
 }
 
 struct PaidAppRegisterResponse: Codable, Equatable {

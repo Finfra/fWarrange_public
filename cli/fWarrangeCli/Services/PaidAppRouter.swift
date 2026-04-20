@@ -58,7 +58,8 @@ final class PaidAppRouter {
             bundleId: Self.paidAppBundleId,
             startTime: request.startTime,
             version: request.version,
-            bundlePath: request.bundlePath
+            bundlePath: request.bundlePath,
+            sessionId: request.sessionId
         )
 
         // register가 새 세션을 발급한 직후 Store에서 registeredAt 조회

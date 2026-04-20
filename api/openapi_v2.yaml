@@ -1679,7 +1679,14 @@ components:
             paidApp 프로세스 시작 시각 (ISO8601, 초 정밀도). PID 재사용 cycle
             대응을 위해 bundleId + startTime(s) 2중 검증의 핵심 필드.
           example: "2026-04-18T09:15:42Z"
-      required: [pid, version, bundlePath, startTime]
+        sessionId:
+          type: string
+          format: uuid
+          description: |
+            paidApp이 생성한 세션 UUID (client-side). cliApp은 이 값을 그대로
+            세션 ID로 사용한다. unregister 시 이 값을 재사용한다.
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      required: [pid, version, bundlePath, startTime, sessionId]
 
     PaidAppRegisterResponse:
       type: object

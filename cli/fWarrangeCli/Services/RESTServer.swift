@@ -1037,14 +1037,14 @@ final class RESTServer: RESTServerProtocol {
     private func handleCLIVersion(completion: @escaping (HTTPResponse) -> Void) {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-        let body: [String: Any] = [
-            "status": "ok",
-            "data": [
-                "app": "fWarrangeCli",
-                "version": version,
-                "build": build
-            ] as [String: Any]
+        let minPaidAppVersion = Bundle.main.infoDictionary?["MinPaidAppVersion"] as? String
+        var data: [String: Any] = [
+            "app": "fWarrangeCli",
+            "version": version,
+            "build": build
         ]
+        if let min = minPaidAppVersion { data["minPaidAppVersion"] = min }
+        let body: [String: Any] = ["status": "ok", "data": data]
         completion(.ok(json: body))
     }
 

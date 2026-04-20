@@ -22,6 +22,10 @@ final class AppState {
     var activeModeName: String?
     private var modeActivationInProgress = false
 
+    // 메뉴바 아이콘: paidApp 실행 중이면 paidApp 아이콘, 미실행이면 cliApp 아이콘
+    var menuBarIcon: NSImage = AppState.makeCLIIcon()
+    var menuBarIconIsTemplate: Bool = true
+
     init() {
         let baseDir = YAMLLayoutStorageService.resolveDefaultBaseDirectory()
         let settingsService = YAMLSettingsService(baseDirectory: baseDir)
@@ -386,6 +390,7 @@ final class AppState {
 
         // PaidAppMonitor NSWorkspace 구독 시작
         paidAppMonitor.startObserving()
+        startObservingMenuBarIcon()
 
         layoutManager.loadMetadataList()
 
@@ -459,6 +464,66 @@ final class AppState {
                 }
             }
         }
+    }
+
+    // MARK: - 메뉴바 아이콘 관리
+
+    /// cliApp 기본 메뉴바 아이콘: rectangle.3.group 대각선 클리핑
+    static func makeCLIIcon() -> NSImage {
+        let symbol = NSImage(systemSymbolName: "rectangle.3.group", accessibilityDescription: "fWarrange")!
+        let size = NSSize(width: 18, height: 18)
+        let image = NSImage(size: size, flipped: false) { rect in
+            let clip = NSBezierPath()
+            clip.move(to: NSPoint(x: 0, y: rect.height))
+            clip.line(to: NSPoint(x: rect.width, y: rect.height))
+            clip.line(to: NSPoint(x: rect.width, y: rect.height * 0.4))
+            clip.line(to: NSPoint(x: 0, y: 0))
+            clip.close()
+            NSGraphicsContext.saveGraphicsState()
+            clip.addClip()
+            symbol.draw(in: rect)
+            NSGraphicsContext.restoreGraphicsState()
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+
+    /// paidApp 아이콘을 메뉴바 크기(18×18)로 리사이즈
+    static func makePaidAppIcon(from runningApp: NSRunningApplication) -> NSImage? {
+        guard let icon = runningApp.icon else { return nil }
+        let resized = NSImage(size: NSSize(width: 18, height: 18))
+        resized.lockFocus()
+        icon.draw(in: NSRect(origin: .zero, size: NSSize(width: 18, height: 18)))
+        resized.unlockFocus()
+        return resized
+    }
+
+    /// PaidAppMonitor.state 변화를 감시해 menuBarIcon 자동 전환
+    private func startObservingMenuBarIcon() {
+        func observe() {
+            withObservationTracking {
+                let state = paidAppMonitor.state
+                switch state {
+                case .paidAppActive:
+                    let apps = NSRunningApplication.runningApplications(withBundleIdentifier: "kr.finfra.fWarrange")
+                    if let app = apps.first, let icon = AppState.makePaidAppIcon(from: app) {
+                        menuBarIcon = icon
+                        menuBarIconIsTemplate = false
+                        logI("🎨 메뉴바 아이콘: paidApp 아이콘으로 전환")
+                    }
+                case .cliOnly:
+                    menuBarIcon = AppState.makeCLIIcon()
+                    menuBarIconIsTemplate = true
+                    logI("🎨 메뉴바 아이콘: cliApp 아이콘으로 복원")
+                }
+            } onChange: {
+                Task { @MainActor [weak self] in
+                    self?.startObservingMenuBarIcon()
+                }
+            }
+        }
+        observe()
     }
 
     // MARK: - Login Item 관리 (Issue36: obsolete, brew services 배타 원칙)

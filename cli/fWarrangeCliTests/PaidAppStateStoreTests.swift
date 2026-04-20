@@ -35,14 +35,16 @@ final class PaidAppStateStoreTests: XCTestCase {
     }
 
     func testRegisterThenCurrentStateReturnsRunning() {
+        let clientId = UUID().uuidString
         let sessionId = store.register(
             pid: 12345,
             bundleId: "kr.finfra.fWarrange",
             startTime: "2026-04-18T09:15:42Z",
             version: "1.14.3",
-            bundlePath: "/Applications/_nowage_app/fWarrange.app"
+            bundlePath: "/Applications/_nowage_app/fWarrange.app",
+            sessionId: clientId
         )
-        XCTAssertFalse(sessionId.isEmpty)
+        XCTAssertEqual(sessionId, clientId, "client가 제공한 sessionId를 그대로 사용해야 함")
         guard case let .running(runtime) = store.currentState() else {
             return XCTFail("register 후에는 .running 상태여야 함")
         }
@@ -59,7 +61,8 @@ final class PaidAppStateStoreTests: XCTestCase {
             bundleId: "kr.finfra.fWarrange",
             startTime: "2026-04-18T09:15:42Z",
             version: "1.14.3",
-            bundlePath: "/path"
+            bundlePath: "/path",
+            sessionId: UUID().uuidString
         )
         XCTAssertTrue(store.unregister(pid: 12345, sessionId: sessionId))
         if case .notRunning = store.currentState() {
@@ -77,7 +80,8 @@ final class PaidAppStateStoreTests: XCTestCase {
             bundleId: "kr.finfra.fWarrange",
             startTime: "2026-04-18T09:15:42Z",
             version: "1.14.3",
-            bundlePath: "/path"
+            bundlePath: "/path",
+            sessionId: UUID().uuidString
         )
         XCTAssertFalse(
             store.unregister(pid: 12345, sessionId: "forged-uuid-00000000"),
@@ -94,7 +98,8 @@ final class PaidAppStateStoreTests: XCTestCase {
             bundleId: "kr.finfra.fWarrange",
             startTime: "2026-04-18T09:15:42Z",
             version: "1.14.3",
-            bundlePath: "/path"
+            bundlePath: "/path",
+            sessionId: UUID().uuidString
         )
         XCTAssertFalse(
             store.unregister(pid: 99999, sessionId: sessionId),
@@ -117,14 +122,16 @@ final class PaidAppStateStoreTests: XCTestCase {
             bundleId: "kr.finfra.fWarrange",
             startTime: "2026-04-18T09:15:42Z",
             version: "1.0",
-            bundlePath: "/path1"
+            bundlePath: "/path1",
+            sessionId: UUID().uuidString
         )
         let newSessionId = store.register(
             pid: 54321,
             bundleId: "kr.finfra.fWarrange",
             startTime: "2026-04-18T10:00:00Z",
             version: "1.1",
-            bundlePath: "/path2"
+            bundlePath: "/path2",
+            sessionId: UUID().uuidString
         )
         XCTAssertNotEqual(oldSessionId, newSessionId, "이전 세션은 폐기되고 새 세션 발급")
 
@@ -146,7 +153,8 @@ final class PaidAppStateStoreTests: XCTestCase {
             bundleId: "kr.finfra.fWarrange",
             startTime: "2026-04-18T09:00:00Z",
             version: "1.0",
-            bundlePath: "/path"
+            bundlePath: "/path",
+            sessionId: UUID().uuidString
         )
         // 첫 세션 unregister
         XCTAssertTrue(store.unregister(pid: 11111, sessionId: sessionA))
@@ -157,7 +165,8 @@ final class PaidAppStateStoreTests: XCTestCase {
             bundleId: "kr.finfra.fWarrange",
             startTime: "2026-04-18T09:05:00Z",  // 5분 뒤 다른 startTime
             version: "1.0",
-            bundlePath: "/path"
+            bundlePath: "/path",
+            sessionId: UUID().uuidString
         )
         XCTAssertNotEqual(sessionA, sessionB, "startTime이 다르면 별개 세션으로 인식")
 
@@ -173,7 +182,8 @@ final class PaidAppStateStoreTests: XCTestCase {
             bundleId: "kr.finfra.fWarrange",
             startTime: "2026-04-20T09:00:00Z",
             version: "1.14.3",
-            bundlePath: "/Applications/_nowage_app/fWarrange.app"
+            bundlePath: "/Applications/_nowage_app/fWarrange.app",
+            sessionId: UUID().uuidString
         )
         let cleaned = store.unregisterAllForBundleId("kr.finfra.fWarrange")
         XCTAssertTrue(cleaned, "일치하는 bundleId → cleanup 성공")
@@ -190,7 +200,8 @@ final class PaidAppStateStoreTests: XCTestCase {
             bundleId: "kr.finfra.fWarrange",
             startTime: "2026-04-20T09:00:00Z",
             version: "1.14.3",
-            bundlePath: "/Applications/_nowage_app/fWarrange.app"
+            bundlePath: "/Applications/_nowage_app/fWarrange.app",
+            sessionId: UUID().uuidString
         )
         let cleaned = store.unregisterAllForBundleId("kr.finfra.Other")
         XCTAssertFalse(cleaned, "불일치 bundleId → no-op (false)")
@@ -216,7 +227,8 @@ final class PaidAppStateStoreTests: XCTestCase {
                     bundleId: "kr.finfra.fWarrange",
                     startTime: "2026-04-18T09:00:\(String(format: "%02d", i % 60))Z",
                     version: "1.0",
-                    bundlePath: "/path"
+                    bundlePath: "/path",
+                    sessionId: UUID().uuidString
                 )
                 _ = self.store.currentState()
                 _ = self.store.unregister(pid: Int32(1000 + (i % 10)), sessionId: sid)
@@ -230,12 +242,14 @@ final class PaidAppStateStoreTests: XCTestCase {
     // MARK: - StateSnapshot → PaidAppStatusResponse 변환
 
     func testStatusResponseConversionRunning() {
+        let clientId = UUID().uuidString
         let sessionId = store.register(
             pid: 12345,
             bundleId: "kr.finfra.fWarrange",
             startTime: "2026-04-18T09:15:42Z",
             version: "1.14.3",
-            bundlePath: "/path"
+            bundlePath: "/path",
+            sessionId: clientId
         )
         let resp = store.statusResponse()
         XCTAssertEqual(resp.state, .running)

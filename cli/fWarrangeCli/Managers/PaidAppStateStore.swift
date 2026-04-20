@@ -34,18 +34,20 @@ final class PaidAppStateStore {
     // MARK: - Register / Unregister / Snapshot
 
     /// paidApp의 `applicationDidFinishLaunching`에서 호출되는 REST 진입점.
-    /// 이미 `.running`이면 기존 세션을 stale 처리하고 새 sessionId를 발급한다.
-    /// - Returns: 발급된 sessionId (UUID). 호출자는 이 값을 보관해야 unregister 가능.
+    /// 이미 `.running`이면 기존 세션을 stale 처리하고 새 sessionId를 저장한다.
+    /// - Parameter sessionId: client-side에서 생성한 UUID. 빈 문자열이면 서버가 생성.
+    /// - Returns: 저장된 sessionId. 호출자는 이 값을 보관해야 unregister 가능.
     @discardableResult
     func register(
         pid: Int32,
         bundleId: String,
         startTime: String,
         version: String,
-        bundlePath: String
+        bundlePath: String,
+        sessionId clientSessionId: String
     ) -> String {
         return queue.sync {
-            let sessionId = UUID().uuidString
+            let sessionId = clientSessionId.isEmpty ? UUID().uuidString : clientSessionId
             let registeredAt = Self.iso8601Now()
             let runtime = Runtime(
                 pid: pid,

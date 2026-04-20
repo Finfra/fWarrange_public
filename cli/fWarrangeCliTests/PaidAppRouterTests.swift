@@ -30,11 +30,13 @@ final class PaidAppRouterTests: XCTestCase {
     // MARK: - /paidapp/register
 
     func testRegisterWithValidSenderSucceeds() throws {
+        let clientSessionId = UUID().uuidString
         let request = PaidAppRegisterRequest(
             pid: 12345,
             version: "1.14.3",
             bundlePath: "/Applications/_nowage_app/fWarrange.app",
-            startTime: "2026-04-18T09:15:42Z"
+            startTime: "2026-04-18T09:15:42Z",
+            sessionId: clientSessionId
         )
         let result = router.register(request: request)
         switch result {
@@ -46,13 +48,29 @@ final class PaidAppRouterTests: XCTestCase {
         }
     }
 
+    func testRegisterUsesClientProvidedSessionId() {
+        let clientSessionId = UUID().uuidString
+        let request = PaidAppRegisterRequest(
+            pid: 12345,
+            version: "1.14.3",
+            bundlePath: "/Applications/_nowage_app/fWarrange.app",
+            startTime: "2026-04-18T09:15:42Z",
+            sessionId: clientSessionId
+        )
+        guard case let .success(response) = router.register(request: request) else {
+            return XCTFail("register 실패")
+        }
+        XCTAssertEqual(response.sessionId, clientSessionId, "응답 sessionId는 client가 제공한 UUID여야 함")
+    }
+
     func testRegisterWithWrongSenderBundleIdFails403() {
         validSenderBundleId = "kr.finfra.fSnippet"  // 타 앱 위장
         let request = PaidAppRegisterRequest(
             pid: 12345,
             version: "1.0",
             bundlePath: "/path",
-            startTime: "2026-04-18T09:00:00Z"
+            startTime: "2026-04-18T09:00:00Z",
+            sessionId: UUID().uuidString
         )
         let result = router.register(request: request)
         if case .forbidden = result {
@@ -71,7 +89,8 @@ final class PaidAppRouterTests: XCTestCase {
             pid: 99999,
             version: "1.0",
             bundlePath: "/path",
-            startTime: "2026-04-18T09:00:00Z"
+            startTime: "2026-04-18T09:00:00Z",
+            sessionId: UUID().uuidString
         )
         let result = router.register(request: request)
         if case .forbidden = result {
@@ -86,7 +105,8 @@ final class PaidAppRouterTests: XCTestCase {
     func testUnregisterWithMatchingSessionSucceeds() {
         // 먼저 등록
         let regResult = router.register(request: PaidAppRegisterRequest(
-            pid: 12345, version: "1.0", bundlePath: "/p", startTime: "2026-04-18T09:00:00Z"
+            pid: 12345, version: "1.0", bundlePath: "/p", startTime: "2026-04-18T09:00:00Z",
+            sessionId: UUID().uuidString
         ))
         guard case let .success(regResp) = regResult else {
             return XCTFail("사전 register 실패")
@@ -107,7 +127,8 @@ final class PaidAppRouterTests: XCTestCase {
 
     func testUnregisterWithForgedSessionIdFails403() {
         _ = router.register(request: PaidAppRegisterRequest(
-            pid: 12345, version: "1.0", bundlePath: "/p", startTime: "2026-04-18T09:00:00Z"
+            pid: 12345, version: "1.0", bundlePath: "/p", startTime: "2026-04-18T09:00:00Z",
+            sessionId: UUID().uuidString
         ))
         let result = router.unregister(request: PaidAppUnregisterRequest(
             pid: 12345, sessionId: "forged-uuid-000"
@@ -134,7 +155,8 @@ final class PaidAppRouterTests: XCTestCase {
 
     func testStatusReturnsRunningAfterRegister() {
         guard case let .success(reg) = router.register(request: PaidAppRegisterRequest(
-            pid: 12345, version: "1.14.3", bundlePath: "/p", startTime: "2026-04-18T09:00:00Z"
+            pid: 12345, version: "1.14.3", bundlePath: "/p", startTime: "2026-04-18T09:00:00Z",
+            sessionId: UUID().uuidString
         )) else { return XCTFail("register 실패") }
 
         let resp = router.status()
@@ -153,7 +175,8 @@ final class PaidAppRouterTests: XCTestCase {
             return "kr.finfra.fWarrange"
         }
         _ = captureRouter.register(request: PaidAppRegisterRequest(
-            pid: 54321, version: "1.0", bundlePath: "/p", startTime: "2026-04-18T09:00:00Z"
+            pid: 54321, version: "1.0", bundlePath: "/p", startTime: "2026-04-18T09:00:00Z",
+            sessionId: UUID().uuidString
         ))
         XCTAssertEqual(receivedPid, 54321)
     }
