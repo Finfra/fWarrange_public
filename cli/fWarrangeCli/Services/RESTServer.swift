@@ -560,7 +560,13 @@ final class RESTServer: RESTServerProtocol {
                 var data: [String: Any] = [:]
                 for k in fields { if let v = full[k] { data[k] = v } }
                 if path.hasSuffix("/restore") { data["excludedApps"] = handlers.getExcludedApps() }
-                if path.hasSuffix("/advanced") { data["logFilePath"] = handlers.getLogFilePath() }
+                if path.hasSuffix("/advanced") {
+                    data["logFilePath"] = handlers.getLogFilePath()
+                    data["effectiveLogLevel"] = Logger.shared.currentLogLevel.description.lowercased()
+                }
+                if path.hasSuffix("/general") {
+                    data["effectiveHotkeysEnabled"] = !Env.hotkeysDisabled
+                }
                 completion(.ok(json: ["status": "ok", "data": data]))
                 return true
             }
