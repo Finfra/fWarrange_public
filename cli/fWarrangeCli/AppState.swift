@@ -8,6 +8,7 @@ final class AppState {
     let layoutManager: LayoutManager
     let settingsService: SettingsService
     let restServer: RESTServer
+    let paidAppStore: PaidAppStateStore
     private let hotKeyService: HotKeyService
     private let screenMoveService: ScreenMoveService
     private let modeStorageService: ModeStorageService
@@ -315,7 +316,9 @@ final class AppState {
                 weakSelf?.activeModeName
             }
         )
-        self.restServer = RESTServer(handlers: handlers)
+        let paidAppStore = PaidAppStateStore()
+        self.paidAppStore = paidAppStore
+        self.restServer = RESTServer(handlers: handlers, paidAppStore: paidAppStore)
         weakSelf = self
     }
 
@@ -450,6 +453,11 @@ final class AppState {
             guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
                   app.bundleIdentifier == "kr.finfra.fWarrange" else { return }
             Task { @MainActor in
+                // Issue197: kill -9 등 비정상 종료 시 Store stale 잔류 방지
+                let cleaned = self.paidAppStore.unregisterAllForBundleId("kr.finfra.fWarrange")
+                if cleaned {
+                    logI("🧹 fWarrange 종료 감지 → PaidAppStateStore cleanup 완료 (bundleId: kr.finfra.fWarrange)")
+                }
                 if self.hideMenuBar {
                     self.hideMenuBar = false
                     logI("🔄 fWarrange 종료 감지 → 메뉴바 자동 복원")

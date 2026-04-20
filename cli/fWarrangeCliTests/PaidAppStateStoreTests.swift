@@ -165,6 +165,41 @@ final class PaidAppStateStoreTests: XCTestCase {
         XCTAssertFalse(store.unregister(pid: 11111, sessionId: sessionA))
     }
 
+    // MARK: - unregisterAllForBundleId (Issue197)
+
+    func testUnregisterAllForBundleIdWithMatchingBundleIdClearsState() {
+        _ = store.register(
+            pid: 12345,
+            bundleId: "kr.finfra.fWarrange",
+            startTime: "2026-04-20T09:00:00Z",
+            version: "1.14.3",
+            bundlePath: "/Applications/_nowage_app/fWarrange.app"
+        )
+        let cleaned = store.unregisterAllForBundleId("kr.finfra.fWarrange")
+        XCTAssertTrue(cleaned, "일치하는 bundleId → cleanup 성공")
+        if case .notRunning = store.currentState() {
+            // ok
+        } else {
+            XCTFail("cleanup 후 상태는 .notRunning이어야 함")
+        }
+    }
+
+    func testUnregisterAllForBundleIdWithNonMatchingBundleIdIsNoOp() {
+        let sessionId = store.register(
+            pid: 12345,
+            bundleId: "kr.finfra.fWarrange",
+            startTime: "2026-04-20T09:00:00Z",
+            version: "1.14.3",
+            bundlePath: "/Applications/_nowage_app/fWarrange.app"
+        )
+        let cleaned = store.unregisterAllForBundleId("kr.finfra.Other")
+        XCTAssertFalse(cleaned, "불일치 bundleId → no-op (false)")
+        guard case let .running(current) = store.currentState() else {
+            return XCTFail("no-op 후 상태는 .running 유지")
+        }
+        XCTAssertEqual(current.sessionId, sessionId, "세션 변경 없음")
+    }
+
     // MARK: - Thread safety
 
     func testConcurrentRegisterAndUnregisterDoesNotCrash() {

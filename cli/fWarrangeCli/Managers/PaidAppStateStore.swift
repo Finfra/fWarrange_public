@@ -86,6 +86,21 @@ final class PaidAppStateStore {
         return queue.sync { state }
     }
 
+    /// NSWorkspace 종료 알림 경로 — bundleId 매칭 Runtime 발견 시 `.notRunning` 전이.
+    /// pid·sessionId 없이 bundleId만으로 강제 cleanup. `kill -9` 후 unregister 미호출 보완.
+    /// - Returns: `true` = 세션 정리 성공, `false` = `.notRunning` 또는 bundleId 불일치
+    @discardableResult
+    func unregisterAllForBundleId(_ bundleId: String) -> Bool {
+        return queue.sync {
+            guard case let .running(current) = state,
+                  current.bundleId == bundleId else {
+                return false
+            }
+            state = .notRunning
+            return true
+        }
+    }
+
     /// `PaidAppStatusResponse`로 변환. 다른 모듈이 내부 타입에 의존하지 않도록 경계에서 매핑.
     func statusResponse() -> PaidAppStatusResponse {
         switch currentState() {
