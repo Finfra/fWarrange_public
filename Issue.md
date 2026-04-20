@@ -4,16 +4,15 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 42
-* Save Point: 2026-04-20 (3867459) Feat(Issue39): brew services ↔ menubar 4-quadrant 상태 매트릭스 동기화
+* Issue HWM: 43
+* Save Point: 2026-04-20 (58cd86f) Fix(Issue43): PATCH /settings/{advanced,general} effectiveLogLevel·effectiveHotkeysEnabled 추가
   - 65c593a (2026-04-20) - Docs: Close Issue42 (pairApp Issue52 Full Mirror — shutdown API + 호환성 필드 완결)
 
 # 🤔 결정사항
 
 # 🌱 이슈후보
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
-2. REST API Issue196 신규 필드 미구현 — effectiveLogLevel, effectiveHotkeysEnabled 응답 누락 (2026-04-20 QA-C)
-3. PaidAppStateStore 자동 재기동 이슈 — paidApp kill -9 후 cliApp이 즉시 새 프로세스 생성. 기대: .cliOnly 모드 전환 (2026-04-20 QA-D)
+2. PaidAppStateStore 자동 재기동 이슈 — paidApp kill -9 후 cliApp이 즉시 새 프로세스 생성. 기대: .cliOnly 모드 전환 (2026-04-20 QA-D)
 
 # 🚧 진행중
 # 📕 중요
@@ -21,6 +20,16 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue43: REST API PATCH /settings/{advanced,general} effectiveLogLevel·effectiveHotkeysEnabled 응답 누락 수정 (등록: 2026-04-20) (✅ 완료, 58cd86f) ✅
+* 목적: pairApp Issue196에서 추가된 `effectiveLogLevel`, `effectiveHotkeysEnabled` 필드가 GET 응답에는 있으나 PATCH 응답에 누락 — PATCH 응답에도 동일하게 포함
+* 상세:
+    - `RESTServer.swift` PATCH 응답 블록에 두 필드 추가
+    - `/settings/advanced` PATCH 응답: `effectiveLogLevel` 추가 (`Logger.shared.currentLogLevel`)
+    - `/settings/general` PATCH 응답: `effectiveHotkeysEnabled` 추가 (`!Env.hotkeysDisabled`)
+* 구현 명세:
+    - `cli/fWarrangeCli/Services/RESTServer.swift` — PATCH 탭별 응답 블록 (`path.hasSuffix("/advanced")` · `path.hasSuffix("/general")`) 에 effective 필드 추가 (7줄 변경)
+* 연관: pairApp(fSnippetCli #25) Issue196 (신규 필드 원천), QA-C 적발
+
 ## Issue42: pairApp(fSnippetCli) Issue52 Full Mirror — paidApp 등록 응답 호환성 필드 + shutdown API (등록: 2026-04-20) (✅ 완료, 1357e3e) ✅
 * 목적: fSnippetCli Issue52에서 완료된 Phase A 호환성 확장과 Phase 1 shutdown 엔드포인트를 fWarrangeCli에 동일하게 이식
 * 상세:
