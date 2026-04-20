@@ -22,6 +22,7 @@
 		777BCC6E3242282BF52941EC /* PaidAppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E137415D6E8C59805CCF00 /* PaidAppRouter.swift */; };
 		80592DA154C35E61440B959E /* LayoutStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 662A96F421AC4E825C14B86F /* LayoutStorageService.swift */; };
 		83167584CB3AC9496AFA89A6 /* DisplayNumberHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA88D59968E1BC4657A3D8B4 /* DisplayNumberHelper.swift */; };
+		8827869DE33D96E8A8816488 /* _config.yml in Resources */ = {isa = PBXBuildFile; fileRef = B26179DE01E4CEA9E93940E1 /* _config.yml */; };
 		8CA4F284AB6BBB5352D573D7 /* ScreenMoveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95BA5BF6280F4128EDF4285D /* ScreenMoveService.swift */; };
 		90C424F1307327D09016FD68 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 99611EC4488DE1DB48B6797F /* Assets.xcassets */; };
 		9347927C5890D11DB089E08D /* ModeStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7AA13BAF31243DB7F07719F /* ModeStorageService.swift */; };
@@ -86,6 +87,7 @@
 		A1E137415D6E8C59805CCF00 /* PaidAppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppRouter.swift; sourceTree = "<group>"; };
 		AEC521474E835C8993023C58 /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
 		B103338C6EF3DA1021783071 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		B26179DE01E4CEA9E93940E1 /* _config.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = _config.yml; sourceTree = "<group>"; };
 		B30239289D5D096DA900F198 /* AccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityService.swift; sourceTree = "<group>"; };
 		BA88D59968E1BC4657A3D8B4 /* DisplayNumberHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayNumberHelper.swift; sourceTree = "<group>"; };
 		BD1899FC99C3EB25ADABF2A0 /* AboutWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutWindowManager.swift; sourceTree = "<group>"; };
@@ -133,6 +135,7 @@
 		A97750247DBBD8E60EBA83FC /* fWarrangeCli */ = {
 			isa = PBXGroup;
 			children = (
+				B26179DE01E4CEA9E93940E1 /* _config.yml */,
 				3048E8064D2360477D20FE4D /* AppState.swift */,
 				99611EC4488DE1DB48B6797F /* Assets.xcassets */,
 				515D9B634FB2FCE99FBCBABB /* CLIHandler.swift */,
@@ -249,6 +252,16 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					9EFA6F8DBB74AD8CD935F1D8 = {
+						DevelopmentTeam = BZDZFZWF6K;
+						ProvisioningStyle = Automatic;
+					};
+					BCF449D95D1295F5A3227D51 = {
+						DevelopmentTeam = BZDZFZWF6K;
+						ProvisioningStyle = Automatic;
+					};
+				};
 			};
 			buildConfigurationList = FF6073DFC6F550541CD2EA44 /* Build configuration list for PBXProject "fWarrangeCli" */;
 			developmentRegion = en;
@@ -276,6 +289,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				90C424F1307327D09016FD68 /* Assets.xcassets in Resources */,
+				8827869DE33D96E8A8816488 /* _config.yml in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -347,10 +361,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = BZDZFZWF6K;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -359,7 +370,6 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCliTests;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.9;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fWarrangeCli.app/Contents/MacOS/fWarrangeCli";
@@ -399,9 +409,12 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = BZDZFZWF6K;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -427,6 +440,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCli;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -439,10 +453,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = fWarrangeCli/fWarrangeCli.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = BZDZFZWF6K;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -451,7 +462,6 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCli;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -461,10 +471,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = fWarrangeCli/fWarrangeCli.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = BZDZFZWF6K;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -473,7 +480,6 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCli;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -482,10 +488,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = BZDZFZWF6K;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -494,7 +497,6 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCliTests;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.9;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/fWarrangeCli.app/Contents/MacOS/fWarrangeCli";
@@ -534,9 +536,12 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = BZDZFZWF6K;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -555,6 +560,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = kr.finfra.fWarrangeCli;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";

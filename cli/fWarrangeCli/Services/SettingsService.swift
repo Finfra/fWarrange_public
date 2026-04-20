@@ -23,11 +23,32 @@ final class YAMLSettingsService: SettingsService {
     }
 
     func load() -> AppSettings {
+        // 파일이 없으면 번들 시드(_config.yml) 복사 시도 (pairApp/fSnippetCli 패턴)
+        if !FileManager.default.fileExists(atPath: configURL.path) {
+            _ = copyConfigFromBundle()
+        }
         guard FileManager.default.fileExists(atPath: configURL.path),
               let content = try? String(contentsOf: configURL, encoding: .utf8) else {
             return AppSettings.defaults
         }
         return parseYAML(content)
+    }
+
+    /// 앱 번들의 `_config.yml`을 사용자 데이터 경로로 복사.
+    /// 실패 시 호출자가 하드코딩 기본값(AppSettings.defaults)으로 폴백.
+    @discardableResult
+    private func copyConfigFromBundle() -> Bool {
+        guard let bundleURL = Bundle.main.url(forResource: "_config", withExtension: "yml") else {
+            return false
+        }
+        let dir = configURL.deletingLastPathComponent()
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try FileManager.default.copyItem(at: bundleURL, to: configURL)
+            return true
+        } catch {
+            return false
+        }
     }
 
     func save(_ settings: AppSettings) {

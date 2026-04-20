@@ -1,0 +1,36 @@
+# fWarrangeCli Configuration
+
+excludedApps:
+  - "Activity Monitor"
+  - "System Settings"
+maxRetries: 5
+retryInterval: 0.5
+minimumMatchScore: 30
+enableParallelRestore: true
+restServerPort: 3016
+# logLevel: 0=verbose, 1=debug, 2=info, 3=warning, 4=error, 5=critical
+logLevel: 5
+dataStorageMode: host
+launchAtLogin: false
+appLanguage: system
+
+# REST API Server
+restServerEnabled: true
+allowExternalAccess: false
+allowedCIDR: "192.168.0.0/16"
+
+# Auto save
+autoSaveOnSleep: true
+maxAutoSaves: 5
+
+# UI options
+restoreButtonStyle: nameIcon
+confirmBeforeDelete: true
+showInCmdTab: true
+clickSwitchToMain: false
+theme: system
+
+# Shortcuts (⌃=Control, ⌥=Option, ⇧=Shift, ⌘=Command)
+saveShortcut: "⌘F7"
+restoreDefaultShortcut: "⇧⌘F7"
+restoreLastShortcut: "⌥⌘F7"
