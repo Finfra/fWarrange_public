@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 44
+* Issue HWM: 45
 * Save Point: 2026-04-20 (58cd86f) Fix(Issue43): PATCH /settings/{advanced,general} effectiveLogLevel·effectiveHotkeysEnabled 추가
+  - f297278 (2026-04-20) - Fix: Close Issue45 (deploy symlink 중첩 버그 수정)
   - 65c593a (2026-04-20) - Docs: Close Issue42 (pairApp Issue52 Full Mirror — shutdown API + 호환성 필드 완결)
 
 # 🤔 결정사항
@@ -26,6 +27,10 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue45: deploy symlink 중첩 버그 수정 (fwc-deploy-debug.sh, fwc-deploy-brew.sh) (등록: 2026.04.20) (✅ 완료, f297278) ✅
+* 목적: cp -R로 생성된 디렉토리 잔존 시 ln -sfn이 내부에 중첩 symlink를 생성하는 버그 수정
+* 상세: fwc-deploy-debug.sh: rm -f → rm -rf. fwc-deploy-brew.sh Step 7: ln -sfn 전 rm -rf 추가
+
 ## Issue43: REST API PATCH /settings/{advanced,general} effectiveLogLevel·effectiveHotkeysEnabled 응답 누락 수정 (등록: 2026-04-20) (✅ 완료, 58cd86f) ✅
 * 목적: pairApp Issue196에서 추가된 `effectiveLogLevel`, `effectiveHotkeysEnabled` 필드가 GET 응답에는 있으나 PATCH 응답에 누락 — PATCH 응답에도 동일하게 포함
 * 상세:
