@@ -31,7 +31,7 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
-## Issue46: paidApp 실행 시 cliApp MenuBarExtra 조건부 숨김 (등록: 2026.04.20) (✅ 완료, TBD) ✅
+## Issue46: paidApp 실행 시 cliApp MenuBarExtra 조건부 숨김 (등록: 2026.04.20) (✅ 완료, 08eadd5) ✅
 * 목적: paidApp(fWarrange)이 자체 MenuBarExtra를 소유하는 구조로 복원. cliApp은 paidApp 미실행 시에만 메뉴바 아이콘 표시
 * 연관 이슈: paidApp Issue201
 * 상세:
