@@ -253,6 +253,7 @@ FORMULA
         INSTALLED_APP="$(brew --prefix fwarrange-cli 2>/dev/null)/fWarrangeCli.app"
         if [ -d "$INSTALLED_APP" ]; then
             mkdir -p /Applications/_nowage_app
+            rm -rf "$STABLE_APP"
             ln -sfn "$INSTALLED_APP" "$STABLE_APP"
             echo "[symlink] $STABLE_APP → $INSTALLED_APP"
             record_result "심링크" "PASS" "$STABLE_APP"
