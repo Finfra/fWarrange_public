@@ -5,7 +5,9 @@ date: 2026-04-07
 ---
 
 * Issue HWM: 46
-* Save Point: 2026-04-20 (58cd86f) Fix(Issue43): PATCH /settings/{advanced,general} effectiveLogLevel·effectiveHotkeysEnabled 추가
+* Save Point: 2026-04-20 (08eadd5) Close Issue46 — cliApp MenuBarExtra 조건부 숨김
+  - ba603b7 (2026-04-20) - Refactor(Issue46): AppState 아이콘 리팩터링 + 설계 문서 추가
+  - 58cd86f (2026-04-20) - Fix(Issue43): PATCH /settings effectiveLogLevel·effectiveHotkeysEnabled 추가
   - a192d2e (2026-04-20) - Docs(Design): menubar-icon-design 현행 설계 섹션 추가 (Issue46)
   - 9e9b577 (2026-04-20) - Docs: Close Issue44
   - f297278 (2026-04-20) - Fix: Close Issue45 (deploy symlink 중첩 버그 수정)
