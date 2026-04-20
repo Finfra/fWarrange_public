@@ -30,7 +30,10 @@ date: 2026-04-07
     - [ ] 번들 부재(수동 제거) 시에도 크래시 없이 기본값 동작
 
 # 📙 일반
-## Issue41: SingleInstanceGuard getpid() 교체 + performHandoffStart() 이식 (pairApp Issue53 v1+v2) (등록: 2026.04.20)
+# 📗 선택
+
+# ✅ 완료
+## Issue41: SingleInstanceGuard getpid() 교체 + performHandoffStart() 이식 (pairApp Issue53 v1+v2) (등록: 2026.04.20) (✅ 완료, 03192bb) ✅
 * 목적: NSRunningApplication.current.processIdentifier 의 -1 반환 위험 제거 + performHandoffStart() 로 open 경로 비동기 포트 충돌 해소
 * 상세: 
 1) SingleInstanceGuard.myPID를 NSRunningApplication.current.processIdentifier → getpid()로 교체 (AppKit 초기화 전 -1 반환 방지)
@@ -38,9 +41,6 @@ date: 2026-04-07
 3) onAppStop()에 handoff 억제 로직 추가 (race 차단)
 
 
-# 📗 선택
-
-# ✅ 완료
 
 ## Issue39: brew services ↔ 메뉴바 앱 상태 동기화 재설계 — 4-quadrant 상태 매트릭스 기반 (등록: 2026-04-20, 재설계: 2026-04-20, 해결: 2026-04-20, commit: 3867459) ✅
 * 목적: `brew services` (launchd) 와 메뉴바 GUI 앱의 수명주기를 **4-quadrant 상태 매트릭스**로 명시 정의하고, 4개 트리거(brew start / brew stop / app start / app stop) 각각에서 상대 상태를 양방향 동기화. `/opt/homebrew/var/fWarrangeCli/` 경로 원천 차단(Phase 1) 과 Bundle ID 기반 단일 인스턴스 가드(Phase 4) 를 기반으로 각 전이를 no-double-start/no-ghost-state 로 수렴.
