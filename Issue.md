@@ -13,23 +13,18 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 
 # 🚧 진행중
-
-## Issue42: pairApp(fSnippetCli) Issue52 Full Mirror — paidApp 등록 응답 호환성 필드 + shutdown API (등록: 2026-04-20)
-* 목적: fSnippetCli Issue52에서 완료된 Phase A 호환성 확장과 Phase 1 shutdown 엔드포인트를 fWarrangeCli에 동일하게 이식. paidApp 종료 시 `POST /api/v2/shutdown` REST 호출로 cliApp 동시 종료 가능하게 함.
-* 상세:
-    - **Phase A 호환성 확장**: `PaidAppRegisterResponse`에 `ok`, `cliVersion`, `minPaidAppVersion`, `compatible` 필드 추가 — pairApp과 응답 스키마 일치
-    - **Phase 1 shutdown API**: `POST /api/v2/shutdown` 엔드포인트 추가 — `reason`(로그용) + `delayMs`(종료 지연) body 수락, 응답 후 `NSApplication.shared.terminate` 비동기 실행
-    - openapi_v2.yaml 양쪽 스키마 동기화
-* 구현 명세:
-    - `PaidAppAPIModels.swift`: `PaidAppRegisterResponse`에 4개 필드 추가, `ShutdownRequest`/`ShutdownResponse` 신규
-    - `PaidAppRouter.swift`: `register()` 반환 시 `ok: true`, `cliVersion`, `minPaidAppVersion: nil`, `compatible: true` 포함
-    - `RESTServer.swift`: `routeV2`에 `POST /api/v2/shutdown` 케이스 추가, `handleShutdown()` 핸들러 추가
-    - `openapi_v2.yaml`: `PaidAppRegisterResponse` 스키마 확장 + `/shutdown` 경로 신규
 # 📕 중요
 # 📙 일반
 # 📗 선택
 
 # ✅ 완료
+## Issue42: pairApp(fSnippetCli) Issue52 Full Mirror — paidApp 등록 응답 호환성 필드 + shutdown API (등록: 2026-04-20) (✅ 완료, 1357e3e) ✅
+* 목적: fSnippetCli Issue52에서 완료된 Phase A 호환성 확장과 Phase 1 shutdown 엔드포인트를 fWarrangeCli에 동일하게 이식
+* 상세:
+    - `PaidAppRegisterResponse`에 `ok`, `cliVersion`, `minPaidAppVersion`, `compatible` 필드 추가 — pairApp과 응답 스키마 일치
+    - `POST /api/v2/shutdown` 엔드포인트 추가 — `reason`(로그용) + `delayMs`(종료 지연) body 수락
+    - `openapi_v2.yaml`: `PaidAppRegisterResponse` 스키마 확장 + `/shutdown` 경로 신규
+
 ## Issue40: `_config.yml` 번들 시드 복사 패턴 도입 (pairApp fSnippetCli 정합) (등록: 2026-04-20) (✅ 완료, 7a8b06b) ✅
 * 목적: `~/Documents/finfra/fWarrangeData/_config.yml` 부재 시 앱 번들 시드 복사. pairApp fSnippetCli `copyConfigFromBundle()` 패턴 정합화.
 * 상세: `SettingsService.swift` `copyConfigFromBundle()` 추가, `_config.yml` 번들 리소스 등록, logLevel: 5(critical) 기본값
