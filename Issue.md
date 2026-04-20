@@ -5,7 +5,9 @@ date: 2026-04-07
 ---
 
 * Issue HWM: 39
-* Save Point: 2026-04-19 (20c054d) Chore(Issue37): pbxproj 메인 타겟 Release 코드사인 설정 동반 적용
+* Save Point: 2026-04-20 (3867459) Feat(Issue39): brew services ↔ menubar 4-quadrant 상태 매트릭스 동기화
+  - 3867459 (2026-04-20) - Feat(Issue39): brew services ↔ menubar 4-quadrant 상태 매트릭스 동기화
+  - 6b4325b (2026-04-19) - Docs: Close Issue37 + Issue38
   - 20c054d (2026-04-19) - Chore(Issue37): pbxproj 메인 타겟 Release 코드사인 설정 동반 적용
   - 84a258c (2026-04-19) - Feat(Issue38): /run 계열 brew service 존재 기반 분기 로직
   - 6248053 (2026-04-19) - Docs: Issue38 등록 — /run 계열 brew service 분기 (pairApp Issue49 Full Mirror)
@@ -14,7 +16,6 @@ date: 2026-04-07
   - d8eec73 (2026-04-19) - Refactor(Issue37)(Phase 4): fwc-deploy-brew.sh + Formula pairApp full mirror
   - f7b4233 (2026-04-19) - Refactor(Issue37)(Phase 1-3): Core+Run+Debug pairApp full mirror
   - 1143bef (2026-04-19) - Docs(Issue37): 이슈 등록 + HWM 36→37
-  - f797821 (2026-04-19) - Chore: 선행 인프라 — xcodeproj Tests 타겟 코드사인 + VERSION 1.0.0 SSOT
 
 # 🤔 결정사항
 
@@ -23,9 +24,20 @@ date: 2026-04-07
 
 # 🚧 진행중
 
-## Issue39: brew services ↔ 메뉴바 앱 상태 동기화 재설계 — 4-quadrant 상태 매트릭스 기반 (등록: 2026-04-20, 재설계: 2026-04-20)
+
+
+# 📕 중요
+
+# 📙 일반
+
+# 📗 선택
+
+# ✅ 완료
+
+## Issue39: brew services ↔ 메뉴바 앱 상태 동기화 재설계 — 4-quadrant 상태 매트릭스 기반 (등록: 2026-04-20, 재설계: 2026-04-20, 해결: 2026-04-20, commit: 3867459) ✅
 * 목적: `brew services` (launchd) 와 메뉴바 GUI 앱의 수명주기를 **4-quadrant 상태 매트릭스**로 명시 정의하고, 4개 트리거(brew start / brew stop / app start / app stop) 각각에서 상대 상태를 양방향 동기화. `/opt/homebrew/var/fWarrangeCli/` 경로 원천 차단(Phase 1) 과 Bundle ID 기반 단일 인스턴스 가드(Phase 4) 를 기반으로 각 전이를 no-double-start/no-ghost-state 로 수렴.
 * plan: `cli/_doc_work/plan/brew-service-menubar-sync_plan.md`
+* report: `cli/_doc_work/report/brew-service-menubar-sync_issue39_report.md`
 * 재설계 상태 매트릭스 (2026-04-20 사용자 결정):
 
     | Trigger          | 상대 상태             | 기대 동작                                            |
@@ -55,18 +67,8 @@ date: 2026-04-07
     - 실측 버그 (2026-04-20):
         1. `getParentPID() == 1` 으로 launchd 기동 판정 시 macOS 모든 GUI 앱 PPID=1 특성상 상시 true → `onAppStart` 무한 skip. `XPC_SERVICE_NAME` 매칭만으로 판정하도록 단순화
         2. 초기 Phase 4 구현(신규 프로세스가 무조건 exit) 에서는 open-기동분이 survive 하여 launchd 가 띄운 프로세스가 즉시 사라짐 → plist 로드됐지만 `brew services list` 는 `stopped` 로 표시. 승자 규칙 반전으로 해결
-    - 검증: `cli/_tool/fwc-sync-verify.sh` 신규 작성 — 8개 매트릭스 셀 자동 재현 후 `brew services list` · `pgrep` · `curl :3016` 3종 확인. 결과 `_doc_work/report/brew-service-menubar-sync_issue39_report.md` 기록
-    - pairApp 이식: fSnippetCli(#25) — 본 이슈 해결 후 재현 여부 확인. 재현 시 Full Mirror 이슈 신규 등록
-
-
-
-# 📕 중요
-
-# 📙 일반
-
-# 📗 선택
-
-# ✅ 완료
+    - 검증: 8개 매트릭스 셀 사용자 실측 PASS. 상세는 report 참조
+    - pairApp 이식: fSnippetCli(#25) — 본 이슈 해결 후 Full Mirror 이슈 신규 등록
 
 ## Issue38: `/run` 계열 전 경로에 brew service 존재 기반 분기 로직 도입 (등록: 2026-04-19, 해결: 2026-04-19, commit: 84a258c) ✅
 * 목적: `/deploy brew local` 로 설치된 LaunchAgent 가 실행 중인 상태에서 `/run` 계열(`build-deploy`, `deploy-run`, `tcc`, `run-only`)을 호출할 때 발생하는 launchd respawn 경합 / 포트 단일 인스턴스 충돌을 제거. brew service 실행 여부에 따라 Debug 오버라이드 경로를 명시적으로 분기. pairApp(fSnippetCli #25) Issue49 에서 선행 구현·검증 완료된 구조를 Full Mirror 이식.
