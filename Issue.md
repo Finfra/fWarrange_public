@@ -4,18 +4,8 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 39
+* Issue HWM: 41
 * Save Point: 2026-04-20 (3867459) Feat(Issue39): brew services ↔ menubar 4-quadrant 상태 매트릭스 동기화
-  - 3867459 (2026-04-20) - Feat(Issue39): brew services ↔ menubar 4-quadrant 상태 매트릭스 동기화
-  - 6b4325b (2026-04-19) - Docs: Close Issue37 + Issue38
-  - 20c054d (2026-04-19) - Chore(Issue37): pbxproj 메인 타겟 Release 코드사인 설정 동반 적용
-  - 84a258c (2026-04-19) - Feat(Issue38): /run 계열 brew service 존재 기반 분기 로직
-  - 6248053 (2026-04-19) - Docs: Issue38 등록 — /run 계열 brew service 분기 (pairApp Issue49 Full Mirror)
-  - 9ca2c27 (2026-04-19) - Docs: 이슈후보 #2 확장 — /run 계열 전 경로 brew service 분기
-  - 98caea9 (2026-04-19) - Docs(Issue37)(Phase 5): cli/_tool 루트 정리
-  - d8eec73 (2026-04-19) - Refactor(Issue37)(Phase 4): fwc-deploy-brew.sh + Formula pairApp full mirror
-  - f7b4233 (2026-04-19) - Refactor(Issue37)(Phase 1-3): Core+Run+Debug pairApp full mirror
-  - 1143bef (2026-04-19) - Docs(Issue37): 이슈 등록 + HWM 36→37
 
 # 🤔 결정사항
 
@@ -24,11 +14,29 @@ date: 2026-04-07
 
 # 🚧 진행중
 
-
-
-# 📕 중요
+## Issue40: `_config.yml` 번들 시드 복사 패턴 도입 (pairApp fSnippetCli 정합) (등록: 2026-04-20)
+* 목적: `~/Documents/finfra/fWarrangeData/_config.yml` 부재 시 앱 번들에 포함된 `cli/fWarrangeCli/_config.yml`을 복사하여 초기화. 하드코딩 기본값(AppSettings.defaults)을 런타임에 Serialize하는 기존 방식은 "Clear 테스트 후 최초 실행 시 사용자 의도와 다른 기본값이 생성되는" 문제를 유발함. pairApp(fSnippetCli) `PreferencesManager.copyConfigFromBundle()` (Data/PreferencesManager.swift:183-206)와 동일 패턴으로 정합화.
+* 상세:
+    - 시드 파일 생성: `cli/fWarrangeCli/_config.yml` (현재 사용자 파일 기반, `logLevel: 5` (critical)로 조정)
+    - 로딩 로직 수정: `YAMLSettingsService.load()`에서 파일 부재 시 `Bundle.main.url(forResource: "_config", withExtension: "yml")` → `FileManager.copyItem` 시도
+    - 번들 복사 실패 시 기존 동작(AppSettings.defaults) 유지
+    - XcodeGen `sources: - fWarrangeCli`에 의해 `.yml`은 Bundle Resources로 자동 분류됨 (별도 project.yml 수정 불요)
+* 구현 명세:
+    - `SettingsService.swift`: `copyConfigFromBundle()` private method 추가, `load()` 프리앰블로 호출
+    - 시드 파일 `logLevel: 5` 유지 (빌드 시 verbose/debug 로그 flood 방지)
+* 검증:
+    - [ ] `rm ~/Documents/finfra/fWarrangeData/_config.yml` 후 앱 실행 → 번들 시드가 복사되는지
+    - [ ] 복사된 내용이 `cli/fWarrangeCli/_config.yml`과 bitwise 동일
+    - [ ] 번들 부재(수동 제거) 시에도 크래시 없이 기본값 동작
 
 # 📙 일반
+## Issue41: SingleInstanceGuard getpid() 교체 + performHandoffStart() 이식 (pairApp Issue53 v1+v2) (등록: 2026.04.20)
+* 목적: NSRunningApplication.current.processIdentifier 의 -1 반환 위험 제거 + performHandoffStart() 로 open 경로 비동기 포트 충돌 해소
+* 상세: 
+1) SingleInstanceGuard.myPID를 NSRunningApplication.current.processIdentifier → getpid()로 교체 (AppKit 초기화 전 -1 반환 방지)
+2) BrewServiceSync에 handoffInProgress 플래그 + performHandoffStart() 추가: open 경로에서 brew services start 동기 호출 → Foundation.exit(0) self-terminate → launchd-bootstrap이 primary 승계
+3) onAppStop()에 handoff 억제 로직 추가 (race 차단)
+
 
 # 📗 선택
 

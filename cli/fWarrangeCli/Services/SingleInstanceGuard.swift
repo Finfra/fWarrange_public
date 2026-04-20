@@ -26,7 +26,7 @@ enum SingleInstanceGuard {
         }
 
         let all = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
-        let myPID = NSRunningApplication.current.processIdentifier
+        let myPID = ProcessInfo.processInfo.processIdentifier
         let others = all.filter { $0.processIdentifier != myPID }
 
         guard !others.isEmpty else {

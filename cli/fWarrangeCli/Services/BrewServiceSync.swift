@@ -23,15 +23,38 @@ enum BrewServiceSync {
         "/usr/local/bin/brew"
     ]
 
+    // MARK: - Handoff (open 경로 → launchd-bootstrap 위임)
+
+    /// open/심링크 기동 경로에서 launchd-bootstrap 인스턴스에 primary 를 위임.
+    /// brew services start 를 동기 호출 → launchd 가 새 프로세스 spawn →
+    /// 현재 프로세스는 Foundation.exit(0) 으로 clean 종료.
+    /// `handoffInProgress = true` 로 applicationWillTerminate 의 brew stop race 차단.
+    private static var handoffInProgress = false
+
+    private static func performHandoffStart(brewPath: String) {
+        handoffInProgress = true
+        logI("[brew-sync] performHandoffStart — brew services start 동기 호출 후 self-terminate")
+        let (rc, output) = runCommandWithStatus(brewPath, args: ["services", "start", formulaName])
+        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        if rc == 0 {
+            logI("[brew-sync] ✅ brew services start 성공 → launchd-bootstrap 이 primary 승계: \(trimmed)")
+        } else {
+            logW("[brew-sync] ⚠️ brew services start 실패 (rc=\(rc)): \(trimmed)")
+        }
+        Foundation.exit(0)
+    }
+
     // MARK: - App Start → brew=started (매트릭스: app start 행)
 
     /// 앱 기동 직후 호출. brew 가 `stopped` 이면 `brew services start` 로 동기화.
     ///
     /// skip 조건:
     /// 1. `UserDefaults` optOutKey == false
-    /// 2. launchd 가 이 프로세스를 기동 (PPID=1 또는 `XPC_SERVICE_NAME` 매칭) — 무한 루프 방지
+    /// 2. launchd 가 이 프로세스를 기동 (XPC_SERVICE_NAME 매칭) — 무한 루프 방지
     /// 3. `launchctl list` 에 이미 로드됨 — brew state 이미 `started`
     /// 4. brew 바이너리 미존재
+    ///
+    /// open/심링크 경로에서 brew=stopped 이면 `performHandoffStart()` 로 위임 후 exit.
     static func onAppStart() {
         if let optOut = UserDefaults.standard.object(forKey: optOutKey) as? Bool, optOut == false {
             logI("[brew-sync] onAppStart skip — \(optOutKey)=false")
@@ -39,7 +62,7 @@ enum BrewServiceSync {
         }
 
         if isLaunchedByLaunchd() {
-            logD("[brew-sync] onAppStart skip — launchd 기동 프로세스 (PPID=1 또는 XPC_SERVICE_NAME)")
+            logD("[brew-sync] onAppStart skip — launchd 기동 프로세스 (XPC_SERVICE_NAME)")
             return
         }
 
@@ -53,21 +76,8 @@ enum BrewServiceSync {
             return
         }
 
-        // brew state: stopped → started. 백그라운드 비동기.
-        DispatchQueue.global(qos: .utility).async {
-            runBrewServicesStart(brewPath: brewPath)
-        }
-    }
-
-    private static func runBrewServicesStart(brewPath: String) {
-        logI("[brew-sync] brew services start \(formulaName) — app start × brew=stopped")
-        let (rc, output) = runCommandWithStatus(brewPath, args: ["services", "start", formulaName])
-        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
-        if rc == 0 {
-            logI("[brew-sync] ✅ brew services start 성공 → brew=started: \(trimmed)")
-        } else {
-            logW("[brew-sync] ⚠️ brew services start 실패 (rc=\(rc)): \(trimmed)")
-        }
+        // open/심링크 경로 × brew=stopped: launchd-bootstrap 에 primary 위임 후 self-terminate.
+        performHandoffStart(brewPath: brewPath)
     }
 
     // MARK: - App Stop → brew=stopped (매트릭스: app stop 행)
@@ -77,6 +87,11 @@ enum BrewServiceSync {
     /// 반환 후 호출부가 `NSApplication.terminate` 를 수행함.
     /// 타임아웃 초과 시 종료 흐름 지연 방지 위해 포기하고 반환.
     static func onAppStop(timeout: TimeInterval = 2.0) {
+        if handoffInProgress {
+            logI("[brew-sync] onAppStop skip — handoff in progress (brew stop 억제)")
+            return
+        }
+
         guard let brewPath = findBrewPath() else {
             logI("[brew-sync] onAppStop skip — brew 미설치")
             return
