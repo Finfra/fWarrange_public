@@ -1,6 +1,6 @@
 ---
 name: menubar-icon-design
-description: cliApp 메뉴바 아이콘 자동 전환 설계 — paidApp 실행 상태에 따라 아이콘 교체
+description: cliApp 메뉴바 아이콘/MenuBarExtra 동적 제어 설계 — paidApp 실행 상태에 따른 조건부 표시 (현행) + 아이콘 교체 방식 (Issue195/196, 폐기)
 date: 2026-04-20
 ---
 
@@ -100,6 +100,40 @@ private func startObservingMenuBarIcon() {
 * **renderingMode 이중화**: cliApp 아이콘은 `.template`(시스템 색상 적응), paidApp 아이콘은 `.original`(컬러 유지). 단일 `Image` 뷰에서 `menuBarIconIsTemplate` 플래그로 분기
 * **아이콘 크기 18×18 고정**: `NSRunningApplication.icon`은 다중 해상도 이미지이므로 명시 리사이즈 필수. MenuBarExtra 표준 크기(18pt)에 맞춤
 * **`makeMenuBarIcon()` AppState 이관**: 기존 `fWarrangeCliApp` private static 메서드를 `AppState.makeCLIIcon()` / `AppState.makePaidAppIcon()` public static으로 이관. 아이콘 로직 단일 위치 관리
+
+# [현행] Issue201/46: paidApp MenuBarExtra 복원 + cliApp 조건부 isInserted (2026-04-20)
+
+위 아이콘 전환 방식(Issue195/196)은 구조적 결함으로 폐기됨. Issue201(paidApp) + Issue46(cliApp)에서 복원.
+
+## 폐기 이유
+
+cliApp이 메뉴바 아이콘을 단독 소유하면 paidApp이 자체 메뉴바 이벤트(설정창, 레이아웃 목록 등)를 직접 처리할 수 없음.
+URL Scheme 경유 중계 구조도 근본 해결책이 아님 — paidApp 고유 UI 로직을 cliApp에 위탁해야 하는 구조적 결함.
+
+## 현행 설계
+
+```
+paidApp 실행:
+  paidApp.PaidAppLifecycleNotifier.register()
+  → POST /api/v2/paidapp/register
+  → cliApp PaidAppStateStore → PaidAppMonitor.state = .paidAppActive
+  → fWarrangeCliApp: isInserted = false  (cliApp MenuBarExtra 숨김)
+  → paidApp 자체 MenuBarExtra 표시 (SF Symbol rectangle.3.group)
+
+paidApp 종료:
+  paidApp.PaidAppLifecycleNotifier.unregister()   (정상 종료)
+  + NSWorkspace.didTerminateApplicationNotification (이중채널 — crash/강제종료 커버)
+  → PaidAppMonitor.state = .cliOnly
+  → fWarrangeCliApp: isInserted = true   (cliApp MenuBarExtra 복원)
+```
+
+## 핵심 구현 파일
+
+| 파일 | 변경 내용 |
+| :--- | :--- |
+| `fWarrangeCliApp.swift` | `MenuBarExtra(isInserted: Binding(...))` — state == .cliOnly 시에만 표시 |
+| `MenuBarView.swift` | `.paidAppActive` 분기 제거 (cliOnly 단독 컨텐츠) |
+| `fWarrangeApp.swift` (paidApp) | `MenuBarExtra` + `MenuBarContentView` 복원 |
 
 # 변경 이력 기준
 
