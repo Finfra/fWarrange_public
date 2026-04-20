@@ -6,6 +6,7 @@ date: 2026-04-07
 
 * Issue HWM: 46
 * Save Point: 2026-04-20 (58cd86f) Fix(Issue43): PATCH /settings/{advanced,general} effectiveLogLevel·effectiveHotkeysEnabled 추가
+  - a192d2e (2026-04-20) - Docs(Design): menubar-icon-design 현행 설계 섹션 추가 (Issue46)
   - 9e9b577 (2026-04-20) - Docs: Close Issue44
   - f297278 (2026-04-20) - Fix: Close Issue45 (deploy symlink 중첩 버그 수정)
   - 65c593a (2026-04-20) - Docs: Close Issue42 (pairApp Issue52 Full Mirror — shutdown API + 호환성 필드 완결)
