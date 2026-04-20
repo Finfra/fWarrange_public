@@ -14,25 +14,14 @@ date: 2026-04-07
 
 # 🚧 진행중
 
-## Issue40: `_config.yml` 번들 시드 복사 패턴 도입 (pairApp fSnippetCli 정합) (등록: 2026-04-20)
-* 목적: `~/Documents/finfra/fWarrangeData/_config.yml` 부재 시 앱 번들에 포함된 `cli/fWarrangeCli/_config.yml`을 복사하여 초기화. 하드코딩 기본값(AppSettings.defaults)을 런타임에 Serialize하는 기존 방식은 "Clear 테스트 후 최초 실행 시 사용자 의도와 다른 기본값이 생성되는" 문제를 유발함. pairApp(fSnippetCli) `PreferencesManager.copyConfigFromBundle()` (Data/PreferencesManager.swift:183-206)와 동일 패턴으로 정합화.
-* 상세:
-    - 시드 파일 생성: `cli/fWarrangeCli/_config.yml` (현재 사용자 파일 기반, `logLevel: 5` (critical)로 조정)
-    - 로딩 로직 수정: `YAMLSettingsService.load()`에서 파일 부재 시 `Bundle.main.url(forResource: "_config", withExtension: "yml")` → `FileManager.copyItem` 시도
-    - 번들 복사 실패 시 기존 동작(AppSettings.defaults) 유지
-    - XcodeGen `sources: - fWarrangeCli`에 의해 `.yml`은 Bundle Resources로 자동 분류됨 (별도 project.yml 수정 불요)
-* 구현 명세:
-    - `SettingsService.swift`: `copyConfigFromBundle()` private method 추가, `load()` 프리앰블로 호출
-    - 시드 파일 `logLevel: 5` 유지 (빌드 시 verbose/debug 로그 flood 방지)
-* 검증:
-    - [ ] `rm ~/Documents/finfra/fWarrangeData/_config.yml` 후 앱 실행 → 번들 시드가 복사되는지
-    - [ ] 복사된 내용이 `cli/fWarrangeCli/_config.yml`과 bitwise 동일
-    - [ ] 번들 부재(수동 제거) 시에도 크래시 없이 기본값 동작
-
 # 📙 일반
 # 📗 선택
 
 # ✅ 완료
+## Issue40: `_config.yml` 번들 시드 복사 패턴 도입 (pairApp fSnippetCli 정합) (등록: 2026-04-20) (✅ 완료, 7a8b06b) ✅
+* 목적: `~/Documents/finfra/fWarrangeData/_config.yml` 부재 시 앱 번들 시드 복사. pairApp fSnippetCli `copyConfigFromBundle()` 패턴 정합화.
+* 상세: `SettingsService.swift` `copyConfigFromBundle()` 추가, `_config.yml` 번들 리소스 등록, logLevel: 5(critical) 기본값
+
 ## Issue41: SingleInstanceGuard getpid() 교체 + performHandoffStart() 이식 (pairApp Issue53 v1+v2) (등록: 2026.04.20) (✅ 완료, 03192bb) ✅
 * 목적: NSRunningApplication.current.processIdentifier 의 -1 반환 위험 제거 + performHandoffStart() 로 open 경로 비동기 포트 충돌 해소
 * 상세: 
