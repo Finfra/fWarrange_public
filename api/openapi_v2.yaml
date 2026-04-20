@@ -1183,7 +1183,11 @@ components:
       properties:
         status: { type: string, example: ok }
         data:
-          $ref: '#/components/schemas/GeneralSettings'
+          allOf:
+            - $ref: '#/components/schemas/GeneralSettings'
+            - type: object
+              properties:
+                effectiveHotkeysEnabled: { type: boolean }
       required: [status, data]
 
     # ---- Restore ----
@@ -1268,6 +1272,9 @@ components:
             - type: object
               properties:
                 logFilePath: { type: string }
+                effectiveLogLevel:
+                  type: string
+                  enum: [verbose, debug, info, warning, error, critical]
       required: [status, data]
 
     # ---- Shortcuts ----

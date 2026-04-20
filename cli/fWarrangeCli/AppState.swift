@@ -19,7 +19,6 @@ final class AppState {
     var connectionCount = 0
     var startTime = Date()
     var settings: AppSettings
-    var hideMenuBar = false
     var activeModeName: String?
     private var modeActivationInProgress = false
 
@@ -244,12 +243,6 @@ final class AppState {
                 }
                 return (isRunning: shouldRun, port: Int(targetPort), external: targetExternal, cidr: targetCidr)
             },
-            setHideMenuBar: { hide in
-                weakSelf?.hideMenuBar = hide
-            },
-            getHideMenuBar: {
-                weakSelf?.hideMenuBar ?? false
-            },
             // Mode 핸들러
             listModes: {
                 guard let self = weakSelf else { return [] }
@@ -382,12 +375,10 @@ final class AppState {
     }
 
     func initialize() {
-        if let level = LogLevel(rawValue: settings.logLevel ?? 5) {
-            Logger.shared.setLogLevel(level)
-        }
+        let effectiveLogLevel = Env.logLevel ?? LogLevel(rawValue: settings.logLevel ?? 5) ?? .critical
+        Logger.shared.setLogLevel(effectiveLogLevel)
 
-        // Issue195: 2-모드 메뉴바 — cliApp이 직접 관리. paidApp 실행 여부는 PaidAppMonitor로 감지.
-        // 레거시 hideMenuBar 로직(Issue10)은 Issue196에서 완전 제거 예정.
+        // 2-모드 메뉴바 — cliApp이 직접 관리. paidApp 실행 여부는 PaidAppMonitor로 감지.
         if detectPaidApp() != nil {
             _ = launchPaidApp()
             logI("✅ fWarrange(Paid) 실행 — cliApp 메뉴바 유지 (2-모드 관리)")
@@ -398,8 +389,8 @@ final class AppState {
 
         layoutManager.loadMetadataList()
 
-        // REST 서버 시작 (항상 활성화)
-        restServer.start(port: UInt16(settings.restServerPort ?? 3016))
+        // REST 서버 시작 (항상 활성화, FWARRANGE_PORT env 우선)
+        restServer.start(port: Env.port ?? UInt16(settings.restServerPort ?? 3016))
         isRunning = true
         startTime = Date()
 
@@ -414,26 +405,30 @@ final class AppState {
             showAccessibilityGuide()
         }
 
-        // 글로벌 단축키 등록
-        hotKeyService.register(settings: settings) { [weak self] action in
-            guard let self else { return }
-            self.handleHotKeyAction(action)
-        }
-
-        // REST 경로로 단축키가 갱신되면 재로드 후 재등록
-        NotificationCenter.default.addObserver(
-            forName: .fWarrangeCliShortcutsUpdated,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in
-                self.settings = self.settingsService.load()
-                self.hotKeyService.register(settings: self.settings) { [weak self] action in
-                    self?.handleHotKeyAction(action)
-                }
-                logI("🔁 단축키 재등록 완료 (REST 업데이트 반영)")
+        // 글로벌 단축키 등록 (FWARRANGE_DISABLE_HOTKEYS=1 시 건너뜀)
+        if !Env.hotkeysDisabled {
+            hotKeyService.register(settings: settings) { [weak self] action in
+                guard let self else { return }
+                self.handleHotKeyAction(action)
             }
+
+            // REST 경로로 단축키가 갱신되면 재로드 후 재등록
+            NotificationCenter.default.addObserver(
+                forName: .fWarrangeCliShortcutsUpdated,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                guard let self else { return }
+                Task { @MainActor in
+                    self.settings = self.settingsService.load()
+                    self.hotKeyService.register(settings: self.settings) { [weak self] action in
+                        self?.handleHotKeyAction(action)
+                    }
+                    logI("🔁 단축키 재등록 완료 (REST 업데이트 반영)")
+                }
+            }
+        } else {
+            logI("ℹ️ FWARRANGE_DISABLE_HOTKEYS=1 — 글로벌 단축키 등록 건너뜀")
         }
 
         // Issue36: brew services 배타 원칙 — 앱 내부 SMAppService 자동 등록 경로 제거
@@ -461,10 +456,6 @@ final class AppState {
                 let cleaned = self.paidAppStore.unregisterAllForBundleId("kr.finfra.fWarrange")
                 if cleaned {
                     logI("🧹 fWarrange 종료 감지 → PaidAppStateStore cleanup 완료 (bundleId: kr.finfra.fWarrange)")
-                }
-                if self.hideMenuBar {
-                    self.hideMenuBar = false
-                    logI("🔄 fWarrange 종료 감지 → 메뉴바 자동 복원")
                 }
             }
         }

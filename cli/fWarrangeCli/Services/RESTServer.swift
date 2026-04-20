@@ -58,10 +58,6 @@ struct RESTServerHandlers {
     /// Returns the effective state after the server applies the change.
     var applyApiSettings: (_ enabled: Bool?, _ port: Int?, _ external: Bool?, _ cidr: String?) -> (isRunning: Bool, port: Int, external: Bool, cidr: String)
 
-    // UI 상태
-    var setHideMenuBar: (_ hide: Bool) -> Void
-    var getHideMenuBar: () -> Bool
-
     // Mode 관련
     var listModes: () throws -> [ModeMetadata]
     var loadMode: (_ name: String) throws -> Mode
@@ -538,7 +534,13 @@ final class RESTServer: RESTServerProtocol {
                 var data: [String: Any] = [:]
                 for k in fields { if let v = full[k] { data[k] = v } }
                 if path.hasSuffix("/restore") { data["excludedApps"] = handlers.getExcludedApps() }
-                if path.hasSuffix("/advanced") { data["logFilePath"] = handlers.getLogFilePath() }
+                if path.hasSuffix("/advanced") {
+                    data["logFilePath"] = handlers.getLogFilePath()
+                    data["effectiveLogLevel"] = Logger.shared.currentLogLevel.description.lowercased()
+                }
+                if path.hasSuffix("/general") {
+                    data["effectiveHotkeysEnabled"] = !Env.hotkeysDisabled
+                }
                 completion(.ok(json: ["status": "ok", "data": data]))
                 return true
             }
@@ -1374,19 +1376,14 @@ final class RESTServer: RESTServerProtocol {
 
     // MARK: - UI 상태
 
-    /// PUT /api/v1/ui/state - UI 상태 변경
+    /// PUT /api/v1/ui/state - UI 상태 변경 (hideWindows / selectApps / excludeApps)
     private func handleSetUIState(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         guard let body = request.jsonBody() else {
             completion(.badRequest(message: "JSON body가 필요합니다"))
             return
         }
-        if let hide = body["hideMenuBar"] as? Bool {
-            DispatchQueue.main.async {
-                self.handlers.setHideMenuBar(hide)
-            }
-        }
-        let current = handlers.getHideMenuBar()
-        completion(.ok(json: ["status": "ok", "data": ["hideMenuBar": current]]))
+        _ = body  // hideWindows·selectApps·excludeApps 는 fWarrange(paidApp) 측에서 적용
+        completion(.ok(json: ["status": "ok", "data": [:]]))
     }
 
     // MARK: - 유틸리티

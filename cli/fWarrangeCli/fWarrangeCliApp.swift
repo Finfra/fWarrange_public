@@ -29,10 +29,7 @@ struct fWarrangeCliApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra(isInserted: Binding(
-            get: { !appState.hideMenuBar },
-            set: { appState.hideMenuBar = !$0 }
-        )) {
+        MenuBarExtra {
             MenuBarView()
                 .environment(appState)
         } label: {

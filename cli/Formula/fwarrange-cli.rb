@@ -10,8 +10,15 @@ class FwarrangeCli < Formula
     prefix.install "fWarrangeCli.app"
   end
 
-  # service 블록: Issue35에서 `brew services` 단일 표준 채택 시 추가 예정
-  # 참조: ~/_doc/3.Resource/_ICT/_OS/MacOS/homebrew_tap_deploy.md §7-5-A
+  service do
+    run [opt_prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli"]
+    keep_alive true
+    log_path var/"log/fwarrange-cli.log"
+    error_log_path var/"log/fwarrange-cli.error.log"
+    environment_variables FWARRANGE_PORT: "3016",
+                          FWARRANGE_LOG_LEVEL: "info",
+                          FWARRANGE_DISABLE_HOTKEYS: "0"
+  end
 
   test do
     assert_predicate prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli", :exist?

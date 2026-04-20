@@ -17,6 +17,7 @@
 		47AEC5453C5C9C1488ABFEE3 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FE7B6EF2174224C37FA6F0 /* MenuBarView.swift */; };
 		4926C654E290CAB561309435 /* Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5448F7DE624FDC82BC3D385C /* Layout.swift */; };
 		5550D4E9E811C42F638DA161 /* HotKeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25E958C235A2113119D12901 /* HotKeyService.swift */; };
+		61B1B19B91BC62990534DBC4 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37FADC646A77FF5127FD62DA /* Env.swift */; };
 		638565B82365C5E0C2944001 /* PaidAppAPIModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA432610AC9B58EA3638AEBA /* PaidAppAPIModelsTests.swift */; };
 		66EA8ECE678E75D6BBC6EF56 /* PaidAppMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1919E0DE2282826243C9BF78 /* PaidAppMonitor.swift */; };
 		6E8CAAC3C32A6DFFC0772B6A /* PaidAppRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F83A9BD5E1D62D0865CA6E8 /* PaidAppRouterTests.swift */; };
@@ -68,6 +69,7 @@
 		2E0460B68C5CE5C8544611FF /* Mode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mode.swift; sourceTree = "<group>"; };
 		3048E8064D2360477D20FE4D /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		332CF3D58195D4A7F7B2836F /* fWarrangeCliApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = fWarrangeCliApp.swift; sourceTree = "<group>"; };
+		37FADC646A77FF5127FD62DA /* Env.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Env.swift; sourceTree = "<group>"; };
 		3905C8AF01D881D7B779A6C3 /* fWarrangeCli.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = fWarrangeCli.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3CF3DC701F6F34498C5A607B /* WindowCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowCaptureService.swift; sourceTree = "<group>"; };
 		484BEF5CA60BA4E18244F756 /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
@@ -130,6 +132,7 @@
 			children = (
 				F264201EE001BF2B3032FC78 /* AXPrivateAPI.swift */,
 				BA88D59968E1BC4657A3D8B4 /* DisplayNumberHelper.swift */,
+				37FADC646A77FF5127FD62DA /* Env.swift */,
 				A0D0D47C31F3DB1D08190C0C /* Logger.swift */,
 			);
 			path = Utils;
@@ -324,6 +327,7 @@
 				FBAEC90B3AA0B434235470D6 /* CLIHandler.swift in Sources */,
 				990554852C9F96E6CA46180A /* ChangeTracker.swift in Sources */,
 				83167584CB3AC9496AFA89A6 /* DisplayNumberHelper.swift in Sources */,
+				61B1B19B91BC62990534DBC4 /* Env.swift in Sources */,
 				5550D4E9E811C42F638DA161 /* HotKeyService.swift in Sources */,
 				4926C654E290CAB561309435 /* Layout.swift in Sources */,
 				18C22AC105FA8DF6951C2633 /* LayoutManager.swift in Sources */,
