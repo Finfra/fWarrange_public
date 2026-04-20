@@ -1124,9 +1124,12 @@ components:
       type: object
       properties:
         status: { type: string, example: ok }
-        app: { type: string }
-        version: { type: string }
-        port: { type: integer }
+        app: { type: string, example: fWarrangeCli }
+        version: { type: string, example: "1.0.0" }
+        port: { type: integer, example: 3016 }
+        layout_count: { type: integer, example: 5 }
+        uptime_seconds: { type: integer, example: 120 }
+      required: [status, app, version, port, layout_count, uptime_seconds]
 
     # ---- Full settings ----
     FullSettings:
@@ -1523,11 +1526,14 @@ components:
     CLIStatusResponse:
       type: object
       properties:
+        status: { type: string, example: ok }
+        app: { type: string, example: fWarrangeCli }
         isRunning: { type: boolean }
-        version: { type: string }
-        uptime: { type: string }
-        port: { type: integer }
-      required: [isRunning, version, uptime, port]
+        version: { type: string, example: "1.0.0" }
+        port: { type: integer, example: 3016 }
+        uptime: { type: string, example: "00:01:30", description: "HH:MM:SS 형식" }
+        uptimeSeconds: { type: integer, example: 90 }
+      required: [status, app, isRunning, version, port, uptime, uptimeSeconds]
 
     CLIVersionResponse:
       type: object
@@ -1536,8 +1542,17 @@ components:
         data:
           type: object
           properties:
-            version: { type: string }
-          required: [version]
+            app: { type: string, example: fWarrangeCli }
+            version: { type: string, example: "1.0.0" }
+            build: { type: string, example: "1" }
+            minPaidAppVersion:
+              type: string
+              nullable: true
+              description: |
+                paidApp과의 호환을 보장하는 최소 버전. Info.plist의 MinPaidAppVersion
+                키가 설정된 경우에만 포함된다. null이면 버전 제한 없음.
+              example: "1.2.0"
+          required: [app, version, build]
       required: [status, data]
 
     SetUIStateRequest:

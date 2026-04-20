@@ -1,0 +1,114 @@
+%% title: fWarrange - 레이아웃 복구(Restore) 및 캡처(Capture) 동작 상태 다이어그램
+%% svgPath: _doc_design/DIAGRAM_STATUS.svg
+
+stateDiagram-v2
+    direction TB
+
+    [*] --> Idle: 앱 시작 대기
+
+    state Idle {
+        [*] --> CheckPermissions: GUI 복구 요청 (단축키/버튼)
+        [*] --> RESTRestore: REST API 복구 요청
+        [*] --> RESTCapture: REST API 캡처 요청
+    }
+
+    %% ===== REST API 복구 경로 =====
+    state "REST API 복구" as RESTRestore {
+        ParseRequest: HTTP 요청 파싱
+        LoadLayout: 레이아웃 로드 (LayoutManager)
+        ParseRequest --> LoadLayout
+    }
+    RESTRestore --> CheckPermissions: 레이아웃 로드 완료
+
+    %% ===== REST API 캡처 경로 =====
+    state "REST 캡처 흐름" as RESTCapture {
+        CaptureWindows: WindowManager.captureCurrentWindows()
+        SaveLayout: LayoutManager.saveLayout()
+        PostCaptureNotification: Notification.post (RESTCaptureCompleted)
+        CaptureWindows --> SaveLayout
+        SaveLayout --> PostCaptureNotification
+    }
+    RESTCapture --> Idle: 캡처 완료
+
+    %% ===== 권한 확인 =====
+    CheckPermissions --> RequestPermission: 권한 없음
+    RequestPermission --> Idle: 권한 요청 완료 (사용자 대기)
+
+    CheckPermissions --> PreRestoreActions: 권한 승인됨 (hasAccessibility == true)
+
+    state "레이아웃 복구 준비" as PreRestoreActions {
+        FilterExcludedApps: 제외된 앱 필터링
+        InitProgress: 진행률 초기화 (0%)
+    }
+
+    PreRestoreActions --> RestoreProcess: 복구 시작 (isRestoring = true)
+
+    state "복구 프로세스 (WindowRestoreService)" as RestoreProcess {
+        direction TB
+
+        state "재시도 루프 (현재 시도 <= maxRetries)" as RetryLoop {
+            FetchRunningApps: 현재 실행 중인 앱 목록 가져오기
+            GroupWindows: 레이아웃 창들을 앱별로 그룹화
+            ParalleProcessing: 앱 그룹별 병렬 처리 (enableParallel == true)
+            SequentialProcessing: 순차 처리
+
+            state "병렬 / 순차 처리 분기" as ProcessingChoice <<choice>>
+            GroupWindows --> ProcessingChoice
+            ProcessingChoice --> ParalleProcessing
+            ProcessingChoice --> SequentialProcessing
+
+            state "앱별 창 복구 로직" as WindowLogic {
+                AppUnhide: 숨겨진 앱 표시 (App Unhide)
+                GetAppWindows: 앱의 모든 창(AXUIElement) 목록 획득
+                MatchWindow: 가장 유사한 창 찾기 (Score 매칭)
+
+                state "매칭 점수 평가" as MatchScore {
+                    IDMatch: ID 일치 (100점)
+                    TitleMatch: 제목 정확 일치 (90점)
+                    RegexMatch: 제목 정규표현식 일치 (80점)
+                    RatioAreaMatch: 비율 및 면적 일치 (40~30점)
+                }
+
+                MatchWindow --> MatchScore
+
+                ActionSetPosition: 찾은 창에 좌표/크기 적용
+                Validation: 3px 허용 오차 내 크기/위치 검증
+
+                MatchScore --> ActionSetPosition: 점수 >= minimumScore
+                ActionSetPosition --> Validation
+            }
+
+            ParalleProcessing --> WindowLogic
+            SequentialProcessing --> WindowLogic
+
+            WindowLogic --> CollectPending: 실패한 창 식별
+        }
+
+        CollectPending --> SleepRetry: 실패 항목 존재 및 시도 횟수 남음
+        SleepRetry --> RetryLoop: retryInterval 대기 후 재시도
+
+        CollectPending --> FinishRestore: 성공 혹은 최대 재시도 도달
+    }
+
+    FinishRestore --> PostRESTNotification: REST API 요청인 경우
+    FinishRestore --> EvaluateResult: GUI 요청인 경우
+
+    state "REST 복구 완료 알림" as PostRESTNotification {
+        NotifyRESTRestore: Notification.post (RESTRestoreCompleted)
+    }
+    PostRESTNotification --> EvaluateResult
+
+    state "결과 평가" as EvaluateResult {
+        state "결과 분기" as ResultChoice <<choice>>
+        ResultChoice --> Success: 모든 창 복구 성공 (failed == 0)
+        ResultChoice --> Warning: 일부 창 복구 실패 (failed > 0)
+    }
+
+    EvaluateResult --> ShowStatusToast
+
+    state "상태 반영" as ShowStatusToast {
+        UpdateUI: 상태 메시지 및 Toast 업데이트
+        ResetFlags: isRestoring = false
+    }
+
+    ShowStatusToast --> Idle

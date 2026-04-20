@@ -489,14 +489,14 @@ final class AppState {
         return image
     }
 
-    /// paidApp 아이콘을 메뉴바 크기(18×18)로 리사이즈
-    static func makePaidAppIcon(from runningApp: NSRunningApplication) -> NSImage? {
-        guard let icon = runningApp.icon else { return nil }
-        let resized = NSImage(size: NSSize(width: 18, height: 18))
-        resized.lockFocus()
-        icon.draw(in: NSRect(origin: .zero, size: NSSize(width: 18, height: 18)))
-        resized.unlockFocus()
-        return resized
+    /// paidApp 실행 중 메뉴바 아이콘: rectangle.3.group 전체 표시 (template)
+    static func makePaidAppActiveIcon() -> NSImage {
+        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
+        let img = (NSImage(systemSymbolName: "rectangle.3.group", accessibilityDescription: "fWarrange")?
+            .withSymbolConfiguration(config))
+            ?? NSImage(systemSymbolName: "rectangle.3.group", accessibilityDescription: "fWarrange")!
+        img.isTemplate = true
+        return img
     }
 
     /// PaidAppMonitor.state 변화를 감시해 menuBarIcon 자동 전환
@@ -506,12 +506,9 @@ final class AppState {
                 let state = paidAppMonitor.state
                 switch state {
                 case .paidAppActive:
-                    let apps = NSRunningApplication.runningApplications(withBundleIdentifier: "kr.finfra.fWarrange")
-                    if let app = apps.first, let icon = AppState.makePaidAppIcon(from: app) {
-                        menuBarIcon = icon
-                        menuBarIconIsTemplate = false
-                        logI("🎨 메뉴바 아이콘: paidApp 아이콘으로 전환")
-                    }
+                    menuBarIcon = AppState.makePaidAppActiveIcon()
+                    menuBarIconIsTemplate = true
+                    logI("🎨 메뉴바 아이콘: paidApp 활성 아이콘으로 전환")
                 case .cliOnly:
                     menuBarIcon = AppState.makeCLIIcon()
                     menuBarIconIsTemplate = true

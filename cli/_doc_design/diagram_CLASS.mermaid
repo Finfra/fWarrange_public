@@ -1,0 +1,433 @@
+%% title: fWarrange - 클래스 구조 다이어그램 (2026-03-30 갱신)
+%% output_path: _doc_design/DIAGRAM_CLASS.svg
+
+classDiagram
+    direction TB
+
+    %% =========================================================================
+    %% Coordinator Layer (Application Layer)
+    %% =========================================================================
+    class fWarrangeApp["🏁 fWarrangeApp"] {
+        -appDelegate: AppDelegate
+        -viewModel: MainViewModel
+        -screenMoveService: ScreenMoveService
+        -restServer: RESTServer
+        +body: Scene
+    }
+
+    class AppDelegate["⚙️ AppDelegate"] {
+        +applicationShouldHandleReopen() -> Bool
+        +applicationDidBecomeActive()
+    }
+
+    %% =========================================================================
+    %% ViewModel Layer
+    %% =========================================================================
+    class MainViewModel["🧠 MainViewModel"] {
+        <<Observable>>
+        +isCapturing: Bool
+        +isRestoring: Bool
+        +restoreResult: RestoreResultState?
+        +hasAccessibility: Bool
+        +showSettings: Bool
+        +statusMessage: StatusMessage
+        +settings: AppSettings
+        +restServer: RESTServer
+        -windowManager: WindowManager
+        -layoutManager: LayoutManager
+        -settingsService: SettingsService
+        -hotKeyService: HotKeyService
+        +initialize()
+        +syncAppLanguage()
+        +syncLaunchAtLogin()
+        +registerHotKeys()
+        +registerRESTNotifications()
+        +checkAccessibility()
+        +requestAccessibility()
+        +captureAndSave()
+        +restoreLayout()
+        +restoreSelectedLayout()
+        +deleteLayout()
+        +removeWindows()
+        +saveSettings()
+        +setDefaultLayout()
+        +renameLayout()
+    }
+
+    %% =========================================================================
+    %% Manager Layer
+    %% =========================================================================
+    class WindowManager["🪟 WindowManager"] {
+        <<조정자>>
+        -captureService: WindowCaptureService
+        -restoreService: WindowRestoreService
+        -accessibilityService: AccessibilityService
+        +restoreStatus: RestoreStatus
+        +captureCurrentWindows() -> [WindowInfo]
+        +restoreWindows()
+        +isAccessibilityGranted() -> Bool
+        +requestAccessibility()
+        +runningAppNames() -> [String]
+    }
+
+    class LayoutManager["📂 LayoutManager"] {
+        <<데이터관리>>
+        -storageService: LayoutStorageService
+        +layouts: [LayoutMetadata]
+        +selectedMetadata: LayoutMetadata?
+        +selectedLayoutDetail: Layout?
+        +loadMetadataList()
+        +loadDetail()
+        +saveLayout()
+        +deleteLayout()
+        +renameLayout()
+        +removeWindows()
+        +storageServiceLoad() -> Layout
+    }
+
+    %% =========================================================================
+    %% Service Layer
+    %% =========================================================================
+    class WindowCaptureService["📷 WindowCaptureService"] {
+        <<인터페이스>>
+        +captureCurrentWindows(filterApps:) -> [WindowInfo]
+    }
+
+    class CGWindowCaptureService["📸 CGWindowCaptureService"] {
+        <<CoreGraphics 기반 구현>>
+        +captureCurrentWindows() -> [WindowInfo]
+    }
+
+    class WindowRestoreService["🛠 WindowRestoreService"] {
+        <<인터페이스>>
+        +restoreWindows() -> [WindowMatchResult]
+    }
+
+    class AXWindowRestoreService["🔧 AXWindowRestoreService"] {
+        <<Accessibility 기반 구현>>
+        +restoreWindows() -> [WindowMatchResult]
+        -matchAndRestore() -> WindowMatchResult
+        -matchAndRestoreParallel() -> WindowMatchResult
+    }
+
+    class LayoutStorageService["💾 LayoutStorageService"] {
+        <<인터페이스>>
+        +loadMetadataList() -> [LayoutMetadata]
+        +loadLayout() -> Layout
+        +saveLayout()
+        +deleteLayout()
+        +renameLayout()
+    }
+
+    class YAMLLayoutStorageService["📑 YAMLLayoutStorageService"] {
+        <<YAML 기반 구현>>
+        -dataDirectory: URL
+        -yamlEncoder: YAMLEncoder
+        -yamlDecoder: YAMLDecoder
+        +loadMetadataList() -> [LayoutMetadata]
+        +loadLayout() -> Layout
+        +saveLayout()
+        +deleteLayout()
+        +renameLayout()
+    }
+
+    class SettingsService["⚙️ SettingsService"] {
+        <<인터페이스>>
+        +load() -> AppSettings
+        +save()
+    }
+
+    class UserDefaultsSettingsService["🗂 UserDefaultsSettingsService"] {
+        <<UserDefaults 기반 구현>>
+        -defaults: UserDefaults
+        +load() -> AppSettings
+        +save()
+    }
+
+    class HotKeyService["⌨️ HotKeyService"] {
+        <<인터페이스>>
+        +register(settings:action:)
+        +unregisterAll()
+    }
+
+    class NSEventHotKeyService["🚀 NSEventHotKeyService"] {
+        <<글로벌 모니터링 기반 구현>>
+        -globalMonitor: Any?
+        -localMonitor: Any?
+        +register()
+        +unregisterAll()
+    }
+
+    class AccessibilityService["🛡 AccessibilityService"] {
+        <<인터페이스>>
+        +isPlatformTrusted() -> Bool
+        +requestPlatformTrust()
+    }
+
+    class SystemAccessibilityService["🔒 SystemAccessibilityService"] {
+        <<시스템 권한 구현>>
+        +isPlatformTrusted() -> Bool
+        +requestPlatformTrust()
+    }
+
+    class ScreenMoveService["🖥 ScreenMoveService"] {
+        <<Observable>>
+        +moveScreen(screenNumber:delta:)
+    }
+
+    %% =========================================================================
+    %% REST Server
+    %% =========================================================================
+    class RESTServerHandlers["📋 RESTServerHandlers"] {
+        <<클로저 주입>>
+        +captureCurrentWindows: Closure
+        +restoreWindows: Closure
+        +runningAppNames: Closure
+        +isAccessibilityGranted: Closure
+        +getLayouts: Closure
+        +saveLayout: Closure
+        +renameLayout: Closure
+        +deleteLayout: Closure
+        +removeWindows: Closure
+    }
+
+    class RESTServer["🌐 RESTServer"] {
+        <<Observable>>
+        +isRunning: Bool
+        +port: UInt16
+        +allowExternal: Bool
+        +allowedCIDR: String
+        -listener: NWListener
+        +start()
+        +stop()
+        -handleConnection()
+        -routeRequest()
+        -isAllowed() -> Bool
+    }
+
+    %% =========================================================================
+    %% Utility Layer
+    %% =========================================================================
+    class Logger["📝 Logger"] {
+        <<싱글톤>>
+        +shared: Logger
+        +setLogLevel()
+        +getLogFilePath() -> String
+    }
+
+    class DisplayNumberHelper["🔢 DisplayNumberHelper"] {
+        <<유틸리티>>
+        +orderedScreenFrames() -> [(number:frame:)]
+        +cgDisplayID(forNumber:) -> CGDirectDisplayID?
+        +menuBarRect() -> CGRect?
+    }
+
+    %% =========================================================================
+    %% Model Layer
+    %% =========================================================================
+    class WindowInfo["📱 WindowInfo"] {
+        +app: String
+        +window: String
+        +layer: Int
+        +id: Int
+        +pos: CGPoint
+        +size: CGSize
+    }
+
+    class Layout["📐 Layout"] {
+        +name: String
+        +windows: [WindowInfo]
+        +fileDate: Date
+        +windowCount: Int
+    }
+
+    class LayoutMetadata["🏷 LayoutMetadata"] {
+        +name: String
+        +windowCount: Int
+        +fileDate: Date
+    }
+
+    class AppSettings["⚙️ AppSettings"] {
+        +excludedApps: [String]
+        +defaultLayoutName: String
+        +launchAtLogin: Bool
+        +maxRetries: Int
+        +retryInterval: Double
+        +minimumMatchScore: Int
+        +enableParallelRestore: Bool
+        +appLanguage: String?
+        +themeMode: String?
+        +saveShortcut: KeyShortcut?
+        +restoreDefaultShortcut: KeyShortcut?
+        +restoreLastShortcut: KeyShortcut?
+        +restServerEnabled: Bool
+        +restServerPort: Int
+        +restAllowExternal: Bool
+        +restAllowedCIDR: String
+        +showMainWindowShortcut: KeyShortcut?
+        +restoreSelectedShortcut: KeyShortcut?
+        +showInAppSwitcher: Bool
+        +confirmBeforeDelete: Bool
+        +miniMapHeight: Double
+        +restoreButtonStyle: String?
+        +menuBarRecentCount: Int?
+        +autoSaveOnSleep: Bool?
+        +autoSaveMaxCount: Int?
+        +hideWindowsInMiniMap: Bool?
+    }
+
+    class MatchType["🔎 MatchType"] {
+        <<Enumeration>>
+        windowID
+        exactTitle
+        regexTitle
+        containsTitle
+        widthMatch
+        heightMatch
+        ratioMatch
+        areaMatch
+        noMatch
+    }
+
+    class RestoreStatus["🚦 RestoreStatus"] {
+        <<Enumeration>>
+        idle
+        restoring(progress:current:)
+        completed(total:succeeded:)
+        failed(message:)
+    }
+
+    class StatusMessage["💬 StatusMessage"] {
+        <<Enumeration>>
+        ready
+        saving
+        restoring
+        success
+        warning
+        error
+    }
+
+    class WindowMatchResult["✅ WindowMatchResult"] {
+        +targetWindow: WindowInfo
+        +matchedTitle: String
+        +matchType: MatchType
+        +score: Int
+        +success: Bool
+    }
+    
+    %% =========================================================================
+    %% Styles Layer
+    %% =========================================================================
+    class AppColors["🎨 AppColors"] {
+        <<색상 팔레트>>
+        +fwSurface: Color
+        +fwDefaultBadge: Color
+        +fwColorForApp() -> Color
+    }
+
+    %% =========================================================================
+    %% UI Views Layer
+    %% =========================================================================
+    class ContentView["🖥 ContentView"] {
+        -viewModel: MainViewModel
+    }
+
+    class MenuBarContentView["🔝 MenuBarContentView"] {
+        -viewModel: MainViewModel
+        -screenMoveService: ScreenMoveService
+    }
+
+    class LayoutDetailView["📊 LayoutDetailView"] {
+        -viewModel: MainViewModel
+    }
+
+    class LayoutListView["📋 LayoutListView"] {
+        -viewModel: MainViewModel
+    }
+
+    class LayoutMiniMapView["🗺 LayoutMiniMapView"] {
+        -screenMoveService: ScreenMoveService
+        +windows: [WindowInfo]
+    }
+
+    class WindowGroupListView["📑 WindowGroupListView"] {
+        +windows: [WindowInfo]
+    }
+
+    class SaveLayoutSheet["💾 SaveLayoutSheet"] {
+        +excludedApps: [String]
+    }
+
+    class SettingsSheet["🎛 SettingsSheet"] {
+        -viewModel: MainViewModel
+        -restServer: RESTServer
+    }
+
+    class StatusBarView["📊 StatusBarView"] {
+        +statusMessage: StatusMessage
+    }
+
+    %% =========================================================================
+    %% Relationships
+    %% =========================================================================
+    fWarrangeApp --> AppDelegate : uses
+    fWarrangeApp --> MainViewModel : initializes
+    fWarrangeApp --> RESTServer : initializes
+    fWarrangeApp --> ScreenMoveService : initializes
+    fWarrangeApp --> ContentView : hosts
+    fWarrangeApp --> MenuBarContentView : hosts
+    fWarrangeApp --> WindowManager : initializes (DI)
+    fWarrangeApp --> LayoutManager : initializes (DI)
+    fWarrangeApp --> RESTServerHandlers : assembles
+
+    ContentView --> MainViewModel : observes
+    ContentView --> LayoutListView : contains
+    ContentView --> LayoutDetailView : contains
+    ContentView --> StatusBarView : contains
+    ContentView --> SaveLayoutSheet : sheet
+    ContentView --> SettingsSheet : sheet
+    MenuBarContentView --> MainViewModel : observes
+    MenuBarContentView --> ScreenMoveService : uses
+    LayoutDetailView --> MainViewModel : observes
+    LayoutDetailView --> LayoutMiniMapView : contains
+    LayoutDetailView --> WindowGroupListView : contains
+    LayoutMiniMapView --> ScreenMoveService : uses
+    LayoutMiniMapView --> DisplayNumberHelper : uses
+    SettingsSheet --> MainViewModel : observes
+    SettingsSheet --> RESTServer : configures
+
+    MainViewModel --> WindowManager : delegates
+    MainViewModel --> LayoutManager : delegates
+    MainViewModel --> SettingsService : uses
+    MainViewModel --> HotKeyService : uses
+    MainViewModel --> RESTServer : references
+    MainViewModel --> AppSettings : manages
+    MainViewModel --> StatusMessage : manages
+
+    RESTServer --> RESTServerHandlers : uses
+    RESTServer --> SettingsService : uses
+
+    RESTServerHandlers --> WindowManager : via closure
+    RESTServerHandlers --> LayoutManager : via closure
+
+    WindowManager --> WindowCaptureService : uses
+    WindowManager --> WindowRestoreService : uses
+    WindowManager --> AccessibilityService : uses
+    WindowManager --> RestoreStatus : updates
+
+    LayoutManager --> LayoutStorageService : uses
+    LayoutManager --> LayoutMetadata : manages
+    LayoutManager --> Layout : manages
+
+    WindowCaptureService <|.. CGWindowCaptureService : implements
+    WindowRestoreService <|.. AXWindowRestoreService : implements
+    LayoutStorageService <|.. YAMLLayoutStorageService : implements
+    SettingsService <|.. UserDefaultsSettingsService : implements
+    HotKeyService <|.. NSEventHotKeyService : implements
+    AccessibilityService <|.. SystemAccessibilityService : implements
+
+    CGWindowCaptureService --> WindowInfo : creates
+    AXWindowRestoreService --> WindowMatchResult : creates
+    AXWindowRestoreService --> MatchType : uses
+    YAMLLayoutStorageService --> Layout : saves/loads
+    YAMLLayoutStorageService --> LayoutMetadata : provides
