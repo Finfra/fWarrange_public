@@ -28,7 +28,6 @@ Temporary Items
 # 작업 문서 (_doc_work 루트 포함)
 _doc_work/
 cli/_doc_work/
-cli/_doc_design/
 
 # VSCode
 .history
