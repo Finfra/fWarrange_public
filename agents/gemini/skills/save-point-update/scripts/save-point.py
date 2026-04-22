@@ -28,7 +28,7 @@ def update_save_point(args):
     # 1. Find Save Point Header
     header_idx = -1
     for i, line in enumerate(lines):
-        if line.strip().startswith("* Save Point :"):
+        if line.strip().startswith("* Save Point:"):
             header_idx = i
             break
             
@@ -37,9 +37,10 @@ def update_save_point(args):
         sys.exit(1)
         
     # 2. Insert New Save Point
-    # Format:       - 2026.02.14: 5b6608a5 (Docs: Update Issue Candidates and Status)
-    # Indentation: 6 spaces
-    new_line = f"      - {today}: {args.hash} ({args.msg})\n"
+    # Format:   - 529ccb6 (2026-04-22) - Fix(Issue49)...
+    # Indentation: 2 spaces
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    new_line = f"  - {args.hash} ({today}) - {args.msg}\n"
     
     # Insert after the header
     lines.insert(header_idx + 1, new_line)

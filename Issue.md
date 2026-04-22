@@ -5,7 +5,8 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 53
-* Save Point: 2026-04-22 (close Issue48/49 — paidApp Issue206 QA-C 차단 해제)
+* Save Point: 2026-04-23 (close Issue53 — GET / → CLIStatus 포맷 통일)
+  - d4c13cc (2026-04-23) - Docs: Close Issue53 (GET / → CLIStatus 포맷 통일)
   - 529ccb6 (2026-04-22) - Fix(Issue49): GET /api/v2/settings effective* 필드 추가 + Issue48 종결
   - bdbb110 (2026-04-22) - Docs: Close Issue50
   - 65c593a (2026-04-20) - Docs: Close Issue42 (pairApp Issue52 Full Mirror — shutdown API + 호환성 필드 완결)
