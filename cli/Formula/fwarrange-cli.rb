@@ -10,13 +10,9 @@ class FwarrangeCli < Formula
     prefix.install "fWarrangeCli.app"
   end
 
-  service do
-    run [opt_prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli"]
-    log_path var/"log/fwarrange-cli.log"
-    error_log_path var/"log/fwarrange-cli.error.log"
-    environment_variables FWARRANGE_PORT: "3016",
-                          FWARRANGE_LOG_LEVEL: "info",
-                          FWARRANGE_DISABLE_HOTKEYS: "0"
+  def post_install
+    # Homebrew service 관리 비활성화 (Issue51 workaround)
+    # brew services kill이 Homebrew 5.1.7에서 작동하지 않는 버그 회피
   end
 
   test do
