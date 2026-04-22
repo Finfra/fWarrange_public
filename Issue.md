@@ -14,20 +14,17 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 
 # 🚧 진행중
-## Issue50: _config.yml의 appLanguage 설정 적용 안 됨 (등록: 2026-04-22) (✅ 완료, 2026-04-22)
-* 목적: _config.yml에서 로드된 appLanguage 설정이 시스템 언어에 반영되지 않는 문제 해결
-* plan: `cli/_doc_work/plan/applanguage-setting_plan.md`
+## Issue50: _config.yml의 appLanguage 설정 적용 안 됨 (등록: 2026-04-22) (✅ 완료)
+* 목적: _config.yml에서 로드된 appLanguage 설정이 MenuBarView UI에 반영되지 않는 문제 해결
 * 상세:
-    - 문제: AppSettings가 appLanguage를 로드하지만, 이를 시스템 언어(AppleLanguages UserDefaults 키)로 적용하는 메커니즘 부재
-    - 해결: AppState.swift에 applyLanguageSetting() 정적 메서드 추가 — pairApp(fSnippetCli) LocalizedStringManager 패턴 준용
-    - 구현 내용:
-      * 앱 시작 시(`init()`) + 설정 변경 시(`applySettingsPatch()`)에서 applyLanguageSetting() 호출
-      * normalizeLanguageCode() 메서드로 국가 코드(kr/jp/cn 등) → ISO 639-1 코드(ko/ja/zh-Hans 등) 정규화
-      * UserDefaults.standard에 AppleLanguages 키로 설정 저장 + synchronize() 호출
-      * 디버그 로깅 추가로 매 동작 추적 가능
-    - 검증: _config.yml의 appLanguage를 변경 후 앱 재시작 시 즉시 반영됨 확인
-* 커밋: 69f3e40 (Fix), 4f2c9e6 (Debug logging)
-* 배포: Homebrew local (2026-04-22 16:13, 16:17)
+    - 문제1: AppSettings가 appLanguage를 로드하지만, 이를 UserDefaults.AppleLanguages로 적용하는 메커니즘 부재
+    - 해결1: AppState.applyLanguageSetting() 추가 — UserDefaults.AppleLanguages 설정 + localizeLanguageCode() 정규화
+    - 문제2: MenuBarView 텍스트가 한국어로 하드코딩 — appLanguage 설정과 무관하게 한국어 고정
+    - 해결2: LocalizedStringManager.swift 추가 (fSnippetCli 패턴) — L10n(key, lang:) 헬퍼 + en/ko/ja 딕셔너리
+    - AppState.effectiveLanguage: settings.appLanguage 변경 시 SwiftUI 자동 재렌더링
+    - MenuBarView: 모든 하드코딩 텍스트 → L10n() 교체
+    - 검증: appLanguage: en → 영어 메뉴, appLanguage: ko(or kr) → 한국어 메뉴
+* 커밋: e5a3cc9, 6e8dccb, bdbb110
 
 ## Issue48: DELETE `/api/v2/paidapp/unregister` 엔드포인트 미구현 (등록: 2026-04-22)
 * 목적: paidApp Issue206 QA-C 검증에서 발견 — v2 라우팅 누락
