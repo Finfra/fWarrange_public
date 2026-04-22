@@ -17,13 +17,13 @@ date: 2026-04-07
 
 # 🚧 진행중
 
-## Issue51: launchAtLogin ↔ brew services plist 연동 (A+C 방식) (등록: 2026-04-22)
+
 * 목적: `_config.yml`의 `launchAtLogin` 설정이 실제 LaunchAgent plist 설치 여부와 연동되도록 구현
 * 상세:
     - 현상: `brew services stop` 후 상태가 `none`(plist 제거)이 되어 재부팅 시 자동 시작 불가
     - 원인: `launchAtLogin` 설정은 저장만 될 뿐 plist 설치/제거에 미연동 (Issue36 obsolete 처리)
-    - 방식 A: `AppState.setLaunchAtLogin()` — `true`면 `brew services start`, `false`면 `brew services stop` subprocess 호출
-    - 방식 C: `fwc-deploy-brew.sh` — 배포 시 `_config.yml`의 `launchAtLogin` 읽어 start/stop 분기
+    - 방식 A: `AppState.setLaunchAtLogin()` — `true`면 `brew services start`, `false`면 plist 직접 rm
+    - 방식 C: `fwc-deploy-brew.sh` — 배포 시 `_config.yml`의 `launchAtLogin` 읽어 start/run 분기
     - brew 경로: `/opt/homebrew/bin/brew` (Apple Silicon 전용, Intel 미지원)
 * 구현 명세:
     - `AppState.swift`: `syncLaunchAtLogin()` no-op 제거, brew subprocess 실행 구현
@@ -34,6 +34,15 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue51: launchAtLogin ↔ brew services plist 연동 (A+C 방식) (등록: 2026-04-22) (✅ 완료, fb7e244)
+* 목적: `_config.yml`의 `launchAtLogin` 설정이 실제 LaunchAgent plist 설치 여부와 연동되도록 구현
+* 상세:
+    - 현상: `brew services stop` 후 상태가 `none`(plist 제거)이 되어 재부팅 시 자동 시작 불가
+    - 원인: `launchAtLogin` 설정은 저장만 될 뿐 plist 설치/제거에 미연동 (Issue36 obsolete 처리)
+    - 방식 A: `AppState.setLaunchAtLogin()` — `true`면 `brew services start`, `false`면 plist 직접 rm
+    - 방식 C: `fwc-deploy-brew.sh` — 배포 시 `_config.yml`의 `launchAtLogin` 읽어 start/run 분기
+    - brew 경로: `/opt/homebrew/bin/brew` (Apple Silicon 전용, Intel 미지원)
+
 ## Issue49: GET `/api/v2/settings` 응답에서 effective* 필드 누락 (등록: 2026-04-22, 해결: 2026-04-22, commit: 529ccb6) ✅
 * 목적: paidApp Issue206 QA-C 검증에서 발견 — 환경변수 오버라이드 반영 필드 부재
 * 상세:
