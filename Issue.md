@@ -3,14 +3,9 @@ name: Issue
 description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
-
+# Issue Management
 * Issue HWM: 49
 * Save Point: 2026-04-22 (register Issue48/49 from paidApp Issue206 QA-C findings)
-  - ba603b7 (2026-04-20) - Refactor(Issue46): AppState 아이콘 리팩터링 + 설계 문서 추가
-  - 58cd86f (2026-04-20) - Fix(Issue43): PATCH /settings effectiveLogLevel·effectiveHotkeysEnabled 추가
-  - a192d2e (2026-04-20) - Docs(Design): menubar-icon-design 현행 설계 섹션 추가 (Issue46)
-  - 9e9b577 (2026-04-20) - Docs: Close Issue44
-  - f297278 (2026-04-20) - Fix: Close Issue45 (deploy symlink 중첩 버그 수정)
   - 65c593a (2026-04-20) - Docs: Close Issue42 (pairApp Issue52 Full Mirror — shutdown API + 호환성 필드 완결)
 
 # 🤔 결정사항
@@ -19,6 +14,21 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 
 # 🚧 진행중
+## Issue50: _config.yml의 appLanguage 설정 적용 안 됨 (등록: 2026-04-22) (✅ 완료, 2026-04-22)
+* 목적: _config.yml에서 로드된 appLanguage 설정이 시스템 언어에 반영되지 않는 문제 해결
+* plan: `cli/_doc_work/plan/applanguage-setting_plan.md`
+* 상세:
+    - 문제: AppSettings가 appLanguage를 로드하지만, 이를 시스템 언어(AppleLanguages UserDefaults 키)로 적용하는 메커니즘 부재
+    - 해결: AppState.swift에 applyLanguageSetting() 정적 메서드 추가 — pairApp(fSnippetCli) LocalizedStringManager 패턴 준용
+    - 구현 내용:
+      * 앱 시작 시(`init()`) + 설정 변경 시(`applySettingsPatch()`)에서 applyLanguageSetting() 호출
+      * normalizeLanguageCode() 메서드로 국가 코드(kr/jp/cn 등) → ISO 639-1 코드(ko/ja/zh-Hans 등) 정규화
+      * UserDefaults.standard에 AppleLanguages 키로 설정 저장 + synchronize() 호출
+      * 디버그 로깅 추가로 매 동작 추적 가능
+    - 검증: _config.yml의 appLanguage를 변경 후 앱 재시작 시 즉시 반영됨 확인
+* 커밋: 69f3e40 (Fix), 4f2c9e6 (Debug logging)
+* 배포: Homebrew local (2026-04-22 16:13, 16:17)
+
 ## Issue48: DELETE `/api/v2/paidapp/unregister` 엔드포인트 미구현 (등록: 2026-04-22)
 * 목적: paidApp Issue206 QA-C 검증에서 발견 — v2 라우팅 누락
 * 상세:
