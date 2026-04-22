@@ -100,15 +100,28 @@ nonisolated final class Logger: Sendable {
             return
         }
 
-        #if DEBUG
-            let startupMessage = "\n=== fWarrangeCli 로그 시작 [\(formatTimestamp(Date()))] ===\n"
-            do {
-                try startupMessage.write(to: logFileURL, atomically: false, encoding: .utf8)
+        let startupMessage = "\n=== fWarrangeCli 로그 시작 [\(formatTimestamp(Date()))] ===\n"
+        do {
+            try startupMessage.write(to: logFileURL, atomically: false, encoding: .utf8)
+            #if DEBUG
                 print("✅ 로그 파일 초기화 완료: \(logFileURL.path)")
-            } catch {
+            #endif
+        } catch {
+            #if DEBUG
                 print("❌ 로그 파일 생성 실패: \(error)")
-            }
-        #endif
+            #endif
+        }
+    }
+
+    func writeSessionEnd() {
+        guard currentLogLevel.rawValue <= LogLevel.info.rawValue else { return }
+        queue.sync { [self] in
+            let endMessage = "=== fWarrangeCli 로그 종료 [\(formatTimestamp(Date()))] ===\n"
+            guard let data = endMessage.data(using: .utf8) else { return }
+            appendToFile(url: logFileURL, data: data)
+            let archivedLogURL = logDirectoryURL.appendingPathComponent("wlog_\(sessionDateString).log")
+            appendToFile(url: archivedLogURL, data: data)
+        }
     }
 
     private func formatTimestamp(_ date: Date) -> String {

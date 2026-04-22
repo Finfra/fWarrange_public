@@ -33,7 +33,6 @@ struct MenuBarView: View {
 
         Button(L10n("menu.quit", lang: lang)) {
             logI("👋 fWarrangeCli 종료")
-            Logger.shared.writeSessionEnd()
             appState.restServer.stop()
             BrewServiceSync.onAppStop()
             NSApplication.shared.terminate(nil)

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 // CLI 인자가 있으면 SwiftUI 앱 초기화 전에 처리 후 종료
 @main
@@ -17,7 +18,14 @@ struct AppEntry {
     }
 }
 
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillTerminate(_ notification: Notification) {
+        Logger.shared.writeSessionEnd()
+    }
+}
+
 struct fWarrangeCliApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var appState = AppState()
 
     init() {

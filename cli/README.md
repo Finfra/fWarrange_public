@@ -32,7 +32,7 @@ fWarrange (Sandbox, App Store)          fWarrangeCli (Non-Sandbox, Helper)
 
 ```bash
 brew tap finfra/tap
-brew install finfra/tap/fWarrangeCli
+brew install finfra/tap/fwarrange-cli
 ```
 
 ## Build from Source
@@ -55,13 +55,13 @@ open /Applications/_nowage_app/fWarrangeCli.app
 # REST API
 
 * **Default port**: `3016`
-* **API version**: `v1`
-* **Service root**: `http://localhost:3016/api/v1`
-* **OpenAPI spec**: [`api/openapi_v1.yaml`](../api/openapi_v1.yaml)
+* **API version**: `v2` (current), `v1` (legacy, maintained)
+* **Service root**: `http://localhost:3016/api/v2`
+* **OpenAPI spec**: [`api/openapi_v2.yaml`](../api/openapi_v2.yaml) · [`api/openapi_v1.yaml`](../api/openapi_v1.yaml) (legacy)
 
 ## Endpoints
 
-All endpoints are relative to service root `/api/v1`. Full spec: [`api/openapi_v1.yaml`](../api/openapi_v1.yaml)
+All endpoints are relative to service root `/api/v2`. Full spec: [`api/openapi_v2.yaml`](../api/openapi_v2.yaml)
 
 ### Status
 

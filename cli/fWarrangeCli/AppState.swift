@@ -544,7 +544,7 @@ final class AppState {
     // Issue51: `launchAtLogin` 변경 시 brew services plist 연동.
     // brew 경로: /opt/homebrew/bin/brew (Apple Silicon 전용).
     // enabled=true  → brew services start (plist 설치 + launchd 등록)
-    // enabled=false → plist 파일 직접 제거 (brew services stop은 프로세스 종료까지 하므로 사용 금지)
+    // enabled=false → launchctl bootout + plist 제거 (brew services stop은 프로세스 종료까지 하므로 사용 금지)
     func syncLaunchAtLogin(_ enabled: Bool) {
         if enabled {
             let process = Process()
@@ -558,13 +558,27 @@ final class AppState {
                 logW("Issue51: brew services start 실패 — \(error.localizedDescription)")
             }
         } else {
-            // plist만 제거 — 프로세스는 유지 (brew services stop은 프로세스도 종료하므로 직접 rm)
+            // Step 1: launchctl bootout (LaunchAgent 등록 해제 — brew services stop 대체)
+            let uid = getuid()
+            let labelPath = "gui/\(uid)/homebrew.mxcl.fwarrange-cli"
+            let bootoutProcess = Process()
+            bootoutProcess.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+            bootoutProcess.arguments = ["bootout", labelPath]
+            do {
+                try bootoutProcess.run()
+                bootoutProcess.waitUntilExit()
+                logI("Issue51: launchctl bootout 완료 — LaunchAgent 등록 해제")
+            } catch {
+                logW("Issue51: launchctl bootout 실패 — \(error.localizedDescription)")
+            }
+
+            // Step 2: plist 파일 제거
             let plist = URL(fileURLWithPath: NSHomeDirectory())
                 .appendingPathComponent("Library/LaunchAgents/homebrew.mxcl.fwarrange-cli.plist")
             do {
                 if FileManager.default.fileExists(atPath: plist.path) {
                     try FileManager.default.removeItem(at: plist)
-                    logI("Issue51: LaunchAgent plist 제거됨 — 재부팅 시 자동 시작 안 함")
+                    logI("Issue51: LaunchAgent plist 제거됨 — 재부팅 시 자동 시작 안 함 (상태: none)")
                 } else {
                     logI("Issue51: LaunchAgent plist 이미 없음 (launchAtLogin=false 반영됨)")
                 }

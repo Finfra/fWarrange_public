@@ -33,7 +33,7 @@ fWarrange (Sandbox, App Store)          fWarrangeCli (Non-Sandbox, Helper)
 
 ```bash
 brew tap finfra/tap
-brew install finfra/tap/fWarrangeCli
+brew install finfra/tap/fwarrange-cli
 ```
 
 ## 소스 빌드
@@ -56,13 +56,13 @@ open /Applications/_nowage_app/fWarrangeCli.app
 # REST API
 
 * **기본 포트**: `3016`
-* **API 버전**: `v1`
-* **서비스 루트**: `http://localhost:3016/api/v1`
-* **OpenAPI 명세**: [`api/openapi_v1.yaml`](../api/openapi_v1.yaml)
+* **API 버전**: `v2` (현행), `v1` (레거시, 유지)
+* **서비스 루트**: `http://localhost:3016/api/v2`
+* **OpenAPI 명세**: [`api/openapi_v2.yaml`](../api/openapi_v2.yaml) · [`api/openapi_v1.yaml`](../api/openapi_v1.yaml) (레거시)
 
 ## 엔드포인트
 
-모든 경로는 서비스 루트 `/api/v1` 기준. 전체 명세: [`api/openapi_v1.yaml`](../api/openapi_v1.yaml)
+모든 경로는 서비스 루트 `/api/v2` 기준. 전체 명세: [`api/openapi_v2.yaml`](../api/openapi_v2.yaml)
 
 ### 상태
 
