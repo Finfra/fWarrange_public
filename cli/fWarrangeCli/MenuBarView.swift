@@ -3,6 +3,9 @@ import SwiftUI
 struct MenuBarView: View {
     @Environment(AppState.self) private var appState
 
+    // settings.appLanguage 변경 시 SwiftUI가 자동 재렌더링 → 모든 L10n() 재계산
+    private var lang: String { appState.effectiveLanguage }
+
     var body: some View {
         // Issue46: cliApp은 paidApp 미실행 시에만 표시됨 — cliOnly 섹션만 렌더링
         cliOnlySection
@@ -13,14 +16,14 @@ struct MenuBarView: View {
 
         Divider()
 
-        Toggle("로그인 시 자동 시작", isOn: Binding(
+        Toggle(L10n("menu.launch_at_login", lang: lang), isOn: Binding(
             get: { appState.settings.launchAtLogin ?? false },
             set: { appState.setLaunchAtLogin($0) }
         ))
 
         Divider()
 
-        Button("로그 폴더 열기") {
+        Button(L10n("menu.open_log_folder", lang: lang)) {
             let logPath = Logger.shared.getLogFilePath()
             let url = URL(fileURLWithPath: (logPath as NSString).expandingTildeInPath)
             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
@@ -28,8 +31,9 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("종료") {
+        Button(L10n("menu.quit", lang: lang)) {
             logI("👋 fWarrangeCli 종료")
+            Logger.shared.writeSessionEnd()
             appState.restServer.stop()
             BrewServiceSync.onAppStop()
             NSApplication.shared.terminate(nil)
@@ -41,13 +45,13 @@ struct MenuBarView: View {
 
     @ViewBuilder
     private var cliOnlySection: some View {
-        Button("fWarrange 앱 열기") {
+        Button(L10n("menu.open_paid_app", lang: lang)) {
             if !appState.launchPaidApp() {
                 showPaidOnlyAlert()
             }
         }
 
-        Button("설정 파일 폴더 열기") {
+        Button(L10n("menu.open_config_folder", lang: lang)) {
             let configPath = appState.settingsService.configFilePath
             let configURL = URL(fileURLWithPath: configPath)
             if FileManager.default.fileExists(atPath: configPath) {
@@ -62,9 +66,10 @@ struct MenuBarView: View {
 
     @ViewBuilder
     private var statusSection: some View {
-        Text("상태: \(appState.isRunning ? "실행 중" : "중지됨")")
+        let statusText = appState.isRunning ? L10n("status.running", lang: lang) : L10n("status.stopped", lang: lang)
+        Text("\(L10n("status.label", lang: lang)) \(statusText)")
         if appState.isRunning {
-            Text("포트: \(appState.restServer.port)")
+            Text("Port: \(appState.restServer.port)")
             Text("Uptime: \(appState.uptimeString)")
         }
     }
@@ -74,12 +79,12 @@ struct MenuBarView: View {
     private func showPaidOnlyAlert() {
         NSApplication.shared.activate(ignoringOtherApps: true)
         let alert = NSAlert()
-        alert.messageText = "fWarrange를 찾을 수 없습니다"
-        alert.informativeText = "fWarrange (App Store 버전)가 설치되어 있지 않습니다.\nApp Store에서 설치하거나, 이미 설치된 경우 앱을 직접 선택해주세요."
+        alert.messageText = L10n("alert.paid_not_found.title", lang: lang)
+        alert.informativeText = L10n("alert.paid_not_found.message", lang: lang)
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "App Store")
-        alert.addButton(withTitle: "직접 찾기...")
-        alert.addButton(withTitle: "취소")
+        alert.addButton(withTitle: L10n("alert.paid_not_found.app_store", lang: lang))
+        alert.addButton(withTitle: L10n("alert.paid_not_found.browse", lang: lang))
+        alert.addButton(withTitle: L10n("alert.paid_not_found.cancel", lang: lang))
 
         let response = alert.runModal()
         switch response {
@@ -89,7 +94,7 @@ struct MenuBarView: View {
             }
         case .alertSecondButtonReturn:
             let panel = NSOpenPanel()
-            panel.title = "fWarrange.app 선택"
+            panel.title = "fWarrange.app"
             panel.allowedContentTypes = [.application]
             panel.allowsMultipleSelection = false
             panel.canChooseDirectories = false
@@ -100,8 +105,8 @@ struct MenuBarView: View {
                     NSWorkspace.shared.open(selectedURL)
                 } else {
                     let errorAlert = NSAlert()
-                    errorAlert.messageText = "잘못된 앱"
-                    errorAlert.informativeText = "선택한 앱이 fWarrange가 아닙니다."
+                    errorAlert.messageText = L10n("alert.invalid_app.title", lang: lang)
+                    errorAlert.informativeText = L10n("alert.invalid_app.message", lang: lang)
                     errorAlert.alertStyle = .warning
                     errorAlert.runModal()
                 }

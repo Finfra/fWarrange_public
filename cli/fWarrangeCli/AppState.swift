@@ -20,6 +20,16 @@ final class AppState {
     var startTime = Date()
     var settings: AppSettings
     var activeModeName: String?
+
+    /// appLanguage 설정에 따른 실효 언어 코드 — settings.appLanguage 변경 시 SwiftUI 자동 재렌더링
+    var effectiveLanguage: String {
+        let raw = settings.appLanguage ?? "system"
+        let normalized = LocalizedStringManager.normalizeLanguageCode(raw)
+        if normalized == "system" {
+            return String((Locale.preferredLanguages.first ?? "en").prefix(2))
+        }
+        return normalized
+    }
     private var modeActivationInProgress = false
 
     // 메뉴바 아이콘: paidApp 실행 중이면 paidApp 아이콘, 미실행이면 cliApp 아이콘
@@ -663,35 +673,18 @@ final class AppState {
     /// 국가 코드(kr, jp, cn 등)를 언어 코드(ko, ja, zh-Hans 등)로 정규화
     private static func applyLanguageSetting(_ language: String?) {
         let rawLang = language ?? "system"
-        let normalizedLang = Self.normalizeLanguageCode(rawLang)
+        let normalizedLang = LocalizedStringManager.normalizeLanguageCode(rawLang)
         let defaults = UserDefaults.standard
 
         logI("📝 [appLanguage] 설정 적용: \(rawLang) → \(normalizedLang)")
 
+        LocalizedStringManager.apply(language: rawLang)
+
         if normalizedLang == "system" {
             defaults.removeObject(forKey: "AppleLanguages")
-            logI("📝 [appLanguage] AppleLanguages 제거 (시스템 기본)")
         } else {
             defaults.set([normalizedLang], forKey: "AppleLanguages")
-            logI("📝 [appLanguage] AppleLanguages 설정: [\(normalizedLang)]")
         }
         defaults.synchronize()
-        logI("📝 [appLanguage] UserDefaults.synchronize() 완료")
-    }
-
-    /// 국가 코드 등 잘못된 언어 코드를 Apple 표준(ISO 639-1)으로 정규화
-    /// fSnippet의 LocalizedStringManager.normalizeLanguageCode와 동일 로직
-    private static func normalizeLanguageCode(_ code: String) -> String {
-        let countryToLanguage: [String: String] = [
-            "kr": "ko",  // 한국(KR) → 한국어(ko)
-            "jp": "ja",  // 일본(JP) → 일본어(ja)
-            "cn": "zh-Hans",  // 중국(CN) → 중국어 간체
-            "tw": "zh-Hant",  // 대만(TW) → 중국어 번체
-            "us": "en",  // 미국(US) → 영어
-            "gb": "en",  // 영국(GB) → 영어
-            "br": "pt",  // 브라질(BR) → 포르투갈어
-        ]
-        let lowered = code.lowercased()
-        return countryToLanguage[lowered] ?? code
     }
 }
