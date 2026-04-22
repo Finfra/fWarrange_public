@@ -262,22 +262,48 @@ FORMULA
         fi
     fi
 
-    # Step 8: brew services 자동 등록 (기본 ON — FWC_AUTOSTART=0 으로 opt-out)
-    # Formula의 service do 블록을 LaunchAgent plist로 변환 + load
-    # Step 2에서 bootout + uninstall 완료 상태이므로 stale 잔존 우려 없음
+    # Step 8: brew services 자동 등록 (Issue51 C방식)
+    # 우선순위: FWC_AUTOSTART 환경변수 > _config.yml launchAtLogin > 기본값 1(ON)
     echo ""
     echo "=== Step 8: brew services 자동 시작 등록 ==="
-    if [ "${FWC_AUTOSTART:-1}" = "1" ]; then
+    local CONFIG_FILE="${HOME}/Documents/finfra/fWarrangeData/_config.yml"
+    local autostart
+    if [ -n "${FWC_AUTOSTART+x}" ]; then
+        # 환경변수 명시적 설정 최우선
+        autostart="${FWC_AUTOSTART}"
+        echo "ℹ️  FWC_AUTOSTART 환경변수 적용: $autostart"
+    elif [ -f "$CONFIG_FILE" ]; then
+        # _config.yml launchAtLogin 읽기
+        local launch_at_login
+        launch_at_login=$(grep -E '^launchAtLogin:' "$CONFIG_FILE" | awk '{print $2}' | tr -d ' ')
+        if [ "$launch_at_login" = "true" ]; then
+            autostart="1"
+        else
+            autostart="0"
+        fi
+        echo "ℹ️  _config.yml launchAtLogin=$launch_at_login → autostart=$autostart"
+    else
+        autostart="1"
+        echo "ℹ️  _config.yml 미존재 → 기본값 autostart=1"
+    fi
+
+    if [ "$autostart" = "1" ]; then
         brew services start finfra/tap/fwarrange-cli 2>&1 | tail -3
         local SVC_STATUS=${PIPESTATUS[0]}
         if [ "$SVC_STATUS" -eq 0 ]; then
-            record_result "brew services start" "PASS" "finfra/tap/fwarrange-cli"
+            record_result "brew services start" "PASS" "finfra/tap/fwarrange-cli (launchAtLogin 연동)"
         else
             record_result "brew services start" "FAIL" "exit=$SVC_STATUS"
         fi
     else
-        echo "ℹ️  FWC_AUTOSTART=0 — 자동 기동 skip (수동 기동: brew services start fwarrange-cli)"
-        record_result "brew services" "PASS" "skip (FWC_AUTOSTART=0)"
+        echo "ℹ️  launchAtLogin=false — brew services run (plist 미설치, 재부팅 시 자동 시작 안 함)"
+        brew services run finfra/tap/fwarrange-cli 2>&1 | tail -3
+        local SVC_STATUS=${PIPESTATUS[0]}
+        if [ "$SVC_STATUS" -eq 0 ]; then
+            record_result "brew services run" "PASS" "launchAtLogin=false, plist 미설치"
+        else
+            record_result "brew services run" "FAIL" "exit=$SVC_STATUS"
+        fi
     fi
 
     # Step 9: REST API 헬스 체크 (자동 기동된 경우에만 실측)

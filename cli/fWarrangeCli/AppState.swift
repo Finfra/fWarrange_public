@@ -539,13 +539,39 @@ final class AppState {
         observe()
     }
 
-    // MARK: - Login Item 관리 (Issue36: obsolete, brew services 배타 원칙)
+    // MARK: - Login Item 관리 (Issue51: launchAtLogin ↔ brew services plist 연동)
 
-    // Issue36: `brew services`(LaunchAgent) 가 Login Item 역할 전담 → 앱 내부 SMAppService 경로는 obsolete.
-    // 함수 시그니처 유지 (backward compat), 내부는 no-op + 경고 로그.
-    // API v2 `launchAtLogin` prefs 는 단순 저장만 수행하고 실제 Login Item 등록/해제는 하지 않음.
+    // Issue51: `launchAtLogin` 변경 시 brew services plist 연동.
+    // brew 경로: /opt/homebrew/bin/brew (Apple Silicon 전용).
+    // enabled=true  → brew services start (plist 설치 + launchd 등록)
+    // enabled=false → plist 파일 직접 제거 (brew services stop은 프로세스 종료까지 하므로 사용 금지)
     func syncLaunchAtLogin(_ enabled: Bool) {
-        logW("⚠️ Issue36: brew services 배타 원칙, SMAppService 경로 obsolete (enabled=\(enabled))")
+        if enabled {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/brew")
+            process.arguments = ["services", "start", "fwarrange-cli"]
+            do {
+                try process.run()
+                process.waitUntilExit()
+                logI("Issue51: brew services start fwarrange-cli — plist 설치됨 (재부팅 시 자동 시작)")
+            } catch {
+                logW("Issue51: brew services start 실패 — \(error.localizedDescription)")
+            }
+        } else {
+            // plist만 제거 — 프로세스는 유지 (brew services stop은 프로세스도 종료하므로 직접 rm)
+            let plist = URL(fileURLWithPath: NSHomeDirectory())
+                .appendingPathComponent("Library/LaunchAgents/homebrew.mxcl.fwarrange-cli.plist")
+            do {
+                if FileManager.default.fileExists(atPath: plist.path) {
+                    try FileManager.default.removeItem(at: plist)
+                    logI("Issue51: LaunchAgent plist 제거됨 — 재부팅 시 자동 시작 안 함")
+                } else {
+                    logI("Issue51: LaunchAgent plist 이미 없음 (launchAtLogin=false 반영됨)")
+                }
+            } catch {
+                logW("Issue51: plist 제거 실패 — \(error.localizedDescription)")
+            }
+        }
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
