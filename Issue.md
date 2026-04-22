@@ -16,13 +16,6 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 
 # 🚧 진행중
-
-# 📕 중요
-# 📙 일반
-# 📗 선택
-
-# ⏸️ 보류
-
 ## Issue51: launchAtLogin ↔ brew services plist 연동 — 부분 해결 (등록: 2026-04-22) (⏸️ 보류, fb7e244)
 * 목적: `_config.yml`의 `launchAtLogin` 설정이 실제 LaunchAgent plist 설치 여부와 완벽하게 연동되도록 구현
 * 상세:
@@ -42,6 +35,11 @@ date: 2026-04-07
     - 시스템 재부팅 후에도 자동 실행 가능
 * 보류 사유: Homebrew `brew services stop`이 설계상 plist를 완전히 제거하는 외부 도구. 앱 차원 해결은 불가하지만, 메뉴바 Stop 버튼으로 우회 가능 — 사용자 교육과 UI 개선을 함께 진행할 때 재개
 * 커밋: fb7e244
+
+# 📕 중요
+# 📙 일반
+# 📗 선택
+
 
 # ✅ 완료
 

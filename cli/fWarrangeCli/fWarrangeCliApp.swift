@@ -19,8 +19,37 @@ struct AppEntry {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    var settingsService: SettingsService?
+
     func applicationWillTerminate(_ notification: Notification) {
         Logger.shared.writeSessionEnd()
+
+        // Issue51: 앱 종료 시 launchAtLogin 설정에 따라 brew services 제어
+        if let settingsService = settingsService {
+            let settings = settingsService.load()
+            handleBrewServicesOnTerminate(launchAtLogin: settings.launchAtLogin ?? false)
+        }
+    }
+
+    private func handleBrewServicesOnTerminate(launchAtLogin: Bool) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/brew")
+
+        if launchAtLogin {
+            // launchAtLogin=true → brew services stop --keep (daemon plist 유지, 재부팅 시 자동 시작)
+            process.arguments = ["services", "stop", "fwarrange-cli", "--keep"]
+        } else {
+            // launchAtLogin=false → brew services stop (daemon plist 제거, 재부팅 시 미시작)
+            process.arguments = ["services", "stop", "fwarrange-cli"]
+        }
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            // 에러 발생 시에도 로깅
+            fputs("Issue51: brew services 제어 오류 — \(error.localizedDescription)\n", stderr)
+        }
     }
 }
 
@@ -30,6 +59,10 @@ struct fWarrangeCliApp: App {
 
     init() {
         logI("🚀 fWarrangeCli 시작")
+
+        // Issue51: AppDelegate에 settingsService 주입 (앱 종료 시 brew services 제어용)
+        appDelegate.settingsService = appState.settingsService
+
         let state = appState
         DispatchQueue.main.async {
             state.initialize()

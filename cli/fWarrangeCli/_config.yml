@@ -11,7 +11,7 @@ restServerPort: 3016
 # logLevel: 0=verbose, 1=debug, 2=info, 3=warning, 4=error, 5=critical
 logLevel: 5
 dataStorageMode: host
-launchAtLogin: false
+launchAtLogin: true
 appLanguage: system
 
 # REST API Server
