@@ -510,7 +510,11 @@ final class RESTServer: RESTServerProtocol {
         // 전체 설정
         if path == "\(base)/settings" {
             if method == "GET" {
-                completion(.ok(json: ["status": "ok", "data": handlers.getFullSettings()]))
+                var data = handlers.getFullSettings()
+                data["effectivePort"] = Int(port)
+                data["effectiveLogLevel"] = Logger.shared.currentLogLevel.description.lowercased()
+                data["effectiveHotkeysEnabled"] = !Env.hotkeysDisabled
+                completion(.ok(json: ["status": "ok", "data": data]))
                 return true
             }
             if method == "PATCH" {

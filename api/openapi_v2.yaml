@@ -1162,6 +1162,9 @@ components:
         showInCmdTab: { type: boolean }
         clickSwitchToMain: { type: boolean }
         defaultLayoutName: { type: string, nullable: true }
+        effectivePort: { type: integer, readOnly: true, description: "FWARRANGE_PORT 환경변수 오버라이드 반영 포트 (GET /settings v2 전용)" }
+        effectiveLogLevel: { type: string, readOnly: true, description: "FWARRANGE_LOG_LEVEL 환경변수 오버라이드 반영 로그레벨 (GET /settings v2 전용)" }
+        effectiveHotkeysEnabled: { type: boolean, readOnly: true, description: "FWARRANGE_DISABLE_HOTKEYS 환경변수 오버라이드 반영 핫키 활성화 여부 (GET /settings v2 전용)" }
 
     FullSettingsResponse:
       type: object
