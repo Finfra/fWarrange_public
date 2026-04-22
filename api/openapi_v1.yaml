@@ -588,6 +588,7 @@ paths:
                 version: "1.0.0"
                 uptime: "2h 30m"
                 port: 3016
+                isMenuBarVisible: true
 
   /cli/version:
     get:
@@ -1134,7 +1135,10 @@ components:
           description: Human-readable uptime (e.g. "2h 30m")
         port:
           type: integer
-      required: [isRunning, version, uptime, port]
+        isMenuBarVisible:
+          type: boolean
+          description: Whether cliApp menu bar icon is currently visible (false when paidApp is running)
+      required: [isRunning, version, uptime, port, isMenuBarVisible]
 
     CLIVersionResponse:
       type: object

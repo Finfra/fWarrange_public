@@ -66,6 +66,9 @@ struct RESTServerHandlers {
     var deleteMode: (_ name: String) throws -> Void
     var activateMode: (_ name: String) async throws -> (mode: Mode, restoreResults: [WindowMatchResult])
     var getActiveModeName: () -> String?
+
+    // MenuBar 관련
+    var getIsMenuBarVisible: () -> Bool
 }
 
 // MARK: - Notification.Name 확장 (fWarrangeCli용)
@@ -1032,7 +1035,8 @@ final class RESTServer: RESTServerProtocol {
             "port": Int(port),
             "uptime": uptimeString,
             "uptimeSeconds": Int(uptime),
-            "isRunning": isRunning
+            "isRunning": isRunning,
+            "isMenuBarVisible": handlers.getIsMenuBarVisible()
         ]
         completion(.ok(json: body))
     }
