@@ -34,7 +34,7 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
-## Issue49: GET `/api/v2/settings` 응답에서 effective* 필드 누락 (등록: 2026-04-22) ✅
+## Issue49: GET `/api/v2/settings` 응답에서 effective* 필드 누락 (등록: 2026-04-22, 해결: 2026-04-22, commit: 529ccb6) ✅
 * 목적: paidApp Issue206 QA-C 검증에서 발견 — 환경변수 오버라이드 반영 필드 부재
 * 상세:
     - GET `/api/v2/settings` 응답에 effectivePort/effectiveLogLevel/effectiveHotkeysEnabled 누락
@@ -43,7 +43,7 @@ date: 2026-04-07
     - 참조: Issue43 선례 패턴 동일 적용
 * 커밋: 529ccb6
 
-## Issue48: POST `/api/v2/paidapp/unregister` 이미 구현됨 — 이슈 오기 종결 (등록: 2026-04-22) ✅
+## Issue48: POST `/api/v2/paidapp/unregister` 이미 구현됨 — 이슈 오기 종결 (등록: 2026-04-22, 해결: 2026-04-22, commit: 529ccb6) ✅
 * 목적: paidApp Issue206 QA-C 검증 — v2 라우팅 누락으로 보고됨
 * 상세:
     - 이슈 제목의 "DELETE"는 오기 — 실제 스펙(openapi_v2.yaml)과 코드 모두 POST
