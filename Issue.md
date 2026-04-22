@@ -4,8 +4,8 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 47
-* Save Point: 2026-04-20 (08eadd5) Close Issue46 — cliApp MenuBarExtra 조건부 숨김
+* Issue HWM: 49
+* Save Point: 2026-04-22 (register Issue48/49 from paidApp Issue206 QA-C findings)
   - ba603b7 (2026-04-20) - Refactor(Issue46): AppState 아이콘 리팩터링 + 설계 문서 추가
   - 58cd86f (2026-04-20) - Fix(Issue43): PATCH /settings effectiveLogLevel·effectiveHotkeysEnabled 추가
   - a192d2e (2026-04-20) - Docs(Design): menubar-icon-design 현행 설계 섹션 추가 (Issue46)
@@ -19,6 +19,27 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 
 # 🚧 진행중
+## Issue48: DELETE `/api/v2/paidapp/unregister` 엔드포인트 미구현 (등록: 2026-04-22)
+* 목적: paidApp Issue206 QA-C 검증에서 발견 — v2 라우팅 누락
+* 상세:
+    - REST API 명세 (openapi_v2.yaml): DELETE `/api/v2/paidapp/unregister` 정의됨
+    - 실제 구현: RESTServer.swift에서 v2 라우팅 누락 (v1 fallback 동작, 오류 발생)
+    - 요청 형식: `PaidAppUnregisterRequest { pid: Int32, sessionId: String }`
+    - 응답 형식: `PaidAppUnregisterResponse` (Issue42에서 정의한 구조 활용)
+    - 수정 위치: `cli/fWarrangeCli/Services/RESTServer.swift` (~250-280 라우팅 섹션)
+* 차단됨: paidApp Issue206 QA-C 진행 중단
+
+## Issue49: GET `/api/v2/settings` 응답에서 effective* 필드 미확인 (등록: 2026-04-22)
+* 목적: paidApp Issue206 QA-C 검증에서 발견 — 환경변수 오버라이드 반영 필드 부재
+* 상세:
+    - 검증 대상: GET `/api/v2/settings` 응답에 다음 필드 포함 여부
+      * `effectivePort` (기본값 또는 FWARRANGE_PORT 오버라이드)
+      * `effectiveLogLevel` (기본값 또는 FWARRANGE_LOG_LEVEL 오버라이드)
+      * `effectiveHotkeysEnabled` (기본값 또는 FWARRANGE_DISABLE_HOTKEYS 오버라이드)
+    - 현재: effective* 필드 미확인 (응답 래퍼 구조 확인 필요: `{ data: {...}, status: "ok" }` vs 직접 반환)
+    - 참조: Issue43 (PATCH 응답에 effective 필드 추가한 선례)
+    - 수정 위치: `cli/fWarrangeCli/Services/RESTServer.swift` (GET `/api/v2/settings` 응답 블록)
+* 차단됨: paidApp Issue206 QA-C 진행 중단
 
 # 📕 중요
 # 📙 일반
