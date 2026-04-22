@@ -666,12 +666,17 @@ final class AppState {
         let normalizedLang = Self.normalizeLanguageCode(rawLang)
         let defaults = UserDefaults.standard
 
+        logI("📝 [appLanguage] 설정 적용: \(rawLang) → \(normalizedLang)")
+
         if normalizedLang == "system" {
             defaults.removeObject(forKey: "AppleLanguages")
+            logI("📝 [appLanguage] AppleLanguages 제거 (시스템 기본)")
         } else {
             defaults.set([normalizedLang], forKey: "AppleLanguages")
+            logI("📝 [appLanguage] AppleLanguages 설정: [\(normalizedLang)]")
         }
         defaults.synchronize()
+        logI("📝 [appLanguage] UserDefaults.synchronize() 완료")
     }
 
     /// 국가 코드 등 잘못된 언어 코드를 Apple 표준(ISO 639-1)으로 정규화
