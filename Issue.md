@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 51
+* Issue HWM: 52
 * Save Point: 2026-04-22 (close Issue48/49 — paidApp Issue206 QA-C 차단 해제)
   - 529ccb6 (2026-04-22) - Fix(Issue49): GET /api/v2/settings effective* 필드 추가 + Issue48 종결
   - bdbb110 (2026-04-22) - Docs: Close Issue50
@@ -23,6 +23,17 @@ date: 2026-04-07
 
 
 # ✅ 완료
+
+## Issue52: cliApp `/api/v1/cli/status`에 `isMenuBarVisible` 필드 추가 (등록: 2026-04-22, 종료: 2026-04-22) (✅ 완료, 796f566) ✅
+* 목적: paidApp이 cliApp 메뉴바 표시 여부를 감지·동기화할 수 있도록 `/api/v1/cli/status` 응답에 `isMenuBarVisible` 필드 추가
+* 상세:
+    - paidApp Issue208 대응 이슈
+    - `AppState.getIsMenuBarVisible()`: `paidAppMonitor.state == .cliOnly`일 때 `true` 반환
+    - `RESTServer.handleCLIStatus()`: `isMenuBarVisible`, `isRunning`, `uptime`, `uptimeSeconds` 포함
+    - `openapi_v1.yaml`: CLIStatus 스키마에 `isMenuBarVisible` 필드 및 required 추가
+    - 참조: paidApp `CLIHealthMonitor`가 이 필드를 폴링하여 MenuBarExtra 표시 여부 제어
+    - 확인: `curl http://localhost:3016/api/v1/cli/status` → `"isMenuBarVisible": true` ✅
+* 커밋: 796f566
 
 ## Issue51: launchAtLogin ↔ brew services plist 연동 (등록: 2026-04-22, 종료: 2026-04-22) (✅ 완료, ed2a225, f8c6063) ✅
 * 목적: `_config.yml`의 `launchAtLogin` 설정이 실제 LaunchAgent plist 설치 여부와 완벽하게 연동되도록 구현
