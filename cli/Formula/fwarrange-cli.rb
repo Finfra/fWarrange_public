@@ -13,17 +13,12 @@ class FwarrangeCli < Formula
   service do
     run [opt_prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli"]
     run_at_load false
+    keep_alive false
     log_path var/"log/fwarrange-cli.log"
     error_log_path var/"log/fwarrange-cli.error.log"
     environment_variables FWARRANGE_PORT: "3016",
                           FWARRANGE_LOG_LEVEL: "info",
                           FWARRANGE_DISABLE_HOTKEYS: "0"
-  end
-
-  def post_install
-    # Issue51 workaround: Homebrew 5.1.7에서 자동으로 추가되는 KeepAlive 제거
-    system "plutil", "-remove", "KeepAlive",
-           "#{Dir.home}/Library/LaunchAgents/homebrew.mxcl.fwarrange-cli.plist" rescue nil
   end
 
   test do
