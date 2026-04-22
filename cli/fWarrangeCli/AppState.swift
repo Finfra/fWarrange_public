@@ -38,6 +38,9 @@ final class AppState {
             settingsService.save(settings)
         }
 
+        // appLanguage 설정 적용 (Issue: appLanguage가 _config.yml에서 로드되지 않는 문제)
+        AppState.applyLanguageSetting(settings.appLanguage)
+
         let storageMode = settings.dataStorageMode ?? .host
         if storageMode == .host {
             YAMLLayoutStorageService.migrateRootDataIfNeeded()
@@ -352,7 +355,10 @@ final class AppState {
     }
 
     static func applySettingsPatch(_ s: inout AppSettings, body: [String: Any]) {
-        if let v = body["appLanguage"] as? String { s.appLanguage = v }
+        if let v = body["appLanguage"] as? String {
+            s.appLanguage = v
+            applyLanguageSetting(v)
+        }
         if let v = body["dataStorageMode"] as? String, let m = DataStorageMode(rawValue: v) { s.dataStorageMode = m }
         if let v = body["dataDirectoryPath"] as? String { s.dataDirectoryPath = v.isEmpty ? nil : v }
         if body["dataDirectoryPath"] is NSNull { s.dataDirectoryPath = nil }
@@ -651,5 +657,36 @@ final class AppState {
                 self?.windowManager.openAccessibilitySettings()
             }
         }
+    }
+
+    /// _config.yml의 appLanguage 설정을 시스템 언어로 적용 (fSnippet 참고)
+    /// 국가 코드(kr, jp, cn 등)를 언어 코드(ko, ja, zh-Hans 등)로 정규화
+    private static func applyLanguageSetting(_ language: String?) {
+        let rawLang = language ?? "system"
+        let normalizedLang = Self.normalizeLanguageCode(rawLang)
+        let defaults = UserDefaults.standard
+
+        if normalizedLang == "system" {
+            defaults.removeObject(forKey: "AppleLanguages")
+        } else {
+            defaults.set([normalizedLang], forKey: "AppleLanguages")
+        }
+        defaults.synchronize()
+    }
+
+    /// 국가 코드 등 잘못된 언어 코드를 Apple 표준(ISO 639-1)으로 정규화
+    /// fSnippet의 LocalizedStringManager.normalizeLanguageCode와 동일 로직
+    private static func normalizeLanguageCode(_ code: String) -> String {
+        let countryToLanguage: [String: String] = [
+            "kr": "ko",  // 한국(KR) → 한국어(ko)
+            "jp": "ja",  // 일본(JP) → 일본어(ja)
+            "cn": "zh-Hans",  // 중국(CN) → 중국어 간체
+            "tw": "zh-Hant",  // 대만(TW) → 중국어 번체
+            "us": "en",  // 미국(US) → 영어
+            "gb": "en",  // 영국(GB) → 영어
+            "br": "pt",  // 브라질(BR) → 포르투갈어
+        ]
+        let lowered = code.lowercased()
+        return countryToLanguage[lowered] ?? code
     }
 }
