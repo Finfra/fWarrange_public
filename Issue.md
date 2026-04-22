@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 52
+* Issue HWM: 53
 * Save Point: 2026-04-22 (close Issue48/49 — paidApp Issue206 QA-C 차단 해제)
   - 529ccb6 (2026-04-22) - Fix(Issue49): GET /api/v2/settings effective* 필드 추가 + Issue48 종결
   - bdbb110 (2026-04-22) - Docs: Close Issue50
@@ -19,10 +19,20 @@ date: 2026-04-07
 
 # 📕 중요
 # 📙 일반
+
+
 # 📗 선택
 
 
 # ✅ 완료
+
+## Issue53: `GET /` health check 응답을 CLIStatus 포맷으로 통일 (등록: 2026-04-22, 종료: 2026-04-22) ✅
+* 목적: `curl http://localhost:3016/` 가 `isMenuBarVisible`, `isRunning`, `uptime`, `uptimeSeconds` 포함한 CLIStatus 포맷을 반환하도록 변경
+* 상세:
+    - 이전: `status`, `app`, `version`, `port`, `layout_count`, `uptime_seconds` (snake_case)
+    - 변경: `handleHealthCheck` → `handleCLIStatus` 위임으로 동일 포맷 반환
+    - 확인: `curl http://localhost:3016/` → `isMenuBarVisible`, `isRunning`, `uptime`, `uptimeSeconds` 포함 ✅
+* 커밋: 76ce80c
 
 ## Issue52: cliApp `/api/v1/cli/status`에 `isMenuBarVisible` 필드 추가 (등록: 2026-04-22, 종료: 2026-04-22) (✅ 완료, 796f566) ✅
 * 목적: paidApp이 cliApp 메뉴바 표시 여부를 감지·동기화할 수 있도록 `/api/v1/cli/status` 응답에 `isMenuBarVisible` 필드 추가
