@@ -1089,20 +1089,9 @@ final class RESTServer: RESTServerProtocol {
 
     // MARK: - 핸들러
 
-    /// GET / 또는 GET /api/v1/health - Health Check
+    /// GET / 또는 GET /api/v1/health - Health Check (CLIStatus 포맷으로 통일)
     private func handleHealthCheck(completion: @escaping (HTTPResponse) -> Void) {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        let uptime = Int(Date().timeIntervalSince(startedAt))
-        let layoutCount = handlers.getLayouts().count
-        let body: [String: Any] = [
-            "status": "ok",
-            "app": "fWarrangeCli",
-            "version": version,
-            "port": Int(port),
-            "layout_count": layoutCount,
-            "uptime_seconds": uptime
-        ]
-        completion(.ok(json: body))
+        handleCLIStatus(completion: completion)
     }
 
     /// GET /api/v1/layouts - 레이아웃 목록
