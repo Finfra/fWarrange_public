@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 49
 * Save Point: 2026-04-22 (register Issue48/49 from paidApp Issue206 QA-C findings)
+  - bdbb110 (2026-04-22) - Docs: Close Issue50
   - 65c593a (2026-04-20) - Docs: Close Issue42 (pairApp Issue52 Full Mirror — shutdown API + 호환성 필드 완결)
 
 # 🤔 결정사항
@@ -14,18 +15,6 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 
 # 🚧 진행중
-## Issue50: _config.yml의 appLanguage 설정 적용 안 됨 (등록: 2026-04-22) (✅ 완료)
-* 목적: _config.yml에서 로드된 appLanguage 설정이 MenuBarView UI에 반영되지 않는 문제 해결
-* 상세:
-    - 문제1: AppSettings가 appLanguage를 로드하지만, 이를 UserDefaults.AppleLanguages로 적용하는 메커니즘 부재
-    - 해결1: AppState.applyLanguageSetting() 추가 — UserDefaults.AppleLanguages 설정 + localizeLanguageCode() 정규화
-    - 문제2: MenuBarView 텍스트가 한국어로 하드코딩 — appLanguage 설정과 무관하게 한국어 고정
-    - 해결2: LocalizedStringManager.swift 추가 (fSnippetCli 패턴) — L10n(key, lang:) 헬퍼 + en/ko/ja 딕셔너리
-    - AppState.effectiveLanguage: settings.appLanguage 변경 시 SwiftUI 자동 재렌더링
-    - MenuBarView: 모든 하드코딩 텍스트 → L10n() 교체
-    - 검증: appLanguage: en → 영어 메뉴, appLanguage: ko(or kr) → 한국어 메뉴
-* 커밋: e5a3cc9, 6e8dccb, bdbb110
-
 ## Issue48: DELETE `/api/v2/paidapp/unregister` 엔드포인트 미구현 (등록: 2026-04-22)
 * 목적: paidApp Issue206 QA-C 검증에서 발견 — v2 라우팅 누락
 * 상세:
@@ -53,6 +42,18 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue50: _config.yml의 appLanguage 설정 적용 안 됨 (등록: 2026-04-22) ( 완료)(bdbb110) ✅
+* 목적: _config.yml에서 로드된 appLanguage 설정이 MenuBarView UI에 반영되지 않는 문제 해결
+* 상세:
+    - 문제1: AppSettings가 appLanguage를 로드하지만, 이를 UserDefaults.AppleLanguages로 적용하는 메커니즘 부재
+    - 해결1: AppState.applyLanguageSetting() 추가 — UserDefaults.AppleLanguages 설정 + localizeLanguageCode() 정규화
+    - 문제2: MenuBarView 텍스트가 한국어로 하드코딩 — appLanguage 설정과 무관하게 한국어 고정
+    - 해결2: LocalizedStringManager.swift 추가 (fSnippetCli 패턴) — L10n(key, lang:) 헬퍼 + en/ko/ja 딕셔너리
+    - AppState.effectiveLanguage: settings.appLanguage 변경 시 SwiftUI 자동 재렌더링
+    - MenuBarView: 모든 하드코딩 텍스트 → L10n() 교체
+    - 검증: appLanguage: en → 영어 메뉴, appLanguage: ko(or kr) → 한국어 메뉴
+* 커밋: e5a3cc9, 6e8dccb, bdbb110
+
 ## Issue47: 용어 통일 (paidApp/cliApp) — CLAUDE.md 및 규칙 파일 정리 (등록: 2026-04-22) (✅ 완료, e3f5cb3) ✅
 * 목적: paidApp Issue203과 동일 용어 규약을 cliApp 레포 전반에 적용 — `paidApp`(fWarrange GUI) / `cliApp`(fWarrangeCli Helper) 통일
 * 구현 명세:
