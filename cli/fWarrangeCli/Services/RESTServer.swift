@@ -350,17 +350,32 @@ final class RESTServer: RESTServerProtocol {
             return
         }
 
-        // v2 라우팅: /api/v2/* (v1 엔드포인트는 경로 치환하여 그대로 재사용)
+        // v2 라우팅: /api/v2/* (v1 엔드포인트는 경로 치환하여 내부 라우터로 재사용)
         if path.hasPrefix("\(Self.apiV2BasePath)/") {
             if routeV2(method: method, path: path, request: request, completion: completion) {
                 return
             }
-            // v2 전용이 아닌 엔드포인트는 v1 라우터로 폴백
+            // v2 전용이 아닌 엔드포인트는 v1 내부 라우터로 폴백 (외부 차단 우회)
             let rewritten = "\(base)" + String(path.dropFirst(Self.apiV2BasePath.count))
             let rewrittenRequest = request.withPath(rewritten)
-            routeRequest(rewrittenRequest, completion: completion)
+            routeV1Internal(rewrittenRequest, completion: completion)
             return
         }
+
+        // v1 API 비활성화 — /api/v2/* 사용 필수
+        if path.hasPrefix("\(base)/") {
+            completion(.gone(message: "API v1 is deprecated. Use /api/v2/ instead."))
+            return
+        }
+
+        completion(.notFound(message: "엔드포인트를 찾을 수 없습니다: \(method) \(path)"))
+    }
+
+    /// v1 엔드포인트 내부 라우터 — v2 폴백 전용 (외부 직접 호출 불가)
+    private func routeV1Internal(_ request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
+        let method = request.method
+        let path = request.path
+        let base = Self.apiBasePath
 
         // --- CLI 전용 엔드포인트 ---
 
@@ -1585,6 +1600,11 @@ private struct HTTPResponse {
     static func conflict(message: String) -> HTTPResponse {
         let body = try? JSONSerialization.data(withJSONObject: ["status": "error", "error": message], options: .sortedKeys)
         return HTTPResponse(statusCode: 409, statusMessage: "Conflict", headers: [:], body: body)
+    }
+
+    static func gone(message: String) -> HTTPResponse {
+        let body = try? JSONSerialization.data(withJSONObject: ["status": "error", "error": message], options: .sortedKeys)
+        return HTTPResponse(statusCode: 410, statusMessage: "Gone", headers: [:], body: body)
     }
 
     static func internalError(message: String) -> HTTPResponse {
