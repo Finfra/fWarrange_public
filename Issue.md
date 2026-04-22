@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 49
-* Save Point: 2026-04-22 (register Issue48/49 from paidApp Issue206 QA-C findings)
+* Issue HWM: 51
+* Save Point: 2026-04-22 (close Issue48/49 — paidApp Issue206 QA-C 차단 해제)
+  - 529ccb6 (2026-04-22) - Fix(Issue49): GET /api/v2/settings effective* 필드 추가 + Issue48 종결
   - bdbb110 (2026-04-22) - Docs: Close Issue50
   - 65c593a (2026-04-20) - Docs: Close Issue42 (pairApp Issue52 Full Mirror — shutdown API + 호환성 필드 완결)
 
@@ -15,33 +16,42 @@ date: 2026-04-07
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 
 # 🚧 진행중
-## Issue48: DELETE `/api/v2/paidapp/unregister` 엔드포인트 미구현 (등록: 2026-04-22)
-* 목적: paidApp Issue206 QA-C 검증에서 발견 — v2 라우팅 누락
-* 상세:
-    - REST API 명세 (openapi_v2.yaml): DELETE `/api/v2/paidapp/unregister` 정의됨
-    - 실제 구현: RESTServer.swift에서 v2 라우팅 누락 (v1 fallback 동작, 오류 발생)
-    - 요청 형식: `PaidAppUnregisterRequest { pid: Int32, sessionId: String }`
-    - 응답 형식: `PaidAppUnregisterResponse` (Issue42에서 정의한 구조 활용)
-    - 수정 위치: `cli/fWarrangeCli/Services/RESTServer.swift` (~250-280 라우팅 섹션)
-* 차단됨: paidApp Issue206 QA-C 진행 중단
 
-## Issue49: GET `/api/v2/settings` 응답에서 effective* 필드 미확인 (등록: 2026-04-22)
-* 목적: paidApp Issue206 QA-C 검증에서 발견 — 환경변수 오버라이드 반영 필드 부재
+## Issue51: launchAtLogin ↔ brew services plist 연동 (A+C 방식) (등록: 2026-04-22)
+* 목적: `_config.yml`의 `launchAtLogin` 설정이 실제 LaunchAgent plist 설치 여부와 연동되도록 구현
 * 상세:
-    - 검증 대상: GET `/api/v2/settings` 응답에 다음 필드 포함 여부
-      * `effectivePort` (기본값 또는 FWARRANGE_PORT 오버라이드)
-      * `effectiveLogLevel` (기본값 또는 FWARRANGE_LOG_LEVEL 오버라이드)
-      * `effectiveHotkeysEnabled` (기본값 또는 FWARRANGE_DISABLE_HOTKEYS 오버라이드)
-    - 현재: effective* 필드 미확인 (응답 래퍼 구조 확인 필요: `{ data: {...}, status: "ok" }` vs 직접 반환)
-    - 참조: Issue43 (PATCH 응답에 effective 필드 추가한 선례)
-    - 수정 위치: `cli/fWarrangeCli/Services/RESTServer.swift` (GET `/api/v2/settings` 응답 블록)
-* 차단됨: paidApp Issue206 QA-C 진행 중단
+    - 현상: `brew services stop` 후 상태가 `none`(plist 제거)이 되어 재부팅 시 자동 시작 불가
+    - 원인: `launchAtLogin` 설정은 저장만 될 뿐 plist 설치/제거에 미연동 (Issue36 obsolete 처리)
+    - 방식 A: `AppState.setLaunchAtLogin()` — `true`면 `brew services start`, `false`면 `brew services stop` subprocess 호출
+    - 방식 C: `fwc-deploy-brew.sh` — 배포 시 `_config.yml`의 `launchAtLogin` 읽어 start/stop 분기
+    - brew 경로: `/opt/homebrew/bin/brew` (Apple Silicon 전용, Intel 미지원)
+* 구현 명세:
+    - `AppState.swift`: `syncLaunchAtLogin()` no-op 제거, brew subprocess 실행 구현
+    - `fwc-deploy-brew.sh`: 배포 완료 후 `launchAtLogin` 값에 따라 `brew services start/run` 분기
 
 # 📕 중요
 # 📙 일반
 # 📗 선택
 
 # ✅ 완료
+## Issue49: GET `/api/v2/settings` 응답에서 effective* 필드 누락 (등록: 2026-04-22) ✅
+* 목적: paidApp Issue206 QA-C 검증에서 발견 — 환경변수 오버라이드 반영 필드 부재
+* 상세:
+    - GET `/api/v2/settings` 응답에 effectivePort/effectiveLogLevel/effectiveHotkeysEnabled 누락
+    - routeV2의 GET /settings 블록에 3개 필드 추가 (`RESTServer.swift` 511줄)
+    - openapi_v2.yaml FullSettings 스키마에 readOnly 필드 3개 추가
+    - 참조: Issue43 선례 패턴 동일 적용
+* 커밋: 529ccb6
+
+## Issue48: POST `/api/v2/paidapp/unregister` 이미 구현됨 — 이슈 오기 종결 (등록: 2026-04-22) ✅
+* 목적: paidApp Issue206 QA-C 검증 — v2 라우팅 누락으로 보고됨
+* 상세:
+    - 이슈 제목의 "DELETE"는 오기 — 실제 스펙(openapi_v2.yaml)과 코드 모두 POST
+    - `POST /api/v2/paidapp/unregister`는 routeV2 함수(Issue192 Phase A)에서 이미 처리됨
+    - v1 fallback 미발생 — 이슈 등록 시 오분석으로 판단
+    - 추가 코드 수정 없음
+* 커밋: 529ccb6
+
 ## Issue50: _config.yml의 appLanguage 설정 적용 안 됨 (등록: 2026-04-22) ( 완료)(bdbb110) ✅
 * 목적: _config.yml에서 로드된 appLanguage 설정이 MenuBarView UI에 반영되지 않는 문제 해결
 * 상세:
