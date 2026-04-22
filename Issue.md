@@ -25,7 +25,7 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
-## Issue47: 용어 통일 (paidApp/cliApp) — CLAUDE.md 및 규칙 파일 정리 (등록: 2026-04-22) (✅ 완료, TBD) ✅
+## Issue47: 용어 통일 (paidApp/cliApp) — CLAUDE.md 및 규칙 파일 정리 (등록: 2026-04-22) (✅ 완료, e3f5cb3) ✅
 * 목적: paidApp Issue203과 동일 용어 규약을 cliApp 레포 전반에 적용 — `paidApp`(fWarrange GUI) / `cliApp`(fWarrangeCli Helper) 통일
 * 구현 명세:
     - `.claude/rules/coding-rules.md`: 앱 소개 문구 `fWarrangeCli는` → `cliApp(\`fWarrangeCli\`)는`, `fWarrange (App Store)의 companion daemon` → `paidApp(\`fWarrange\`, App Store)의 companion daemon`
