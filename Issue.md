@@ -17,26 +17,31 @@ date: 2026-04-07
 
 # 🚧 진행중
 
-## Issue51: launchAtLogin ↔ brew services plist 연동 — 부분 해결 (등록: 2026-04-22) (🚧 진행중, fb7e244)
+# 📕 중요
+# 📙 일반
+# 📗 선택
+
+# ⏸️ 보류
+
+## Issue51: launchAtLogin ↔ brew services plist 연동 — 부분 해결 (등록: 2026-04-22) (⏸️ 보류, fb7e244)
 * 목적: `_config.yml`의 `launchAtLogin` 설정이 실제 LaunchAgent plist 설치 여부와 완벽하게 연동되도록 구현
 * 상세:
     - 원인: 초기 설계에서 `launchAtLogin` 설정은 저장만 될 뿐 plist 설치/제거에 미연동 (Issue36 obsolete 처리)
     - 방식 A (구현됨): `AppState.setLaunchAtLogin()` — `true`면 `brew services start`, `false`면 `launchctl bootout` + plist 직접 rm
     - 방식 C (구현됨): `fwc-deploy-brew.sh` — 배포 시 `_config.yml`의 `launchAtLogin` 읽어 start/run 분기
     - brew 경로: `/opt/homebrew/bin/brew` (Apple Silicon 전용, Intel 미지원)
-* **미해결 상황**:
-    - **문제의 핵심**: 사용자가 터미널에서 `brew services stop fwarrange-cli` 명령을 수동으로 실행하면, Homebrew가 plist 파일을 완전히 제거함
-    - **상태 불일치**: 이후 `_config.yml`에는 여전히 `launchAtLogin: true`가 기록되어 있으나, 실제 LaunchAgent plist 파일은 없는 상태
-    - **재시작 불가**: 이 상태에서 시스템 재부팅 시 cliApp이 자동 실행되지 않음
-    - **Homebrew 표준 동작**: `brew services stop` 명령은 설계상 plist를 제거하도록 되어 있으며, 이는 외부 도구이므로 앱에서 제어 불가
-* **대안/회피방법**:
-    - **권장**: 터미널에서 `brew services stop` 대신 **메뉴바 토글 버튼**을 사용하여 `launchAtLogin: false`로 설정 후 종료 (정상 상태 유지)
-    - **복구 방법**: 메뉴바 토글을 다시 `launchAtLogin: true`로 설정하면 자동으로 `brew services start` 실행되어 plist 복구됨
+* **미해결 상황** (Homebrew 설계 한계):
+    - 사용자가 터미널에서 `brew services stop fwarrange-cli`를 실행 → Homebrew가 plist 파일 완전 제거
+    - 결과: `_config.yml`의 `launchAtLogin: true`와 실제 plist 상태 불일치
+    - 재부팅 시 cliApp 자동 실행 안 됨
+* **현재 권장 방식** (회피방법):
+    - 터미널 대신 **메뉴바 토글 버튼** 사용 → `launchAtLogin: false`로 설정 후 종료 (정상 상태 유지)
+    - 메뉴바 토글 다시 `true` 설정하면 자동으로 plist 복구됨
+* **향후 개선안**:
+    - 메뉴바에 "Stop Service" 버튼 추가 → `launchctl stop` 호출 (plist 유지, 프로세스만 종료)
+    - 시스템 재부팅 후에도 자동 실행 가능
+* 보류 사유: Homebrew `brew services stop`이 설계상 plist를 완전히 제거하는 외부 도구. 앱 차원 해결은 불가하지만, 메뉴바 Stop 버튼으로 우회 가능 — 사용자 교육과 UI 개선을 함께 진행할 때 재개
 * 커밋: fb7e244
-
-# 📕 중요
-# 📙 일반
-# 📗 선택
 
 # ✅ 완료
 
