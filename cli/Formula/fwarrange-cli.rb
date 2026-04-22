@@ -12,7 +12,6 @@ class FwarrangeCli < Formula
 
   service do
     run [opt_prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli"]
-    keep_alive successful_exit: false
     log_path var/"log/fwarrange-cli.log"
     error_log_path var/"log/fwarrange-cli.error.log"
     environment_variables FWARRANGE_PORT: "3016",
