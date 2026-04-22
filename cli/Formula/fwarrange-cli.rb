@@ -9,8 +9,8 @@ class FwarrangeCli < Formula
   depends_on :macos
 
   def install
-    # tarball에 사전 빌드된 fWarrangeCli.app 포함됨 (Apple Development 서명 유지).
-    # brew sandbox에서는 키체인 접근이 제한되므로 재빌드하지 않고 그대로 복사.
+    # Tarball contains pre-built fWarrangeCli.app (Apple Development signature preserved).
+    # Brew sandbox restricts keychain access, so copy as-is without rebuilding.
     prefix.install "fWarrangeCli.app"
   end
 
