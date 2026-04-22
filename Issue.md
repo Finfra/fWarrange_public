@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 
-* Issue HWM: 46
+* Issue HWM: 47
 * Save Point: 2026-04-20 (08eadd5) Close Issue46 — cliApp MenuBarExtra 조건부 숨김
   - ba603b7 (2026-04-20) - Refactor(Issue46): AppState 아이콘 리팩터링 + 설계 문서 추가
   - 58cd86f (2026-04-20) - Fix(Issue43): PATCH /settings effectiveLogLevel·effectiveHotkeysEnabled 추가
@@ -25,6 +25,13 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue47: 용어 통일 (paidApp/cliApp) — CLAUDE.md 및 규칙 파일 정리 (등록: 2026-04-22) (✅ 완료, TBD) ✅
+* 목적: paidApp Issue203과 동일 용어 규약을 cliApp 레포 전반에 적용 — `paidApp`(fWarrange GUI) / `cliApp`(fWarrangeCli Helper) 통일
+* 구현 명세:
+    - `.claude/rules/coding-rules.md`: 앱 소개 문구 `fWarrangeCli는` → `cliApp(\`fWarrangeCli\`)는`, `fWarrange (App Store)의 companion daemon` → `paidApp(\`fWarrange\`, App Store)의 companion daemon`
+    - `cli/_doc_design/`: grep 전수 조사 — 위반 없음 확인
+    - `.claude/rules/` 전체: grep 전수 조사 — coding-rules.md 1건 외 위반 없음
+
 ## Issue46: paidApp 실행 시 cliApp MenuBarExtra 조건부 숨김 (등록: 2026.04.20) (✅ 완료, 08eadd5) ✅
 * 목적: paidApp(fWarrange)이 자체 MenuBarExtra를 소유하는 구조로 복원. cliApp은 paidApp 미실행 시에만 메뉴바 아이콘 표시
 * 연관 이슈: paidApp Issue201
