@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 53
+* Issue HWM: 54
 * Save Point: 2026-04-23 (close Issue53 — GET / → CLIStatus 포맷 통일)
   - d4c13cc (2026-04-23) - Docs: Close Issue53 (GET / → CLIStatus 포맷 통일)
   - 529ccb6 (2026-04-22) - Fix(Issue49): GET /api/v2/settings effective* 필드 추가 + Issue48 종결
@@ -20,6 +20,18 @@ date: 2026-04-07
 
 # 📕 중요
 # 📙 일반
+## Issue54: RESTServer API 경로를 v1에서 v2로 전환 (v1 제거 준비) (등록: 2026.04.24)
+* 목적: v1 API 경로를 코드·테스트·스크립트 전체에서 v2로 교체하고, routeV1Internal 폴백 구조를 v2 직접 라우팅으로 정리함
+* 상세: 
+- RESTServer.swift L103: apiVersion = "v1" → "v2"
+- RESTServer.swift L104: apiBasePath = "/api/v1" → "/api/v2"
+- RESTServer.swift L212: 하드코딩 경로 /api/v1/cli/status → /api/v2/cli/status (상수 활용)
+- RESTServer.swift L375: routeV1Internal() 함수 제거, v2 라우터에서 직접 처리
+- FWarrangeCliSmokeTests.swift L11: apiBasePath 단언을 /api/v2로 수정
+- cli/_tool/apiTest/v1/*.sh (20여 개): BASE 변수 /api/v1 → /api/v2로 일괄 수정
+- v1 직접 호출 시 410 Gone 응답 처리 코드(L365~368) 유지 또는 제거 여부 결정
+- openapi_v1.yaml deprecated 표기, openapi_v2.yaml이 유일 명세임을 README에 명시
+
 
 
 # 📗 선택
