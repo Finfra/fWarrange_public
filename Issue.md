@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 54
 * Save Point: 2026-04-23 (close Issue53 — GET / → CLIStatus 포맷 통일)
+  - 44c6fbc (2026-04-24) - Docs: Close Issue54 (API v1→v2 전환)
   - d4c13cc (2026-04-23) - Docs: Close Issue53 (GET / → CLIStatus 포맷 통일)
   - 529ccb6 (2026-04-22) - Fix(Issue49): GET /api/v2/settings effective* 필드 추가 + Issue48 종결
   - bdbb110 (2026-04-22) - Docs: Close Issue50
@@ -20,7 +21,11 @@ date: 2026-04-07
 
 # 📕 중요
 # 📙 일반
-## Issue54: RESTServer API 경로를 v1에서 v2로 전환 (v1 제거 준비) (등록: 2026.04.24)
+# 📗 선택
+
+
+# ✅ 완료
+## Issue54: RESTServer API 경로를 v1에서 v2로 전환 (v1 제거 준비) (등록: 2026.04.24) (✅ 완료, 44c6fbc) ✅
 * 목적: v1 API 경로를 코드·테스트·스크립트 전체에서 v2로 교체하고, routeV1Internal 폴백 구조를 v2 직접 라우팅으로 정리함
 * 상세:
     - RESTServer.swift: `apiVersion = "v1"` → `"v2"`, `apiBasePath = "/api/v1"` → `"/api/v2"`, `apiV2BasePath` 상수 제거
@@ -41,10 +46,6 @@ date: 2026-04-07
 
 
 
-# 📗 선택
-
-
-# ✅ 완료
 
 ## Issue53: `GET /` health check 응답을 CLIStatus 포맷으로 통일 (등록: 2026-04-22, 종료: 2026-04-22) ✅
 * 목적: `curl http://localhost:3016/` 가 `isMenuBarVisible`, `isRunning`, `uptime`, `uptimeSeconds` 포함한 CLIStatus 포맷을 반환하도록 변경
