@@ -1,6 +1,6 @@
 #!/bin/bash
 # 테스트: 캡처 → 리네임 → 원복
-BASE="http://localhost:3016/api/v1"
+BASE="http://localhost:3016/api/v2"
 TEST_NAME="_apitest_rename_src"
 TEST_NEW="_apitest_rename_dst"
 

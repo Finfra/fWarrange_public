@@ -1,6 +1,6 @@
 #!/bin/bash
 # 기본 레이아웃 이름 조회 및 설정 테스트
-BASE="http://localhost:3016/api/v1"
+BASE="http://localhost:3016/api/v2"
 
 echo "=== GET /settings/default-layout ==="
 curl -s --connect-timeout 3 "$BASE/settings/default-layout" | jq .

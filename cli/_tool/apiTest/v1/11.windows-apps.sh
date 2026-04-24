@@ -1,3 +1,3 @@
 #!/bin/bash
-BASE="http://localhost:3016/api/v1"
+BASE="http://localhost:3016/api/v2"
 curl -s --connect-timeout 3 "$BASE/windows/apps" | jq .

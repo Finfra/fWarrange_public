@@ -1,7 +1,7 @@
 #!/bin/bash
 # Usage: ./07.capture.sh [layout_name] [filterApps]
 # filterApps 예: "Safari,iTerm2"
-BASE="http://localhost:3016/api/v1"
+BASE="http://localhost:3016/api/v2"
 NAME=${1:-testCapture}
 FILTER=${2:-}
 

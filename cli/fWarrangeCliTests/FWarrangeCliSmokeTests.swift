@@ -7,8 +7,8 @@ final class FWarrangeCliSmokeTests: XCTestCase {
 
     /// 테스트 번들이 앱 타겟을 @testable import 할 수 있는지 확인.
     func testRESTServerApiVersionConstant() {
-        XCTAssertEqual(RESTServer.apiVersion, "v1", "API 버전 상수는 api-rules.md의 v1과 일치해야 함")
-        XCTAssertEqual(RESTServer.apiBasePath, "/api/v1", "API 기본 경로 상수는 /api/v1이어야 함")
+        XCTAssertEqual(RESTServer.apiVersion, "v2", "API 버전 상수는 v2이어야 함")
+        XCTAssertEqual(RESTServer.apiBasePath, "/api/v2", "API 기본 경로 상수는 /api/v2이어야 함")
     }
 
     /// 테스트 호스트 앱 번들이 정상적으로 로딩되는지 확인.

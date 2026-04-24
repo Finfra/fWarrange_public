@@ -22,15 +22,22 @@ date: 2026-04-07
 # 📙 일반
 ## Issue54: RESTServer API 경로를 v1에서 v2로 전환 (v1 제거 준비) (등록: 2026.04.24)
 * 목적: v1 API 경로를 코드·테스트·스크립트 전체에서 v2로 교체하고, routeV1Internal 폴백 구조를 v2 직접 라우팅으로 정리함
-* 상세: 
-- RESTServer.swift L103: apiVersion = "v1" → "v2"
-- RESTServer.swift L104: apiBasePath = "/api/v1" → "/api/v2"
-- RESTServer.swift L212: 하드코딩 경로 /api/v1/cli/status → /api/v2/cli/status (상수 활용)
-- RESTServer.swift L375: routeV1Internal() 함수 제거, v2 라우터에서 직접 처리
-- FWarrangeCliSmokeTests.swift L11: apiBasePath 단언을 /api/v2로 수정
-- cli/_tool/apiTest/v1/*.sh (20여 개): BASE 변수 /api/v1 → /api/v2로 일괄 수정
-- v1 직접 호출 시 410 Gone 응답 처리 코드(L365~368) 유지 또는 제거 여부 결정
-- openapi_v1.yaml deprecated 표기, openapi_v2.yaml이 유일 명세임을 README에 명시
+* 상세:
+    - RESTServer.swift: `apiVersion = "v1"` → `"v2"`, `apiBasePath = "/api/v1"` → `"/api/v2"`, `apiV2BasePath` 상수 제거
+    - RESTServer.swift: 로그 분기 하드코딩 → `Self.apiBasePath` 상수 활용
+    - RESTServer.swift: `routeV1Internal()` → `routeInternal()` 이름 변경, `routeV2` 내 `apiV2BasePath` 참조 제거
+    - RESTServer.swift: `/api/v2/*` 라우팅에서 경로 재작성 제거 (v1→v2 폴백 no-op 정리)
+    - RESTServer.swift: v1 차단 코드(`/api/v1/`) 하드코딩으로 유지 — 외부 v1 직접 호출 여전히 410 Gone
+    - `FWarrangeCliSmokeTests.swift`: `apiVersion/apiBasePath` 단언 → v2로 수정
+    - `cli/_tool/apiTest/v1/*.sh` (25개): `BASE` 변수 `/api/v1` → `/api/v2` 일괄 수정
+* 구현 명세:
+    - `RESTServer.apiVersion`: `"v1"` → `"v2"`
+    - `RESTServer.apiBasePath`: `"/api/v1"` → `"/api/v2"` (유일 버전 상수)
+    - `apiV2BasePath` 상수 제거 — `apiBasePath` 로 통합
+    - `routeRequest()`: v2 prefix 체크에 `apiBasePath` 사용, 경로 재작성 로직 제거, v1 차단은 `/api/v1/` 리터럴로 고정
+    - `routeV1Internal()` → `routeInternal()` 이름·주석 정리
+    - `routeV2()`: `let base = Self.apiV2BasePath` → `Self.apiBasePath`
+    - 테스트·스크립트: v2 경로로 일괄 전환
 
 
 

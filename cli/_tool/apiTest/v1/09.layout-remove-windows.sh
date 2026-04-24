@@ -1,6 +1,6 @@
 #!/bin/bash
 # 테스트: 캡처 → 첫 번째 윈도우 ID 추출 → 제거 → 정리
-BASE="http://localhost:3016/api/v1"
+BASE="http://localhost:3016/api/v2"
 TEST_NAME="_apitest_rmwin"
 
 # 준비: 테스트용 레이아웃 캡처

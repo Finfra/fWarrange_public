@@ -100,9 +100,8 @@ final class RESTServer: RESTServerProtocol {
 
     // MARK: - API 버전
 
-    static let apiVersion = "v1"
-    static let apiBasePath = "/api/v1"
-    static let apiV2BasePath = "/api/v2"
+    static let apiVersion = "v2"
+    static let apiBasePath = "/api/v2"
 
     // MARK: - CLI 상태
 
@@ -209,7 +208,7 @@ final class RESTServer: RESTServerProtocol {
                 return
             }
 
-            if request.path == "/api/v1/cli/status" || request.path == "/" {
+            if request.path == "\(Self.apiBasePath)/cli/status" || request.path == "/" {
                 logV("[RESTServer] \(request.method) \(request.path) from \(connection.endpoint)")
             } else {
                 logD("[RESTServer] \(request.method) \(request.path) from \(connection.endpoint)")
@@ -344,26 +343,23 @@ final class RESTServer: RESTServerProtocol {
         let path = request.path
         let base = Self.apiBasePath
 
-        // Health Check (GET / 또는 GET /api/v1/health, /api/v2/health)
-        if method == "GET" && (path == "/" || path == "\(base)/health" || path == "\(Self.apiV2BasePath)/health") {
+        // Health Check (GET / 또는 GET /api/v2/health)
+        if method == "GET" && (path == "/" || path == "\(base)/health") {
             handleHealthCheck(completion: completion)
             return
         }
 
-        // v2 라우팅: /api/v2/* (v1 엔드포인트는 경로 치환하여 내부 라우터로 재사용)
-        if path.hasPrefix("\(Self.apiV2BasePath)/") {
+        // 메인 API 라우팅: /api/v2/*
+        if path.hasPrefix("\(base)/") {
             if routeV2(method: method, path: path, request: request, completion: completion) {
                 return
             }
-            // v2 전용이 아닌 엔드포인트는 v1 내부 라우터로 폴백 (외부 차단 우회)
-            let rewritten = "\(base)" + String(path.dropFirst(Self.apiV2BasePath.count))
-            let rewrittenRequest = request.withPath(rewritten)
-            routeV1Internal(rewrittenRequest, completion: completion)
+            routeInternal(request, completion: completion)
             return
         }
 
         // v1 API 비활성화 — /api/v2/* 사용 필수
-        if path.hasPrefix("\(base)/") {
+        if path.hasPrefix("/api/v1/") {
             completion(.gone(message: "API v1 is deprecated. Use /api/v2/ instead."))
             return
         }
@@ -371,27 +367,27 @@ final class RESTServer: RESTServerProtocol {
         completion(.notFound(message: "엔드포인트를 찾을 수 없습니다: \(method) \(path)"))
     }
 
-    /// v1 엔드포인트 내부 라우터 — v2 폴백 전용 (외부 직접 호출 불가)
-    private func routeV1Internal(_ request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
+    /// API 공통 엔드포인트 내부 라우터
+    private func routeInternal(_ request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         let method = request.method
         let path = request.path
         let base = Self.apiBasePath
 
         // --- CLI 전용 엔드포인트 ---
 
-        // GET /api/v1/cli/status
+        // GET /api/v2/cli/status
         if method == "GET" && path == "\(base)/cli/status" {
             handleCLIStatus(completion: completion)
             return
         }
 
-        // GET /api/v1/cli/version
+        // GET /api/v2/cli/version
         if method == "GET" && path == "\(base)/cli/version" {
             handleCLIVersion(completion: completion)
             return
         }
 
-        // POST /api/v1/cli/quit
+        // POST /api/v2/cli/quit
         if method == "POST" && path == "\(base)/cli/quit" {
             handleCLIQuit(request: request, completion: completion)
             return
@@ -399,73 +395,73 @@ final class RESTServer: RESTServerProtocol {
 
         // --- 기존 엔드포인트 ---
 
-        // GET /api/v1/settings
+        // GET /api/v2/settings
         if method == "GET" && path == "\(base)/settings" {
             handleGetSettings(completion: completion)
             return
         }
 
-        // GET /api/v1/settings/default-layout
+        // GET /api/v2/settings/default-layout
         if method == "GET" && path == "\(base)/settings/default-layout" {
             handleGetDefaultLayout(completion: completion)
             return
         }
 
-        // PUT /api/v1/settings/default-layout
+        // PUT /api/v2/settings/default-layout
         if method == "PUT" && path == "\(base)/settings/default-layout" {
             handleSetDefaultLayout(request: request, completion: completion)
             return
         }
 
-        // PUT /api/v1/settings/shortcuts
+        // PUT /api/v2/settings/shortcuts
         if method == "PUT" && path == "\(base)/settings/shortcuts" {
             handleSetShortcuts(request: request, completion: completion)
             return
         }
 
-        // GET /api/v1/layouts
+        // GET /api/v2/layouts
         if method == "GET" && path == "\(base)/layouts" {
             handleGetLayouts(completion: completion)
             return
         }
 
-        // DELETE /api/v1/layouts (전체삭제)
+        // DELETE /api/v2/layouts (전체삭제)
         if method == "DELETE" && path == "\(base)/layouts" {
             handleDeleteAllLayouts(request: request, completion: completion)
             return
         }
 
-        // GET /api/v1/windows/current
+        // GET /api/v2/windows/current
         if method == "GET" && path.hasPrefix("\(base)/windows/current") {
             handleGetCurrentWindows(request: request, completion: completion)
             return
         }
 
-        // GET /api/v1/windows/apps
+        // GET /api/v2/windows/apps
         if method == "GET" && path == "\(base)/windows/apps" {
             handleGetApps(completion: completion)
             return
         }
 
-        // GET /api/v1/status/accessibility
+        // GET /api/v2/status/accessibility
         if method == "GET" && path == "\(base)/status/accessibility" {
             handleGetAccessibility(completion: completion)
             return
         }
 
-        // PUT /api/v1/ui/state
+        // PUT /api/v2/ui/state
         if method == "PUT" && path == "\(base)/ui/state" {
             handleSetUIState(request: request, completion: completion)
             return
         }
 
-        // POST /api/v1/capture
+        // POST /api/v2/capture
         if method == "POST" && path == "\(base)/capture" {
             handleCapture(request: request, completion: completion)
             return
         }
 
-        // /api/v1/layouts/{name}/... 패턴 처리
+        // /api/v2/layouts/{name}/... 패턴 처리
         let layoutsPrefix = "\(base)/layouts/"
         if path.hasPrefix(layoutsPrefix) {
             let remaining = String(path.dropFirst(layoutsPrefix.count))
@@ -477,7 +473,7 @@ final class RESTServer: RESTServerProtocol {
             }
 
             if parts.count == 1 {
-                // GET/PUT/DELETE /api/v1/layouts/{name}
+                // GET/PUT/DELETE /api/v2/layouts/{name}
                 switch method {
                 case "GET":
                     handleGetLayout(name: layoutName, completion: completion)
@@ -494,13 +490,13 @@ final class RESTServer: RESTServerProtocol {
             if parts.count >= 2 {
                 let subPath = parts[1...].joined(separator: "/")
 
-                // POST /api/v1/layouts/{name}/restore
+                // POST /api/v2/layouts/{name}/restore
                 if method == "POST" && subPath == "restore" {
                     handleRestore(name: layoutName, request: request, completion: completion)
                     return
                 }
 
-                // POST /api/v1/layouts/{name}/windows/remove
+                // POST /api/v2/layouts/{name}/windows/remove
                 if method == "POST" && subPath == "windows/remove" {
                     handleRemoveWindows(name: layoutName, request: request, completion: completion)
                     return
@@ -511,11 +507,11 @@ final class RESTServer: RESTServerProtocol {
         completion(.notFound(message: "엔드포인트를 찾을 수 없습니다: \(method) \(path)"))
     }
 
-    // MARK: - v2 라우팅
+    // MARK: - v2 전용 라우팅
 
-    /// v2 전용 설정 엔드포인트 라우팅. 처리 여부를 반환.
+    /// v2 전용 엔드포인트 라우팅. 처리 여부를 반환.
     private func routeV2(method: String, path: String, request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) -> Bool {
-        let base = Self.apiV2BasePath
+        let base = Self.apiBasePath
 
         // 변경 시퀀스 조회
         if method == "GET" && path == "\(base)/changes" {
@@ -1034,7 +1030,7 @@ final class RESTServer: RESTServerProtocol {
 
     // MARK: - CLI 전용 핸들러
 
-    /// GET /api/v1/cli/status - 서버 상태 (uptime, 버전, 포트)
+    /// GET /api/v2/cli/status - 서버 상태 (uptime, 버전, 포트)
     private func handleCLIStatus(completion: @escaping (HTTPResponse) -> Void) {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
         let uptime = Date().timeIntervalSince(startedAt)
@@ -1056,7 +1052,7 @@ final class RESTServer: RESTServerProtocol {
         completion(.ok(json: body))
     }
 
-    /// GET /api/v1/cli/version - 버전 정보
+    /// GET /api/v2/cli/version - 버전 정보
     private func handleCLIVersion(completion: @escaping (HTTPResponse) -> Void) {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
@@ -1071,7 +1067,7 @@ final class RESTServer: RESTServerProtocol {
         completion(.ok(json: body))
     }
 
-    /// POST /api/v1/cli/quit - 앱 종료 (X-Confirm 헤더 필수)
+    /// POST /api/v2/cli/quit - 앱 종료 (X-Confirm 헤더 필수)
     private func handleCLIQuit(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         guard request.header("X-Confirm") == "true" else {
             completion(.badRequest(message: "X-Confirm: true 헤더가 필요합니다"))
@@ -1089,12 +1085,12 @@ final class RESTServer: RESTServerProtocol {
 
     // MARK: - 핸들러
 
-    /// GET / 또는 GET /api/v1/health - Health Check (CLIStatus 포맷으로 통일)
+    /// GET / 또는 GET /api/v2/health - Health Check (CLIStatus 포맷으로 통일)
     private func handleHealthCheck(completion: @escaping (HTTPResponse) -> Void) {
         handleCLIStatus(completion: completion)
     }
 
-    /// GET /api/v1/layouts - 레이아웃 목록
+    /// GET /api/v2/layouts - 레이아웃 목록
     private func handleGetLayouts(completion: @escaping (HTTPResponse) -> Void) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -1110,7 +1106,7 @@ final class RESTServer: RESTServerProtocol {
         }
     }
 
-    /// GET /api/v1/layouts/{name} - 레이아웃 상세
+    /// GET /api/v2/layouts/{name} - 레이아웃 상세
     private func handleGetLayout(name: String, completion: @escaping (HTTPResponse) -> Void) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -1130,7 +1126,7 @@ final class RESTServer: RESTServerProtocol {
         }
     }
 
-    /// POST /api/v1/capture - 창 캡처 및 저장
+    /// POST /api/v2/capture - 창 캡처 및 저장
     private func handleCapture(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         let json = request.jsonBody()
         let rawName = (json?["name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1157,7 +1153,7 @@ final class RESTServer: RESTServerProtocol {
         }
     }
 
-    /// POST /api/v1/layouts/{name}/restore - 레이아웃 복구
+    /// POST /api/v2/layouts/{name}/restore - 레이아웃 복구
     private func handleRestore(name: String, request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         let json = request.jsonBody()
         let maxRetries = json?["maxRetries"] as? Int ?? 5
@@ -1219,7 +1215,7 @@ final class RESTServer: RESTServerProtocol {
         }
     }
 
-    /// PUT /api/v1/layouts/{name} - 이름 변경
+    /// PUT /api/v2/layouts/{name} - 이름 변경
     private func handleRenameLayout(name: String, request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         guard let json = request.jsonBody(), let newName = json["newName"] as? String, !newName.isEmpty else {
             completion(.badRequest(message: "newName 필드가 필요합니다"))
@@ -1243,7 +1239,7 @@ final class RESTServer: RESTServerProtocol {
         }
     }
 
-    /// DELETE /api/v1/layouts/{name} - 레이아웃 삭제
+    /// DELETE /api/v2/layouts/{name} - 레이아웃 삭제
     private func handleDeleteLayout(name: String, completion: @escaping (HTTPResponse) -> Void) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -1266,7 +1262,7 @@ final class RESTServer: RESTServerProtocol {
         }
     }
 
-    /// DELETE /api/v1/layouts - 전체 삭제
+    /// DELETE /api/v2/layouts - 전체 삭제
     private func handleDeleteAllLayouts(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         guard request.header("X-Confirm-Delete-All") == "true" else {
             completion(.badRequest(message: "X-Confirm-Delete-All: true 헤더가 필요합니다"))
@@ -1287,7 +1283,7 @@ final class RESTServer: RESTServerProtocol {
         }
     }
 
-    /// POST /api/v1/layouts/{name}/windows/remove - 창 제거
+    /// POST /api/v2/layouts/{name}/windows/remove - 창 제거
     private func handleRemoveWindows(name: String, request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         guard let json = request.jsonBody(),
               let windowIds = json["windowIds"] as? [Int], !windowIds.isEmpty else {
@@ -1315,7 +1311,7 @@ final class RESTServer: RESTServerProtocol {
         }
     }
 
-    /// GET /api/v1/windows/current - 현재 창 목록 (저장 없이)
+    /// GET /api/v2/windows/current - 현재 창 목록 (저장 없이)
     private func handleGetCurrentWindows(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         // query parameter 파싱: ?filterApps=Safari,iTerm2
         var filterApps: [String]? = nil
@@ -1335,7 +1331,7 @@ final class RESTServer: RESTServerProtocol {
         }
     }
 
-    /// GET /api/v1/windows/apps - 실행 중 앱 목록
+    /// GET /api/v2/windows/apps - 실행 중 앱 목록
     private func handleGetApps(completion: @escaping (HTTPResponse) -> Void) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -1344,7 +1340,7 @@ final class RESTServer: RESTServerProtocol {
         }
     }
 
-    /// GET /api/v1/status/accessibility - 접근성 권한 상태
+    /// GET /api/v2/status/accessibility - 접근성 권한 상태
     private func handleGetAccessibility(completion: @escaping (HTTPResponse) -> Void) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -1355,7 +1351,7 @@ final class RESTServer: RESTServerProtocol {
 
     // MARK: - Settings
 
-    /// GET /api/v1/settings - 현재 설정값 조회
+    /// GET /api/v2/settings - 현재 설정값 조회
     private func handleGetSettings(completion: @escaping (HTTPResponse) -> Void) {
         var data = handlers.getSettings()
         data["settingsBasePath"] = handlers.getSettingsBasePath()
@@ -1365,13 +1361,13 @@ final class RESTServer: RESTServerProtocol {
 
     // MARK: - 기본 레이아웃
 
-    /// GET /api/v1/settings/default-layout - 기본 레이아웃 이름 조회
+    /// GET /api/v2/settings/default-layout - 기본 레이아웃 이름 조회
     private func handleGetDefaultLayout(completion: @escaping (HTTPResponse) -> Void) {
         let name = handlers.getDefaultLayoutName() ?? "default"
         completion(.ok(json: ["status": "ok", "data": ["defaultLayoutName": name]]))
     }
 
-    /// PUT /api/v1/settings/default-layout - 기본 레이아웃 이름 설정
+    /// PUT /api/v2/settings/default-layout - 기본 레이아웃 이름 설정
     private func handleSetDefaultLayout(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         guard let json = request.jsonBody(), let name = json["name"] as? String, !name.isEmpty else {
             completion(.badRequest(message: "name 필드가 필요합니다"))
@@ -1381,7 +1377,7 @@ final class RESTServer: RESTServerProtocol {
         completion(.ok(json: ["status": "ok", "data": ["defaultLayoutName": name]]))
     }
 
-    /// PUT /api/v1/settings/shortcuts - 단축키 일괄 업데이트 및 HotKeyService 재등록
+    /// PUT /api/v2/settings/shortcuts - 단축키 일괄 업데이트 및 HotKeyService 재등록
     private func handleSetShortcuts(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         guard let json = request.jsonBody() else {
             completion(.badRequest(message: "JSON body가 필요합니다"))
@@ -1394,7 +1390,7 @@ final class RESTServer: RESTServerProtocol {
 
     // MARK: - UI 상태
 
-    /// PUT /api/v1/ui/state - UI 상태 변경 (hideWindows / selectApps / excludeApps)
+    /// PUT /api/v2/ui/state - UI 상태 변경 (hideWindows / selectApps / excludeApps)
     private func handleSetUIState(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         guard let body = request.jsonBody() else {
             completion(.badRequest(message: "JSON body가 필요합니다"))
