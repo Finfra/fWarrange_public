@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 57
 * Save Point: 2026-04-23 (close Issue53 — GET / → CLIStatus 포맷 통일)
+  - 8969653 (2026-04-27) - Docs(API): Issue57 — openapi_v2.yaml SSOT 누락 엔드포인트 3종 추가
   - 72d1239 (2026-04-26) - Docs(API): cliApp_design.md v2 갱신 (Issue55) + Issue56/57 등록
   - 44c6fbc (2026-04-24) - Docs: Close Issue54 (API v1→v2 전환)
   - d4c13cc (2026-04-23) - Docs: Close Issue53 (GET / → CLIStatus 포맷 통일)
@@ -38,7 +39,7 @@ date: 2026-04-07
 
 
 # ✅ 완료
-## Issue57: openapi_v2.yaml SSOT 누락 엔드포인트 3종 추가 (코드↔스펙 동기화) (등록: 2026-04-26, 해결: 2026-04-27, commit: TBD) ✅
+## Issue57: openapi_v2.yaml SSOT 누락 엔드포인트 3종 추가 (코드↔스펙 동기화) (등록: 2026-04-26, 해결: 2026-04-27, commit: 8969653) ✅
 * 목적: `cli/fWarrangeCli/Services/RESTServer.swift`에 라우팅 구현되어 동작 중이지만 `api/openapi_v2.yaml`(SSOT)에 정의되지 않은 엔드포인트 3종을 yaml에 추가하여 `api-rules.md`의 "양쪽이 항상 일치해야 함" 규칙을 만족시킴. Issue55(cliApp_design.md 갱신) 작업 중 코드↔yaml 교차검증으로 발견됨.
 * 상세:
     - 누락 엔드포인트:
