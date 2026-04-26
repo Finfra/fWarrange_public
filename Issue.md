@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 57
 * Save Point: 2026-04-23 (close Issue53 — GET / → CLIStatus 포맷 통일)
+  - 72d1239 (2026-04-26) - Docs(API): cliApp_design.md v2 갱신 (Issue55) + Issue56/57 등록
   - 44c6fbc (2026-04-24) - Docs: Close Issue54 (API v1→v2 전환)
   - d4c13cc (2026-04-23) - Docs: Close Issue53 (GET / → CLIStatus 포맷 통일)
   - 529ccb6 (2026-04-22) - Fix(Issue49): GET /api/v2/settings effective* 필드 추가 + Issue48 종결
@@ -53,7 +54,7 @@ date: 2026-04-07
 
 
 # ✅ 완료
-## Issue55: cliApp_design.md 엔드포인트 표를 v2 기준으로 갱신 (등록: 2026-04-26, 해결: 2026-04-26, commit: TBD) ✅
+## Issue55: cliApp_design.md 엔드포인트 표를 v2 기준으로 갱신 (등록: 2026-04-26, 해결: 2026-04-26, commit: 72d1239) ✅
 * 목적: cliApp 분리 초기(2026-04-07) 작성된 `cli/_doc_design/cliApp_design.md`의 REST API 엔드포인트 표가 v1 경로 기반이며 미구현 엔드포인트(`/locale`)를 포함하고 있어 잘못된 정보를 제공함. v2 슈펴셋 전환(Issue54) 및 신규 엔드포인트 추가 이력을 반영하여 갱신함.
 * 상세:
     - cliApp_design.md 17줄 "기존 REST API 스펙(`api/openapi.yaml`) 최대한 유지 — 외부 연동 호환성 보존" 문구가 v1→v2 슈펴셋 전환 후 stale
