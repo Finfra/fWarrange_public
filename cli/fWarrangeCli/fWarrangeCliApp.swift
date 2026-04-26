@@ -70,11 +70,9 @@ struct fWarrangeCliApp: App {
     }
 
     var body: some Scene {
-        // Issue46: paidApp 실행 중이면 paidApp이 자체 MenuBarExtra를 소유하므로 cliApp 메뉴바 숨김
-        MenuBarExtra(isInserted: Binding(
-            get: { appState.paidAppMonitor.state == .cliOnly },
-            set: { _ in }
-        )) {
+        // Issue218: 시간적 배타성 제거 — paidApp 실행 중에도 cliApp 메뉴바 동시 표시
+        // SSOT: _doc_design/paid_cli_protocol.md (2026-04-26 갱신) — cliApp REST 데몬 독립 운영 보장
+        MenuBarExtra {
             MenuBarView()
                 .environment(appState)
         } label: {
