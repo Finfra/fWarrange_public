@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 54
+* Issue HWM: 57
 * Save Point: 2026-04-23 (close Issue53 — GET / → CLIStatus 포맷 통일)
   - 44c6fbc (2026-04-24) - Docs: Close Issue54 (API v1→v2 전환)
   - d4c13cc (2026-04-23) - Docs: Close Issue53 (GET / → CLIStatus 포맷 통일)
@@ -21,10 +21,58 @@ date: 2026-04-07
 
 # 📕 중요
 # 📙 일반
+
+## Issue57: openapi_v2.yaml SSOT 누락 엔드포인트 3종 추가 (코드↔스펙 동기화) (등록: 2026-04-26)
+* 목적: `cli/fWarrangeCli/Services/RESTServer.swift`에 라우팅 구현되어 동작 중이지만 `api/openapi_v2.yaml`(SSOT)에 정의되지 않은 엔드포인트 3종을 yaml에 추가하여 `api-rules.md`의 "양쪽이 항상 일치해야 함" 규칙을 만족시킴. Issue55(cliApp_design.md 갱신) 작업 중 코드↔yaml 교차검증으로 발견됨.
+* 상세:
+    - 누락 엔드포인트:
+        * `GET /api/v2/settings/default-layout` — RESTServer.swift:404-408, handleGetDefaultLayout (1365줄), 응답 `{"status":"ok","data":{"defaultLayoutName":"..."}}`
+        * `PUT /api/v2/settings/default-layout` — RESTServer.swift:410-414, handleSetDefaultLayout (1371줄), body로 name 수신 후 저장
+        * `GET /api/v2/status` — RESTServer.swift:737-741, handleV2Status (998줄 인근), 현재 활성 모드 포함 시스템 상태 스냅샷
+    - 외부 클라이언트(특히 paidApp의 RESTCLIClient)가 yaml만 보고 사용 가능한 엔드포인트를 판단하므로, 미정의 엔드포인트는 사실상 사용 불가 상태 (호출은 가능하나 spec 위반)
+    - `api-rules.md`: "API 엔드포인트를 추가, 수정, 삭제할 때 반드시 `api/openapi_v2.yaml`을 함께 업데이트할 것" 위반
+* 작업 항목:
+    - `api/openapi_v2.yaml`에 3종 엔드포인트 정의 추가 (path, method, summary, request/response 스키마)
+    - `cli/_doc_design/RestAPI_v2.md` 인간 가독 문서에도 동일 항목 반영
+    - `cli/_doc_design/cliApp_design.md` 표에도 반영 (Issue55 후속)
+    - `cli/_tool/apiTestDo.sh`에 테스트 케이스 추가 검토
+* 비고: 코드 동작에는 영향 없음 — 스펙 동기화 이슈. paidApp 측에서 default-layout API를 사용 중인지 확인 필요 (사용 중이면 v2 yaml 미정의 상태에서 운영되어 온 것이므로 동기화 시급)
+
+## Issue56: cmd_design.md CLI baseURL 및 엔드포인트 인용을 v2 기준으로 갱신 (등록: 2026-04-26)
+* 목적: CLI 커맨드 설계 문서(2026-04-08 작성)가 `/api/v1` 기준으로 작성되어 있으며, 현행 RESTServer는 v1 호출 시 410 Gone을 반환하므로 이 문서를 따라 CLI 코드를 작성하면 동작하지 않음. v2 기준으로 일관성 갱신함.
+* 상세:
+    - cmd_design.md 91줄 `static let baseURL = "http://localhost:\(port)/api/v1"` → `/api/v2`로 갱신
+    - "대응 API" 표·본문에서 `/api/v1/cli/status`, `/api/v1/cli/version`, `/api/v1/cli/quit` 등 v1 경로 인용 전부 `/api/v2/*`로 갱신
+    - 약 184줄의 CLI 핸들러 매핑 예시도 동일하게 v2 경로로 일괄 교체
+    - 문서 frontmatter `date` 필드는 갱신 시점으로 업데이트
+* 영향 파일:
+    - `cli/_doc_design/cmd_design.md` (수정)
+* 비고: 코드 동작에는 영향 없음 — 문서 정확성 이슈. CLI 커맨드 자체는 Issue6에서 이미 구현 완료(`584819e`) 상태이므로, 문서가 현행 구현과 일관되도록 정렬하는 작업
+
 # 📗 선택
 
 
 # ✅ 완료
+## Issue55: cliApp_design.md 엔드포인트 표를 v2 기준으로 갱신 (등록: 2026-04-26, 해결: 2026-04-26, commit: TBD) ✅
+* 목적: cliApp 분리 초기(2026-04-07) 작성된 `cli/_doc_design/cliApp_design.md`의 REST API 엔드포인트 표가 v1 경로 기반이며 미구현 엔드포인트(`/locale`)를 포함하고 있어 잘못된 정보를 제공함. v2 슈펴셋 전환(Issue54) 및 신규 엔드포인트 추가 이력을 반영하여 갱신함.
+* 상세:
+    - cliApp_design.md 17줄 "기존 REST API 스펙(`api/openapi.yaml`) 최대한 유지 — 외부 연동 호환성 보존" 문구가 v1→v2 슈펴셋 전환 후 stale
+    - 75-93줄 엔드포인트 표 16개 모두 `/api/v1/*` 경로 → `/api/v2/*`로 갱신
+    - 91-92줄 `/api/v1/locale` GET/PUT 은 실제 코드에 미존재 (CLAUDE.md SSOT: "fWarrangeCli는 메뉴바 전용 daemon으로 locale/다국어 API 엔드포인트를 제공하지 않음") → 표에서 삭제
+    - v2 신규 엔드포인트 누락분 추가: 설정 CRUD, Modes, /changes 등 (`api/openapi_v2.yaml` 기준 재구성)
+    - 코드 작성자가 이 문서를 따라 잘못된 baseURL/엔드포인트로 신규 코드를 작성하지 않도록 SSOT 일관성 회복
+* 구현 명세:
+    - `api/openapi_v2.yaml`에서 `^  /` 패턴으로 paths 30종 추출, summary 필드와 method 매핑 → SSOT 데이터 확보
+    - `cli/fWarrangeCli/Services/RESTServer.swift`로 라우팅 교차검증 (모든 path가 `/api/v2/*` prefix, `/api/v1/*` 호출 시 `routeInternal`이 410 Gone 반환 — 라인 361-364)
+    - `cli/_doc_design/cliApp_design.md` 17줄 한 줄 수정: "기존 호환성 유지" → "v2 슈펴셋 확장(Issue54) SSOT는 `api/openapi_v2.yaml`" 명시
+    - `cli/_doc_design/cliApp_design.md` 75-101줄 단일 표(16+3행, v1 기준) → 7개 카테고리 표(총 47행, v2 기준)로 재구성: 기본/변경 알림(3) · 레이아웃·캡처·복원(8) · 창·UI 상태(4) · 설정 18종 · Modes 6종 · CLI 자기제어(4) · paidApp 라이프사이클(3)
+    - 242줄 paidApp UI 구성 표의 잔존물 `GET /api/v1/cli/version` → `GET /api/v2/cli/version` 교체
+    - frontmatter `date: 2026-04-07` → `date: 2026-04-26` 업데이트
+    - 검증: `grep -nE "/api/v1|/locale" cli/_doc_design/cliApp_design.md` exit 1 (잔존물 0건 확인)
+* 영향 파일:
+    - `cli/_doc_design/cliApp_design.md` (수정 — 파일이 `.gitignore` 패턴(`cli/_doc_design/`)에 매치되지만 이전에 이미 추적 중인 상태라 `git ls-files`로 확인됨, 변경사항 정상 커밋됨)
+* 비고: 코드 동작에는 영향 없음 — 문서 정확성 이슈. 작업 중 yaml SSOT 자체의 누락(`/api/v2/settings/default-layout`, `/api/v2/status`)을 발견 → Issue57로 분리 등록. `.gitignore`에 `cli/_doc_design/` 패턴이 등록되어 있으나 기존 파일은 추적 유지되는 표준 Git 동작 확인됨 — 신규 파일은 추적 제외이므로 향후 새 디자인 문서 추가 시 정책 재검토 필요
+
 ## Issue54: RESTServer API 경로를 v1에서 v2로 전환 (v1 제거 준비) (등록: 2026.04.24) (✅ 완료, 44c6fbc) ✅
 * 목적: v1 API 경로를 코드·테스트·스크립트 전체에서 v2로 교체하고, routeV1Internal 폴백 구조를 v2 직접 라우팅으로 정리함
 * 상세:
