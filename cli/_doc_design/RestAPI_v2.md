@@ -83,11 +83,13 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 
 ## 4.2 Settings (전체)
 
-| Method | Path                                       | 설명                               |
-| ------ | ------------------------------------------ | ---------------------------------- |
-| GET    | `/settings`                                | 전체 설정 스냅샷                   |
-| PATCH  | `/settings`                                | 임의 필드 부분 갱신                |
-| POST   | `/settings/factory-reset`                  | 전체 기본값 복원 (X-Confirm 필요)  |
+| Method | Path                                       | 설명                                            |
+| ------ | ------------------------------------------ | ----------------------------------------------- |
+| GET    | `/settings`                                | 전체 설정 스냅샷                                |
+| PATCH  | `/settings`                                | 임의 필드 부분 갱신                             |
+| GET    | `/settings/default-layout`                 | 기본 레이아웃 이름 조회 (미설정 시 `default`)   |
+| PUT    | `/settings/default-layout`                 | 기본 레이아웃 이름 설정 (`{"name":"..."}`)      |
+| POST   | `/settings/factory-reset`                  | 전체 기본값 복원 (X-Confirm 필요)               |
 
 ## 4.3 Settings (탭별)
 
@@ -129,15 +131,16 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 
 ## 4.6 Windows / UI / System / CLI
 
-| Method | Path                         | 설명                               |
-| ------ | ---------------------------- | ---------------------------------- |
-| GET    | `/windows/current`           | 현재 창 목록 (저장 없이)           |
-| GET    | `/windows/apps`              | 실행 중 앱 목록                    |
-| PUT    | `/ui/state`                  | UI 상태 변경 (캡처 자동화)         |
-| GET    | `/status/accessibility`      | 접근성 권한 상태                   |
-| GET    | `/cli/status`                | CLI 헬퍼 상태                      |
-| GET    | `/cli/version`               | CLI 헬퍼 버전                      |
-| POST   | `/cli/quit`                  | CLI 종료 (`X-Confirm: true`)       |
+| Method | Path                         | 설명                                                   |
+| ------ | ---------------------------- | ------------------------------------------------------ |
+| GET    | `/windows/current`           | 현재 창 목록 (저장 없이)                               |
+| GET    | `/windows/apps`              | 실행 중 앱 목록                                        |
+| PUT    | `/ui/state`                  | UI 상태 변경 (캡처 자동화)                             |
+| GET    | `/status`                    | cliApp 런타임 스냅샷 (버전·포트·uptime·activeMode 포함) |
+| GET    | `/status/accessibility`      | 접근성 권한 상태 (TCC)                                 |
+| GET    | `/cli/status`                | CLI 헬퍼 상태                                          |
+| GET    | `/cli/version`               | CLI 헬퍼 버전                                          |
+| POST   | `/cli/quit`                  | CLI 종료 (`X-Confirm: true`)                           |
 
 ## 4.7 Modes (Phase 2 — 컨텍스트 스위칭)
 

@@ -23,22 +23,6 @@ date: 2026-04-07
 # 📕 중요
 # 📙 일반
 
-## Issue57: openapi_v2.yaml SSOT 누락 엔드포인트 3종 추가 (코드↔스펙 동기화) (등록: 2026-04-26)
-* 목적: `cli/fWarrangeCli/Services/RESTServer.swift`에 라우팅 구현되어 동작 중이지만 `api/openapi_v2.yaml`(SSOT)에 정의되지 않은 엔드포인트 3종을 yaml에 추가하여 `api-rules.md`의 "양쪽이 항상 일치해야 함" 규칙을 만족시킴. Issue55(cliApp_design.md 갱신) 작업 중 코드↔yaml 교차검증으로 발견됨.
-* 상세:
-    - 누락 엔드포인트:
-        * `GET /api/v2/settings/default-layout` — RESTServer.swift:404-408, handleGetDefaultLayout (1365줄), 응답 `{"status":"ok","data":{"defaultLayoutName":"..."}}`
-        * `PUT /api/v2/settings/default-layout` — RESTServer.swift:410-414, handleSetDefaultLayout (1371줄), body로 name 수신 후 저장
-        * `GET /api/v2/status` — RESTServer.swift:737-741, handleV2Status (998줄 인근), 현재 활성 모드 포함 시스템 상태 스냅샷
-    - 외부 클라이언트(특히 paidApp의 RESTCLIClient)가 yaml만 보고 사용 가능한 엔드포인트를 판단하므로, 미정의 엔드포인트는 사실상 사용 불가 상태 (호출은 가능하나 spec 위반)
-    - `api-rules.md`: "API 엔드포인트를 추가, 수정, 삭제할 때 반드시 `api/openapi_v2.yaml`을 함께 업데이트할 것" 위반
-* 작업 항목:
-    - `api/openapi_v2.yaml`에 3종 엔드포인트 정의 추가 (path, method, summary, request/response 스키마)
-    - `cli/_doc_design/RestAPI_v2.md` 인간 가독 문서에도 동일 항목 반영
-    - `cli/_doc_design/cliApp_design.md` 표에도 반영 (Issue55 후속)
-    - `cli/_tool/apiTestDo.sh`에 테스트 케이스 추가 검토
-* 비고: 코드 동작에는 영향 없음 — 스펙 동기화 이슈. paidApp 측에서 default-layout API를 사용 중인지 확인 필요 (사용 중이면 v2 yaml 미정의 상태에서 운영되어 온 것이므로 동기화 시급)
-
 ## Issue56: cmd_design.md CLI baseURL 및 엔드포인트 인용을 v2 기준으로 갱신 (등록: 2026-04-26)
 * 목적: CLI 커맨드 설계 문서(2026-04-08 작성)가 `/api/v1` 기준으로 작성되어 있으며, 현행 RESTServer는 v1 호출 시 410 Gone을 반환하므로 이 문서를 따라 CLI 코드를 작성하면 동작하지 않음. v2 기준으로 일관성 갱신함.
 * 상세:
@@ -54,6 +38,37 @@ date: 2026-04-07
 
 
 # ✅ 완료
+## Issue57: openapi_v2.yaml SSOT 누락 엔드포인트 3종 추가 (코드↔스펙 동기화) (등록: 2026-04-26, 해결: 2026-04-27, commit: TBD) ✅
+* 목적: `cli/fWarrangeCli/Services/RESTServer.swift`에 라우팅 구현되어 동작 중이지만 `api/openapi_v2.yaml`(SSOT)에 정의되지 않은 엔드포인트 3종을 yaml에 추가하여 `api-rules.md`의 "양쪽이 항상 일치해야 함" 규칙을 만족시킴. Issue55(cliApp_design.md 갱신) 작업 중 코드↔yaml 교차검증으로 발견됨.
+* 상세:
+    - 누락 엔드포인트:
+        * `GET /api/v2/settings/default-layout` — RESTServer.swift:404-408, handleGetDefaultLayout (1365줄), 응답 `{"status":"ok","data":{"defaultLayoutName":"..."}}`
+        * `PUT /api/v2/settings/default-layout` — RESTServer.swift:410-414, handleSetDefaultLayout (1371줄), body로 name 수신 후 저장
+        * `GET /api/v2/status` — RESTServer.swift:737-741, handleV2Status (998줄 인근), 현재 활성 모드 포함 시스템 상태 스냅샷
+    - 외부 클라이언트(특히 paidApp의 RESTCLIClient)가 yaml만 보고 사용 가능한 엔드포인트를 판단하므로, 미정의 엔드포인트는 사실상 사용 불가 상태 (호출은 가능하나 spec 위반)
+    - `api-rules.md`: "API 엔드포인트를 추가, 수정, 삭제할 때 반드시 `api/openapi_v2.yaml`을 함께 업데이트할 것" 위반
+* 구현 명세:
+    - `api/openapi_v2.yaml` paths 섹션에 3종 엔드포인트 추가:
+        * `# ---------- Default Layout ----------` 섹션 신설 후 GET/PUT `/settings/default-layout` (552줄)
+        * `# ---------- System ----------` 섹션 내 GET `/status` 추가 (923줄, /status/accessibility 위)
+    - `api/openapi_v2.yaml` schemas 섹션에 3종 신규 스키마 추가 (1835-1879줄):
+        * `DefaultLayoutResponse` (status·data.defaultLayoutName)
+        * `DefaultLayoutUpdateRequest` (name minLength:1)
+        * `V2StatusResponse` (status, app, version, port, uptimeSeconds, isRunning, optional activeMode — required: 6 필드)
+    - `cli/_doc_design/RestAPI_v2.md`:
+        * §4.2 Settings (전체) 표에 default-layout GET/PUT 2행 추가
+        * §4.6 Windows / UI / System / CLI 표에 `/status` 1행 추가 (`/status/accessibility`와 구분 — 후자는 TCC 권한 명시)
+    - `cli/_doc_design/cliApp_design.md` 표 갱신 (Issue55 후속):
+        * 설정 카테고리 표에 default-layout GET/PUT 2행 추가 (총 18→20행)
+        * 창·UI 상태 카테고리 표에 `/status` 1행 추가 (총 4→5행)
+    - 검증: `python3 -c "import yaml; yaml.safe_load(open('api/openapi_v2.yaml'))"` → "OK yaml parses"
+    - 검증: `grep ^  /(settings/default-layout|status)\b` → 3종 path 라인 확인 (552, 923, 940)
+* 영향 파일:
+    - `api/openapi_v2.yaml` (paths 3종 + schemas 3종)
+    - `cli/_doc_design/RestAPI_v2.md` (표 2개에 3행 추가)
+    - `cli/_doc_design/cliApp_design.md` (표 2개에 3행 추가)
+* 비고: 코드 변경 없음 — 스펙↔코드 동기화. `cli/_tool/apiTestDo.sh`에 테스트 케이스 추가는 후속 이슈 후보 (현 범위 외). yaml 1775줄 → 1879줄로 +104줄 증가
+
 ## Issue55: cliApp_design.md 엔드포인트 표를 v2 기준으로 갱신 (등록: 2026-04-26, 해결: 2026-04-26, commit: 72d1239) ✅
 * 목적: cliApp 분리 초기(2026-04-07) 작성된 `cli/_doc_design/cliApp_design.md`의 REST API 엔드포인트 표가 v1 경로 기반이며 미구현 엔드포인트(`/locale`)를 포함하고 있어 잘못된 정보를 제공함. v2 슈펴셋 전환(Issue54) 및 신규 엔드포인트 추가 이력을 반영하여 갱신함.
 * 상세:

@@ -105,6 +105,7 @@ paidApp (Sandbox, App Store)            cliApp (Non-Sandbox, Helper)
 | GET    | `/api/v2/windows/current`     | 현재 창 목록 (저장 X) |
 | GET    | `/api/v2/windows/apps`        | 실행 중 앱 목록       |
 | PUT    | `/api/v2/ui/state`            | UI 상태 변경          |
+| GET    | `/api/v2/status`              | 런타임 스냅샷 (버전·포트·uptime·activeMode) |
 | GET    | `/api/v2/status/accessibility`| 접근성 권한 상태      |
 
 ### 설정 (탭 단위 분리, PATCH 부분 갱신)
@@ -113,6 +114,8 @@ paidApp (Sandbox, App Store)            cliApp (Non-Sandbox, Helper)
 | :----- | :------------------------------------------------ | :----------------------------------- |
 | GET    | `/api/v2/settings`                                | 전체 설정 조회                       |
 | PATCH  | `/api/v2/settings`                                | 임의 필드 부분 갱신                  |
+| GET    | `/api/v2/settings/default-layout`                 | 기본 레이아웃 이름 조회              |
+| PUT    | `/api/v2/settings/default-layout`                 | 기본 레이아웃 이름 설정              |
 | GET    | `/api/v2/settings/general`                        | General 탭 조회                      |
 | PATCH  | `/api/v2/settings/general`                        | General 탭 갱신                      |
 | GET    | `/api/v2/settings/restore`                        | Restore 탭 조회                      |

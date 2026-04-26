@@ -548,6 +548,46 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  # ---------- Default Layout ----------
+  /settings/default-layout:
+    get:
+      summary: Get default layout name
+      description: |
+        Returns the layout name resolved by AppSettings.
+        Falls back to `"default"` when nothing is configured.
+      operationId: getDefaultLayoutV2
+      tags: [Settings]
+      responses:
+        '200':
+          description: Current default layout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultLayoutResponse'
+    put:
+      summary: Set default layout name
+      operationId: setDefaultLayoutV2
+      tags: [Settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefaultLayoutUpdateRequest'
+      responses:
+        '200':
+          description: Updated default layout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultLayoutResponse'
+        '400':
+          description: name 필드 누락 또는 빈 문자열
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   # ---------- Layouts ----------
   /layouts:
     get:
@@ -880,6 +920,23 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   # ---------- System ----------
+  /status:
+    get:
+      summary: Get cliApp runtime status (with active mode)
+      description: |
+        Returns a runtime snapshot of the cliApp daemon: app name, version,
+        port, uptime, and the currently active mode (if any).
+        Distinct from `/status/accessibility` which focuses on TCC permission state.
+      operationId: getV2Status
+      tags: [System]
+      responses:
+        '200':
+          description: Runtime snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/V2StatusResponse'
+
   /status/accessibility:
     get:
       summary: Accessibility permission status
@@ -1773,3 +1830,60 @@ components:
           format: date-time
           description: 세션 등록 시각 (running 상태에서만)
       required: [state]
+
+    # ---- Default Layout ----
+    DefaultLayoutResponse:
+      type: object
+      properties:
+        status: { type: string, enum: [ok] }
+        data:
+          type: object
+          properties:
+            defaultLayoutName:
+              type: string
+              description: 기본 레이아웃 이름 (미설정 시 "default" fallback)
+              example: myLayout
+          required: [defaultLayoutName]
+      required: [status, data]
+
+    DefaultLayoutUpdateRequest:
+      type: object
+      description: 기본 레이아웃 이름 업데이트 요청
+      properties:
+        name:
+          type: string
+          description: 비어있지 않은 레이아웃 이름
+          minLength: 1
+          example: myLayout
+      required: [name]
+
+    # ---- V2 Status (runtime snapshot) ----
+    V2StatusResponse:
+      type: object
+      description: |
+        cliApp 런타임 스냅샷. /status/accessibility(TCC 권한 상태)와는 별개로
+        앱 자체의 가동 정보를 제공한다.
+      properties:
+        status: { type: string, enum: [ok] }
+        app:
+          type: string
+          description: 앱 식별자
+          example: fWarrangeCli
+        version:
+          type: string
+          description: CFBundleShortVersionString
+          example: 1.0.0
+        port:
+          type: integer
+          description: REST 서버 포트
+          example: 3016
+        uptimeSeconds:
+          type: integer
+          description: 서버 시작 후 경과 초
+        isRunning:
+          type: boolean
+          description: 서버 활성 여부
+        activeMode:
+          type: string
+          description: 현재 활성 모드 이름 (없으면 필드 자체 생략)
+      required: [status, app, version, port, uptimeSeconds, isRunning]
