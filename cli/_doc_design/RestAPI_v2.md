@@ -6,7 +6,7 @@ date: 2026-04-18
 
 # 1. 개요
 
-cliApp의 REST API v2는 v1의 완전한 슈퍼셋이다. GUI(paidApp)가 폴링/SSE로 상태를 동기화하고, 설정을 탭 단위로 세분화하여 CRUD 할 수 있도록 확장했다. 모든 v1 엔드포인트는 `/api/v2/*`에서 동일하게 동작한다.
+cliApp의 REST API v2는 v1의 완전한 슈퍼셋이다. GUI(paidApp)가 `/changes` 폴링으로 상태를 동기화하고, 설정을 탭 단위로 세분화하여 CRUD 할 수 있도록 확장했다. 모든 v1 엔드포인트는 `/api/v2/*`에서 동일하게 동작한다.
 
 * **프레임워크**: `Network.framework` (`NWListener` + `NWConnection`) — 외부 의존성 없음
 * **서비스 루트**: `http://localhost:3016/api/v2`
@@ -19,7 +19,7 @@ cliApp의 REST API v2는 v1의 완전한 슈퍼셋이다. GUI(paidApp)가 폴링
 | -------------------------- | ------------------------------------------------------ |
 | v1 슈퍼셋                  | v2는 v1의 모든 엔드포인트를 포함하며 추가 기능 제공    |
 | 탭 단위 세분화 Settings    | General/Restore/API/Advanced 별 GET/PATCH 분리          |
-| 명시적 변경 알림           | `/events` (SSE), `/changes` (polling) 양대 채널 제공   |
+| 명시적 변경 알림           | `/changes` (adaptive polling) 단일 채널 제공           |
 | Manager 계층 직접 호출     | REST 핸들러 → Manager → Service 흐름 유지              |
 | 설정 전체 PATCH 허용       | `/settings`에서 임의 필드 부분 갱신                     |
 
@@ -32,8 +32,7 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
     RESTCLIClient ──── HTTP/JSON ─────►  RESTServer (NWListener)
     CLIHealthMonitor                      ├─ HTTP 파싱
     LayoutListView / SettingsSheet        ├─ 라우팅 (/api/v1 + /api/v2)
-                                          ├─ ChangeTracker (seq 링버퍼)
-                                          └─ SSEBroadcaster
+                                          └─ ChangeTracker (seq 링버퍼)
                                                  │ 직접 호출
                                      ┌───────────┼───────────┐
                                      ▼           ▼           ▼
@@ -52,7 +51,6 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 
 | 태그      | 추가 엔드포인트                                          |
 | --------- | -------------------------------------------------------- |
-| Events    | `GET /events` (SSE 구독)                                 |
 | Changes   | `GET /changes?since={seq}` (adaptive polling)            |
 | Settings  | `/settings/general`, `/restore`, `/api`, `/advanced` 탭 |
 | Settings  | `/settings/restore/excluded-apps` GET/PUT/POST/DELETE    |
@@ -76,12 +74,11 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 
 > 상세 스펙은 [`openapi_v2.yaml`](../_public/api/openapi_v2.yaml) 참조
 
-## 4.1 Health / Events / Changes
+## 4.1 Health / Changes
 
 | Method | Path        | 설명                                      |
 | ------ | ----------- | ----------------------------------------- |
 | GET    | `/health`   | Health Check                              |
-| GET    | `/events`   | SSE 스트림 구독                           |
 | GET    | `/changes`  | 변경 시퀀스 조회 (adaptive polling)       |
 
 ## 4.2 Settings (전체)
@@ -161,21 +158,11 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 
 `layout.created`, `layout.updated`, `layout.deleted`, `settings.changed`, `shortcuts.changed`
 
-## 5.2 SSE (`/events`)
+## 5.2 Polling (`/changes`)
 
-초기 연결 시 `connected` 이벤트를 받고, 이후 변경 발생 시점마다 서버가 밀어주는 푸시 채널.
+GUI가 주기적으로 당기는 단일 변경 알림 채널. 단조 증가 `seq`, CLI 재시작 시 0으로 초기화(→ 전체 재로드 신호), 최대 100건 링버퍼 유지.
 
-```
-event: connected
-data: {"message":"SSE 스트림 연결됨","timestamp":"2026-04-16T10:00:00Z"}
-
-event: layout.created
-data: {"name":"my-layout","windowCount":5,"timestamp":"2026-04-16T10:01:00Z"}
-```
-
-## 5.3 Polling (`/changes`)
-
-SSE 대신 GUI가 주기적으로 당기는 경로. 단조 증가 `seq`, CLI 재시작 시 0으로 초기화(→ 전체 재로드 신호), 최대 100건 링버퍼 유지.
+> **이력**: 초기 설계에는 `/events` SSE 푸시 채널이 함께 정의되어 있었으나(Issue220, 2026-04-26), 양측 사용처 0건 + `/changes` 폴링으로 동일 역할 충족 + cliApp 메뉴바 데몬에서의 long-lived connection 운영 비용을 사유로 스펙 제거되었음. 변경 알림은 `/changes` 단일 채널로 일원화함.
 
 ```bash
 curl "http://localhost:3016/api/v2/changes?since=42"
@@ -302,12 +289,6 @@ curl -X POST http://localhost:3016/api/v2/modes \
 curl -X POST http://localhost:3016/api/v2/modes/Work/activate
 ```
 
-## SSE 구독
-
-```bash
-curl -N http://localhost:3016/api/v2/events
-```
-
 ---
 
 # 7. 데이터 모델 핵심
@@ -364,7 +345,6 @@ score (0-100), success
 | ----------------------------------------------------- | ----------------------------- |
 | `cli/fWarrangeCli/Services/RESTServer.swift`          | NWListener, 라우팅 (v1 + v2)  |
 | `cli/fWarrangeCli/Services/ChangeTracker.swift`       | 변경 seq 링버퍼               |
-| `cli/fWarrangeCli/Services/SSEBroadcaster.swift`      | SSE 세션 관리                 |
 | `cli/fWarrangeCli/Managers/ModeManager.swift`         | 모드 CRUD + 활성화            |
 | `cli/fWarrangeCli/Models/Mode.swift`, `AppConfig.swift` | 모드 도메인 모델              |
 
@@ -382,6 +362,6 @@ score (0-100), success
 # 10. 버전 전환 정책
 
 * v1과 v2는 병행 제공. 동일 요청이 `/api/v1/*` 또는 `/api/v2/*` 양쪽에서 동작
-* 신규 기능(Settings 세분화, Events, Changes, Modes)은 v2 전용
+* 신규 기능(Settings 세분화, Changes, Modes)은 v2 전용
 * v1은 **deprecated**. 제거 시점은 GUI 마이그레이션 완료 후 별도 공지
 * 외부 자동화/통합은 가급적 v2를 사용할 것

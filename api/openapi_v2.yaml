@@ -29,8 +29,6 @@ servers:
 tags:
   - name: Health
     description: Health check
-  - name: Events
-    description: Server-Sent Events (SSE) for real-time change notifications
   - name: Settings
     description: Granular settings endpoints (General, Restore, API, Advanced)
   - name: Shortcuts
@@ -197,44 +195,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
-
-  # ---------- Events: SSE stream ----------
-  /events:
-    get:
-      summary: Subscribe to change events (SSE)
-      description: |
-        Server-Sent Events (SSE) 스트림. 레이아웃/설정/단축키 변경 시 실시간 이벤트를 수신.
-        연결 후 `connected` 이벤트가 전송되며, 이후 변경 발생 시 해당 이벤트가 푸시됨.
-
-        **이벤트 유형:**
-        - `connected` — 초기 연결 확인
-        - `layout.created` — 레이아웃 생성 (캡처)
-        - `layout.updated` — 레이아웃 이름 변경
-        - `layout.deleted` — 레이아웃 삭제
-        - `settings.changed` — 설정 변경 (section, changedKeys 포함)
-        - `shortcuts.changed` — 단축키 변경
-
-        **사용 예시:**
-        ```bash
-        curl -N http://localhost:3016/api/v2/events
-        ```
-      operationId: subscribeEvents
-      tags: [Events]
-      responses:
-        '200':
-          description: SSE 스트림 연결 성공
-          content:
-            text/event-stream:
-              schema:
-                type: string
-                description: |
-                  SSE 형식: `event: {type}\ndata: {json}\n\n`
-              example: |
-                event: connected
-                data: {"message":"SSE 스트림 연결됨","timestamp":"2026-04-16T10:00:00Z"}
-
-                event: layout.created
-                data: {"name":"my-layout","windowCount":5,"timestamp":"2026-04-16T10:01:00Z"}
 
   # ---------- Settings: full read ----------
   /settings:
