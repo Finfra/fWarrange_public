@@ -1,22 +1,23 @@
 openapi: 3.0.3
 info:
-  title: fWarrange REST API
+  title: fWarrange REST API v1 (DEPRECATED)
   description: |
+    ⚠️ **DEPRECATED** — Use `/api/v2/` instead (Issue213 Phase 1, 2026-04-27)
+
+    Requests to `/api/v1/*` will receive `410 Gone` response with:
+    ```
+    { "message": "API v1 is deprecated. Use /api/v2/ instead." }
+    ```
+
+    ## Historical Reference Only
+
     REST API for fWarrange, a macOS window layout save/restore tool.
     Embedded HTTP server powered by Swift `Network.framework` (NWListener).
     Provides remote access to all core features except Settings modification.
 
-    ## Security
-
-    - **Default binding**: `127.0.0.1` (localhost only). The API is disabled by default.
-    - **External access**: Must be explicitly enabled in the Settings UI.
-      When enabled, the server binds to `0.0.0.0` and applies a CIDR whitelist.
-    - **CIDR whitelist**: Only IP addresses matching the configured CIDR ranges are allowed.
-      Default: `192.168.0.0/16`. Multiple ranges can be specified (comma-separated).
-    - **Localhost always allowed**: Requests from `127.0.0.1` are always permitted regardless of CIDR settings.
-    - **Rejected requests**: Connections from non-whitelisted IPs receive `403 Forbidden`.
-    - **No internet exposure**: This API must NOT be exposed to the public internet.
-  version: 1.0.0
+    All v1 endpoints are now available under `/api/v2/*` (superset).
+    For new API features, consult `openapi_v2.yaml`.
+  version: 1.0.0 (deprecated)
   contact:
     name: fWarrange
   license:
@@ -24,7 +25,7 @@ info:
 
 servers:
   - url: http://localhost:3016/api/v1
-    description: API v1 service root (embedded in macOS app)
+    description: "API v1 (DEPRECATED) — Requests receive 410 Gone. Use /api/v2 instead."
 
 tags:
   - name: Status
