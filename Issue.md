@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 57
 * Save Point: 2026-04-23 (close Issue53 — GET / → CLIStatus 포맷 통일)
+  - 7ad6779 (2026-04-27) - Docs(API): Issue56 — cmd_design.md baseURL을 v2로 갱신
   - 8969653 (2026-04-27) - Docs(API): Issue57 — openapi_v2.yaml SSOT 누락 엔드포인트 3종 추가
   - 72d1239 (2026-04-26) - Docs(API): cliApp_design.md v2 갱신 (Issue55) + Issue56/57 등록
   - 44c6fbc (2026-04-24) - Docs: Close Issue54 (API v1→v2 전환)
@@ -28,7 +29,7 @@ date: 2026-04-07
 
 
 # ✅ 완료
-## Issue56: cmd_design.md CLI baseURL을 v2 기준으로 갱신 (등록: 2026-04-26, 해결: 2026-04-27, commit: TBD) ✅
+## Issue56: cmd_design.md CLI baseURL을 v2 기준으로 갱신 (등록: 2026-04-26, 해결: 2026-04-27, commit: 7ad6779) ✅
 * 목적: CLI 커맨드 설계 문서(2026-04-08 작성)가 `/api/v1` baseURL을 사용하고 있으며, 현행 RESTServer는 v1 호출 시 410 Gone을 반환하므로 이 문서를 따라 CLI 코드를 작성하면 동작하지 않음. v2 기준으로 baseURL 일관성 회복.
 * 상세:
     - cmd_design.md 91줄 `static let baseURL = "http://localhost:\(port)/api/v1"` → `/api/v2`로 갱신
