@@ -26,10 +26,12 @@
 		83167584CB3AC9496AFA89A6 /* DisplayNumberHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA88D59968E1BC4657A3D8B4 /* DisplayNumberHelper.swift */; };
 		8827869DE33D96E8A8816488 /* _config.yml in Resources */ = {isa = PBXBuildFile; fileRef = B26179DE01E4CEA9E93940E1 /* _config.yml */; };
 		8CA4F284AB6BBB5352D573D7 /* ScreenMoveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95BA5BF6280F4128EDF4285D /* ScreenMoveService.swift */; };
+		8F98D971075B144DB96312C7 /* PaidAppStateLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = B06E1306C0A7E734A73B6052 /* PaidAppStateLogger.swift */; };
 		90C424F1307327D09016FD68 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 99611EC4488DE1DB48B6797F /* Assets.xcassets */; };
 		9347927C5890D11DB089E08D /* ModeStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7AA13BAF31243DB7F07719F /* ModeStorageService.swift */; };
 		990554852C9F96E6CA46180A /* ChangeTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCB3C72133309202D83DC44 /* ChangeTracker.swift */; };
 		A31091E371A2B7483343A1DD /* PaidAppStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C7DF7ED030EBBAC16FD552B /* PaidAppStateStore.swift */; };
+		B2CBEE112BD7F6D480059816 /* PaidAppStateLoggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0CF6DAFCE546CC46A0E92C7 /* PaidAppStateLoggerTests.swift */; };
 		B40020566EC37D6524BBB1CD /* RESTServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF65497BEF50CBB7CED8F81 /* RESTServer.swift */; };
 		BC5A6F4B54C6220CFF559455 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEC521474E835C8993023C58 /* WindowManager.swift */; };
 		BC6742D69CE2F82E90B7422F /* LocalizedStringManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2473C39CC4C684EFCA5D58CB /* LocalizedStringManager.swift */; };
@@ -92,6 +94,7 @@
 		A0D0D47C31F3DB1D08190C0C /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		A1E137415D6E8C59805CCF00 /* PaidAppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppRouter.swift; sourceTree = "<group>"; };
 		AEC521474E835C8993023C58 /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
+		B06E1306C0A7E734A73B6052 /* PaidAppStateLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppStateLogger.swift; sourceTree = "<group>"; };
 		B103338C6EF3DA1021783071 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		B26179DE01E4CEA9E93940E1 /* _config.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = _config.yml; sourceTree = "<group>"; };
 		B30239289D5D096DA900F198 /* AccessibilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityService.swift; sourceTree = "<group>"; };
@@ -102,6 +105,7 @@
 		D31B8437208F5CA7719348B1 /* fWarrangeCli.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = fWarrangeCli.entitlements; sourceTree = "<group>"; };
 		DA432610AC9B58EA3638AEBA /* PaidAppAPIModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppAPIModelsTests.swift; sourceTree = "<group>"; };
 		DCF65497BEF50CBB7CED8F81 /* RESTServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RESTServer.swift; sourceTree = "<group>"; };
+		E0CF6DAFCE546CC46A0E92C7 /* PaidAppStateLoggerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppStateLoggerTests.swift; sourceTree = "<group>"; };
 		E7AA13BAF31243DB7F07719F /* ModeStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModeStorageService.swift; sourceTree = "<group>"; };
 		F264201EE001BF2B3032FC78 /* AXPrivateAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AXPrivateAPI.swift; sourceTree = "<group>"; };
 		F40B1E8D2101B5ED1FD42A60 /* PaidAppAPIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppAPIModels.swift; sourceTree = "<group>"; };
@@ -137,6 +141,7 @@
 				37FADC646A77FF5127FD62DA /* Env.swift */,
 				2473C39CC4C684EFCA5D58CB /* LocalizedStringManager.swift */,
 				A0D0D47C31F3DB1D08190C0C /* Logger.swift */,
+				B06E1306C0A7E734A73B6052 /* PaidAppStateLogger.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -186,6 +191,7 @@
 				0CF39B73806C305D1DA7D76C /* FWarrangeCliSmokeTests.swift */,
 				DA432610AC9B58EA3638AEBA /* PaidAppAPIModelsTests.swift */,
 				9F83A9BD5E1D62D0865CA6E8 /* PaidAppRouterTests.swift */,
+				E0CF6DAFCE546CC46A0E92C7 /* PaidAppStateLoggerTests.swift */,
 				96D9BE8B5B15A0FC8367FE33 /* PaidAppStateStoreTests.swift */,
 			);
 			path = fWarrangeCliTests;
@@ -312,6 +318,7 @@
 				2AB27EB94CDAE7E95AE0038D /* FWarrangeCliSmokeTests.swift in Sources */,
 				638565B82365C5E0C2944001 /* PaidAppAPIModelsTests.swift in Sources */,
 				6E8CAAC3C32A6DFFC0772B6A /* PaidAppRouterTests.swift in Sources */,
+				B2CBEE112BD7F6D480059816 /* PaidAppStateLoggerTests.swift in Sources */,
 				D6BBE10639BAFBC04E911FA7 /* PaidAppStateStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -344,6 +351,7 @@
 				C2E99C28DED595BC47482405 /* PaidAppAPIModels.swift in Sources */,
 				66EA8ECE678E75D6BBC6EF56 /* PaidAppMonitor.swift in Sources */,
 				777BCC6E3242282BF52941EC /* PaidAppRouter.swift in Sources */,
+				8F98D971075B144DB96312C7 /* PaidAppStateLogger.swift in Sources */,
 				A31091E371A2B7483343A1DD /* PaidAppStateStore.swift in Sources */,
 				B40020566EC37D6524BBB1CD /* RESTServer.swift in Sources */,
 				DA8C1D721A4DDE07B0E8FB9C /* RestoreStatus.swift in Sources */,

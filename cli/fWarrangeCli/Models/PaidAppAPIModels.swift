@@ -25,6 +25,7 @@ struct PaidAppRegisterResponse: Codable, Equatable {
 struct PaidAppUnregisterRequest: Codable, Equatable {
     let pid: Int32
     let sessionId: String
+    let startTime: String?  // 선택 필드 (단계 ③ startTime 보조 검증)
 }
 
 struct PaidAppUnregisterResponse: Codable, Equatable {

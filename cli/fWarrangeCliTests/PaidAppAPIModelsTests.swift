@@ -30,7 +30,8 @@ final class PaidAppAPIModelsTests: XCTestCase {
             pid: 12345,
             version: "1.14.3",
             bundlePath: "/Applications/_nowage_app/fWarrange.app",
-            startTime: "2026-04-18T09:15:42Z"
+            startTime: "2026-04-18T09:15:42Z",
+            sessionId: "550e8400-e29b-41d4-a716-446655440000"
         )
         let data = try encoder.encode(request)
         let decoded = try decoder.decode(PaidAppRegisterRequest.self, from: data)
@@ -38,10 +39,11 @@ final class PaidAppAPIModelsTests: XCTestCase {
         XCTAssertEqual(decoded.version, "1.14.3")
         XCTAssertEqual(decoded.bundlePath, "/Applications/_nowage_app/fWarrange.app")
         XCTAssertEqual(decoded.startTime, "2026-04-18T09:15:42Z")
+        XCTAssertEqual(decoded.sessionId, "550e8400-e29b-41d4-a716-446655440000")
     }
 
     func testRegisterRequestRejectsMissingPid() {
-        let json = #"{"version":"1.0","bundlePath":"/a","startTime":"2026-04-18T09:15:42Z"}"#
+        let json = #"{"version":"1.0","bundlePath":"/a","startTime":"2026-04-18T09:15:42Z","sessionId":"test-id"}"#
         XCTAssertThrowsError(
             try decoder.decode(PaidAppRegisterRequest.self, from: Data(json.utf8))
         )
@@ -73,7 +75,8 @@ final class PaidAppAPIModelsTests: XCTestCase {
     func testUnregisterRequestRoundTrip() throws {
         let request = PaidAppUnregisterRequest(
             pid: 12345,
-            sessionId: "550e8400-e29b-41d4-a716-446655440000"
+            sessionId: "550e8400-e29b-41d4-a716-446655440000",
+            startTime: nil
         )
         let data = try encoder.encode(request)
         let decoded = try decoder.decode(PaidAppUnregisterRequest.self, from: data)

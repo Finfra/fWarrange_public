@@ -29,28 +29,58 @@ final class PaidAppRouter {
     /// 프로덕션 기본값은 `NSRunningApplication(processIdentifier:)`.
     typealias SenderBundleIdResolver = (_ pid: Int32) -> String?
 
+    /// bundlePath → bundleIdentifier 조회 클로저 (단계 ②). 테스트에서 Mock 주입.
+    /// 프로덕션 기본값은 `Bundle(url:)?.bundleIdentifier`.
+    typealias BundleIdAtPathResolver = (_ url: URL) -> String?
+
     static let paidAppBundleId = "kr.finfra.fWarrange"
 
     private let store: PaidAppStateStore
     private let senderBundleIdResolver: SenderBundleIdResolver
+    private let bundleIdAtPathResolver: BundleIdAtPathResolver
 
     init(
         store: PaidAppStateStore,
-        senderBundleIdResolver: @escaping SenderBundleIdResolver = PaidAppRouter.defaultSenderResolver
+        senderBundleIdResolver: @escaping SenderBundleIdResolver = PaidAppRouter.defaultSenderResolver,
+        bundleIdAtPathResolver: @escaping BundleIdAtPathResolver = PaidAppRouter.defaultBundleIdAtPathResolver
     ) {
         self.store = store
         self.senderBundleIdResolver = senderBundleIdResolver
+        self.bundleIdAtPathResolver = bundleIdAtPathResolver
     }
 
     // MARK: - Handlers
 
     func register(request: PaidAppRegisterRequest) -> RegisterResult {
-        // 발신자 검증: pid가 실제 kr.finfra.fWarrange 프로세스인지 확인
+        // 단계 ① 발신자 검증: pid가 실제 kr.finfra.fWarrange 프로세스인지 확인
         let resolvedBundleId = senderBundleIdResolver(request.pid)
         guard resolvedBundleId == Self.paidAppBundleId else {
-            return .forbidden(
-                reason: "paidapp/register 거부: pid=\(request.pid), 실제 bundleId=\(resolvedBundleId ?? "nil")"
-            )
+            let reason = "paidapp/register 거부: 단계=1, pid=\(request.pid), 실제 bundleId=\(resolvedBundleId ?? "nil")"
+            logW(reason)
+            PaidAppStateLogger.shared.append(.rejected(
+                stage: 1,
+                pid: request.pid,
+                claimedBundleId: Self.paidAppBundleId,
+                actualBundleId: resolvedBundleId,
+                reason: reason
+            ))
+            return .forbidden(reason: reason)
+        }
+
+        // 단계 ② bundlePath 검증: bundlePath가 실제 kr.finfra.fWarrange 번들인지 확인
+        let bundleURL = URL(fileURLWithPath: request.bundlePath)
+        let bundleAtPath = bundleIdAtPathResolver(bundleURL)
+        guard bundleAtPath == Self.paidAppBundleId else {
+            let reason = "paidapp/register 거부: 단계=2, bundlePath=\(request.bundlePath), 실제 bundleId=\(bundleAtPath ?? "nil")"
+            logW(reason)
+            PaidAppStateLogger.shared.append(.rejected(
+                stage: 2,
+                pid: request.pid,
+                claimedBundleId: Self.paidAppBundleId,
+                actualBundleId: bundleAtPath,
+                reason: reason
+            ))
+            return .forbidden(reason: reason)
         }
 
         let sessionId = store.register(
@@ -67,6 +97,16 @@ final class PaidAppRouter {
             // 극히 예외적 race: register 직후 상태가 변경됨. 서버 내부 문제로 보고.
             return .badRequest(reason: "상태 저장 실패 (concurrent)")
         }
+
+        // 감사 로그: register 성공 이벤트
+        PaidAppStateLogger.shared.append(.register(
+            pid: request.pid,
+            bundleId: Self.paidAppBundleId,
+            version: request.version,
+            bundlePath: request.bundlePath,
+            sessionId: sessionId,
+            startTime: request.startTime
+        ))
 
         let cliVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
         let minPaidAppVersion: String? = nil  // 추후 설정 연동
@@ -86,10 +126,31 @@ final class PaidAppRouter {
             return .notFound(reason: "등록된 paidApp 세션 없음")
         }
 
-        let ok = store.unregister(pid: request.pid, sessionId: request.sessionId)
+        // 단계 ③ startTime 보조 검증 (선택 사항, nil이면 기존 동작)
+        let ok = store.unregister(
+            pid: request.pid,
+            sessionId: request.sessionId,
+            startTime: request.startTime
+        )
         if !ok {
-            return .forbidden(reason: "sessionId 또는 pid 불일치 (위조 의심)")
+            let reason = "paidapp/unregister 거부: 단계=3, pid=\(request.pid), sessionId 불일치 또는 startTime 관용도 초과"
+            logW(reason)
+            PaidAppStateLogger.shared.append(.rejected(
+                stage: 3,
+                pid: request.pid,
+                claimedBundleId: Self.paidAppBundleId,
+                actualBundleId: nil,
+                reason: reason
+            ))
+            return .forbidden(reason: "sessionId 또는 pid 불일치, startTime 관용도 초과 (위조 의심)")
         }
+
+        // 감사 로그: unregister 성공 이벤트
+        PaidAppStateLogger.shared.append(.unregister(
+            pid: request.pid,
+            sessionId: request.sessionId,
+            reason: "client"
+        ))
 
         let iso = Self.iso8601Now()
         return .success(PaidAppUnregisterResponse(unregisteredAt: iso))
@@ -107,6 +168,11 @@ final class PaidAppRouter {
         #else
         return nil
         #endif
+    }
+
+    /// 단계 ② 기본 bundlePath 검증기 (프로덕션)
+    static let defaultBundleIdAtPathResolver: BundleIdAtPathResolver = { url in
+        return Bundle(url: url)?.bundleIdentifier
     }
 
     // MARK: - Helpers

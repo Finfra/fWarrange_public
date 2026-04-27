@@ -28,8 +28,16 @@ final class PaidAppStateStore {
         case running(Runtime)
     }
 
+    /// stale 세션 감지 시 호출되는 클로저. 기본값은 logger 호출 없음. AppState init에서 주입됨.
+    typealias OnSessionReplaced = (String, String, Int32, Int32) -> Void
+
     private let queue = DispatchQueue(label: "kr.finfra.fWarrangeCli.PaidAppStateStore")
     private var state: State = .notRunning
+    private var onSessionReplaced: OnSessionReplaced = { _, _, _, _ in }
+
+    init(onSessionReplaced: @escaping OnSessionReplaced = { _, _, _, _ in }) {
+        self.onSessionReplaced = onSessionReplaced
+    }
 
     // MARK: - Register / Unregister / Snapshot
 
@@ -59,7 +67,8 @@ final class PaidAppStateStore {
                 registeredAt: registeredAt
             )
             if case let .running(existing) = state, existing.sessionId != sessionId {
-                // 기존 세션은 stale 처리. 호출자(RESTServer)가 logW 기록.
+                // 기존 세션은 stale 처리. onSessionReplaced 클로저 호출
+                self.onSessionReplaced(existing.sessionId, sessionId, existing.pid, pid)
             }
             state = .running(runtime)
             return sessionId
@@ -67,17 +76,32 @@ final class PaidAppStateStore {
     }
 
     /// paidApp의 `applicationWillTerminate`에서 호출되는 REST 진입점.
-    /// `pid + sessionId` 쌍이 정확히 일치해야 성공. 위조 unregister 차단.
+    /// 단계 ③ startTime 보조 검증 지원:
+    /// - `pid + sessionId` 쌍이 일치하면 성공 (sessionId 우선, startTime 무시)
+    /// - `sessionId` 불일치 시 `startTime`으로 fallback 검증 (±2s 관용)
+    /// - `startTime` nil이면 기존 동작 (sessionId+pid만 검증)
     /// - Returns: `true` = 세션 해제 성공, `false` = 불일치 또는 `.notRunning`
     @discardableResult
-    func unregister(pid: Int32, sessionId: String) -> Bool {
+    func unregister(pid: Int32, sessionId: String, startTime: String? = nil) -> Bool {
         return queue.sync {
             guard case let .running(current) = state else {
                 return false
             }
-            guard current.pid == pid, current.sessionId == sessionId else {
+            let pidMatch = current.pid == pid
+            let sessionMatch = current.sessionId == sessionId
+            let startTimeMatch = startTime.map { Self.startTimesWithinTolerance(current.startTime, $0) } ?? true
+
+            // pid 반드시 일치해야 함
+            guard pidMatch else {
                 return false
             }
+
+            // sessionId 일치 시 startTime 우회 (sessionId 우선)
+            // sessionId 불일치 시 startTime 검증
+            guard sessionMatch || startTimeMatch else {
+                return false
+            }
+
             state = .notRunning
             return true
         }
@@ -130,5 +154,17 @@ final class PaidAppStateStore {
 
     private static func iso8601Now() -> String {
         return iso8601Formatter.string(from: Date())
+    }
+
+    /// 단계 ③ startTime 관용 비교 (±2초).
+    /// ISO8601 문자열 두 개를 파싱해서 절대값 시간차가 2초 이내인지 검증.
+    /// 파싱 실패는 false 반환 (안전한 실패).
+    private static func startTimesWithinTolerance(_ time1: String, _ time2: String) -> Bool {
+        guard let date1 = iso8601Formatter.date(from: time1),
+              let date2 = iso8601Formatter.date(from: time2) else {
+            return false
+        }
+        let diff = abs(date1.timeIntervalSince(date2))
+        return diff <= 2.0
     }
 }

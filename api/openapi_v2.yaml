@@ -1766,6 +1766,14 @@ components:
           type: string
           format: uuid
           description: register 응답으로 받은 sessionId (정확 일치 필요)
+        startTime:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            paidApp의 startTime (ISO8601). 선택 필드.
+            단계 ③ 보조 검증용: sessionId 불일치 시 ±2초 관용으로 startTime 검증.
+            §3.2.1 참조.
       required: [pid, sessionId]
 
     PaidAppUnregisterResponse:

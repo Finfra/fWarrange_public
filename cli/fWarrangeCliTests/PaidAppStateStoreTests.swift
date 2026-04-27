@@ -64,6 +64,7 @@ final class PaidAppStateStoreTests: XCTestCase {
             bundlePath: "/path",
             sessionId: UUID().uuidString
         )
+        // 기존 호출 방식 (startTime 미제공, nil 기본값)
         XCTAssertTrue(store.unregister(pid: 12345, sessionId: sessionId))
         if case .notRunning = store.currentState() {
             // ok
@@ -263,5 +264,147 @@ final class PaidAppStateStoreTests: XCTestCase {
         XCTAssertEqual(resp.state, .notRunning)
         XCTAssertNil(resp.pid)
         XCTAssertNil(resp.sessionId)
+    }
+
+    // MARK: - 단계 ③ startTime 보조 검증
+
+    func testUnregisterWithMismatchedSessionButMatchedStartTimeSucceeds() {
+        // sessionId 불일치 + startTime 일치 (±2s) → 성공
+        let startTime = "2026-04-18T09:15:30Z"
+        let sessionId = store.register(
+            pid: 12345,
+            bundleId: "kr.finfra.fWarrange",
+            startTime: startTime,
+            version: "1.0",
+            bundlePath: "/path",
+            sessionId: UUID().uuidString
+        )
+        // sessionId 불일치, 하지만 startTime 일치 (1초 차이)
+        XCTAssertTrue(
+            store.unregister(
+                pid: 12345,
+                sessionId: "wrong-uuid-000",
+                startTime: "2026-04-18T09:15:31Z"  // 1초 차이, 관용 범위
+            ),
+            "sessionId 불일치이나 startTime 일치(±2s)하면 성공"
+        )
+        if case .notRunning = store.currentState() { /* ok */ }
+        else { XCTFail("unregister 성공 후 .notRunning") }
+    }
+
+    func testUnregisterWithMatchedSessionIgnoresStartTimeMismatch() {
+        // sessionId 일치 시 startTime 검증 우회
+        let startTime = "2026-04-18T09:15:30Z"
+        let sessionId = store.register(
+            pid: 12345,
+            bundleId: "kr.finfra.fWarrange",
+            startTime: startTime,
+            version: "1.0",
+            bundlePath: "/path",
+            sessionId: UUID().uuidString
+        )
+        // sessionId 일치 + startTime 큰 차이 → 성공 (sessionId 우선)
+        XCTAssertTrue(
+            store.unregister(
+                pid: 12345,
+                sessionId: sessionId,
+                startTime: "2026-04-18T10:00:00Z"  // 큰 차이, 무시됨
+            ),
+            "sessionId 일치하면 startTime 무시"
+        )
+        if case .notRunning = store.currentState() { /* ok */ }
+        else { XCTFail("unregister 후 .notRunning") }
+    }
+
+    func testUnregisterWithBothMismatchedFails() {
+        // sessionId 불일치 + startTime 불일치 (관용 범위 초과) → 실패
+        let startTime = "2026-04-18T09:15:30Z"
+        _ = store.register(
+            pid: 12345,
+            bundleId: "kr.finfra.fWarrange",
+            startTime: startTime,
+            version: "1.0",
+            bundlePath: "/path",
+            sessionId: UUID().uuidString
+        )
+        // 둘 다 불일치 → 실패
+        XCTAssertFalse(
+            store.unregister(
+                pid: 12345,
+                sessionId: "wrong-uuid",
+                startTime: "2026-04-18T09:15:35Z"  // 5초 차이, 관용 범위 초과
+            ),
+            "sessionId와 startTime 둘 다 불일치하면 실패"
+        )
+        guard case .running = store.currentState() else {
+            return XCTFail("실패 후 상태 유지")
+        }
+    }
+
+    func testUnregisterWithNilStartTimeUsesSessionIdOnly() {
+        // startTime nil (기본값) → 기존 동작 (sessionId+pid만)
+        let sessionId = store.register(
+            pid: 12345,
+            bundleId: "kr.finfra.fWarrange",
+            startTime: "2026-04-18T09:15:30Z",
+            version: "1.0",
+            bundlePath: "/path",
+            sessionId: UUID().uuidString
+        )
+        // startTime 미제공 (nil)
+        XCTAssertTrue(
+            store.unregister(pid: 12345, sessionId: sessionId, startTime: nil),
+            "startTime nil이면 sessionId만 검증"
+        )
+        if case .notRunning = store.currentState() { /* ok */ }
+        else { XCTFail("unregister 후 .notRunning") }
+    }
+
+    func testStartTimeToleranceExactly2Seconds() {
+        // ±2초 경계값 테스트
+        let startTime = "2026-04-18T09:15:30Z"
+        _ = store.register(
+            pid: 12345,
+            bundleId: "kr.finfra.fWarrange",
+            startTime: startTime,
+            version: "1.0",
+            bundlePath: "/path",
+            sessionId: UUID().uuidString
+        )
+        // 정확히 +2초 → 통과
+        XCTAssertTrue(
+            store.unregister(
+                pid: 12345,
+                sessionId: "wrong",
+                startTime: "2026-04-18T09:15:32Z"
+            ),
+            "정확히 2초 차이는 관용 범위"
+        )
+        if case .notRunning = store.currentState() { /* ok */ }
+        else { XCTFail("unregister 후 .notRunning") }
+    }
+
+    func testStartTimeToleranceParseFails() {
+        // startTime 파싱 실패 → false (안전한 실패)
+        let sessionId = store.register(
+            pid: 12345,
+            bundleId: "kr.finfra.fWarrange",
+            startTime: "2026-04-18T09:15:30Z",
+            version: "1.0",
+            bundlePath: "/path",
+            sessionId: UUID().uuidString
+        )
+        // 잘못된 ISO8601 포맷 → 파싱 실패
+        XCTAssertFalse(
+            store.unregister(
+                pid: 12345,
+                sessionId: "wrong",
+                startTime: "invalid-date"  // 파싱 불가
+            ),
+            "startTime 파싱 실패 → false"
+        )
+        guard case .running = store.currentState() else {
+            return XCTFail("실패 후 상태 유지")
+        }
     }
 }

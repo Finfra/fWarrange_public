@@ -330,7 +330,16 @@ final class AppState {
                 weakSelf?.getIsMenuBarVisible() ?? false
             }
         )
-        let paidAppStore = PaidAppStateStore()
+        let paidAppStore = PaidAppStateStore { oldSessionId, newSessionId, oldPid, newPid in
+            // stale 세션 감지 시 logger에 replaced 이벤트 기록
+            PaidAppStateLogger.shared.append(.replaced(
+                oldSessionId: oldSessionId,
+                newSessionId: newSessionId,
+                oldPid: oldPid,
+                newPid: newPid
+            ))
+            logW("⚠️ paidApp 세션 교체 감지: 기존 sessionId=\(oldSessionId) → 신규 sessionId=\(newSessionId)")
+        }
         self.paidAppStore = paidAppStore
         self.paidAppMonitor = PaidAppMonitor()
         self.restServer = RESTServer(handlers: handlers, paidAppStore: paidAppStore)
@@ -477,8 +486,17 @@ final class AppState {
                   app.bundleIdentifier == "kr.finfra.fWarrange" else { return }
             Task { @MainActor in
                 // Issue197: kill -9 등 비정상 종료 시 Store stale 잔류 방지
+                let currentState = self.paidAppStore.currentState()
                 let cleaned = self.paidAppStore.unregisterAllForBundleId("kr.finfra.fWarrange")
                 if cleaned {
+                    // cleanup 이벤트 기록: currentState에서 pid 추출
+                    if case let .running(runtime) = currentState {
+                        PaidAppStateLogger.shared.append(.cleanup(
+                            bundleId: "kr.finfra.fWarrange",
+                            pid: runtime.pid,
+                            reason: "didTerminate"
+                        ))
+                    }
                     logI("🧹 fWarrange 종료 감지 → PaidAppStateStore cleanup 완료 (bundleId: kr.finfra.fWarrange)")
                 }
             }
