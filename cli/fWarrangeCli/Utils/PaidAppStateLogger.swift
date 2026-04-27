@@ -51,12 +51,8 @@ final class PaidAppStateLogger {
         } else {
             // 기본값: ~/Documents/finfra/fWarrangeData/logs/paidapp_state_transitions.log
             let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            let appRootPath: String
-            if let envPath = ProcessInfo.processInfo.environment["fWarrangeCli_config"], !envPath.isEmpty {
-                appRootPath = (envPath as NSString).expandingTildeInPath
-            } else {
-                appRootPath = documentsURL.appendingPathComponent("finfra/fWarrangeData").path
-            }
+            let appRootPath = Env.configPath
+                ?? documentsURL.appendingPathComponent("finfra/fWarrangeData").path
             let logDir = URL(fileURLWithPath: appRootPath).appendingPathComponent("logs")
             try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true, attributes: nil)
             self.fileURL = logDir.appendingPathComponent("paidapp_state_transitions.log")

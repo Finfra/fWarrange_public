@@ -42,9 +42,6 @@ final class YAMLLayoutStorageService: LayoutStorageService {
 
     static let defaultDataDirectoryPath = "~/Documents/finfra/fWarrangeData"
 
-    /// 환경변수 키: 이 값이 설정되어 있으면 데이터 디렉토리로 사용
-    static let envConfigKey = "fWarrangeCli_config"
-
     /// hostname 헬퍼 — .local 접미사 제거
     static func currentHostname() -> String {
         let hostname = ProcessInfo.processInfo.hostName
@@ -55,11 +52,11 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     }
 
     /// base directory(hostname 하위 아님)를 반환
-    /// 우선순위: 환경변수 fWarrangeCli_config → ~/Documents/finfra/fWarrange
+    /// 우선순위: Env.configPath (env: fWarrangeCli_config) → ~/Documents/finfra/fWarrangeData
     static func resolveDefaultBaseDirectory() -> URL {
         let defaultDir: URL
-        if let envPath = ProcessInfo.processInfo.environment[envConfigKey], !envPath.isEmpty {
-            defaultDir = URL(fileURLWithPath: (envPath as NSString).expandingTildeInPath)
+        if let envPath = Env.configPath {
+            defaultDir = URL(fileURLWithPath: envPath)
         } else {
             defaultDir = FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent("Documents/finfra/fWarrangeData")

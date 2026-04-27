@@ -55,12 +55,8 @@ nonisolated final class Logger: Sendable {
         self.sessionDateString = formatter.string(from: Date())
 
         let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let appRootPath: String
-        if let envPath = ProcessInfo.processInfo.environment["fWarrangeCli_config"], !envPath.isEmpty {
-            appRootPath = (envPath as NSString).expandingTildeInPath
-        } else {
-            appRootPath = documentsURL.appendingPathComponent("finfra/fWarrangeData").path
-        }
+        let appRootPath = Env.configPath
+            ?? documentsURL.appendingPathComponent("finfra/fWarrangeData").path
         let logDir = URL(fileURLWithPath: appRootPath).appendingPathComponent("logs")
         try? FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true, attributes: nil)
 

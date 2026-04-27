@@ -28,4 +28,12 @@ enum Env {
     static var hotkeysDisabled: Bool {
         ProcessInfo.processInfo.environment["FWARRANGE_DISABLE_HOTKEYS"] == "1"
     }
+
+    /// fWarrangeCli_config: 데이터/설정 디렉토리 오버라이드. 빈 값/미설정 시 nil. tilde(~) 자동 확장.
+    /// 기본값 fallback은 호출 측 책임 (Logger / LayoutStorageService / PaidAppStateLogger).
+    static var configPath: String? {
+        guard let raw = ProcessInfo.processInfo.environment["fWarrangeCli_config"],
+              !raw.isEmpty else { return nil }
+        return (raw as NSString).expandingTildeInPath
+    }
 }

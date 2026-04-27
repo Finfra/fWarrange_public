@@ -12,7 +12,7 @@ protocol SettingsService {
 // MARK: - YAML 파일 기반 구현체
 
 /// {basePath}/_config.yml에서 설정을 읽고 쓰는 서비스.
-/// basePath: 환경변수 fWarrangeCli_config 또는 ~/Documents/finfra/fWarrangeData
+/// basePath: Env.configPath (env: fWarrangeCli_config) 또는 ~/Documents/finfra/fWarrangeData
 final class YAMLSettingsService: SettingsService {
     private let configURL: URL
 
