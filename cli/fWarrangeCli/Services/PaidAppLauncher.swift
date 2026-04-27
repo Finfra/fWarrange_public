@@ -3,14 +3,21 @@ import AppKit
 
 /// Detects and launches the paid sibling (`fWarrange.app`).
 /// Issue217 Phase 2: extracted from AppState. Search paths follow
-/// paid_cli_protocol.md §2.1 deployment matrix; user-home install fallback
-/// is tracked separately (issue후보 — 이슈후보2, 2026-04-26).
+/// paid_cli_protocol.md §2.1 deployment matrix.
+/// Issue223: user-home `~/Applications/fWarrange.app` fallback added.
 enum PaidAppLauncher {
-    private static let paidAppSearchPaths = [
-        "/Applications/fWarrange.app",
-        "/Applications/_nowage_app/fWarrange.app",
-        "/Applications/_finfra_app/fWarrange.app"
-    ]
+    // Issue223: SSOT §2.1 — system locations first, then user-home fallback.
+    // ~/Library is intentionally excluded; only well-known install roots are scanned.
+    private static let paidAppSearchPaths: [String] = {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Applications/fWarrange.app").path
+        return [
+            "/Applications/fWarrange.app",
+            "/Applications/_nowage_app/fWarrange.app",
+            "/Applications/_finfra_app/fWarrange.app",
+            home
+        ]
+    }()
 
     // Issue222: SSOT §1.2 — URL Scheme parameter validation.
     // Whitelist accepted action verbs sent to paidApp via `fwarrange://command?action=...`.
