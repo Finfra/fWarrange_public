@@ -5,10 +5,10 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 57
-* Save Point: 2026-04-23 (close Issue53 — GET / → CLIStatus 포맷 통일)
-  - 7ad6779 (2026-04-27) - Docs(API): Issue56 — cmd_design.md baseURL을 v2로 갱신
-  - 8969653 (2026-04-27) - Docs(API): Issue57 — openapi_v2.yaml SSOT 누락 엔드포인트 3종 추가
-  - 72d1239 (2026-04-26) - Docs(API): cliApp_design.md v2 갱신 (Issue55) + Issue56/57 등록
+* Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - 7ad6779 (2026-04-27) - Docs: Close Issue56 (cmd_design.md baseURL v2 갱신)
+  - 8969653 (2026-04-27) - Docs: Close Issue57 (openapi_v2.yaml SSOT 누락 3종 추가)
+  - 72d1239 (2026-04-26) - Docs: Close Issue55 (cliApp_design.md v2 표 재구성)
   - 44c6fbc (2026-04-24) - Docs: Close Issue54 (API v1→v2 전환)
   - d4c13cc (2026-04-23) - Docs: Close Issue53 (GET / → CLIStatus 포맷 통일)
   - 529ccb6 (2026-04-22) - Fix(Issue49): GET /api/v2/settings effective* 필드 추가 + Issue48 종결
