@@ -12,6 +12,23 @@ enum PaidAppLauncher {
         "/Applications/_finfra_app/fWarrange.app"
     ]
 
+    // Issue222: SSOT §1.2 — URL Scheme parameter validation.
+    // Whitelist accepted action verbs sent to paidApp via `fwarrange://command?action=...`.
+    private static let allowedActions: Set<String> = [
+        "main", "settings", "layouts", "edit", "about"
+    ]
+
+    // Issue222: SSOT §1.2 — layout name pattern (reserved for future open(action:layout:) extension).
+    // Matches conservative layout filenames: alphanumeric + `_-.`, length 1..64.
+    private static let layoutPattern = #"^[A-Za-z0-9_\-\.]{1,64}$"#
+
+    /// Validate a layout token against `layoutPattern`. Returns false on mismatch.
+    static func isValidLayout(_ value: String) -> Bool {
+        guard let regex = try? NSRegularExpression(pattern: layoutPattern) else { return false }
+        let range = NSRange(value.startIndex..., in: value)
+        return regex.firstMatch(in: value, options: [], range: range) != nil
+    }
+
     /// Detect paid app at known install locations only (excludes ~/Library).
     static func detect() -> URL? {
         for path in paidAppSearchPaths {
@@ -38,8 +55,21 @@ enum PaidAppLauncher {
     /// Issue195: open a specific paidApp screen via fwarrange:// URL scheme.
     /// If paidApp is not installed, NSWorkspace returns false and the caller
     /// is expected to surface the install/start guide.
+    /// Issue222: action whitelist + URL-percent-encoding to block query injection.
     static func open(action: String) {
-        guard let url = URL(string: "fwarrange://command?action=\(action)") else { return }
+        guard allowedActions.contains(action) else {
+            let allowed = allowedActions.sorted().joined(separator: ",")
+            logW("🚫 paidApp URL Scheme 거부: 허용되지 않은 action=\(action) (allowed: \(allowed))")
+            return
+        }
+        var components = URLComponents()
+        components.scheme = "fwarrange"
+        components.host = "command"
+        components.queryItems = [URLQueryItem(name: "action", value: action)]
+        guard let url = components.url else {
+            logW("⚠️ paidApp URL Scheme URL 생성 실패: action=\(action)")
+            return
+        }
         let opened = NSWorkspace.shared.open(url)
         if opened {
             logI("🔗 paidApp URL Scheme 호출 성공: action=\(action)")
