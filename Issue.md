@@ -4,18 +4,15 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 57
+* Issue HWM: 58
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - bc232b7 (2026-04-27) - Refactor(AppState): Issue217 Phase 2 — Service 4종 추출 (책임 분리)
   - 7ad6779 (2026-04-27) - Docs: Close Issue56 (cmd_design.md baseURL v2 갱신)
-  - 8969653 (2026-04-27) - Docs: Close Issue57 (openapi_v2.yaml SSOT 누락 3종 추가)
-  - 72d1239 (2026-04-26) - Docs: Close Issue55 (cliApp_design.md v2 표 재구성)
-  - 44c6fbc (2026-04-24) - Docs: Close Issue54 (API v1→v2 전환)
-  - d4c13cc (2026-04-23) - Docs: Close Issue53 (GET / → CLIStatus 포맷 통일)
-  - 529ccb6 (2026-04-22) - Fix(Issue49): GET /api/v2/settings effective* 필드 추가 + Issue48 종결
-  - bdbb110 (2026-04-22) - Docs: Close Issue50
-  - 65c593a (2026-04-20) - Docs: Close Issue42 (pairApp Issue52 Full Mirror — shutdown API + 호환성 필드 완결)
+
 
 # 🤔 결정사항
+* _doc_design/paid_cli_protocol.md 기준 진행(paidApp앱과 연동)
+* _doc_design/menuBar_enhance.md 기준 진행(메뉴바)
 
 # 🌱 이슈후보
 1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
@@ -23,7 +20,24 @@ date: 2026-04-07
 # 🚧 진행중
 
 # 📕 중요
+
 # 📙 일반
+## Issue58: cliApp 메뉴바 개선안 적용 (menuBar_enhance.md SSOT) (등록: 2026.04.27)
+* 목적: _doc_design/menuBar_enhance.md SSOT의 cliApp 메뉴 개선안을 적용하여 paidApp 부재 시에도 핵심 기능(Save/Restore/Layout 직접 클릭) 노출 + paidApp과 동형 구조로 학습 비용 0 달성. Issue46 시간적 배타성 적용 분기와 design doc(미적용 정책) 충돌 동시 해소.
+* plan: `cli/_doc_work/plan/menuBar_enhance_plan.md`
+* 상세: 
+- Issue46 충돌 해소: cliOnlySection 분기 폐기, paidApp 실행/미실행 무관 동일 메뉴 표시 (design doc §7.2.1/§7.4 SSOT)
+- About fWarrangeCli 도입 (Homebrew 단독 배포 환경의 정체성/버전 표기)
+- F7 앵커 단축키 4종 라벨 표기 (saveShortcut/restoreLastShortcut/restoreDefaultShortcut/showMainWindowShortcut, _config.yml SSOT, Apple HIG ⌃⌥⇧⌘ 순서)
+- Save / Restore Last / Restore Default 평면 노출 (paidApp 부재 시 cliApp 단독 동작 검증 필수)
+- Layout list 평면 노출: ⭐ Default + Recent 5 + ...and K more (LayoutManager + Adaptive Polling §6 협약)
+- 👻 Daemon 서브메뉴: Status·Port·Uptime 단일 라인 / Restart Daemon / Pause·Resume REST API
+- ⚙️ Configuration 서브메뉴: Settings… / Open Config File / Open Data Folder / Open Log Folder
+- Settings… fallback: paidApp 감지 시 URL Scheme 위임, 미감지 시 REST /api/v2/settings (paid_cli_protocol §0.5/§1.2)
+- Open Data Folder는 appState.settingsService.dataDirectoryPath 사용 (path-rules: 하드코딩 금지)
+- Pause/Resume·/api/v2/settings 미존재 시: 메뉴 비활성화 + 후속 이슈 분리 (자동 신규 API 추가 금지)
+- 메인 레포 paidApp 메뉴바 이슈는 별도 등록 + 양방향 링크
+
 
 # 📗 선택
 
