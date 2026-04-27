@@ -16,6 +16,9 @@ final class PaidAppMonitor {
 
     private let paidAppBundleId = "kr.finfra.fWarrange"
 
+    /// paidApp terminate 시 호출할 콜백 (AppState의 cleanup 로직 통합용)
+    private var onTerminateCallback: ((NSRunningApplication) -> Void)?
+
     init() {
         // 초기 상태: 현재 실행 중인 paidApp 확인
         let running = !NSRunningApplication.runningApplications(
@@ -28,7 +31,9 @@ final class PaidAppMonitor {
     }
 
     /// NSWorkspace 알림 구독 시작. `AppState.initialize()` 시점에 호출.
-    func startObserving() {
+    /// - Parameter onTerminate: paidApp 종료 시 호출할 콜백 (cleanup 로직)
+    func startObserving(onTerminate: ((NSRunningApplication) -> Void)? = nil) {
+        self.onTerminateCallback = onTerminate
         let center = NSWorkspace.shared.notificationCenter
 
         center.addObserver(
@@ -56,6 +61,8 @@ final class PaidAppMonitor {
             Task { @MainActor [weak self] in
                 self?.state = .cliOnly
                 logI("🎯 PaidAppMonitor: paidApp 종료 감지 → .cliOnly (pid=\(app.processIdentifier))")
+                // onTerminate 콜백 실행 (AppState의 cleanup 로직)
+                self?.onTerminateCallback?(app)
             }
         }
     }

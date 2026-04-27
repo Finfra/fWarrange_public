@@ -16,6 +16,7 @@
 		46824F98577EE2884AB9A7FF /* AXPrivateAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F264201EE001BF2B3032FC78 /* AXPrivateAPI.swift */; };
 		47AEC5453C5C9C1488ABFEE3 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85FE7B6EF2174224C37FA6F0 /* MenuBarView.swift */; };
 		4926C654E290CAB561309435 /* Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5448F7DE624FDC82BC3D385C /* Layout.swift */; };
+		512CBD8F021306364745E1FD /* AppSettings+Patch.swift in Sources */ = {isa = PBXBuildFile; fileRef = A804ACAAB31972F56325FA7F /* AppSettings+Patch.swift */; };
 		5550D4E9E811C42F638DA161 /* HotKeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25E958C235A2113119D12901 /* HotKeyService.swift */; };
 		61B1B19B91BC62990534DBC4 /* Env.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37FADC646A77FF5127FD62DA /* Env.swift */; };
 		638565B82365C5E0C2944001 /* PaidAppAPIModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA432610AC9B58EA3638AEBA /* PaidAppAPIModelsTests.swift */; };
@@ -93,6 +94,7 @@
 		9F83A9BD5E1D62D0865CA6E8 /* PaidAppRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppRouterTests.swift; sourceTree = "<group>"; };
 		A0D0D47C31F3DB1D08190C0C /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		A1E137415D6E8C59805CCF00 /* PaidAppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppRouter.swift; sourceTree = "<group>"; };
+		A804ACAAB31972F56325FA7F /* AppSettings+Patch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings+Patch.swift"; sourceTree = "<group>"; };
 		AEC521474E835C8993023C58 /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
 		B06E1306C0A7E734A73B6052 /* PaidAppStateLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppStateLogger.swift; sourceTree = "<group>"; };
 		B103338C6EF3DA1021783071 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -201,6 +203,7 @@
 			isa = PBXGroup;
 			children = (
 				B103338C6EF3DA1021783071 /* AppSettings.swift */,
+				A804ACAAB31972F56325FA7F /* AppSettings+Patch.swift */,
 				5448F7DE624FDC82BC3D385C /* Layout.swift */,
 				881D6E417915BBA037DF45F8 /* MatchType.swift */,
 				2E0460B68C5CE5C8544611FF /* Mode.swift */,
@@ -331,6 +334,7 @@
 				FBA6A026682AD9E9385AAF3A /* AboutWindowManager.swift in Sources */,
 				D99357465706732DF4B1F558 /* AccessibilityService.swift in Sources */,
 				C28393B14CC286D469E07E9C /* AppLauncherService.swift in Sources */,
+				512CBD8F021306364745E1FD /* AppSettings+Patch.swift in Sources */,
 				363BF8287FD23580D3FB33E4 /* AppSettings.swift in Sources */,
 				463D7F8F385E5DA1F5E40501 /* AppState.swift in Sources */,
 				CE2A10A1CBC6C57013BF7BA9 /* BrewServiceSync.swift in Sources */,

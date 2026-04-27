@@ -160,14 +160,19 @@ final class AppState {
             },
             getFullSettings: { [weak settingsService] in
                 guard let svc = settingsService else { return [:] }
-                return AppState.fullSettingsDict(svc.load())
+                return AppSettings.fullSettingsDict(svc.load())
             },
             patchSettings: { [weak settingsService] body in
                 guard let svc = settingsService else { return [:] }
                 var s = svc.load()
-                AppState.applySettingsPatch(&s, body: body)
+                // appLanguage 변경 감지
+                let oldLanguage = s.appLanguage
+                AppSettings.applySettingsPatch(&s, body: body)
+                if let newLanguage = body["appLanguage"] as? String, newLanguage != oldLanguage {
+                    AppState.applyLanguageSetting(newLanguage)
+                }
                 svc.save(s)
-                return AppState.fullSettingsDict(s)
+                return AppSettings.fullSettingsDict(s)
             },
             getExcludedApps: { [weak settingsService] in
                 settingsService?.load().excludedApps ?? []
@@ -205,7 +210,7 @@ final class AppState {
             factoryResetSettings: { [weak settingsService] in
                 guard let svc = settingsService else { return [:] }
                 svc.resetToDefaults()
-                return AppState.fullSettingsDict(svc.load())
+                return AppSettings.fullSettingsDict(svc.load())
             },
             getShortcutsDisplay: { [weak settingsService] in
                 guard let svc = settingsService else { return [:] }
@@ -346,65 +351,6 @@ final class AppState {
         weakSelf = self
     }
 
-    // MARK: - v2 설정 직렬화/패치 헬퍼
-
-    static func fullSettingsDict(_ s: AppSettings) -> [String: Any] {
-        var d: [String: Any] = [
-            "excludedApps": s.excludedApps,
-            "maxRetries": s.maxRetries,
-            "retryInterval": s.retryInterval,
-            "minimumMatchScore": s.minimumMatchScore,
-            "enableParallelRestore": s.enableParallelRestore ?? true,
-            "restServerPort": s.restServerPort ?? 3016,
-            "logLevel": s.logLevel ?? 5,
-            "dataStorageMode": (s.dataStorageMode ?? .host).rawValue,
-            "launchAtLogin": s.launchAtLogin ?? false,
-            "appLanguage": s.appLanguage ?? "system",
-            "restServerEnabled": s.restServerEnabled ?? true,
-            "allowExternalAccess": s.allowExternalAccess ?? false,
-            "allowedCIDR": s.allowedCIDR ?? "192.168.0.0/16",
-            "autoSaveOnSleep": s.autoSaveOnSleep ?? true,
-            "maxAutoSaves": s.maxAutoSaves ?? 5,
-            "restoreButtonStyle": s.restoreButtonStyle ?? "nameIcon",
-            "confirmBeforeDelete": s.confirmBeforeDelete ?? true,
-            "showInCmdTab": s.showInCmdTab ?? true,
-            "clickSwitchToMain": s.clickSwitchToMain ?? false,
-            "theme": s.theme ?? "system"
-        ]
-        if let p = s.dataDirectoryPath { d["dataDirectoryPath"] = p }
-        if let n = s.defaultLayoutName { d["defaultLayoutName"] = n }
-        return d
-    }
-
-    static func applySettingsPatch(_ s: inout AppSettings, body: [String: Any]) {
-        if let v = body["appLanguage"] as? String {
-            s.appLanguage = v
-            applyLanguageSetting(v)
-        }
-        if let v = body["dataStorageMode"] as? String, let m = DataStorageMode(rawValue: v) { s.dataStorageMode = m }
-        if let v = body["dataDirectoryPath"] as? String { s.dataDirectoryPath = v.isEmpty ? nil : v }
-        if body["dataDirectoryPath"] is NSNull { s.dataDirectoryPath = nil }
-        if let v = body["launchAtLogin"] as? Bool { s.launchAtLogin = v }
-        if let v = body["theme"] as? String { s.theme = v }
-        if let v = body["maxRetries"] as? Int { s.maxRetries = v }
-        if let v = body["retryInterval"] as? Double { s.retryInterval = v }
-        if let v = body["retryInterval"] as? Int { s.retryInterval = Double(v) }
-        if let v = body["minimumMatchScore"] as? Int { s.minimumMatchScore = v }
-        if let v = body["enableParallelRestore"] as? Bool { s.enableParallelRestore = v }
-        if let v = body["excludedApps"] as? [String] { s.excludedApps = v }
-        if let v = body["restServerEnabled"] as? Bool { s.restServerEnabled = v }
-        if let v = body["restServerPort"] as? Int { s.restServerPort = v }
-        if let v = body["allowExternalAccess"] as? Bool { s.allowExternalAccess = v }
-        if let v = body["allowedCIDR"] as? String { s.allowedCIDR = v }
-        if let v = body["logLevel"] as? Int { s.logLevel = v }
-        if let v = body["autoSaveOnSleep"] as? Bool { s.autoSaveOnSleep = v }
-        if let v = body["maxAutoSaves"] as? Int { s.maxAutoSaves = v }
-        if let v = body["restoreButtonStyle"] as? String { s.restoreButtonStyle = v }
-        if let v = body["confirmBeforeDelete"] as? Bool { s.confirmBeforeDelete = v }
-        if let v = body["showInCmdTab"] as? Bool { s.showInCmdTab = v }
-        if let v = body["clickSwitchToMain"] as? Bool { s.clickSwitchToMain = v }
-        if let v = body["defaultLayoutName"] as? String { s.defaultLayoutName = v.isEmpty ? nil : v }
-    }
 
     func initialize() {
         let effectiveLogLevel = Env.logLevel ?? LogLevel(rawValue: settings.logLevel ?? 5) ?? .critical
@@ -416,8 +362,24 @@ final class AppState {
             logI("✅ fWarrange(Paid) 실행 — cliApp 메뉴바 유지 (2-모드 관리)")
         }
 
-        // PaidAppMonitor NSWorkspace 구독 시작
-        paidAppMonitor.startObserving()
+        // PaidAppMonitor NSWorkspace 구독 시작 (paidApp terminate 콜백 포함)
+        paidAppMonitor.startObserving { [weak self] app in
+            guard let self else { return }
+            // Issue197: kill -9 등 비정상 종료 시 Store stale 잔류 방지
+            let currentState = self.paidAppStore.currentState()
+            let cleaned = self.paidAppStore.unregisterAllForBundleId("kr.finfra.fWarrange")
+            if cleaned {
+                // cleanup 이벤트 기록: currentState에서 pid 추출
+                if case let .running(runtime) = currentState {
+                    PaidAppStateLogger.shared.append(.cleanup(
+                        bundleId: "kr.finfra.fWarrange",
+                        pid: runtime.pid,
+                        reason: "didTerminate"
+                    ))
+                }
+                logI("🧹 fWarrange 종료 감지 → PaidAppStateStore cleanup 완료 (bundleId: kr.finfra.fWarrange)")
+            }
+        }
         startObservingMenuBarIcon()
 
         layoutManager.loadMetadataList()
@@ -466,41 +428,6 @@ final class AppState {
 
         // Issue36: brew services 배타 원칙 — 앱 내부 SMAppService 자동 등록 경로 제거
         // launchAtLogin prefs 는 backward compat 유지, 실제 Login Item 등록은 brew services 가 담당
-
-        // fWarrange(Paid) 종료 감지 → 메뉴바 자동 복원
-        observePaidAppTermination()
-    }
-
-    // MARK: - fWarrange(Paid) 종료 감시
-
-    /// NSWorkspace notification으로 fWarrange 앱 종료를 감지하여 메뉴바를 자동 복원
-    private func observePaidAppTermination() {
-        let center = NSWorkspace.shared.notificationCenter
-        center.addObserver(
-            forName: NSWorkspace.didTerminateApplicationNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] notification in
-            guard let self else { return }
-            guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                  app.bundleIdentifier == "kr.finfra.fWarrange" else { return }
-            Task { @MainActor in
-                // Issue197: kill -9 등 비정상 종료 시 Store stale 잔류 방지
-                let currentState = self.paidAppStore.currentState()
-                let cleaned = self.paidAppStore.unregisterAllForBundleId("kr.finfra.fWarrange")
-                if cleaned {
-                    // cleanup 이벤트 기록: currentState에서 pid 추출
-                    if case let .running(runtime) = currentState {
-                        PaidAppStateLogger.shared.append(.cleanup(
-                            bundleId: "kr.finfra.fWarrange",
-                            pid: runtime.pid,
-                            reason: "didTerminate"
-                        ))
-                    }
-                    logI("🧹 fWarrange 종료 감지 → PaidAppStateStore cleanup 완료 (bundleId: kr.finfra.fWarrange)")
-                }
-            }
-        }
     }
 
     // MARK: - 메뉴바 아이콘 관리
