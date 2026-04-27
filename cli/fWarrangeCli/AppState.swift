@@ -330,9 +330,6 @@ final class AppState {
             },
             getActiveModeName: {
                 weakSelf?.activeModeName
-            },
-            getIsMenuBarVisible: {
-                weakSelf?.getIsMenuBarVisible() ?? false
             }
         )
         let paidAppStore = PaidAppStateStore { oldSessionId, newSessionId, oldPid, newPid in
@@ -655,12 +652,6 @@ final class AppState {
                 self?.windowManager.openAccessibilitySettings()
             }
         }
-    }
-
-    /// 메뉴바 아이콘 표시 여부
-    /// paidApp 실행 중이지 않을 때만 true (cliOnly 상태)
-    func getIsMenuBarVisible() -> Bool {
-        paidAppMonitor.state == .cliOnly
     }
 
     /// _config.yml의 appLanguage 설정을 시스템 언어로 적용 (fSnippet 참고)
