@@ -24,21 +24,24 @@ date: 2026-04-07
 # 📕 중요
 # 📙 일반
 
-## Issue56: cmd_design.md CLI baseURL 및 엔드포인트 인용을 v2 기준으로 갱신 (등록: 2026-04-26)
-* 목적: CLI 커맨드 설계 문서(2026-04-08 작성)가 `/api/v1` 기준으로 작성되어 있으며, 현행 RESTServer는 v1 호출 시 410 Gone을 반환하므로 이 문서를 따라 CLI 코드를 작성하면 동작하지 않음. v2 기준으로 일관성 갱신함.
-* 상세:
-    - cmd_design.md 91줄 `static let baseURL = "http://localhost:\(port)/api/v1"` → `/api/v2`로 갱신
-    - "대응 API" 표·본문에서 `/api/v1/cli/status`, `/api/v1/cli/version`, `/api/v1/cli/quit` 등 v1 경로 인용 전부 `/api/v2/*`로 갱신
-    - 약 184줄의 CLI 핸들러 매핑 예시도 동일하게 v2 경로로 일괄 교체
-    - 문서 frontmatter `date` 필드는 갱신 시점으로 업데이트
-* 영향 파일:
-    - `cli/_doc_design/cmd_design.md` (수정)
-* 비고: 코드 동작에는 영향 없음 — 문서 정확성 이슈. CLI 커맨드 자체는 Issue6에서 이미 구현 완료(`584819e`) 상태이므로, 문서가 현행 구현과 일관되도록 정렬하는 작업
-
 # 📗 선택
 
 
 # ✅ 완료
+## Issue56: cmd_design.md CLI baseURL을 v2 기준으로 갱신 (등록: 2026-04-26, 해결: 2026-04-27, commit: TBD) ✅
+* 목적: CLI 커맨드 설계 문서(2026-04-08 작성)가 `/api/v1` baseURL을 사용하고 있으며, 현행 RESTServer는 v1 호출 시 410 Gone을 반환하므로 이 문서를 따라 CLI 코드를 작성하면 동작하지 않음. v2 기준으로 baseURL 일관성 회복.
+* 상세:
+    - cmd_design.md 91줄 `static let baseURL = "http://localhost:\(port)/api/v1"` → `/api/v2`로 갱신
+    - 등록 시 추정한 "여러 v1 경로 인용" 및 "184줄 CLI 핸들러 매핑"은 실제 파일(173줄) 기준 부정확 — 표·코드 예시 모두 prefix 없이 path만 표기(`GET /cli/version`, `fetchAndPrint("/cli/version")`)하여 `baseURL` prefix 자동 부착 구조였음. 따라서 baseURL 1건 갱신만으로 전체 문서가 v2로 정합됨
+* 구현 명세:
+    - `grep -nE "/api/v1" cli/_doc_design/cmd_design.md`로 stale 영역 정확히 식별 → 91줄 단일 라인
+    - 91줄 `static let baseURL = "http://localhost:\(port)/api/v1"` → `"http://localhost:\(port)/api/v2"` 교체
+    - frontmatter `date: 2026-04-08` → `date: 2026-04-27` 갱신
+    - 검증: `grep -nE "/api/v1|api/v1" cli/_doc_design/cmd_design.md` → 0건 (잔존물 없음)
+* 영향 파일:
+    - `cli/_doc_design/cmd_design.md` (91줄 baseURL + frontmatter date)
+* 비고: 코드 동작에는 영향 없음 — 문서 정확성 이슈. CLI 커맨드 구현(Issue6, `584819e`)은 정상이며, 문서만 현행 v2와 정렬됨. 표 헤더 컬럼명 "대응 API"의 path가 prefix 없는 것은 의도된 설계 — baseURL 단일 SSOT 패턴이라 향후 v3 전환 시에도 baseURL 한 줄만 갱신하면 됨
+
 ## Issue57: openapi_v2.yaml SSOT 누락 엔드포인트 3종 추가 (코드↔스펙 동기화) (등록: 2026-04-26, 해결: 2026-04-27, commit: 8969653) ✅
 * 목적: `cli/fWarrangeCli/Services/RESTServer.swift`에 라우팅 구현되어 동작 중이지만 `api/openapi_v2.yaml`(SSOT)에 정의되지 않은 엔드포인트 3종을 yaml에 추가하여 `api-rules.md`의 "양쪽이 항상 일치해야 함" 규칙을 만족시킴. Issue55(cliApp_design.md 갱신) 작업 중 코드↔yaml 교차검증으로 발견됨.
 * 상세:

@@ -1,7 +1,7 @@
 ---
 name: cmd_design
 description: cliApp CLI 커맨드 인터페이스 설계
-date: 2026-04-08
+date: 2026-04-27
 ---
 
 # 배경
@@ -88,7 +88,7 @@ if args.count > 1 {
 
 ```swift
 struct CLIHandler {
-    static let baseURL = "http://localhost:\(port)/api/v1"
+    static let baseURL = "http://localhost:\(port)/api/v2"
 
     static func handle(args: [String]) {
         switch args.first {
