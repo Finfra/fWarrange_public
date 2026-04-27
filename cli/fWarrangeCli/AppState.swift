@@ -471,7 +471,7 @@ final class AppState {
         LoginItemService.sync(enabled: enabled)
     }
 
-    private func handleHotKeyAction(_ action: HotKeyAction) {
+    func handleHotKeyAction(_ action: HotKeyAction) {
         switch action {
         case .save:
             let name = layoutManager.nextDailySequenceName()
@@ -479,17 +479,41 @@ final class AppState {
             try? layoutManager.saveLayout(name: name, windows: windows)
             ChangeTracker.shared.record(type: "layout.created", target: name)
             logI("⌨️ 단축키 저장: '\(name)'")
-        case .restoreDefault, .restoreLast:
-            if let first = layoutManager.layouts.first {
-                Task {
-                    let layout = try? layoutManager.storageServiceLoad(name: first.name)
-                    if let layout {
-                        await windowManager.restoreWindows(layout.windows, maxRetries: settings.maxRetries, retryInterval: settings.retryInterval, minimumScore: settings.minimumMatchScore, enableParallel: settings.enableParallelRestore ?? true)
-                    }
-                }
+        case .restoreDefault:
+            // defaultLayoutName SSOT 우선 → 미지정 시 fileDate 가장 최근
+            let target = settings.defaultLayoutName
+                ?? layoutManager.layouts.sorted { $0.fileDate > $1.fileDate }.first?.name
+            if let target { restoreLayoutByName(target) }
+        case .restoreLast:
+            // fileDate 가장 최근
+            if let target = layoutManager.layouts.sorted(by: { $0.fileDate > $1.fileDate }).first?.name {
+                restoreLayoutByName(target)
             }
-        case .showMainWindow, .showSettings:
-            break // fWarrangeCli에서는 GUI 없음
+        case .showMainWindow:
+            // paidApp 메인 창 열기 — 감지 시 URL Scheme, 미감지 시 본 분기는 메뉴 클릭 경로에서 처리
+            openPaidApp(action: "main")
+        case .showSettings:
+            // paidApp Settings 위임 — cliApp은 자체 Settings GUI 미보유
+            openPaidApp(action: "settings")
+        }
+    }
+
+    /// 이름으로 레이아웃 복구 (메뉴 클릭 / 핫키 공용)
+    func restoreLayoutByName(_ name: String) {
+        Task {
+            let layout = try? layoutManager.storageServiceLoad(name: name)
+            if let layout {
+                await windowManager.restoreWindows(
+                    layout.windows,
+                    maxRetries: settings.maxRetries,
+                    retryInterval: settings.retryInterval,
+                    minimumScore: settings.minimumMatchScore,
+                    enableParallel: settings.enableParallelRestore ?? true
+                )
+                logI("🔁 레이아웃 복구: '\(name)'")
+            } else {
+                logW("⚠️ 레이아웃 로드 실패: '\(name)'")
+            }
         }
     }
 
