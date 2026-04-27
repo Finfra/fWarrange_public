@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import ServiceManagement
 
 @Observable @MainActor
 final class AppState {
@@ -427,51 +426,26 @@ final class AppState {
         // launchAtLogin prefs 는 backward compat 유지, 실제 Login Item 등록은 brew services 가 담당
     }
 
-    // MARK: - 메뉴바 아이콘 관리
+    // MARK: - 메뉴바 아이콘 관리 (Issue217 Phase 2 — MenuBarIconService 위임)
 
-    /// cliApp 기본 메뉴바 아이콘: rectangle.3.group 대각선 클리핑
-    static func makeCLIIcon() -> NSImage {
-        let symbol = NSImage(systemSymbolName: "rectangle.3.group", accessibilityDescription: "fWarrange")!
-        let size = NSSize(width: 18, height: 18)
-        let image = NSImage(size: size, flipped: false) { rect in
-            let clip = NSBezierPath()
-            clip.move(to: NSPoint(x: 0, y: rect.height))
-            clip.line(to: NSPoint(x: rect.width, y: rect.height))
-            clip.line(to: NSPoint(x: rect.width, y: rect.height * 0.4))
-            clip.line(to: NSPoint(x: 0, y: 0))
-            clip.close()
-            NSGraphicsContext.saveGraphicsState()
-            clip.addClip()
-            symbol.draw(in: rect)
-            NSGraphicsContext.restoreGraphicsState()
-            return true
-        }
-        image.isTemplate = true
-        return image
-    }
+    /// cliApp 기본 메뉴바 아이콘 — 기존 호출 사이트 호환용 wrapper
+    static func makeCLIIcon() -> NSImage { MenuBarIconService.makeCLIIcon() }
 
-    /// paidApp 실행 중 메뉴바 아이콘: rectangle.3.group 전체 표시 (template)
-    static func makePaidAppActiveIcon() -> NSImage {
-        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
-        let img = (NSImage(systemSymbolName: "rectangle.3.group", accessibilityDescription: "fWarrange")?
-            .withSymbolConfiguration(config))
-            ?? NSImage(systemSymbolName: "rectangle.3.group", accessibilityDescription: "fWarrange")!
-        img.isTemplate = true
-        return img
-    }
+    /// paidApp 활성 메뉴바 아이콘 — 기존 호출 사이트 호환용 wrapper
+    static func makePaidAppActiveIcon() -> NSImage { MenuBarIconService.makePaidAppActiveIcon() }
 
-    /// PaidAppMonitor.state 변화를 감시해 menuBarIcon 자동 전환
+    /// PaidAppMonitor.state 변화를 감시해 menuBarIcon 자동 전환 (AppState 본질 책임)
     private func startObservingMenuBarIcon() {
         func observe() {
             withObservationTracking {
                 let state = paidAppMonitor.state
                 switch state {
                 case .paidAppActive:
-                    menuBarIcon = AppState.makePaidAppActiveIcon()
+                    menuBarIcon = MenuBarIconService.makePaidAppActiveIcon()
                     menuBarIconIsTemplate = true
                     logI("🎨 메뉴바 아이콘: paidApp 활성 아이콘으로 전환")
                 case .cliOnly:
-                    menuBarIcon = AppState.makeCLIIcon()
+                    menuBarIcon = MenuBarIconService.makeCLIIcon()
                     menuBarIconIsTemplate = true
                     logI("🎨 메뉴바 아이콘: cliApp 아이콘으로 복원")
                 }
@@ -484,59 +458,17 @@ final class AppState {
         observe()
     }
 
-    // MARK: - Login Item 관리 (Issue51: launchAtLogin ↔ brew services plist 연동)
+    // MARK: - Login Item 관리 (Issue217 Phase 2 — LoginItemService 위임)
 
-    // Issue51: `launchAtLogin` 변경 시 brew services plist 연동.
-    // brew 경로: /opt/homebrew/bin/brew (Apple Silicon 전용).
-    // enabled=true  → brew services start (plist 설치 + launchd 등록)
-    // enabled=false → launchctl bootout + plist 제거 (brew services stop은 프로세스 종료까지 하므로 사용 금지)
+    /// Issue51: launchAtLogin ↔ brew services plist 연동 — 호환용 wrapper
     func syncLaunchAtLogin(_ enabled: Bool) {
-        if enabled {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/brew")
-            process.arguments = ["services", "start", "fwarrange-cli"]
-            do {
-                try process.run()
-                process.waitUntilExit()
-                logI("Issue51: brew services start fwarrange-cli — plist 설치됨 (재부팅 시 자동 시작)")
-            } catch {
-                logW("Issue51: brew services start 실패 — \(error.localizedDescription)")
-            }
-        } else {
-            // Step 1: launchctl bootout (LaunchAgent 등록 해제 — brew services stop 대체)
-            let uid = getuid()
-            let labelPath = "gui/\(uid)/homebrew.mxcl.fwarrange-cli"
-            let bootoutProcess = Process()
-            bootoutProcess.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-            bootoutProcess.arguments = ["bootout", labelPath]
-            do {
-                try bootoutProcess.run()
-                bootoutProcess.waitUntilExit()
-                logI("Issue51: launchctl bootout 완료 — LaunchAgent 등록 해제")
-            } catch {
-                logW("Issue51: launchctl bootout 실패 — \(error.localizedDescription)")
-            }
-
-            // Step 2: plist 파일 제거
-            let plist = URL(fileURLWithPath: NSHomeDirectory())
-                .appendingPathComponent("Library/LaunchAgents/homebrew.mxcl.fwarrange-cli.plist")
-            do {
-                if FileManager.default.fileExists(atPath: plist.path) {
-                    try FileManager.default.removeItem(at: plist)
-                    logI("Issue51: LaunchAgent plist 제거됨 — 재부팅 시 자동 시작 안 함 (상태: none)")
-                } else {
-                    logI("Issue51: LaunchAgent plist 이미 없음 (launchAtLogin=false 반영됨)")
-                }
-            } catch {
-                logW("Issue51: plist 제거 실패 — \(error.localizedDescription)")
-            }
-        }
+        LoginItemService.sync(enabled: enabled)
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
         settings.launchAtLogin = enabled
         settingsService.save(settings)
-        syncLaunchAtLogin(enabled)
+        LoginItemService.sync(enabled: enabled)
     }
 
     private func handleHotKeyAction(_ action: HotKeyAction) {
@@ -561,64 +493,20 @@ final class AppState {
         }
     }
 
-    // MARK: - Paid 버전 (fWarrange.app) 감지 & 실행
+    // MARK: - Paid 버전 (fWarrange.app) 감지 & 실행 (Issue217 Phase 2 — PaidAppLauncher 위임)
 
-    private static let paidAppSearchPaths = [
-        "/Applications/fWarrange.app",
-        "/Applications/_nowage_app/fWarrange.app",
-        "/Applications/_finfra_app/fWarrange.app"
-    ]
+    /// Paid 앱 감지만 수행 (명시적 경로에서만 검색, ~/Library 제외) — 호환용 wrapper
+    func detectPaidApp() -> URL? { PaidAppLauncher.detect() }
 
-    /// Paid 앱 감지만 수행 (명시적 경로에서만 검색, ~/Library 제외)
-    func detectPaidApp() -> URL? {
-        for path in Self.paidAppSearchPaths {
-            if FileManager.default.fileExists(atPath: path) {
-                return URL(fileURLWithPath: path)
-            }
-        }
-        return nil
-    }
-
-    /// Paid 앱 실행만 수행 (성공 여부 반환)
+    /// Paid 앱 실행만 수행 (성공 여부 반환) — 호환용 wrapper
     @discardableResult
-    func launchPaidApp() -> Bool {
-        guard let url = detectPaidApp() else { return false }
-        let success = NSWorkspace.shared.open(url)
-        if success {
-            logI("✅ fWarrange(Paid) 실행: \(url.path)")
-        } else {
-            logW("⚠️ fWarrange 실행 실패: \(url.path)")
-        }
-        return success
-    }
+    func launchPaidApp() -> Bool { PaidAppLauncher.launch() }
 
-    /// Issue195: fwarrange:// URL Scheme으로 paidApp 특정 화면 열기.
-    /// paidApp 미설치 시 `launchPaidApp()`이 false를 반환하며 UI에서 안내 처리.
-    func openPaidApp(action: String) {
-        guard let url = URL(string: "fwarrange://command?action=\(action)") else { return }
-        let opened = NSWorkspace.shared.open(url)
-        if opened {
-            logI("🔗 paidApp URL Scheme 호출 성공: action=\(action)")
-        } else {
-            logW("⚠️ paidApp URL Scheme 호출 실패: action=\(action) — paidApp 미등록 또는 미설치")
-        }
-    }
+    /// Issue195: fwarrange:// URL Scheme으로 paidApp 특정 화면 열기 — 호환용 wrapper
+    func openPaidApp(action: String) { PaidAppLauncher.open(action: action) }
 
-    /// 기능 실행 시 호출: 감지 → 실행 → 안내 알림. 감지 실패 시 false 반환
-    func tryLaunchPaidFeature() -> Bool {
-        guard detectPaidApp() != nil else { return false }
-        if launchPaidApp() {
-            let alert = NSAlert()
-            alert.messageText = "fWarrange launched"
-            alert.informativeText = "fWarrange (paid version) has been launched.\nPlease use the feature from fWarrange."
-            alert.alertStyle = .informational
-            alert.addButton(withTitle: "OK")
-            NSApplication.shared.activate(ignoringOtherApps: true)
-            alert.runModal()
-            return true
-        }
-        return false
-    }
+    /// 기능 실행 시 호출: 감지 → 실행 → 안내 알림 — 호환용 wrapper
+    func tryLaunchPaidFeature() -> Bool { PaidAppLauncher.tryLaunchFeature() }
 
     var uptimeString: String {
         let interval = Date().timeIntervalSince(startTime)
@@ -630,28 +518,11 @@ final class AppState {
         return "\(minutes)m"
     }
 
-    // MARK: - Accessibility 권한 안내 (Issue189)
+    // MARK: - Accessibility 권한 안내 (Issue217 Phase 2 — AccessibilityGuidePresenter 위임)
 
-    /// Accessibility 권한 미부여 시 NSAlert 안내 + 시스템 설정 deep link
+    /// Issue189: 권한 미부여 안내 — 호환용 wrapper
     private func showAccessibilityGuide() {
-        DispatchQueue.main.async { [weak self] in
-            let alert = NSAlert()
-            alert.alertStyle = .warning
-            alert.messageText = "Accessibility 권한 필요"
-            alert.informativeText = """
-                fWarrangeCli가 창 위치를 제어하려면 접근성 권한이 필요합니다.
-
-                시스템 설정 > 개인정보 보호 및 보안 > 접근성에서
-                fWarrangeCli를 추가하고 허용해주세요.
-                """
-            alert.addButton(withTitle: "설정 열기")
-            alert.addButton(withTitle: "나중에")
-
-            let response = alert.runModal()
-            if response == .alertFirstButtonReturn {
-                self?.windowManager.openAccessibilitySettings()
-            }
-        }
+        AccessibilityGuidePresenter.show(windowManager: windowManager)
     }
 
     /// _config.yml의 appLanguage 설정을 시스템 언어로 적용 (fSnippet 참고)
