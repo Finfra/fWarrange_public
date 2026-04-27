@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 58
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - 5314ec3 (2026-04-27) - Feat(MenuBar): Close Issue58 — cliApp 메뉴바 개선안 적용
   - bc232b7 (2026-04-27) - Refactor(AppState): Issue217 Phase 2 — Service 4종 추출 (책임 분리)
   - 7ad6779 (2026-04-27) - Docs: Close Issue56 (cmd_design.md baseURL v2 갱신)
 
@@ -22,7 +23,11 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
-## Issue58: cliApp 메뉴바 개선안 적용 (menuBar_enhance.md SSOT) (등록: 2026.04.27)
+# 📗 선택
+
+
+# ✅ 완료
+## Issue58: cliApp 메뉴바 개선안 적용 (menuBar_enhance.md SSOT) (등록: 2026.04.27) (✅ 완료, 5314ec3) ✅
 * 목적: _doc_design/menuBar_enhance.md SSOT의 cliApp 메뉴 개선안을 적용하여 paidApp 부재 시에도 핵심 기능(Save/Restore/Layout 직접 클릭) 노출 + paidApp과 동형 구조로 학습 비용 0 달성. Issue46 시간적 배타성 적용 분기와 design doc(미적용 정책) 충돌 동시 해소.
 * plan: `cli/_doc_work/plan/menuBar_enhance_plan.md`
 * 상세: 
@@ -39,10 +44,6 @@ date: 2026-04-07
 - 메인 레포 paidApp 메뉴바 이슈는 별도 등록 + 양방향 링크
 
 
-# 📗 선택
-
-
-# ✅ 완료
 ## Issue56: cmd_design.md CLI baseURL을 v2 기준으로 갱신 (등록: 2026-04-26, 해결: 2026-04-27, commit: 7ad6779) ✅
 * 목적: CLI 커맨드 설계 문서(2026-04-08 작성)가 `/api/v1` baseURL을 사용하고 있으며, 현행 RESTServer는 v1 호출 시 410 Gone을 반환하므로 이 문서를 따라 CLI 코드를 작성하면 동작하지 않음. v2 기준으로 baseURL 일관성 회복.
 * 상세:
