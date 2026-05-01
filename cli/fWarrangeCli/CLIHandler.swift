@@ -101,7 +101,7 @@ struct CLIHandler {
             fetch("DELETE", path: "/layouts/\(name.urlEncoded)")
         case "delete-all":
             guard args.contains("--confirm") else { exitError("--confirm 플래그 필수") }
-            fetch("DELETE", path: "/layouts", body: ["confirm": true])
+            fetch("DELETE", path: "/layouts", headers: ["X-Confirm-Delete-All": "true"])
         case "remove-windows":
             guard args.count >= 2 else { exitError("<name> <id> [...] 필수") }
             let name = args[0]
@@ -128,7 +128,7 @@ struct CLIHandler {
             fetch("GET", path: "/status/accessibility")
         case "quit":
             guard args.contains("--confirm") else { exitError("--confirm 플래그 필수") }
-            fetch("POST", path: "/cli/quit", body: ["confirm": true])
+            fetch("POST", path: "/cli/quit", headers: ["X-Confirm": "true"])
 
         // 모드
         case "mode":

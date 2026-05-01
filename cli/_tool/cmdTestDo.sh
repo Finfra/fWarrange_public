@@ -1,14 +1,12 @@
 #!/bin/bash
-# cmdTestDo.sh - CLI 커맨드 테스트 스크립트 실행기 (v1/v2 분리)
+# cmdTestDo.sh - CLI 커맨드 테스트 스크립트 실행기 (v2 only, Issue60)
 # Usage:
-#   bash cli/_tool/cmdTestDo.sh                          # v1 정상 전체
-#   bash cli/_tool/cmdTestDo.sh v1                       # v1 정상 전체
+#   bash cli/_tool/cmdTestDo.sh                          # v2 정상 전체 (기본)
 #   bash cli/_tool/cmdTestDo.sh v2                       # v2 정상 전체
-#   bash cli/_tool/cmdTestDo.sh v1 0                     # v1 00번
 #   bash cli/_tool/cmdTestDo.sh v2 20                    # v2 20번
-#   bash cli/_tool/cmdTestDo.sh v1 E                     # v1 에러 전체
-#   bash cli/_tool/cmdTestDo.sh v2 E08                   # v2 E08번
-#   bash cli/_tool/cmdTestDo.sh all                      # v1 + v2 정상 + 에러 전체
+#   bash cli/_tool/cmdTestDo.sh v2 E                     # v2 에러 전체
+#   bash cli/_tool/cmdTestDo.sh v2 E04                   # v2 E04번
+#   bash cli/_tool/cmdTestDo.sh all                      # v2 정상 + 에러 전체
 #   bash cli/_tool/cmdTestDo.sh --run all                # fwc-run-xcode.sh 실행 후 전체 테스트
 #   bash cli/_tool/cmdTestDo.sh --log all                # 테스트 후 로그 확인
 #   bash cli/_tool/cmdTestDo.sh --report all             # 테스트 결과 저장
@@ -159,22 +157,20 @@ save_report() {
 # --run: 사전 빌드·배포·실행
 [ "$OPT_RUN" -eq 1 ] && pre_flight
 
-# 버전 디렉토리 선택 (기본: v1)
-VERSION="v1"
+# 버전 디렉토리 선택 (기본: v2; v1은 Issue60에서 제거됨)
+VERSION="v2"
 case "${1:-}" in
-    v1|v2)
+    v2)
         VERSION="$1"
         shift
         ;;
     all)
-        for v in v1 v2; do
-            echo "======== $v NORMAL ========"
-            append_report "## $v NORMAL"
-            run_normal "$ROOT_DIR/$v"
-            echo "======== $v ERROR ========"
-            append_report "## $v ERROR"
-            run_error  "$ROOT_DIR/$v"
-        done
+        echo "======== v2 NORMAL ========"
+        append_report "## v2 NORMAL"
+        run_normal "$ROOT_DIR/v2"
+        echo "======== v2 ERROR ========"
+        append_report "## v2 ERROR"
+        run_error  "$ROOT_DIR/v2"
         [ "$OPT_LOG" -eq 1 ] && check_logs
         [ "$OPT_REPORT" -eq 1 ] && save_report "cmdTest"
         return 0 2>/dev/null || exit 0
