@@ -186,20 +186,13 @@ struct AppSettings: Codable {
         restServerPort: 3016,
         logLevel: 5,
         dataStorageMode: .host,
-        saveShortcut: KeyboardShortcutConfig(
-            keyCode: 98, // F7
-            modifierFlags: NSEvent.ModifierFlags([.command]).rawValue
-        ),
-        restoreDefaultShortcut: KeyboardShortcutConfig(
-            keyCode: 98, // F7
-            modifierFlags: NSEvent.ModifierFlags([.shift, .command]).rawValue
-        ),
-        restoreLastShortcut: KeyboardShortcutConfig(
-            keyCode: 98, // F7
-            modifierFlags: NSEvent.ModifierFlags([.option, .command]).rawValue
-        ),
-        showMainWindowShortcut: nil,  // fWarrangeCli에서는 미사용
-        showSettingsShortcut: nil,     // fWarrangeCli에서는 미사용
+        // 단축키: _config.yml에 명시된 항목만 글로벌 등록되어야 하므로 default는 모두 nil.
+        // 사용자가 yml에서 라인 삭제 시 글로벌 등록도 사라지도록 보장 (Issue61).
+        saveShortcut: nil,
+        restoreDefaultShortcut: nil,
+        restoreLastShortcut: nil,
+        showMainWindowShortcut: nil,
+        showSettingsShortcut: nil,
         launchAtLogin: false,
         defaultLayoutName: nil,
         appLanguage: nil,

@@ -172,9 +172,11 @@ final class YAMLSettingsService: SettingsService {
         if let v = dict["restServerPort"], let i = Int(v) { s.restServerPort = i }
         if let v = dict["logLevel"], let i = Int(v) { s.logLevel = i }
         if let v = dict["dataStorageMode"], let m = DataStorageMode(rawValue: v) { s.dataStorageMode = m }
-        if let sc = parseShortcut(dict["saveShortcut"]) { s.saveShortcut = sc }
-        if let sc = parseShortcut(dict["restoreDefaultShortcut"]) { s.restoreDefaultShortcut = sc }
-        if let sc = parseShortcut(dict["restoreLastShortcut"]) { s.restoreLastShortcut = sc }
+        // 단축키: _config.yml에 명시된 항목만 글로벌 등록 대상이 되도록 직접 대입.
+        // 키 누락 시 nil → HotKeyService에서 compactMap으로 제외됨.
+        s.saveShortcut = parseShortcut(dict["saveShortcut"])
+        s.restoreDefaultShortcut = parseShortcut(dict["restoreDefaultShortcut"])
+        s.restoreLastShortcut = parseShortcut(dict["restoreLastShortcut"])
         s.showMainWindowShortcut = parseShortcut(dict["showMainWindowShortcut"])
         s.showSettingsShortcut = parseShortcut(dict["showSettingsShortcut"])
         if let v = dict["launchAtLogin"], let b = Bool(v) { s.launchAtLogin = b }

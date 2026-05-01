@@ -40,6 +40,14 @@ date: 2026-04-07
 - 검증:
     - _config.yml에서 saveShortcut 라인 삭제 후 빌드·실행 → ⌘F7 트리거 시 등록되지 않아야 함
     - HotKeyService 로그 `등록된 단축키 없음` 또는 항목 수 감소 확인
+* 구현 명세:
+    - `cli/fWarrangeCli/Services/SettingsService.swift` `loadFromYAML()` 파싱부 (L175-179):
+        - `saveShortcut`/`restoreDefaultShortcut`/`restoreLastShortcut` 3종을 `if let sc = parseShortcut(...)` 분기에서 직접 대입(`s.<key> = parseShortcut(dict[...])`)으로 변경
+        - `showMainWindowShortcut`/`showSettingsShortcut`과 동일 패턴으로 통일 → yml 키 누락 시 nil로 덮어쓰기
+    - `cli/fWarrangeCli/Models/AppSettings.swift` `defaults` (L189-202):
+        - `saveShortcut`/`restoreDefaultShortcut`/`restoreLastShortcut`을 모두 `nil`로 변경
+        - 정책: 글로벌 단축키 등록 대상은 오직 `_config.yml`에 명시된 항목 (HotKeyService.swift `compactMap` 필터로 자동 제외됨)
+    - 빌드 검증: `cd cli && xcodebuild -scheme fWarrangeCli -configuration Release build -quiet` 통과 (BUILD SUCCEEDED)
 
 ## Issue60: cmdTest v1 폴더 제거 및 v2 전체 테스트 실행 (등록: 2026-04-28)
 * 목적: Issue59 완료 후 cmdTest를 v2 전용으로 정리 — `cmdTest/v1/` 중복 폴더 제거 + `cmdTestDo.sh v2` 전체 실행 검증
