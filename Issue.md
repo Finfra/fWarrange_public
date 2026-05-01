@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 61
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - 97c06b6 (2026-05-01) - Fix(HotKey): Issue61 — _config.yml 미명시 단축키 글로벌 등록 차단
   - 97c06b6 (2026-05-01) - Docs: Close Issue61
   - dbb465c (2026-04-28) - Refactor(Env): cliApp 환경 변수 단일 진입점 통합 (Issue225)
   - 5314ec3 (2026-04-27) - Feat(MenuBar): Close Issue58 — cliApp 메뉴바 개선안 적용
