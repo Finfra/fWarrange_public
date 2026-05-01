@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 61
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - 2a219fa (2026-05-01) - Fix(CLI): Issue60 — cmdTest v2 정합화 + delete-all/quit confirm 헤더 버그 수정
   - 97c06b6 (2026-05-01) - Verify(API): Issue59 — v2 API 정상 33건 + 에러 4건 전체 PASS
   - 97c06b6 (2026-05-01) - Fix(HotKey): Issue61 — _config.yml 미명시 단축키 글로벌 등록 차단
   - 97c06b6 (2026-05-01) - Docs: Close Issue61
@@ -27,7 +28,10 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
-## Issue60: cmdTest v1 폴더 제거 및 v2 전체 테스트 실행 (등록: 2026-04-28)
+# 📗 선택
+
+# ✅ 완료
+## Issue60: cmdTest v1 폴더 제거 및 v2 전체 테스트 실행 (등록: 2026-04-28) (✅ 완료, 2a219fa) ✅
 * 목적: Issue59 완료 후 cmdTest를 v2 전용으로 정리 — `cmdTest/v1/` 중복 폴더 제거 + `cmdTestDo.sh v2` 전체 실행 검증
 * 선행 조건: Issue59 완료
 * 상세:
@@ -41,9 +45,6 @@ date: 2026-04-07
     - `bash cli/_tool/cmdTestDo.sh v2` 실행
     - 에러 케이스: `bash cli/_tool/cmdTestDo.sh v2 E`
 
-# 📗 선택
-
-# ✅ 완료
 ## Issue59: v2 API 테스트 전체 실행 및 검증 (등록: 2026.04.28) (✅ 완료, 97c06b6) ✅
 * 목적: v1 deprecated 이후 v2 API 전체(정상 32건 + 에러 4건)를 apiTestDo.sh로 실행하여 동작 정합성 확인
 * 상세: 
