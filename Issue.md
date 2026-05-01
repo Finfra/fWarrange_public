@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 61
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - 97c06b6 (2026-05-01) - Docs: Close Issue61
   - dbb465c (2026-04-28) - Refactor(Env): cliApp 환경 변수 단일 진입점 통합 (Issue225)
   - 5314ec3 (2026-04-27) - Feat(MenuBar): Close Issue58 — cliApp 메뉴바 개선안 적용
   - bc232b7 (2026-04-27) - Refactor(AppState): Issue217 Phase 2 — Service 4종 추출 (책임 분리)
@@ -24,31 +25,6 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
-## Issue61: _config.yml 미명시 단축키도 글로벌 등록되는 문제 수정 (등록: 2026.05.01)
-* 목적: _config.yml에 명시된 단축키만 글로벌로 등록되도록 파싱 정책 정합화 (정책: yml 미명시 → 등록 제외)
-* 상세: 
-- 현상: SettingsService.swift:175-177 `saveShortcut/restoreDefaultShortcut/restoreLastShortcut`은 `if let sc = parseShortcut(...)` 분기로 파싱되어, _config.yml에 라인이 없으면 AppSettings.defaults의 ⌘F7/⇧⌘F7/⌥⌘F7 값이 그대로 유지되어 글로벌 단축키로 등록됨
-- 한편 SettingsService.swift:178-179 `showMainWindowShortcut/showSettingsShortcut`는 직접 대입(=nil 시 nil)으로 yml 미명시 시 등록 제외 — 일관성 깨짐
-- 사용자 정책: '_config.yml에 지정된 단축키 외에는 절대 글로벌 단축키로 동작하면 안 됨'
-- 수정 방안 (권장):
-    1. SettingsService.swift L175-177을 직접 대입 형태로 변경: `s.saveShortcut = parseShortcut(dict["saveShortcut"])` 외 2개
-    2. AppSettings.swift L189-200 defaults의 saveShortcut/restoreDefaultShortcut/restoreLastShortcut을 `nil`로 변경 (showMainWindowShortcut/showSettingsShortcut과 동일 패턴)
-- 영향:
-    - HotKeyService.swift는 이미 nil 항목 compactMap 제외 — 코드 변경 불필요
-    - 기존 _config.yml 사용자: yml에 단축키 명시되어 있으므로 동작 변화 없음
-    - 새 사용자/yml 누락 사용자: 글로벌 단축키 미등록 (정책 부합)
-- 검증:
-    - _config.yml에서 saveShortcut 라인 삭제 후 빌드·실행 → ⌘F7 트리거 시 등록되지 않아야 함
-    - HotKeyService 로그 `등록된 단축키 없음` 또는 항목 수 감소 확인
-* 구현 명세:
-    - `cli/fWarrangeCli/Services/SettingsService.swift` `loadFromYAML()` 파싱부 (L175-179):
-        - `saveShortcut`/`restoreDefaultShortcut`/`restoreLastShortcut` 3종을 `if let sc = parseShortcut(...)` 분기에서 직접 대입(`s.<key> = parseShortcut(dict[...])`)으로 변경
-        - `showMainWindowShortcut`/`showSettingsShortcut`과 동일 패턴으로 통일 → yml 키 누락 시 nil로 덮어쓰기
-    - `cli/fWarrangeCli/Models/AppSettings.swift` `defaults` (L189-202):
-        - `saveShortcut`/`restoreDefaultShortcut`/`restoreLastShortcut`을 모두 `nil`로 변경
-        - 정책: 글로벌 단축키 등록 대상은 오직 `_config.yml`에 명시된 항목 (HotKeyService.swift `compactMap` 필터로 자동 제외됨)
-    - 빌드 검증: `cd cli && xcodebuild -scheme fWarrangeCli -configuration Release build -quiet` 통과 (BUILD SUCCEEDED)
-
 ## Issue60: cmdTest v1 폴더 제거 및 v2 전체 테스트 실행 (등록: 2026-04-28)
 * 목적: Issue59 완료 후 cmdTest를 v2 전용으로 정리 — `cmdTest/v1/` 중복 폴더 제거 + `cmdTestDo.sh v2` 전체 실행 검증
 * 선행 조건: Issue59 완료
@@ -75,6 +51,31 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue61: _config.yml 미명시 단축키도 글로벌 등록되는 문제 수정 (등록: 2026.05.01) (✅ 완료, 97c06b6) ✅
+* 목적: _config.yml에 명시된 단축키만 글로벌로 등록되도록 파싱 정책 정합화 (정책: yml 미명시 → 등록 제외)
+* 상세: 
+- 현상: SettingsService.swift:175-177 `saveShortcut/restoreDefaultShortcut/restoreLastShortcut`은 `if let sc = parseShortcut(...)` 분기로 파싱되어, _config.yml에 라인이 없으면 AppSettings.defaults의 ⌘F7/⇧⌘F7/⌥⌘F7 값이 그대로 유지되어 글로벌 단축키로 등록됨
+- 한편 SettingsService.swift:178-179 `showMainWindowShortcut/showSettingsShortcut`는 직접 대입(=nil 시 nil)으로 yml 미명시 시 등록 제외 — 일관성 깨짐
+- 사용자 정책: '_config.yml에 지정된 단축키 외에는 절대 글로벌 단축키로 동작하면 안 됨'
+- 수정 방안 (권장):
+    1. SettingsService.swift L175-177을 직접 대입 형태로 변경: `s.saveShortcut = parseShortcut(dict["saveShortcut"])` 외 2개
+    2. AppSettings.swift L189-200 defaults의 saveShortcut/restoreDefaultShortcut/restoreLastShortcut을 `nil`로 변경 (showMainWindowShortcut/showSettingsShortcut과 동일 패턴)
+- 영향:
+    - HotKeyService.swift는 이미 nil 항목 compactMap 제외 — 코드 변경 불필요
+    - 기존 _config.yml 사용자: yml에 단축키 명시되어 있으므로 동작 변화 없음
+    - 새 사용자/yml 누락 사용자: 글로벌 단축키 미등록 (정책 부합)
+- 검증:
+    - _config.yml에서 saveShortcut 라인 삭제 후 빌드·실행 → ⌘F7 트리거 시 등록되지 않아야 함
+    - HotKeyService 로그 `등록된 단축키 없음` 또는 항목 수 감소 확인
+* 구현 명세:
+    - `cli/fWarrangeCli/Services/SettingsService.swift` `loadFromYAML()` 파싱부 (L175-179):
+        - `saveShortcut`/`restoreDefaultShortcut`/`restoreLastShortcut` 3종을 `if let sc = parseShortcut(...)` 분기에서 직접 대입(`s.<key> = parseShortcut(dict[...])`)으로 변경
+        - `showMainWindowShortcut`/`showSettingsShortcut`과 동일 패턴으로 통일 → yml 키 누락 시 nil로 덮어쓰기
+    - `cli/fWarrangeCli/Models/AppSettings.swift` `defaults` (L189-202):
+        - `saveShortcut`/`restoreDefaultShortcut`/`restoreLastShortcut`을 모두 `nil`로 변경
+        - 정책: 글로벌 단축키 등록 대상은 오직 `_config.yml`에 명시된 항목 (HotKeyService.swift `compactMap` 필터로 자동 제외됨)
+    - 빌드 검증: `cd cli && xcodebuild -scheme fWarrangeCli -configuration Release build -quiet` 통과 (BUILD SUCCEEDED)
+
 ## Issue58: cliApp 메뉴바 개선안 적용 (menuBar_enhance.md SSOT) (등록: 2026.04.27) (✅ 완료, 5314ec3) ✅
 * 목적: _doc_design/menuBar_enhance.md SSOT의 cliApp 메뉴 개선안을 적용하여 paidApp 부재 시에도 핵심 기능(Save/Restore/Layout 직접 클릭) 노출 + paidApp과 동형 구조로 학습 비용 0 달성. Issue46 시간적 배타성 적용 분기와 design doc(미적용 정책) 충돌 동시 해소.
 * plan: `cli/_doc_work/plan/menuBar_enhance_plan.md`
