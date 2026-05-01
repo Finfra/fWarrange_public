@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 58
+* Issue HWM: 61
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - dbb465c (2026-04-28) - Refactor(Env): cliApp 환경 변수 단일 진입점 통합 (Issue225)
   - 5314ec3 (2026-04-27) - Feat(MenuBar): Close Issue58 — cliApp 메뉴바 개선안 적용
   - bc232b7 (2026-04-27) - Refactor(AppState): Issue217 Phase 2 — Service 4종 추출 (책임 분리)
   - 7ad6779 (2026-04-27) - Docs: Close Issue56 (cmd_design.md baseURL v2 갱신)
@@ -23,25 +24,64 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
-# 📗 선택
+## Issue61: _config.yml 미명시 단축키도 글로벌 등록되는 문제 수정 (등록: 2026.05.01)
+* 목적: _config.yml에 명시된 단축키만 글로벌로 등록되도록 파싱 정책 정합화 (정책: yml 미명시 → 등록 제외)
+* 상세: 
+- 현상: SettingsService.swift:175-177 `saveShortcut/restoreDefaultShortcut/restoreLastShortcut`은 `if let sc = parseShortcut(...)` 분기로 파싱되어, _config.yml에 라인이 없으면 AppSettings.defaults의 ⌘F7/⇧⌘F7/⌥⌘F7 값이 그대로 유지되어 글로벌 단축키로 등록됨
+- 한편 SettingsService.swift:178-179 `showMainWindowShortcut/showSettingsShortcut`는 직접 대입(=nil 시 nil)으로 yml 미명시 시 등록 제외 — 일관성 깨짐
+- 사용자 정책: '_config.yml에 지정된 단축키 외에는 절대 글로벌 단축키로 동작하면 안 됨'
+- 수정 방안 (권장):
+    1. SettingsService.swift L175-177을 직접 대입 형태로 변경: `s.saveShortcut = parseShortcut(dict["saveShortcut"])` 외 2개
+    2. AppSettings.swift L189-200 defaults의 saveShortcut/restoreDefaultShortcut/restoreLastShortcut을 `nil`로 변경 (showMainWindowShortcut/showSettingsShortcut과 동일 패턴)
+- 영향:
+    - HotKeyService.swift는 이미 nil 항목 compactMap 제외 — 코드 변경 불필요
+    - 기존 _config.yml 사용자: yml에 단축키 명시되어 있으므로 동작 변화 없음
+    - 새 사용자/yml 누락 사용자: 글로벌 단축키 미등록 (정책 부합)
+- 검증:
+    - _config.yml에서 saveShortcut 라인 삭제 후 빌드·실행 → ⌘F7 트리거 시 등록되지 않아야 함
+    - HotKeyService 로그 `등록된 단축키 없음` 또는 항목 수 감소 확인
 
+## Issue60: cmdTest v1 폴더 제거 및 v2 전체 테스트 실행 (등록: 2026-04-28)
+* 목적: Issue59 완료 후 cmdTest를 v2 전용으로 정리 — `cmdTest/v1/` 중복 폴더 제거 + `cmdTestDo.sh v2` 전체 실행 검증
+* 선행 조건: Issue59 완료
+* 상세:
+    - 코드 확인 결과: `CLIHandler.swift:16` `baseURL = "/api/v2"` — cmd가 이미 v2 호출 ✅ (선수 이슈 불필요)
+    - `RESTServer.swift:359` `/api/v1/` 호출 시 410 Gone ✅
+    - `cmdTest/v1/` 폴더 삭제 (내용이 v2 폴더와 거의 동일한 중복, CLI 바이너리 자체가 v2 사용)
+    - `cmdTestDo.sh v2` 전체 실행 (정상 32건 + 에러 4건) → PASS/FAIL 집계
+    - 실패 항목 원인 분석 및 수정
+* 구현 명세:
+    - `rm -rf cli/_tool/cmdTest/v1/`
+    - `bash cli/_tool/cmdTestDo.sh v2` 실행
+    - 에러 케이스: `bash cli/_tool/cmdTestDo.sh v2 E`
+
+## Issue59: v2 API 테스트 전체 실행 및 검증 (등록: 2026.04.28)
+* 목적: v1 deprecated 이후 v2 API 전체(정상 32건 + 에러 4건)를 apiTestDo.sh로 실행하여 동작 정합성 확인
+* 상세: 
+- 대상: cli/_tool/apiTest/v2/ (정상 00~32, 에러 E01~E04)
+- api-test 커맨드 v2 전용으로 업데이트 완료 (api-test.md 수정)
+- apiTestDo.sh v2 all 실행 → PASS/FAIL 집계
+- 실패 항목 원인 분석 및 수정
+
+
+# 📗 선택
 
 # ✅ 완료
 ## Issue58: cliApp 메뉴바 개선안 적용 (menuBar_enhance.md SSOT) (등록: 2026.04.27) (✅ 완료, 5314ec3) ✅
 * 목적: _doc_design/menuBar_enhance.md SSOT의 cliApp 메뉴 개선안을 적용하여 paidApp 부재 시에도 핵심 기능(Save/Restore/Layout 직접 클릭) 노출 + paidApp과 동형 구조로 학습 비용 0 달성. Issue46 시간적 배타성 적용 분기와 design doc(미적용 정책) 충돌 동시 해소.
 * plan: `cli/_doc_work/plan/menuBar_enhance_plan.md`
 * 상세: 
-- Issue46 충돌 해소: cliOnlySection 분기 폐기, paidApp 실행/미실행 무관 동일 메뉴 표시 (design doc §7.2.1/§7.4 SSOT)
-- About fWarrangeCli 도입 (Homebrew 단독 배포 환경의 정체성/버전 표기)
-- F7 앵커 단축키 4종 라벨 표기 (saveShortcut/restoreLastShortcut/restoreDefaultShortcut/showMainWindowShortcut, _config.yml SSOT, Apple HIG ⌃⌥⇧⌘ 순서)
-- Save / Restore Last / Restore Default 평면 노출 (paidApp 부재 시 cliApp 단독 동작 검증 필수)
-- Layout list 평면 노출: ⭐ Default + Recent 5 + ...and K more (LayoutManager + Adaptive Polling §6 협약)
-- 👻 Daemon 서브메뉴: Status·Port·Uptime 단일 라인 / Restart Daemon / Pause·Resume REST API
-- ⚙️ Configuration 서브메뉴: Settings… / Open Config File / Open Data Folder / Open Log Folder
-- Settings… fallback: paidApp 감지 시 URL Scheme 위임, 미감지 시 REST /api/v2/settings (paid_cli_protocol §0.5/§1.2)
-- Open Data Folder는 appState.settingsService.dataDirectoryPath 사용 (path-rules: 하드코딩 금지)
-- Pause/Resume·/api/v2/settings 미존재 시: 메뉴 비활성화 + 후속 이슈 분리 (자동 신규 API 추가 금지)
-- 메인 레포 paidApp 메뉴바 이슈는 별도 등록 + 양방향 링크
+  - Issue46 충돌 해소: cliOnlySection 분기 폐기, paidApp 실행/미실행 무관 동일 메뉴 표시 (design doc §7.2.1/§7.4 SSOT)
+  - About fWarrangeCli 도입 (Homebrew 단독 배포 환경의 정체성/버전 표기)
+  - F7 앵커 단축키 4종 라벨 표기 (saveShortcut/restoreLastShortcut/restoreDefaultShortcut/showMainWindowShortcut, _config.yml SSOT, Apple HIG ⌃⌥⇧⌘ 순서)
+  - Save / Restore Last / Restore Default 평면 노출 (paidApp 부재 시 cliApp 단독 동작 검증 필수)
+  - Layout list 평면 노출: ⭐ Default + Recent 5 + ...and K more (LayoutManager + Adaptive Polling §6 협약)
+  - 👻 Daemon 서브메뉴: Status·Port·Uptime 단일 라인 / Restart Daemon / Pause·Resume REST API
+  - ⚙️ Configuration 서브메뉴: Settings… / Open Config File / Open Data Folder / Open Log Folder
+  - Settings… fallback: paidApp 감지 시 URL Scheme 위임, 미감지 시 REST /api/v2/settings (paid_cli_protocol §0.5/§1.2)
+  - Open Data Folder는 appState.settingsService.dataDirectoryPath 사용 (path-rules: 하드코딩 금지)
+  - Pause/Resume·/api/v2/settings 미존재 시: 메뉴 비활성화 + 후속 이슈 분리 (자동 신규 API 추가 금지)
+  - 메인 레포 paidApp 메뉴바 이슈는 별도 등록 + 양방향 링크
 
 
 ## Issue56: cmd_design.md CLI baseURL을 v2 기준으로 갱신 (등록: 2026-04-26, 해결: 2026-04-27, commit: 7ad6779) ✅
