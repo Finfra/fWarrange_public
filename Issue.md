@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 61
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - 97c06b6 (2026-05-01) - Verify(API): Issue59 — v2 API 정상 33건 + 에러 4건 전체 PASS
   - 97c06b6 (2026-05-01) - Fix(HotKey): Issue61 — _config.yml 미명시 단축키 글로벌 등록 차단
   - 97c06b6 (2026-05-01) - Docs: Close Issue61
   - dbb465c (2026-04-28) - Refactor(Env): cliApp 환경 변수 단일 진입점 통합 (Issue225)
@@ -40,7 +41,10 @@ date: 2026-04-07
     - `bash cli/_tool/cmdTestDo.sh v2` 실행
     - 에러 케이스: `bash cli/_tool/cmdTestDo.sh v2 E`
 
-## Issue59: v2 API 테스트 전체 실행 및 검증 (등록: 2026.04.28)
+# 📗 선택
+
+# ✅ 완료
+## Issue59: v2 API 테스트 전체 실행 및 검증 (등록: 2026.04.28) (✅ 완료, 97c06b6) ✅
 * 목적: v1 deprecated 이후 v2 API 전체(정상 32건 + 에러 4건)를 apiTestDo.sh로 실행하여 동작 정합성 확인
 * 상세: 
 - 대상: cli/_tool/apiTest/v2/ (정상 00~32, 에러 E01~E04)
@@ -49,9 +53,6 @@ date: 2026-04-07
 - 실패 항목 원인 분석 및 수정
 
 
-# 📗 선택
-
-# ✅ 완료
 ## Issue61: _config.yml 미명시 단축키도 글로벌 등록되는 문제 수정 (등록: 2026.05.01) (✅ 완료, 97c06b6) ✅
 * 목적: _config.yml에 명시된 단축키만 글로벌로 등록되도록 파싱 정책 정합화 (정책: yml 미명시 → 등록 제외)
 * 상세: 
