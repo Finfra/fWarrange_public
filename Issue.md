@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 67
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - 1b9fec7 (2026-05-02) - Fix(REST): Issue67 — pause GET / 버그 수정
   - 06939f9 (2026-05-02) - Docs: Close Issue66
   - f5fa7aa (2026-05-02) - Docs: Close Issue66
   - 4e11b5d (2026-05-02) - Feat(MenuBar): Close Issue62/63/64
@@ -38,7 +39,7 @@ date: 2026-04-07
     - `LoginItemService.sync(enabled: false)` 경로에서 `launchctl bootout` 단계 제거
     - plist 파일 삭제만 수행
 
-## Issue67: Pause API 상태에서 GET / 가 200을 반환하는 버그 수정 (등록: 2026-05-02) (✅ 완료, TBD) ✅
+## Issue67: Pause API 상태에서 GET / 가 200을 반환하는 버그 수정 (등록: 2026-05-02) (✅ 완료, 1b9fec7) ✅
 * 목적: Issue66 구현에서 health check(GET /)가 pause 체크보다 먼저 처리되어 pause 상태에서도 200을 반환하는 버그 수정
 * 상세:
     - `RESTServer.routeRequest()` — health check 블록이 `isApiPaused` 체크보다 먼저 위치하여 GET /가 항상 통과
