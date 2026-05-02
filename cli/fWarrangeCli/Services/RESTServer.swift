@@ -357,20 +357,20 @@ final class RESTServer: RESTServerProtocol {
         let path = request.path
         let base = Self.apiBasePath
 
-        // Health Check (GET / 또는 GET /api/v2/health)
-        if method == "GET" && (path == "/" || path == "\(base)/health") {
-            handleHealthCheck(completion: completion)
-            return
-        }
-
         // Issue229_4: API Pause 상태에서는 cli/* 외 모든 요청을 503 반환
-        // (health는 위에서 이미 처리됨. cli/status, cli/version, cli/quit, cli/restart, cli/pause, cli/resume는 통과)
+        // (cli/status, cli/version, cli/quit, cli/restart, cli/pause, cli/resume는 통과 — health check 포함 차단)
         if isApiPaused {
             let isCliEndpoint = path.hasPrefix("\(base)/cli/")
             if !isCliEndpoint {
                 completion(.serviceUnavailable(message: "API is paused. Use /api/v2/cli/resume to resume."))
                 return
             }
+        }
+
+        // Health Check (GET / 또는 GET /api/v2/health) — pause 체크 통과 후 처리
+        if method == "GET" && (path == "/" || path == "\(base)/health") {
+            handleHealthCheck(completion: completion)
+            return
         }
 
         // 메인 API 라우팅: /api/v2/*
@@ -1150,7 +1150,7 @@ final class RESTServer: RESTServerProtocol {
         logI("[RESTServer] API paused")
         completion(.ok(json: [
             "status": "ok",
-            "message": "API paused (health and cli/* endpoints remain available)",
+            "message": "API paused (cli/* endpoints remain available)",
             "isApiPaused": true
         ]))
     }

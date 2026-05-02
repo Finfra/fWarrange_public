@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 66
+* Issue HWM: 67
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
   - 06939f9 (2026-05-02) - Docs: Close Issue66
   - f5fa7aa (2026-05-02) - Docs: Close Issue66
@@ -37,6 +37,16 @@ date: 2026-04-07
 * 구현 명세:
     - `LoginItemService.sync(enabled: false)` 경로에서 `launchctl bootout` 단계 제거
     - plist 파일 삭제만 수행
+
+## Issue67: Pause API 상태에서 GET / 가 200을 반환하는 버그 수정 (등록: 2026-05-02) (✅ 완료, TBD) ✅
+* 목적: Issue66 구현에서 health check(GET /)가 pause 체크보다 먼저 처리되어 pause 상태에서도 200을 반환하는 버그 수정
+* 상세:
+    - `RESTServer.routeRequest()` — health check 블록이 `isApiPaused` 체크보다 먼저 위치하여 GET /가 항상 통과
+    - pause 상태에서 `curl http://localhost:3016/`이 200을 반환하는 현상으로 발견
+* 구현 명세:
+    - `routeRequest()` 내 순서 변경: isApiPaused 체크를 health check 앞으로 이동
+    - health check도 cli/* 이외이므로 pause 시 503 반환
+    - `handleCLIPause` 응답 메시지 수정: "health and cli/*" → "cli/*"
 
 ## Issue66: REST API daemon 제어 엔드포인트 추가 (cli/restart·pause·resume) (등록: 2026.05.02) (✅ 완료, f5fa7aa) ✅
 * 목적: 데몬 재시작·REST API 일시정지/재개를 REST 엔드포인트로 원격 제어 가능하게 함
