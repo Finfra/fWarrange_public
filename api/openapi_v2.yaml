@@ -919,6 +919,74 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /cli/restart:
+    post:
+      summary: Restart CLI helper (Issue229_4)
+      description: |
+        Restarts the fWarrangeCli helper app. The app terminates itself and relies on
+        launchd (`KeepAlive` policy) to bring it back up. Requires `X-Confirm: true` header.
+      operationId: restartCLIV2
+      tags: [CLI]
+      parameters:
+        - name: X-Confirm
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: ["true"]
+      responses:
+        '200':
+          description: CLI restart initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleOkResponse'
+        '400':
+          description: Missing confirmation header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /cli/pause:
+    post:
+      summary: Pause REST API (Issue229_4)
+      description: |
+        Pauses the REST API. While paused, only `/` (health) and `/api/v2/cli/*` endpoints
+        respond normally; all other endpoints return 503 Service Unavailable until
+        `/api/v2/cli/resume` is called. Used by paidApp's "Pause REST API" Daemon menu action.
+      operationId: pauseCLIV2
+      tags: [CLI]
+      responses:
+        '200':
+          description: API paused
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "ok" }
+                  message: { type: string }
+                  isApiPaused: { type: boolean, example: true }
+
+  /cli/resume:
+    post:
+      summary: Resume REST API (Issue229_4)
+      description: Resumes the REST API after `/api/v2/cli/pause`.
+      operationId: resumeCLIV2
+      tags: [CLI]
+      responses:
+        '200':
+          description: API resumed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "ok" }
+                  message: { type: string }
+                  isApiPaused: { type: boolean, example: false }
+
   # ---------- System ----------
   /status:
     get:

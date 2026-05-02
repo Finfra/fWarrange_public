@@ -104,6 +104,23 @@ final class RESTServer: RESTServerProtocol {
 
     private let startedAt = Date()
 
+    // MARK: - Issue229_4: Daemon control (pause/resume)
+    /// API pause 상태. true 시 health/cli/* 외 모든 요청은 503 반환
+    /// (paidApp의 Daemon 서브메뉴 "Pause REST API" 액션이 토글)
+    private(set) var isApiPaused: Bool = false
+
+    /// MenuBarManager에서 직접 호출하는 pause 토글 (REST 없이 로컬 메뉴에서 제어)
+    func pauseAPI() {
+        isApiPaused = true
+        logI("[RESTServer] API paused (via menu)")
+    }
+
+    /// MenuBarManager에서 직접 호출하는 resume 토글
+    func resumeAPI() {
+        isApiPaused = false
+        logI("[RESTServer] API resumed (via menu)")
+    }
+
     // MARK: - PaidApp 라이프사이클 (Issue192 Phase A)
 
     /// paidApp 라이프사이클 상태 저장소. register/unregister/status 엔드포인트 백엔드.
@@ -346,6 +363,16 @@ final class RESTServer: RESTServerProtocol {
             return
         }
 
+        // Issue229_4: API Pause 상태에서는 cli/* 외 모든 요청을 503 반환
+        // (health는 위에서 이미 처리됨. cli/status, cli/version, cli/quit, cli/restart, cli/pause, cli/resume는 통과)
+        if isApiPaused {
+            let isCliEndpoint = path.hasPrefix("\(base)/cli/")
+            if !isCliEndpoint {
+                completion(.serviceUnavailable(message: "API is paused. Use /api/v2/cli/resume to resume."))
+                return
+            }
+        }
+
         // 메인 API 라우팅: /api/v2/*
         if path.hasPrefix("\(base)/") {
             if routeV2(method: method, path: path, request: request, completion: completion) {
@@ -387,6 +414,25 @@ final class RESTServer: RESTServerProtocol {
         // POST /api/v2/cli/quit
         if method == "POST" && path == "\(base)/cli/quit" {
             handleCLIQuit(request: request, completion: completion)
+            return
+        }
+
+        // Issue229_4: Daemon control 엔드포인트
+        // POST /api/v2/cli/restart - REST 서버 + HotKey 재시작
+        if method == "POST" && path == "\(base)/cli/restart" {
+            handleCLIRestart(request: request, completion: completion)
+            return
+        }
+
+        // POST /api/v2/cli/pause - API pause (health/cli/* 제외 503 반환)
+        if method == "POST" && path == "\(base)/cli/pause" {
+            handleCLIPause(completion: completion)
+            return
+        }
+
+        // POST /api/v2/cli/resume - API pause 해제
+        if method == "POST" && path == "\(base)/cli/resume" {
+            handleCLIResume(completion: completion)
             return
         }
 
@@ -1043,7 +1089,8 @@ final class RESTServer: RESTServerProtocol {
             "port": Int(port),
             "uptime": uptimeString,
             "uptimeSeconds": Int(uptime),
-            "isRunning": isRunning
+            "isRunning": isRunning,
+            "isApiPaused": isApiPaused
         ]
         completion(.ok(json: body))
     }
@@ -1077,6 +1124,46 @@ final class RESTServer: RESTServerProtocol {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             NSApplication.shared.terminate(nil)
         }
+    }
+
+    /// POST /api/v2/cli/restart - REST 서버 + HotKey 재시작 (Issue229_4)
+    /// 자기 자신을 종료하면 launchd가 재시작 (KeepAlive 정책 의존)
+    private func handleCLIRestart(request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
+        guard request.header("X-Confirm") == "true" else {
+            completion(.badRequest(message: "X-Confirm: true 헤더가 필요합니다"))
+            return
+        }
+
+        logI("[RESTServer] CLI restart 요청 수신 - 재시작합니다")
+        completion(.ok(json: ["status": "ok", "message": "fWarrangeCli 재시작 (launchd KeepAlive 의존)"]))
+
+        // 응답 전송 후 잠시 대기 후 종료 (launchd가 재시작)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NSApplication.shared.terminate(nil)
+        }
+    }
+
+    /// POST /api/v2/cli/pause - API pause (Issue229_4)
+    /// pause 상태에서는 health/cli/* 외 모든 요청을 503 반환
+    private func handleCLIPause(completion: @escaping (HTTPResponse) -> Void) {
+        isApiPaused = true
+        logI("[RESTServer] API paused")
+        completion(.ok(json: [
+            "status": "ok",
+            "message": "API paused (health and cli/* endpoints remain available)",
+            "isApiPaused": true
+        ]))
+    }
+
+    /// POST /api/v2/cli/resume - API pause 해제 (Issue229_4)
+    private func handleCLIResume(completion: @escaping (HTTPResponse) -> Void) {
+        isApiPaused = false
+        logI("[RESTServer] API resumed")
+        completion(.ok(json: [
+            "status": "ok",
+            "message": "API resumed",
+            "isApiPaused": false
+        ]))
     }
 
     // MARK: - 핸들러
@@ -1135,6 +1222,9 @@ final class RESTServer: RESTServerProtocol {
 
             do {
                 try self.handlers.saveLayout(name, windows)
+                if self.handlers.getDefaultLayoutName() == nil {
+                    self.handlers.setDefaultLayoutName(name)
+                }
                 NotificationCenter.default.post(name: .restCaptureCompleted, object: nil)
                 ChangeTracker.shared.record(type: "layout.created", target: name)
                 let data: [String: Any] = [
@@ -1591,5 +1681,11 @@ private struct HTTPResponse {
     static func internalError(message: String) -> HTTPResponse {
         let body = try? JSONSerialization.data(withJSONObject: ["status": "error", "error": message], options: .sortedKeys)
         return HTTPResponse(statusCode: 500, statusMessage: "Internal Server Error", headers: [:], body: body)
+    }
+
+    /// Issue229_4: API pause 상태에서 비-cli 엔드포인트 거부
+    static func serviceUnavailable(message: String) -> HTTPResponse {
+        let body = try? JSONSerialization.data(withJSONObject: ["status": "error", "error": message], options: .sortedKeys)
+        return HTTPResponse(statusCode: 503, statusMessage: "Service Unavailable", headers: [:], body: body)
     }
 }
