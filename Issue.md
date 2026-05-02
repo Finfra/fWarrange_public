@@ -4,8 +4,10 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 63
+* Issue HWM: 65
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - 4e11b5d (2026-05-02) - Feat(MenuBar): Close Issue62/63/64
+  - 1d9a438 (2026-05-02) - Docs: Register Issue63
   - 732348b (2026-05-02) - Chore: launchAtLogin 기본 true(Issue228) + 문서·.gitignore 정리
   - 2a219fa (2026-05-01) - Fix(CLI): Issue60 — cmdTest v2 정합화 + delete-all/quit confirm 헤더 버그 수정
 
@@ -17,11 +19,22 @@ date: 2026-04-07
 # 🌱 이슈후보
 
 # 🚧 진행중
-
 # 📕 중요
 
 # 📙 일반
-## Issue63: NSMenu 마이그레이션(Issue62) 완료 후 설계 문서 갱신 (등록: 2026.05.02)
+# 📗 선택
+
+## Issue65: Launch at Login 토글 시 앱이 종료되는 버그 (등록: 2026-05-02) (✅ 완료, pending)
+* 목적: Launch at Login 메뉴 클릭 시 자동 시작 여부만 변경되어야 하는데 앱이 종료되는 버그 수정
+* 상세:
+    - `LoginItemService.swift` — `enabled=false` 경로에서 `launchctl bootout` 실행 시 launchd로 관리 중인 프로세스(앱 자체)가 종료됨
+    - plist 파일 제거만으로 "다음 로그인 시 자동 시작 안 함" 목적 달성 가능 — `bootout` 불필요
+* 구현 명세:
+    - `LoginItemService.sync(enabled: false)` 경로에서 `launchctl bootout` 단계 제거
+    - plist 파일 삭제만 수행
+
+# ✅ 완료
+## Issue63: NSMenu 마이그레이션(Issue62) 완료 후 설계 문서 갱신 (등록: 2026.05.02) (✅ 완료, 4e11b5d) ✅
 * 목적: Issue62(SwiftUI MenuBarExtra → NSStatusItem+NSMenu) 완료 시 paid_cli_protocol.md 코드 예시·UI 소유권 매트릭스 및 menuBar_enhance.md 관련 파일 테이블을 NSStatusItem 기반으로 갱신한다.
 * 상세: 
 - paid_cli_protocol.md §7.2.1 코드 예시: MenuBarExtra SwiftUI 코드 → NSStatusItem 코드로 교체
@@ -29,7 +42,20 @@ date: 2026-04-07
 - menuBar_enhance.md 관련 파일 테이블: MenuBarView.swift → MenuBarManager.swift로 교체 (P4 완료 후 적용)
 - 선행 조건: Issue62 완료
 
-## Issue62: 메뉴바 단축키 우측 정렬 — NSMenu 마이그레이션 (등록: 2026-05-02)
+## Issue64: [MenuBar] Phase 3 — cliApp 메뉴바 정합성 보완 + NSMenu 마이그레이션 (등록: 2026-05-02) (✅ 완료, 4e11b5d) ✅
+* 목적: `MenuBarView.swift`를 설계 SSOT(`menuBar_enhance.md`) 구조와 일치시키고, Issue62의 NSStatusItem+NSMenu 마이그레이션을 함께 진행하여 단축키 우측 정렬과 About/Save/Restore 평면 노출, Daemon/Configuration 서브메뉴, Layout list 평면을 완성한다.
+* 상세:
+    - 선행 이슈: Issue62 (NSMenu 마이그레이션) — 본 이슈에서 통합 구현
+    - 변경 파일: `cli/fWarrangeCli/MenuBarView.swift` (또는 신규 `MenuBarManager.swift`)
+    - 누락 항목 추가: About fWarrangeCli (최상단), Save/Restore 평면, Layout list + overflow, Open Main Window 검증
+    - 토큰 라벨 통일: paidApp과 동형 구조
+    - `isApiPaused` 상태 표시 (Daemon 서브메뉴 Pause/Resume 토글)
+    - `GET /api/v2/cli/status` 응답에 `isApiPaused` 필드 추가 (paidApp Daemon 서브메뉴 동기화)
+* 구현 명세:
+    - T3.1~T3.5 (menubar_enhance_task.md Phase 3)
+    - T4.5 연계: `/cli/status` 응답에 `isApiPaused` 추가 (RESTServer.swift)
+
+## Issue62: 메뉴바 단축키 우측 정렬 — NSMenu 마이그레이션 (등록: 2026-05-02) (✅ 완료, 4e11b5d) ✅
 * 목적: cliApp 메뉴바 단축키(`⌘F7`, `⇧⌘F7`, `⌥⌘F7` 등)가 메뉴 라벨 텍스트에 4-스페이스 패딩으로 박혀 있어 macOS 표준 우측 정렬이 깨짐. fSnippet(pairApp) 패턴(`NSStatusItem` + `NSMenu` + `keyEquivalent`)을 차용하여 표준 우측 정렬로 통일하고 F-key 매핑까지 확장한다.
 * plan: `cli/_doc_work/plan/menubar-nsmenu-migration_plan.md`
 * 상세:
@@ -49,9 +75,6 @@ date: 2026-04-07
     - Localization 영문/한국어 모두 라벨 길이 다양해도 우측 정렬 유지
     - paidApp 감지/미감지 분기 정상 동작
 
-# 📗 선택
-
-# ✅ 완료
 ## Issue60: cmdTest v1 폴더 제거 및 v2 전체 테스트 실행 (등록: 2026-04-28) (✅ 완료, 2a219fa) ✅
 * 목적: Issue59 완료 후 cmdTest를 v2 전용으로 정리 — `cmdTest/v1/` 중복 폴더 제거 + `cmdTestDo.sh v2` 전체 실행 검증
 * 선행 조건: Issue59 완료
