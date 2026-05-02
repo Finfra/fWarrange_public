@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 61
+* Issue HWM: 63
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - 732348b (2026-05-02) - Chore: launchAtLogin 기본 true(Issue228) + 문서·.gitignore 정리
   - 2a219fa (2026-05-01) - Fix(CLI): Issue60 — cmdTest v2 정합화 + delete-all/quit confirm 헤더 버그 수정
 
 
@@ -20,6 +21,33 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+## Issue63: NSMenu 마이그레이션(Issue62) 완료 후 설계 문서 갱신 (등록: 2026.05.02)
+* 목적: Issue62(SwiftUI MenuBarExtra → NSStatusItem+NSMenu) 완료 시 paid_cli_protocol.md 코드 예시·UI 소유권 매트릭스 및 menuBar_enhance.md 관련 파일 테이블을 NSStatusItem 기반으로 갱신한다.
+* 상세: 
+- paid_cli_protocol.md §7.2.1 코드 예시: MenuBarExtra SwiftUI 코드 → NSStatusItem 코드로 교체
+- paid_cli_protocol.md §7.3 UI 소유권 매트릭스: '메뉴바 아이콘 (MenuBarExtra, cliApp)' → '메뉴바 아이콘 (NSStatusItem+NSMenu, cliApp)'
+- menuBar_enhance.md 관련 파일 테이블: MenuBarView.swift → MenuBarManager.swift로 교체 (P4 완료 후 적용)
+- 선행 조건: Issue62 완료
+
+## Issue62: 메뉴바 단축키 우측 정렬 — NSMenu 마이그레이션 (등록: 2026-05-02)
+* 목적: cliApp 메뉴바 단축키(`⌘F7`, `⇧⌘F7`, `⌥⌘F7` 등)가 메뉴 라벨 텍스트에 4-스페이스 패딩으로 박혀 있어 macOS 표준 우측 정렬이 깨짐. fSnippet(pairApp) 패턴(`NSStatusItem` + `NSMenu` + `keyEquivalent`)을 차용하여 표준 우측 정렬로 통일하고 F-key 매핑까지 확장한다.
+* plan: `cli/_doc_work/plan/menubar-nsmenu-migration_plan.md`
+* 상세:
+    - 현재 `MenuBarView.swift` (SwiftUI MenuBarExtra) — `labelWithShortcut(label, shortcut)` 헬퍼가 라벨에 단축키 텍스트를 직접 부착 ([L228-231](../cli/fWarrangeCli/MenuBarView.swift#L228-L231))
+    - 사유: SwiftUI `KeyboardShortcut`(`Character` 기반)이 F-key를 표현하지 못함
+    - 비교: fSnippet paidApp `MenuBarManager.swift`는 `NSStatusItem` + `NSMenu` + `parseKeySpec()` 패턴으로 `keyEquivalent` + `keyEquivalentModifierMask` 사용 → 자동 우측 정렬 ([fSnippet MenuBarManager.swift:278-302](~/_git/__all/fSnippet/fSnippet/fSnippet/Managers/MenuBarManager.swift#L278-L302))
+    - 단 fSnippet은 F-key를 사용하지 않음 — fWarrange는 F-key 유니코드(NSFunctionKey, 0xF704–0xF71D = F1–F19) 매핑 추가 필요
+* 구현 명세:
+    - `MenuBarManager.swift` 신설(NSStatusItem + NSMenu) — fSnippet `parseKeySpec` 차용 + F-key 확장
+    - `fWarrangeCliApp.swift`에서 `MenuBarExtra` 제거, `AppDelegate.applicationDidFinishLaunching`에서 statusItem 등록
+    - F-key 매핑: `String(UnicodeScalar(0xF704 + n)!)` (n = 0..18 → F1..F19)을 keyEquivalent에 입력
+    - 동적 메뉴(레이아웃 목록, 모드 전환 등 SwiftUI `@Observable`로 동기화되던 부분)는 NSMenu에서 갱신 시점 재설계 필요 (validateMenuItem 또는 menuWillOpen)
+    - 회귀 검증: Quit `⌘Q` 동작 유지, Daemon/Configuration 서브메뉴 동작 유지, paidApp 미감지 alert 흐름 유지
+* 검증:
+    - 빌드 후 메뉴바 열어 단축키가 우측에 정렬되는지 시각 확인
+    - 단축키 누르면 정상 트리거되는지 확인 (특히 F7 계열)
+    - Localization 영문/한국어 모두 라벨 길이 다양해도 우측 정렬 유지
+    - paidApp 감지/미감지 분기 정상 동작
 
 # 📗 선택
 
