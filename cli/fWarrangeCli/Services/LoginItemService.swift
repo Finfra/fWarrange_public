@@ -6,9 +6,8 @@ import Foundation
 ///
 /// brew path: /opt/homebrew/bin/brew (Apple Silicon only).
 /// enabled=true  → brew services start (plist install + launchd register)
-/// enabled=false → launchctl bootout + plist removal
-///                  (brew services stop is avoided because it also kills the
-///                  running process, which we do not want here).
+/// enabled=false → plist removal only (launchctl bootout is intentionally skipped
+///                  because it terminates the running process).
 enum LoginItemService {
     static func sync(enabled: Bool) {
         if enabled {
@@ -23,21 +22,9 @@ enum LoginItemService {
                 logW("Issue51: brew services start 실패 — \(error.localizedDescription)")
             }
         } else {
-            // Step 1: launchctl bootout (replaces brew services stop to avoid killing process).
-            let uid = getuid()
-            let labelPath = "gui/\(uid)/homebrew.mxcl.fwarrange-cli"
-            let bootoutProcess = Process()
-            bootoutProcess.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-            bootoutProcess.arguments = ["bootout", labelPath]
-            do {
-                try bootoutProcess.run()
-                bootoutProcess.waitUntilExit()
-                logI("Issue51: launchctl bootout 완료 — LaunchAgent 등록 해제")
-            } catch {
-                logW("Issue51: launchctl bootout 실패 — \(error.localizedDescription)")
-            }
-
-            // Step 2: remove the plist file.
+            // Remove the plist file only.
+            // Do NOT use launchctl bootout — it terminates the running process when the app
+            // is managed by launchd, which is the exact bug being fixed here.
             let plist = URL(fileURLWithPath: NSHomeDirectory())
                 .appendingPathComponent("Library/LaunchAgents/homebrew.mxcl.fwarrange-cli.plist")
             do {
