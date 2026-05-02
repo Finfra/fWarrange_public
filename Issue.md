@@ -24,7 +24,7 @@ date: 2026-04-07
 # 📙 일반
 # 📗 선택
 
-## Issue65: Launch at Login 토글 시 앱이 종료되는 버그 (등록: 2026-05-02) (✅ 완료, pending)
+## Issue65: Launch at Login 토글 시 앱이 종료되는 버그 (등록: 2026-05-02) (✅ 완료, 06dfbb8) ✅
 * 목적: Launch at Login 메뉴 클릭 시 자동 시작 여부만 변경되어야 하는데 앱이 종료되는 버그 수정
 * 상세:
     - `LoginItemService.swift` — `enabled=false` 경로에서 `launchctl bootout` 실행 시 launchd로 관리 중인 프로세스(앱 자체)가 종료됨
