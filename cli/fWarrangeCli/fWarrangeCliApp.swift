@@ -20,6 +20,7 @@ struct AppEntry {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var settingsService: SettingsService?
+    let menuBarManager = MenuBarManager()
 
     func applicationWillTerminate(_ notification: Notification) {
         Logger.shared.writeSessionEnd()
@@ -59,26 +60,20 @@ struct fWarrangeCliApp: App {
 
     init() {
         logI("🚀 fWarrangeCli 시작")
-
-        // Issue51: AppDelegate에 settingsService 주입 (앱 종료 시 brew services 제어용)
         appDelegate.settingsService = appState.settingsService
 
         let state = appState
+        let manager = appDelegate.menuBarManager
+        // Issue62: NSStatusItem+NSMenu — initialize after AppState is ready
         DispatchQueue.main.async {
             state.initialize()
+            manager.setup(appState: state)
         }
     }
 
     var body: some Scene {
-        // Issue218: 시간적 배타성 제거 — paidApp 실행 중에도 cliApp 메뉴바 동시 표시
-        // SSOT: _doc_design/paid_cli_protocol.md (2026-04-26 갱신) — cliApp REST 데몬 독립 운영 보장
-        MenuBarExtra {
-            MenuBarView()
-                .environment(appState)
-        } label: {
-            Image(nsImage: appState.menuBarIcon)
-                .renderingMode(appState.menuBarIconIsTemplate ? .template : .original)
-        }
-        .menuBarExtraStyle(.menu)
+        // Issue62: MenuBarExtra removed — NSStatusItem+NSMenu via MenuBarManager.
+        // Settings scene kept as minimal SwiftUI anchor (LSUIElement=YES, no Dock icon).
+        Settings { EmptyView() }
     }
 }

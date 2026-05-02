@@ -479,6 +479,13 @@ final class AppState {
             try? layoutManager.saveLayout(name: name, windows: windows)
             ChangeTracker.shared.record(type: "layout.created", target: name)
             logI("⌨️ 단축키 저장: '\(name)'")
+            if settings.defaultLayoutName == nil {
+                var s = settingsService.load()
+                s.defaultLayoutName = name
+                settingsService.save(s)
+                settings.defaultLayoutName = name
+                logI("⭐ 첫 레이아웃을 기본으로 자동 설정: '\(name)'")
+            }
         case .restoreDefault:
             // defaultLayoutName SSOT 우선 → 미지정 시 fileDate 가장 최근
             let target = settings.defaultLayoutName
