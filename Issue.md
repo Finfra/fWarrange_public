@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 66
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - 06939f9 (2026-05-02) - Docs: Close Issue66
   - f5fa7aa (2026-05-02) - Docs: Close Issue66
   - 4e11b5d (2026-05-02) - Feat(MenuBar): Close Issue62/63/64
   - 1d9a438 (2026-05-02) - Docs: Register Issue63
@@ -20,9 +21,11 @@ date: 2026-04-07
 # 🌱 이슈후보
 
 # 🚧 진행중
+
 # 📕 중요
 
 # 📙 일반
+
 # 📗 선택
 
 ## Issue65: Launch at Login 토글 시 앱이 종료되는 버그 (등록: 2026-05-02) (✅ 완료, 06dfbb8) ✅
