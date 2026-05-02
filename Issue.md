@@ -28,6 +28,7 @@ date: 2026-04-07
 
 # 📗 선택
 
+# ✅ 완료
 ## Issue65: Launch at Login 토글 시 앱이 종료되는 버그 (등록: 2026-05-02) (✅ 완료, 06dfbb8) ✅
 * 목적: Launch at Login 메뉴 클릭 시 자동 시작 여부만 변경되어야 하는데 앱이 종료되는 버그 수정
 * 상세:
@@ -37,7 +38,6 @@ date: 2026-04-07
     - `LoginItemService.sync(enabled: false)` 경로에서 `launchctl bootout` 단계 제거
     - plist 파일 삭제만 수행
 
-# ✅ 완료
 ## Issue66: REST API daemon 제어 엔드포인트 추가 (cli/restart·pause·resume) (등록: 2026.05.02) (✅ 완료, f5fa7aa) ✅
 * 목적: 데몬 재시작·REST API 일시정지/재개를 REST 엔드포인트로 원격 제어 가능하게 함
 * 상세: 
