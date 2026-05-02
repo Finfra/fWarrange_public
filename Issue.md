@@ -7,13 +7,6 @@ date: 2026-04-07
 * Issue HWM: 61
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
   - 2a219fa (2026-05-01) - Fix(CLI): Issue60 — cmdTest v2 정합화 + delete-all/quit confirm 헤더 버그 수정
-  - 97c06b6 (2026-05-01) - Verify(API): Issue59 — v2 API 정상 33건 + 에러 4건 전체 PASS
-  - 97c06b6 (2026-05-01) - Fix(HotKey): Issue61 — _config.yml 미명시 단축키 글로벌 등록 차단
-  - 97c06b6 (2026-05-01) - Docs: Close Issue61
-  - dbb465c (2026-04-28) - Refactor(Env): cliApp 환경 변수 단일 진입점 통합 (Issue225)
-  - 5314ec3 (2026-04-27) - Feat(MenuBar): Close Issue58 — cliApp 메뉴바 개선안 적용
-  - bc232b7 (2026-04-27) - Refactor(AppState): Issue217 Phase 2 — Service 4종 추출 (책임 분리)
-  - 7ad6779 (2026-04-27) - Docs: Close Issue56 (cmd_design.md baseURL v2 갱신)
 
 
 # 🤔 결정사항
@@ -21,13 +14,13 @@ date: 2026-04-07
 * _doc_design/menuBar_enhance.md 기준 진행(메뉴바)
 
 # 🌱 이슈후보
-1. Default 레이아웃 복구 않됨. 트리거 로그만 있음.[2026-04-13 14:32:37.131] 🐛 DEBUG: HotKeyService: 단축키 트리거 (id=4)
 
 # 🚧 진행중
 
 # 📕 중요
 
 # 📙 일반
+
 # 📗 선택
 
 # ✅ 완료
@@ -307,16 +300,16 @@ date: 2026-04-07
 * report: `cli/_doc_work/report/brew-service-menubar-sync_issue39_report.md`
 * 재설계 상태 매트릭스 (2026-04-20 사용자 결정):
 
-    | Trigger          | 상대 상태             | 기대 동작                                            |
-    | :--------------- | :-------------------- | :--------------------------------------------------- |
-    | **brew start**   | 앱 실행 중             | brew state 만 `started` 로 이동 (앱 재기동 없음)       |
-    | **brew start**   | 앱 정지                | 앱 시작 + brew state `started`                        |
-    | **brew stop**    | 앱 정지                | brew state `stopped`                                  |
-    | **brew stop**    | 앱 실행 중             | brew state `stopped` (launchctl unload, 앱 종료 동반) |
-    | **app start**    | brew `started`        | 앱만 시작, brew 호출 skip                             |
-    | **app start**    | brew `stopped`        | 앱 시작 + `brew services start` 호출 (state 동기화)   |
-    | **app stop**     | brew `started`        | `brew services stop` 호출 + `NSApplication.terminate` |
-    | **app stop**     | brew `stopped`        | `terminate` 만 (brew 호출 skip)                       |
+    | Trigger        | 상대 상태      | 기대 동작                                             |
+    | :------------- | :------------- | :---------------------------------------------------- |
+    | **brew start** | 앱 실행 중     | brew state 만 `started` 로 이동 (앱 재기동 없음)      |
+    | **brew start** | 앱 정지        | 앱 시작 + brew state `started`                        |
+    | **brew stop**  | 앱 정지        | brew state `stopped`                                  |
+    | **brew stop**  | 앱 실행 중     | brew state `stopped` (launchctl unload, 앱 종료 동반) |
+    | **app start**  | brew `started` | 앱만 시작, brew 호출 skip                             |
+    | **app start**  | brew `stopped` | 앱 시작 + `brew services start` 호출 (state 동기화)   |
+    | **app stop**   | brew `started` | `brew services stop` 호출 + `NSApplication.terminate` |
+    | **app stop**   | brew `stopped` | `terminate` 만 (brew 호출 skip)                       |
 
 * 집행 지점 (3개 코드 포인트로 매트릭스 전체 커버):
     - **SingleInstanceGuard** — `brew start` × 앱 실행 중 → 신규 프로세스가 `exit(0)`, 기존 앱 유지 + plist `keep_alive: successful_exit: false` 로 launchd 재기동 억제 → brew state 만 `started` 수렴
@@ -1003,12 +996,12 @@ date: 2026-04-07
     - 자동화: `dawidd6/action-homebrew-bump-formula` GitHub Action (Phase B 구현 시)
 * 서브커맨드 스펙:
 
-    | 서브커맨드                | 동작                                                                                        | 상태        |
-    | :------------------------ | :------------------------------------------------------------------------------------------ | :---------- |
-    | `/deploy brew local`      | Release 빌드 + 로컬 tap(`finfra/tap`) 재설치 + 심링크 + 앱 실행 (9단계)                     | ✅ Phase A   |
-    | `/deploy brew publish`    | 원격 `finfra/homebrew-tap` 저장소 생성/푸시, 태그 기반 Formula 업데이트                     | 🚧 Phase B  |
-    | `/deploy brew status`     | brew list, brew --prefix, 로컬/원격 tap, 심링크, 프로세스·REST 상태 조회                    | ✅ Phase A   |
-    | `/deploy brew uninstall`  | brew uninstall + 심링크 + 로컬 tap Formula + tarball 정리                                   | ✅ Phase A   |
+    | 서브커맨드               | 동작                                                                     | 상태      |
+    | :----------------------- | :----------------------------------------------------------------------- | :-------- |
+    | `/deploy brew local`     | Release 빌드 + 로컬 tap(`finfra/tap`) 재설치 + 심링크 + 앱 실행 (9단계)  | ✅ Phase A |
+    | `/deploy brew publish`   | 원격 `finfra/homebrew-tap` 저장소 생성/푸시, 태그 기반 Formula 업데이트  | 🚧 Phase B |
+    | `/deploy brew status`    | brew list, brew --prefix, 로컬/원격 tap, 심링크, 프로세스·REST 상태 조회 | ✅ Phase A |
+    | `/deploy brew uninstall` | brew uninstall + 심링크 + 로컬 tap Formula + tarball 정리                | ✅ Phase A |
 * Phase A (local/status/uninstall + Usage 강제, pairApp 수렴): ✅ 구현 완료 (`7a582c2`, `ddc56c1`)
     - 신규: `cli/_tool/fwc-deploy-debug.sh` — `/deploy debug` 및 Debug 배포용 유틸
     - 신규: `cli/_tool/fwc-deploy-brew.sh` — `brew` 서브커맨드 라우터 (case dispatcher)

@@ -34,3 +34,4 @@ theme: system
 saveShortcut: "⌘F7"
 restoreDefaultShortcut: "⇧⌘F7"
 restoreLastShortcut: "⌥⌘F7"
+showMainWindowShortcut: "⌃⇧⌘F7" # {showMain}     Open Main Window

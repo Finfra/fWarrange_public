@@ -193,7 +193,7 @@ struct AppSettings: Codable {
         restoreLastShortcut: nil,
         showMainWindowShortcut: nil,
         showSettingsShortcut: nil,
-        launchAtLogin: false,
+        launchAtLogin: true,  // Issue228: default true so brew services plist persists across cliApp stops, enabling launchd auto-start at next login
         defaultLayoutName: nil,
         appLanguage: nil,
         restServerEnabled: true,

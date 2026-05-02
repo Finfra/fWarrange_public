@@ -80,7 +80,7 @@ final class YAMLSettingsService: SettingsService {
         lines.append("# logLevel: 0=verbose, 1=debug, 2=info, 3=warning, 4=error, 5=critical")
         lines.append("logLevel: \(s.logLevel ?? 5)")
         lines.append("dataStorageMode: \(s.dataStorageMode?.rawValue ?? "host")")
-        lines.append("launchAtLogin: \(s.launchAtLogin ?? false)")
+        lines.append("launchAtLogin: \(s.launchAtLogin ?? true)")
         if let defaultLayout = s.defaultLayoutName {
             lines.append("defaultLayoutName: \"\(defaultLayout)\"")
         }

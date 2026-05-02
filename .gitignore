@@ -1,9 +1,16 @@
 # agent
 .claude/
 CLAUDE.md
-wiki/
+_doc_design
+_doc_work
+
+
+# 작업 문서 (로컬 전용)
+cli/_doc_work/
+cli/_doc_design/
 
 # claudeCode_xcode_Skel
+Issue.md
 noteForHuman.md
 
 # macOS

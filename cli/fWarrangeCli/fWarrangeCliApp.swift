@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Issue51: 앱 종료 시 launchAtLogin 설정에 따라 brew services 제어
         if let settingsService = settingsService {
             let settings = settingsService.load()
-            handleBrewServicesOnTerminate(launchAtLogin: settings.launchAtLogin ?? false)
+            handleBrewServicesOnTerminate(launchAtLogin: settings.launchAtLogin ?? true)
         }
     }
 
