@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 65
+* Issue HWM: 66
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - f5fa7aa (2026-05-02) - Docs: Close Issue66
   - 4e11b5d (2026-05-02) - Feat(MenuBar): Close Issue62/63/64
   - 1d9a438 (2026-05-02) - Docs: Register Issue63
   - 732348b (2026-05-02) - Chore: launchAtLogin 기본 true(Issue228) + 문서·.gitignore 정리
@@ -34,6 +35,15 @@ date: 2026-04-07
     - plist 파일 삭제만 수행
 
 # ✅ 완료
+## Issue66: REST API daemon 제어 엔드포인트 추가 (cli/restart·pause·resume) (등록: 2026.05.02) (✅ 완료, f5fa7aa) ✅
+* 목적: 데몬 재시작·REST API 일시정지/재개를 REST 엔드포인트로 원격 제어 가능하게 함
+* 상세: 
+- POST /api/v2/cli/restart: 서버+HotKey 재시작 (X-Confirm: true 헤더 필수)
+- POST /api/v2/cli/pause: 헬스체크 외 모든 요청 503 처리
+- POST /api/v2/cli/resume: pause 해제
+- entitlements에서 불필요한 accessibility 키 제거
+- openapi_v2.yaml 스펙 동기화
+
 ## Issue63: NSMenu 마이그레이션(Issue62) 완료 후 설계 문서 갱신 (등록: 2026.05.02) (✅ 완료, 4e11b5d) ✅
 * 목적: Issue62(SwiftUI MenuBarExtra → NSStatusItem+NSMenu) 완료 시 paid_cli_protocol.md 코드 예시·UI 소유권 매트릭스 및 menuBar_enhance.md 관련 파일 테이블을 NSStatusItem 기반으로 갱신한다.
 * 상세: 
