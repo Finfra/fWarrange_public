@@ -398,6 +398,9 @@ final class MenuBarManager: NSObject, NSMenuDelegate {
             NSApplication.shared.terminate(nil)
             return
         }
+        // Issue68: Quit All — terminate paidApp first so its applicationWillTerminate
+        // can POST /unregister to this still-running cliApp REST server.
+        _ = PaidAppLauncher.terminate(gracePeriod: 2.0)
         logI("👋 fWarrangeCli 종료")
         state.restServer.stop()
         BrewServiceSync.onAppStop()

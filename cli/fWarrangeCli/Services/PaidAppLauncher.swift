@@ -85,6 +85,44 @@ enum PaidAppLauncher {
         }
     }
 
+    /// Issue68: Terminate the running paidApp via standard NSRunningApplication API.
+    /// Uses bundleIdentifier `kr.finfra.fWarrange` to locate live instances and invokes
+    /// `terminate()` (graceful) so paidApp's `applicationWillTerminate` fires —
+    /// allowing it to POST `/unregister` and clean up before exit.
+    /// Falls back to `forceTerminate()` after `gracePeriod` seconds if instances remain.
+    /// Returns true when at least one paidApp instance was found and signalled.
+    @discardableResult
+    static func terminate(gracePeriod: TimeInterval = 2.0) -> Bool {
+        let bundleId = "kr.finfra.fWarrange"
+        let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
+        guard !running.isEmpty else {
+            logI("ℹ️ paidApp 종료 시도 — 실행 중 인스턴스 없음 (bundleId=\(bundleId))")
+            return false
+        }
+        for app in running {
+            let pid = app.processIdentifier
+            let ok = app.terminate()
+            if ok {
+                logI("👋 paidApp 종료 신호 송신 (graceful): pid=\(pid)")
+            } else {
+                logW("⚠️ paidApp graceful terminate 실패 → forceTerminate 시도: pid=\(pid)")
+                _ = app.forceTerminate()
+            }
+        }
+        let deadline = Date().addingTimeInterval(gracePeriod)
+        while Date() < deadline {
+            let stillAlive = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
+            if stillAlive.isEmpty { return true }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        let stragglers = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
+        for app in stragglers {
+            logW("⏱ paidApp graceful 종료 시간 초과 → forceTerminate: pid=\(app.processIdentifier)")
+            _ = app.forceTerminate()
+        }
+        return true
+    }
+
     /// Detect → launch → confirm via NSAlert. Returns false when paidApp is missing.
     @MainActor
     static func tryLaunchFeature() -> Bool {
