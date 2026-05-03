@@ -12,7 +12,7 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     PRODUCT_BUNDLE_IDENTIFIER: kr.finfra.fWarrangeCli
     INFOPLIST_KEY_LSUIElement: true
-    MARKETING_VERSION: "1.0.0"
+    MARKETING_VERSION: "1.0.1"
     CURRENT_PROJECT_VERSION: 1
     GENERATE_INFOPLIST_FILE: true
     # 서명 설정 SSOT — Issue37(20c054d) 수동 추가가 XcodeGen 재생성 시 삭제되는 문제(Issue39 세션 재발) 재발 방지
