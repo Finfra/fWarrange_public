@@ -11,7 +11,7 @@ cliApp의 REST API v2는 v1의 완전한 슈퍼셋이다. GUI(paidApp)가 `/chan
 * **프레임워크**: `Network.framework` (`NWListener` + `NWConnection`) — 외부 의존성 없음
 * **서비스 루트**: `http://localhost:3016/api/v2`
 * **API 스펙**: [`api/openapi_v2.yaml`](../../api/openapi_v2.yaml)
-* **이전 버전**: [`RestAPI_v1.md`](./RestAPI_v1.md) — 레거시 유지, 향후 제거 예정
+* **이전 버전**: [`z_old/RestAPI_v1.md`](z_old/RestAPI_v1.md) — Issue213 Phase 1(2026-04-27)에서 410 Gone으로 동결, 2026-05-04 z_old 아카이브
 
 ## 설계 원칙
 
@@ -72,7 +72,7 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 
 # 4. 엔드포인트 요약
 
-> 상세 스펙은 [`openapi_v2.yaml`](../_public/api/openapi_v2.yaml) 참조
+> 상세 스펙은 [`openapi_v2.yaml`](../../api/openapi_v2.yaml) 참조
 
 ## 4.1 Health / Changes
 

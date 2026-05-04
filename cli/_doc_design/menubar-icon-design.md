@@ -13,7 +13,7 @@ paidApp 코드 변경 없이 cliApp이 NSWorkspace 이벤트를 자체적으로 
 # 관련 자료
 
 * [cliApp_design.md](cliApp_design.md) — cliApp 전체 아키텍처 설계
-* [paidApp_version.md](paidApp_version.md) — paidApp ↔ cliApp 연동 설계 (Bundle ID 규약, 배포 경로 매트릭스)
+* [paid_cli_protocol.md](../../../_doc_design/paid_cli_protocol.md) — paidApp ↔ cliApp 연동 SSOT (Bundle ID 규약, 배포 경로 매트릭스 통합)
 * [RestAPI_v2.md](RestAPI_v2.md) — REST API v2 설계 (paidApp register API 포함)
 
 # 설계
@@ -140,4 +140,4 @@ paidApp 종료:
 * 본 문서는 2026-04-20 작성. 이전 이력은 `git log -- cli/_doc_design/menubar-icon-design.md` 참조
 * PaidAppMonitor 상태 모델 변경(예: 상태 추가) 시 본 문서 "상태 모델" 섹션 직접 갱신
 * 아이콘 생성 로직 변경(크기, 클리핑 경로) 시 본 문서 "아이콘 생성 로직" 섹션 갱신
-* paidApp Bundle ID 변경 시 본 문서 및 `paidApp_version.md` 동반 갱신
+* paidApp Bundle ID 변경 시 본 문서 및 `paid_cli_protocol.md` (SSOT) 동반 갱신
