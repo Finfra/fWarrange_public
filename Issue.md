@@ -22,11 +22,13 @@ date: 2026-04-07
 * _doc_design/menuBar_enhance.md 기준 진행(메뉴바)
 
 # 🌱 이슈후보
-1. Snippet Popup 메뉴 작동안함. 
+
 # 🚧 진행중
+
 # 📕 중요
 
 # 📙 일반
+
 # 📗 선택
 
 # ✅ 완료

@@ -57,7 +57,7 @@ date: 2026-05-02
 
 ## Issue62: 메뉴바 단축키 우측 정렬 — NSMenu 마이그레이션 (등록: 2026-05-02) (✅ 완료, 4e11b5d) ✅
 * 목적: cliApp 메뉴바 단축키(`⌘F7`, `⇧⌘F7`, `⌥⌘F7` 등)가 메뉴 라벨 텍스트에 4-스페이스 패딩으로 박혀 있어 macOS 표준 우측 정렬이 깨짐. fSnippet(pairApp) 패턴(`NSStatusItem` + `NSMenu` + `keyEquivalent`)을 차용하여 표준 우측 정렬로 통일하고 F-key 매핑까지 확장한다.
-* plan: `cli/_doc_work/plan/menubar-nsmenu-migration_plan.md`
+* plan: `cli/_doc_work/z_done/plan/menubar-nsmenu-migration_plan.md`
 * 상세:
     - 현재 `MenuBarView.swift` (SwiftUI MenuBarExtra) — `labelWithShortcut(label, shortcut)` 헬퍼가 라벨에 단축키 텍스트를 직접 부착 ([L228-231](../cli/fWarrangeCli/MenuBarView.swift#L228-L231))
     - 사유: SwiftUI `KeyboardShortcut`(`Character` 기반)이 F-key를 표현하지 못함
@@ -125,7 +125,7 @@ date: 2026-05-02
 
 ## Issue58: cliApp 메뉴바 개선안 적용 (menuBar_enhance.md SSOT) (등록: 2026.04.27) (✅ 완료, 5314ec3) ✅
 * 목적: _doc_design/menuBar_enhance.md SSOT의 cliApp 메뉴 개선안을 적용하여 paidApp 부재 시에도 핵심 기능(Save/Restore/Layout 직접 클릭) 노출 + paidApp과 동형 구조로 학습 비용 0 달성. Issue46 시간적 배타성 적용 분기와 design doc(미적용 정책) 충돌 동시 해소.
-* plan: `cli/_doc_work/plan/menuBar_enhance_plan.md`
+* plan: `cli/_doc_work/z_done/plan/menuBar_enhance_plan.md`
 * 상세: 
   - Issue46 충돌 해소: cliOnlySection 분기 폐기, paidApp 실행/미실행 무관 동일 메뉴 표시 (design doc §7.2.1/§7.4 SSOT)
   - About fWarrangeCli 도입 (Homebrew 단독 배포 환경의 정체성/버전 표기)
@@ -347,8 +347,8 @@ date: 2026-05-02
 
 ## Issue39: brew services ↔ 메뉴바 앱 상태 동기화 재설계 — 4-quadrant 상태 매트릭스 기반 (등록: 2026-04-20, 재설계: 2026-04-20, 해결: 2026-04-20, commit: 3867459) ✅
 * 목적: `brew services` (launchd) 와 메뉴바 GUI 앱의 수명주기를 **4-quadrant 상태 매트릭스**로 명시 정의하고, 4개 트리거(brew start / brew stop / app start / app stop) 각각에서 상대 상태를 양방향 동기화. `/opt/homebrew/var/fWarrangeCli/` 경로 원천 차단(Phase 1) 과 Bundle ID 기반 단일 인스턴스 가드(Phase 4) 를 기반으로 각 전이를 no-double-start/no-ghost-state 로 수렴.
-* plan: `cli/_doc_work/plan/brew-service-menubar-sync_plan.md`
-* report: `cli/_doc_work/report/brew-service-menubar-sync_issue39_report.md`
+* plan: `cli/_doc_work/z_done/plan/brew-service-menubar-sync_plan.md`
+* report: `cli/_doc_work/z_done/report/brew-service-menubar-sync_issue39_report.md`
 * 재설계 상태 매트릭스 (2026-04-20 사용자 결정):
 
     | Trigger        | 상대 상태      | 기대 동작                                             |
@@ -410,8 +410,8 @@ date: 2026-05-02
 
 ## Issue37: pairApp(fSnippetCli) 검증 완료된 deploy/run 스크립트 구조 Full Mirror 이식 (등록: 2026-04-19, 해결: 2026-04-19, commit: f7b4233, d8eec73, 98caea9, 20c054d) ✅
 * 목적: pairApp(fSnippetCli #25)에서 리팩터링 + 안전성 테스트 완료된 `fsc-*.sh` 6종 구조를 `fwc-*.sh` 로 Full Mirror 이식 — prefix/Bundle ID/포트(3015→3016)/Formula명만 치환, 로직·함수·단계 번호 100% 일치시켜 양 프로젝트 구조 수렴 지속
-* plan: `cli/_doc_work/plan/deploy-run-sync-from-pairapp_plan.md`
-* task: `cli/_doc_work/tasks/deploy-run-sync-from-pairapp_task.md`
+* plan: `cli/_doc_work/z_done/plan/deploy-run-sync-from-pairapp_plan.md`
+* task: `cli/_doc_work/z_done/tasks/deploy-run-sync-from-pairapp_task.md`
 * 상세:
     - pairApp 2026-04-19 17:22 기준 `fsc-config.sh`(21줄), `fsc-run-xcode.sh`(250줄), `fsc-deploy-brew.sh`(521줄), `fsc-deploy-debug.sh`(87줄), `kill.sh`(30줄) 를 소스 오브 트루스로 삼음
     - 이식 제외: `send_right_cmd.py`, `testBoard.txt`, ZTest 9단계 (스니펫 전용 TDD — cliApp 비대상)
@@ -658,8 +658,8 @@ date: 2026-05-02
 ## Issue26: nPTiR 환경 정비 — _doc_work 구조·gitignore·settings.json 정비 (등록: 2026-04-14, 해결: 2026-04-14, commit: ad27664) ✅
 
 * 목적: nPTiR 체계 원활 운용을 위해 잘못된 _doc_work 위치 정리, .gitignore 보완, settings.json 하드코딩 경로 제거
-* plan: `cli/_doc_work/plan/start-nPTiR_plan.md`
-* task: `cli/_doc_work/tasks/start-nPTiR_task.md`
+* plan: `cli/_doc_work/z_done/plan/start-nPTiR_plan.md`
+* task: `cli/_doc_work/z_done/tasks/start-nPTiR_task.md`
 * 상세:
     - `_doc_work/` 루트 파일 3개 `cli/_doc_work/`로 이동 및 빈 폴더 삭제
     - `cli/_doc_work/tasks/` → `task/` 단수형 리네임
