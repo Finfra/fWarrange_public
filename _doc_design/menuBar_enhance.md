@@ -105,7 +105,7 @@ fWarrangeCli (cliApp)
 
 ## 종료 항목 정책 (Termination Menu Items)
 
-상위 SSOT인 [`paid_cli_protocol.md` §3.3](../../_doc_design/paid_cli_protocol.md) 종료 정책 표를 메뉴 UI에 매핑한 규칙.
+상위 SSOT인 [`paid_cli_protocol.md` §3.3](../../../_doc_design/paid_cli_protocol.md) 종료 정책 표를 메뉴 UI에 매핑한 규칙.
 
 | `paidAppStatus` | 노출 항목                         | 단축키 표시 | 동작                                                                          |
 | :-------------- | :-------------------------------- | :---------- | :---------------------------------------------------------------------------- |
