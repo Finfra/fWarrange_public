@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 69
+* Issue HWM: 70
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
   - 1a375a1 (2026-05-04) - Feat(MenuBar): Issue69 — paidApp 동작 시 About/Open Main Window 분기
   - 251036a (2026-05-03) - Feat(MenuBar): Issue68 — Quit All
@@ -28,6 +28,41 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+
+## Issue70: [Feat] cliApp 메뉴바 종료 항목 단축키 표시 정비 + 다국어 지원 (등록: 2026-05-04)
+* 목적: cliApp 메뉴바의 종료 항목 단축키 표시를 종료 정책(`paid_cli_protocol.md` §3.3)과 일치시키고, 메뉴 항목 다국어 지원을 추가. paidApp Cmd+Q는 paidApp 단독 종료에만 표시되어야 하며, cliApp Quit All에는 단축키 미부여(오발화 방지).
+* 상세:
+    - 배경:
+        - paidApp Issue239(Cmd+Q로 cliApp 동반 종료) 취소 — 정책: Cmd+Q는 paidApp 단독 종료, 메뉴바 Quit All은 cliApp 메뉴 단일 진입점
+        - 현재 `_doc_design/menuBar_enhance.md`의 메뉴 구조에서 `Quit ⌘Q` 표기가 단일 항목에 부여되어 있어 정책과 불일치
+        - 메뉴 항목 텍스트가 영어 하드코딩으로 추정 — 다국어 미지원
+    - 관련 파일:
+        - `cli/fWarrangeCli/Managers/MenuBarManager.swift` (NSMenu 구성)
+        - `_doc_design/menuBar_enhance.md` (SSOT 메뉴 구조 — 본 이슈에서 수정)
+        - `cli/fWarrangeCli/*.lproj/Localizable.strings` 또는 `.xcstrings` (다국어 리소스)
+* 구현 명세:
+    - 1단계 — `_doc_design/menuBar_enhance.md` 수정:
+        - "Quit ⌘Q" 단일 항목을 정책 기반 2~1항목 구조로 분리:
+            - paidApp 활성(`paidAppStatus = started`): `Quit fWarrange ⌘Q` + `Quit All` (단축키 없음)
+            - paidApp 비활성(`stopped`/`notInstall`): `Quit fWarrangeCli` (cliApp 단독, 단축키 없음)
+        - 단축키 표시 규칙: ⌘Q는 **paidApp 활성 시 paidApp 단독 종료 항목에만** 표시
+        - 메뉴 텍스트는 다국어 키 참조 형식: `menu.quit.fwarrange`, `menu.quit.all`, `menu.quit.fwarrangecli`
+    - 2단계 — `MenuBarManager.swift` 구현:
+        - paidApp 상태 분기로 종료 항목 구성
+        - paidApp 활성: `Quit fWarrange`(⌘Q, paidApp 단독) + `Quit All`(단축키 없음, 통합 종료)
+        - paidApp 비활성: `Quit fWarrangeCli` 단일 항목, 단축키 없음
+        - paidApp 단독 종료 액션: `PaidAppLauncher.terminate()` 호출 (cliApp은 잔존)
+        - Quit All 액션: 기존 `quitApp()` 시퀀스 (Issue68/Issue236 — 3단 폴백)
+    - 3단계 — 다국어 리소스 추가:
+        - 신규 키: `menu.quit.fwarrange`, `menu.quit.all`, `menu.quit.fwarrangecli`
+        - 지원 언어 매트릭스는 `localization/` 기존 정책 따름 (en/ko 최소 + 기타 기존 지원 언어 동기화)
+        - About 항목 등 기존 다국어 미적용 메뉴 항목도 동시 정비 (선택적, 발견 시)
+    - 4단계 — 검증:
+        - paidApp 활성 시 메뉴 열기: `Quit fWarrange ⌘Q` + `Quit fWarrangeCli`(단축키 없음) 노출 확인
+        - paidApp 비활성 시 메뉴 열기: `Quit fWarrangeCli` 단일 항목, 단축키 없음 확인
+        - paidApp 단독 종료 후 cliApp 잔존(`pgrep fWarrangeCli`) 확인
+        - Quit All 시 paidApp + cliApp 모두 종료 확인
+        - 시스템 언어 변경 시 메뉴 텍스트 즉시 반영 확인 (en/ko)
 
 # 📗 선택
 
