@@ -82,10 +82,12 @@ final class MenuBarManager: NSObject, NSMenuDelegate {
 
     private func buildMenuItems(menu: NSMenu, state: AppState) {
         let lang = state.effectiveLanguage
+        let isPaidActive = state.paidAppMonitor.state == PaidAppMonitor.State.paidAppActive
 
-        // About
+        // About — title flips between cli/paid based on paidApp running state
+        let aboutKey = isPaidActive ? "menu.about.paid" : "menu.about.cli"
         menu.addItem(makeItem(
-            title: "ℹ️ " + L10n("menu.about", lang: lang),
+            title: "ℹ️ " + L10n(aboutKey, lang: lang),
             action: #selector(showAbout)
         ))
 
@@ -306,7 +308,8 @@ final class MenuBarManager: NSObject, NSMenuDelegate {
     // MARK: - Actions
 
     @objc private func showAbout() {
-        AboutWindowManager.shared.showAbout()
+        let isPaidActive = appState?.paidAppMonitor.state == PaidAppMonitor.State.paidAppActive
+        AboutWindowManager.shared.showAbout(isPaidActive: isPaidActive)
     }
 
     @objc private func restoreLast() {
@@ -325,7 +328,9 @@ final class MenuBarManager: NSObject, NSMenuDelegate {
     @objc private func openMainWindow() {
         guard let state = appState else { return }
         if state.detectPaidApp() != nil {
-            _ = state.launchPaidApp()
+            // Issue69: URL Scheme so paidApp(LSUIElement-capable) actually shows the main window,
+            // not just activates. Mirrors the hotkey path (.showMainWindow) and openSettings().
+            state.openPaidApp(action: "main")
         } else {
             // Defer to next run-loop so the menu fully closes before the modal alert appears.
             DispatchQueue.main.async { [weak self] in self?.showPaidOnlyAlert() }
