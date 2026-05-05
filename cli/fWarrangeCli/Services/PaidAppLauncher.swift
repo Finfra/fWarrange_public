@@ -21,8 +21,9 @@ enum PaidAppLauncher {
 
     // Issue222: SSOT §1.2 — URL Scheme parameter validation.
     // Whitelist accepted action verbs sent to paidApp via `fwarrange://command?action=...`.
+    // Issue236: `quit` action added as a fallback path for cliApp Quit All.
     private static let allowedActions: Set<String> = [
-        "main", "settings", "layouts", "edit", "about"
+        "main", "settings", "layouts", "edit", "about", "quit"
     ]
 
     // Issue222: SSOT §1.2 — layout name pattern (reserved for future open(action:layout:) extension).
@@ -85,11 +86,12 @@ enum PaidAppLauncher {
         }
     }
 
-    /// Issue68: Terminate the running paidApp via standard NSRunningApplication API.
-    /// Uses bundleIdentifier `kr.finfra.fWarrange` to locate live instances and invokes
-    /// `terminate()` (graceful) so paidApp's `applicationWillTerminate` fires —
-    /// allowing it to POST `/unregister` and clean up before exit.
-    /// Falls back to `forceTerminate()` after `gracePeriod` seconds if instances remain.
+    /// Issue68 / Issue236: Terminate paidApp with a 3-stage fallback.
+    /// Stage 1 (graceful): `NSRunningApplication.terminate()` — sends Quit AppleEvent.
+    ///                     paidApp's `applicationWillTerminate` fires → POSTs `/unregister`.
+    /// Stage 2 (URL Scheme): `fwarrange://command?action=quit` — paidApp self-terminates
+    ///                     via `URLSchemeHandler` (avoids AppleEvent receive entitlement issues).
+    /// Stage 3 (SIGTERM):   POSIX `kill -TERM <pid>` — direct signal regardless of sandbox.
     /// Returns true when at least one paidApp instance was found and signalled.
     @discardableResult
     static func terminate(gracePeriod: TimeInterval = 2.0) -> Bool {
@@ -99,26 +101,52 @@ enum PaidAppLauncher {
             logI("ℹ️ paidApp 종료 시도 — 실행 중 인스턴스 없음 (bundleId=\(bundleId))")
             return false
         }
+        // Stage 1: graceful AppleEvent quit
         for app in running {
             let pid = app.processIdentifier
             let ok = app.terminate()
             if ok {
-                logI("👋 paidApp 종료 신호 송신 (graceful): pid=\(pid)")
+                logI("👋 [Stage1] paidApp graceful terminate 송신: pid=\(pid)")
             } else {
-                logW("⚠️ paidApp graceful terminate 실패 → forceTerminate 시도: pid=\(pid)")
-                _ = app.forceTerminate()
+                logW("⚠️ [Stage1] paidApp graceful terminate 실패: pid=\(pid)")
             }
         }
-        let deadline = Date().addingTimeInterval(gracePeriod)
-        while Date() < deadline {
+
+        // Stage 2: URL Scheme fallback after half the grace period
+        let stage2Deadline = Date().addingTimeInterval(gracePeriod / 2)
+        while Date() < stage2Deadline {
             let stillAlive = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
-            if stillAlive.isEmpty { return true }
+            if stillAlive.isEmpty {
+                logI("✅ paidApp 종료 완료 (Stage1 graceful)")
+                return true
+            }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        let afterStage1 = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
+        if !afterStage1.isEmpty {
+            logW("⏱ [Stage2] paidApp 잔존 — URL Scheme `action=quit` 폴백 시도")
+            open(action: "quit")
+        }
+
+        // Stage 3: remaining grace period, then POSIX SIGTERM
+        let stage3Deadline = Date().addingTimeInterval(gracePeriod / 2)
+        while Date() < stage3Deadline {
+            let stillAlive = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
+            if stillAlive.isEmpty {
+                logI("✅ paidApp 종료 완료 (Stage2 URL Scheme)")
+                return true
+            }
             Thread.sleep(forTimeInterval: 0.1)
         }
         let stragglers = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
         for app in stragglers {
-            logW("⏱ paidApp graceful 종료 시간 초과 → forceTerminate: pid=\(app.processIdentifier)")
-            _ = app.forceTerminate()
+            let pid = app.processIdentifier
+            logW("🔪 [Stage3] paidApp 잔존 — SIGTERM 송신: pid=\(pid)")
+            let result = Darwin.kill(pid, SIGTERM)
+            if result != 0 {
+                logW("⚠️ [Stage3] SIGTERM 실패(errno=\(errno)) → forceTerminate fallback: pid=\(pid)")
+                _ = app.forceTerminate()
+            }
         }
         return true
     }

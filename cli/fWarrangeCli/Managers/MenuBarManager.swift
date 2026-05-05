@@ -144,14 +144,26 @@ final class MenuBarManager: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        // Quit
-        let quitItem = makeItem(
-            title: L10n("menu.quit", lang: lang),
-            action: #selector(quitApp),
-            keyEquivalent: "q",
-            modifierMask: .command
-        )
-        menu.addItem(quitItem)
+        // Issue70: Quit policy split based on paidApp running state.
+        // - paidApp active: "Quit fWarrange ⌘Q" (paidApp only) + "Quit All" (paidApp + cliApp, no shortcut)
+        // - paidApp inactive: "Quit fWarrangeCli" only (cliApp, no shortcut)
+        if isPaidActive {
+            menu.addItem(makeItem(
+                title: L10n("menu.quit.fwarrange", lang: lang),
+                action: #selector(quitPaidAppOnly),
+                keyEquivalent: "q",
+                modifierMask: .command
+            ))
+            menu.addItem(makeItem(
+                title: L10n("menu.quit.all", lang: lang),
+                action: #selector(quitApp)
+            ))
+        } else {
+            menu.addItem(makeItem(
+                title: L10n("menu.quit.fwarrangecli", lang: lang),
+                action: #selector(quitApp)
+            ))
+        }
     }
 
     // MARK: - Layout list section
@@ -410,6 +422,13 @@ final class MenuBarManager: NSObject, NSMenuDelegate {
         state.restServer.stop()
         BrewServiceSync.onAppStop()
         NSApplication.shared.terminate(nil)
+    }
+
+    @objc private func quitPaidAppOnly() {
+        // Issue70: paidApp-only termination — cliApp keeps running.
+        let ok = PaidAppLauncher.terminate(gracePeriod: 2.0)
+        logI("👋 paidApp 단독 종료 시도 (cliApp 잔존): result=\(ok)")
+        rebuildMenu()
     }
 
     // MARK: - paidApp 미감지 안내
