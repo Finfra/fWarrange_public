@@ -261,7 +261,22 @@ curl -X POST http://localhost:3016/api/v2/capture \
 curl -X POST http://localhost:3016/api/v2/layouts/myLayout/restore \
   -H "Content-Type: application/json" \
   -d '{"maxRetries":3,"retryInterval":1.0,"minimumScore":50,"enableParallel":true}'
+
+# 선택 복구 (Issue245): windowIds 비어있지 않으면 layout.windows를 해당 ID로 필터링
+curl -X POST http://localhost:3016/api/v2/layouts/myLayout/restore \
+  -H "Content-Type: application/json" \
+  -d '{"enableParallel":true,"windowIds":[14205,5032]}'
 ```
+
+## RestoreRequest 본문 필드
+
+| 필드             | 타입        | 기본값 | 설명                                                                                              |
+| :--------------- | :---------- | :----- | :------------------------------------------------------------------------------------------------ |
+| `maxRetries`     | integer     | 5      | 매칭 실패 시 재시도 횟수                                                                          |
+| `retryInterval`  | number      | 0.5    | 재시도 간격(초)                                                                                   |
+| `minimumScore`   | integer     | 30     | 매칭 최소 점수 임계값                                                                             |
+| `enableParallel` | boolean     | true   | 앱별 병렬 복구 활성화                                                                             |
+| `windowIds`      | array[int]  | `[]`   | **선택 복구** (Issue245). 비어있거나 미지정 시 layout 전체 복구. 지정 시 해당 ID만 필터링하여 복구 |
 
 ## Layouts 전체 삭제 (확인 헤더 필수)
 

@@ -1240,12 +1240,16 @@ final class RESTServer: RESTServerProtocol {
     }
 
     /// POST /api/v2/layouts/{name}/restore - 레이아웃 복구
+    /// Issue245: `windowIds`가 비어있지 않으면 layout.windows를 해당 ID로 필터링하여 선택 복구.
     private func handleRestore(name: String, request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         let json = request.jsonBody()
         let maxRetries = json?["maxRetries"] as? Int ?? 5
         let retryInterval = json?["retryInterval"] as? Double ?? 0.5
         let minimumScore = json?["minimumScore"] as? Int ?? 30
         let enableParallel = json?["enableParallel"] as? Bool ?? true
+        // Issue245: 선택 복구 윈도우 ID 필터 (선택 필드)
+        let windowIdsRaw = json?["windowIds"] as? [Int] ?? []
+        let windowIdsFilter: Set<Int> = Set(windowIdsRaw)
 
         Task { @MainActor [weak self] in
             guard let self else {
@@ -1261,10 +1265,18 @@ final class RESTServer: RESTServerProtocol {
 
                 let layout = try self.handlers.storageServiceLoad(name)
 
-                logI("[REST] restore 시작 - 레이아웃: '\(name)', 창 수: \(layout.windows.count)")
+                // Issue245: windowIds가 비어있지 않으면 필터링, 비어있으면 전체 복구
+                let targetWindows: [WindowInfo]
+                if windowIdsFilter.isEmpty {
+                    targetWindows = layout.windows
+                    logI("[REST] restore 시작 - 레이아웃: '\(name)', 창 수: \(layout.windows.count) (전체)")
+                } else {
+                    targetWindows = layout.windows.filter { windowIdsFilter.contains($0.id) }
+                    logI("[REST] restore 시작 - 레이아웃: '\(name)', 선택 복구 \(targetWindows.count)/\(layout.windows.count) 창 (windowIds=\(windowIdsRaw))")
+                }
 
                 let results = await self.handlers.restoreWindows(
-                    layout.windows,
+                    targetWindows,
                     maxRetries,
                     retryInterval,
                     minimumScore,

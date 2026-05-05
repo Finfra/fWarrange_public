@@ -722,6 +722,20 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RestoreRequest'
+            examples:
+              fullRestore:
+                summary: Restore all windows in layout
+                value:
+                  maxRetries: 5
+                  retryInterval: 0.5
+                  minimumScore: 30
+                  enableParallel: true
+              selectiveRestore:
+                summary: Restore only selected windows (Issue245)
+                value:
+                  maxRetries: 5
+                  enableParallel: true
+                  windowIds: [14205, 5032]
       responses:
         '200':
           description: Restore completed (may include partial failures)
@@ -1482,6 +1496,13 @@ components:
         retryInterval: { type: number, format: double, default: 0.5 }
         minimumScore: { type: integer, default: 30 }
         enableParallel: { type: boolean, default: true }
+        windowIds:
+          type: array
+          items: { type: integer }
+          description: |
+            복구할 윈도우 ID 목록 (선택). 비어있거나 미지정 시 layout 전체 복구.
+            지정 시 `layout.windows`를 해당 ID로 필터링한 뒤 복구한다 (Issue245).
+          example: [14205, 5032]
 
     WindowMatchResult:
       type: object
