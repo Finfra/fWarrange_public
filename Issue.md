@@ -6,15 +6,8 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 70
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+  - c47bbcd (2026-05-05) - Docs: Close Issue70
   - 1a375a1 (2026-05-04) - Feat(MenuBar): Issue69 — paidApp 동작 시 About/Open Main Window 분기
-  - 251036a (2026-05-03) - Feat(MenuBar): Issue68 — Quit All
-  - 1b9fec7 (2026-05-02) - Fix(REST): Issue67 — pause GET / 버그 수정
-  - 06939f9 (2026-05-02) - Docs: Close Issue66
-  - f5fa7aa (2026-05-02) - Docs: Close Issue66
-  - 4e11b5d (2026-05-02) - Feat(MenuBar): Close Issue62/63/64
-  - 1d9a438 (2026-05-02) - Docs: Register Issue63
-  - 732348b (2026-05-02) - Chore: launchAtLogin 기본 true(Issue228) + 문서·.gitignore 정리
-  - 2a219fa (2026-05-01) - Fix(CLI): Issue60 — cmdTest v2 정합화 + delete-all/quit confirm 헤더 버그 수정
 
 
 # 🤔 결정사항
@@ -22,6 +15,8 @@ date: 2026-04-07
 * _doc_design/menuBar_enhance.md 기준 진행(메뉴바)
 
 # 🌱 이슈후보
+1. vsCode앱만 복구 안되는 문제 해결.
+
 
 # 🚧 진행중
 
@@ -29,7 +24,10 @@ date: 2026-04-07
 
 # 📙 일반
 
-## Issue70: [Feat] cliApp 메뉴바 종료 항목 단축키 표시 정비 + 다국어 지원 (등록: 2026-05-04)
+# 📗 선택
+
+# ✅ 완료
+## Issue70: [Feat] cliApp 메뉴바 종료 항목 단축키 표시 정비 + 다국어 지원 (등록: 2026-05-04) (✅ 완료, c47bbcd) ✅
 * 목적: cliApp 메뉴바의 종료 항목 단축키 표시를 종료 정책(`paid_cli_protocol.md` §3.3)과 일치시키고, 메뉴 항목 다국어 지원을 추가. paidApp Cmd+Q는 paidApp 단독 종료에만 표시되어야 하며, cliApp Quit All에는 단축키 미부여(오발화 방지).
 * 상세:
     - 배경:
@@ -64,9 +62,6 @@ date: 2026-04-07
         - Quit All 시 paidApp + cliApp 모두 종료 확인
         - 시스템 언어 변경 시 메뉴 텍스트 즉시 반영 확인 (en/ko)
 
-# 📗 선택
-
-# ✅ 완료
 ## Issue69: [Feat] 메뉴바 paidApp 연동 일관성 — About 분기 + Open Main Window URL Scheme (등록: 2026-05-03) (✅ 완료, 1a375a1) ✅
 * 목적: paidApp 동작 상태에 따라 메뉴 표기·동작이 자연스러워지도록 정비함. 두 증상은 같은 패턴(paidApp 활성 시 paidApp을 우선시해야 함)이라 묶어 처리.
     1. About 메뉴: paidApp 동작 중일 때 "About fWarrangeCli"가 아니라 "About fWarrange"가 표시되어야 하고, About 창 내용도 paidApp 정보로 바뀌어야 함.
