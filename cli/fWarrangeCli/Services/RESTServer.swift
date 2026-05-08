@@ -1501,7 +1501,7 @@ final class RESTServer: RESTServerProtocol {
     // MARK: - 유틸리티
 
     private func windowInfoToDict(_ w: WindowInfo) -> [String: Any] {
-        [
+        var dict: [String: Any] = [
             "id": w.id,
             "app": w.app,
             "window": w.window,
@@ -1509,6 +1509,11 @@ final class RESTServer: RESTServerProtocol {
             "pos": ["x": w.pos.x, "y": w.pos.y],
             "size": ["width": w.size.width, "height": w.size.height]
         ]
+        // Issue71: bundleId 가 있으면 응답에 포함 (구 yml 호환을 위해 옵셔널)
+        if let bid = w.bundleId, !bid.isEmpty {
+            dict["bundleId"] = bid
+        }
+        return dict
     }
 
     private func parseQueryParam(_ query: String, key: String) -> String? {

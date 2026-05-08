@@ -23,9 +23,16 @@ final class CGWindowCaptureService: WindowCaptureService {
 
         // 현재 실행 중인 UI 활성화 앱(.regular)의 PID 목록
         // (이름 기반 매칭 시 CGWindowList의 ownerName과 NSWorkspace의 localizedName 불일치 문제 방지)
-        let regularAppPIDs = Set(NSWorkspace.shared.runningApplications
+        let regularApps = NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
-            .map { $0.processIdentifier })
+        let regularAppPIDs = Set(regularApps.map { $0.processIdentifier })
+        // PID → bundleIdentifier 매핑 (Issue71: 안정적 매칭 식별자)
+        var pidToBundleId: [pid_t: String] = [:]
+        for app in regularApps {
+            if let bid = app.bundleIdentifier, !bid.isEmpty {
+                pidToBundleId[app.processIdentifier] = bid
+            }
+        }
 
         // Accessibility API로 실제 창 제목 조회 (CGWindowID → 제목 매핑)
         let axTitleMap = buildAXTitleMap()
@@ -69,6 +76,7 @@ final class CGWindowCaptureService: WindowCaptureService {
             let info = WindowInfo(
                 id: windowId,
                 app: ownerName,
+                bundleId: pidToBundleId[ownerPID],
                 window: windowName,
                 layer: layer,
                 pos: WindowPosition(x: x, y: y),

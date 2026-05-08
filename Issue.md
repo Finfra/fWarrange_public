@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 70
+* Issue HWM: 71
 * Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
   - c47bbcd (2026-05-05) - Docs: Close Issue70
   - 1a375a1 (2026-05-04) - Feat(MenuBar): Issue69 — paidApp 동작 시 About/Open Main Window 분기
@@ -15,10 +15,36 @@ date: 2026-04-07
 * _doc_design/menuBar_enhance.md 기준 진행(메뉴바)
 
 # 🌱 이슈후보
-1. vsCode앱만 복구 안되는 문제 해결.
+1. 정밀하게 복구 않되는데 원인이 아이디 방식때문인지 윈도우명 때문인지 확인, 혹은 이중 메칭문제인지?
 
 
 # 🚧 진행중
+## Issue71: [Fix] VSCode 등 CGWindowOwnerName ↔ localizedName 불일치 앱 복구 실패 (등록: 2026-05-08)
+* 목적: VSCode·Code Helper 등 `kCGWindowOwnerName` 과 `NSRunningApplication.localizedName` 이 다른 앱이 복구되지 않는 문제 해결.
+* 상세:
+    - 현상: REST `/api/v2/layouts/{name}/restore` 호출 시 `[복구] 'Visual Studio Code' - 성공: 0, 대기: 10` → `[조기 종료] 남은 창의 앱이 모두 미실행 상태: Visual Studio Code` 로 1회 시도 만에 종료. VSCode가 명백히 실행 중인데도 매칭 실패.
+    - 근본 원인 (실측):
+        - `kCGWindowOwnerName` = `"Visual Studio Code"` (yml `app` 필드에 저장)
+        - `NSRunningApplication.localizedName` = `"Code"` (복구 매칭 기준)
+        - 매칭 로직 `name == appName || name.hasPrefix(appName) || appName.hasPrefix(name)` 가 `"Code"` ↔ `"Visual Studio Code"` 양방향 prefix를 모두 false 로 판정 → 매칭 0건
+    - 영향 범위: VSCode 외에도 `bundleURL` 표시명과 `localizedName` 이 다른 모든 앱 (예: 일부 Helper, JetBrains IDE 변형 등)
+    - 관련 파일:
+        - `cli/fWarrangeCli/Services/WindowRestoreService.swift` (line 110, 184, 256 — 동일 매칭 로직 3개소)
+        - `cli/fWarrangeCli/Services/WindowCaptureService.swift` (line 71 — `ownerName` 사용)
+* 구현 명세:
+    - 1단계 — 다중 식별자 매칭 헬퍼 추가 (`WindowRestoreService.swift`):
+        - 비교 후보: `localizedName`, `bundleURL.deletingPathExtension().lastPathComponent` (=Visual Studio Code), `executableURL.lastPathComponent` (=Code)
+        - 모든 후보에 대해 정확 일치 / 양방향 prefix 검사
+        - private `appMatches(_ app: NSRunningApplication, target: String) -> Bool` 형태
+    - 2단계 — 3개소 매칭 로직 헬퍼 호출로 교체:
+        - 병렬 경로(line 110): `runningApps.filter { appMatches($0, target: appName) }`
+        - 순차 경로(line 184): 동일
+        - 조기 종료 체크(line 256): `pendingWindows.allSatisfy { target in !runningApps.contains(where: { appMatches($0, target: target.app) }) }`
+    - 3단계 — 검증:
+        - VSCode 창 포함 레이아웃 캡처 → 이동 → 복구 시 `[복구] 'Visual Studio Code' - 성공: N` 로그 확인
+        - Xcode 같은 정상 매칭 케이스 회귀 없음 확인
+        - Release 빌드 통과
+    - 비목표(별도 이슈로 분리 가능): `WindowInfo` 에 `bundleIdentifier` 추가 저장 (스키마 변경 + 마이그레이션 필요 → 본 이슈 범위 외)
 
 # 📕 중요
 

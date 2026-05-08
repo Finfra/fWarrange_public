@@ -13,6 +13,43 @@ private actor UsedWindowsActor {
     }
 }
 
+// MARK: - 앱 매칭 헬퍼 (Issue71)
+
+/// 앱 매칭 우선순위:
+/// 1순위 — `bundleIdentifier` 정확 일치 (가장 안정적, OS·언어·표시명 변경 무관)
+/// 2순위 — 다중 이름 후보(localizedName, bundleURL .app 제거 형식, executableURL 파일명)에 대한
+///         정확 일치 또는 양방향 prefix 일치 (구 yml 호환 fallback)
+///
+/// 배경: CGWindowList의 `kCGWindowOwnerName`(yml `app` 필드)과 `NSRunningApplication.localizedName`이
+/// 다른 앱이 존재함. ex) VSCode: ownerName="Visual Studio Code" / localizedName="Code".
+/// 이름 기반 매칭은 휴리스틱이므로 bundleId가 있으면 항상 우선.
+fileprivate func appMatches(_ app: NSRunningApplication, targetApp: String, targetBundleId: String?) -> Bool {
+    // 1순위: bundleIdentifier 정확 일치
+    if let bid = targetBundleId, !bid.isEmpty,
+       let appBid = app.bundleIdentifier, !appBid.isEmpty,
+       appBid == bid {
+        return true
+    }
+
+    // 2순위: 다중 이름 후보 매칭 (구 yml — bundleId 없는 데이터 — 호환)
+    let candidates: [String] = [
+        app.localizedName,
+        app.bundleURL?.deletingPathExtension().lastPathComponent,
+        app.executableURL?.lastPathComponent
+    ].compactMap { $0 }.filter { !$0.isEmpty }
+
+    for name in candidates {
+        if name == targetApp { return true }
+        if name.hasPrefix(targetApp) || targetApp.hasPrefix(name) { return true }
+    }
+    return false
+}
+
+/// `WindowInfo` 편의 오버로드 — 매칭 시 항상 bundleId+app 둘 다 사용
+fileprivate func appMatches(_ app: NSRunningApplication, window: WindowInfo) -> Bool {
+    appMatches(app, targetApp: window.app, targetBundleId: window.bundleId)
+}
+
 // MARK: - 실패 원인 분류
 
 private enum RestoreFailureReason: Sendable {
@@ -101,15 +138,16 @@ final class AXWindowRestoreService: WindowRestoreService {
                         let lastAttempt = isLastAttempt
                         group.addTask { [self] in
                             let appName = appWindows.first?.app ?? "unknown"
+                            // 같은 ownerName 그룹은 같은 PID·같은 bundleId 가정 (CGWindow 특성)
+                            let groupBundleId = appWindows.first?.bundleId
                             let appTaskStart = CFAbsoluteTimeGetCurrent()
 
                             var appResults: [WindowMatchResult] = []
                             var appPending: [WindowInfo] = []
 
-                            // 앱 찾기
+                            // 앱 찾기 (Issue71: bundleId 우선 + 다중 식별자 매칭)
                             let matchedApps = runningApps.filter {
-                                guard let name = $0.localizedName else { return false }
-                                return name == appName || name.hasPrefix(appName) || appName.hasPrefix(name)
+                                appMatches($0, targetApp: appName, targetBundleId: groupBundleId)
                             }
 
                             if matchedApps.isEmpty {
@@ -181,9 +219,10 @@ final class AXWindowRestoreService: WindowRestoreService {
                 let seqAppGroups = Dictionary(grouping: pendingWindows, by: { $0.app })
 
                 for (appName, appTargets) in seqAppGroups {
+                    // Issue71: bundleId 우선 + 다중 식별자 매칭
+                    let seqBundleId = appTargets.first?.bundleId
                     let matchedApps = runningApps.filter {
-                        guard let name = $0.localizedName else { return false }
-                        return name == appName || name.hasPrefix(appName) || appName.hasPrefix(name)
+                        appMatches($0, targetApp: appName, targetBundleId: seqBundleId)
                     }
 
                     guard !matchedApps.isEmpty else {
@@ -252,11 +291,10 @@ final class AXWindowRestoreService: WindowRestoreService {
             pendingWindows = nextPending
 
             // 남은 창이 모두 앱 미실행 상태인지 확인 → 조기 종료
+            // Issue71: bundleId 우선 + 다중 식별자 매칭으로 VSCode 등 ownerName ↔ localizedName 불일치 흡수
             if !pendingWindows.isEmpty {
-                let runningAppNames = Set(runningApps.compactMap { $0.localizedName })
                 let allAppsNotRunning = pendingWindows.allSatisfy { target in
-                    !runningAppNames.contains(target.app) &&
-                    !runningAppNames.contains(where: { $0.hasPrefix(target.app) || target.app.hasPrefix($0) })
+                    !runningApps.contains(where: { appMatches($0, window: target) })
                 }
                 if allAppsNotRunning {
                     let missingApps = Set(pendingWindows.map { $0.app })

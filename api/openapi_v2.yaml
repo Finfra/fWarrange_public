@@ -1426,7 +1426,14 @@ components:
       type: object
       properties:
         id: { type: integer }
-        app: { type: string }
+        app: { type: string, description: "CGWindowOwnerName (macOS CFBundleDisplayName 또는 process owner name)." }
+        bundleId:
+          type: string
+          description: |
+            CFBundleIdentifier (Issue71). 안정적 매칭 보조 식별자.
+            구 yml/캡처본 호환을 위해 옵셔널 — 없으면 `app` 이름 기반 fallback 매칭이 사용됨.
+            ex) "com.microsoft.VSCode"
+          example: com.microsoft.VSCode
         window: { type: string }
         layer: { type: integer }
         pos: { $ref: '#/components/schemas/WindowPosition' }

@@ -166,19 +166,21 @@ final class YAMLLayoutStorageService: LayoutStorageService {
         for w in windows {
             let safeApp = w.app.replacingOccurrences(of: "\"", with: "\\\"")
             let safeWindow = w.window.replacingOccurrences(of: "\"", with: "\\\"")
-            yaml += """
-            - app: "\(safeApp)"
-              window: "\(safeWindow)"
-              layer: \(w.layer)
-              id: \(w.id)
-              pos:
-                x: \(w.pos.x)
-                y: \(w.pos.y)
-              size:
-                width: \(w.size.width)
-                height: \(w.size.height)
-
-            """
+            yaml += "- app: \"\(safeApp)\"\n"
+            // Issue71: bundleId가 있으면 직렬화 (구 yml 호환을 위해 옵셔널 출력)
+            if let bid = w.bundleId, !bid.isEmpty {
+                let safeBid = bid.replacingOccurrences(of: "\"", with: "\\\"")
+                yaml += "  bundleId: \"\(safeBid)\"\n"
+            }
+            yaml += "  window: \"\(safeWindow)\"\n"
+            yaml += "  layer: \(w.layer)\n"
+            yaml += "  id: \(w.id)\n"
+            yaml += "  pos:\n"
+            yaml += "    x: \(w.pos.x)\n"
+            yaml += "    y: \(w.pos.y)\n"
+            yaml += "  size:\n"
+            yaml += "    width: \(w.size.width)\n"
+            yaml += "    height: \(w.size.height)\n"
         }
         return yaml
     }
@@ -186,22 +188,41 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     // MARK: - YAML 파싱 (setWindows.swift 호환)
 
     private func parseYAML(_ content: String) -> [WindowInfo] {
+        // Issue71: bundleId 옵셔널 필드 추가 (구 yml 호환 — 없으면 nil)
+        struct Acc {
+            var app: String = ""
+            var bundleId: String? = nil
+            var window: String = ""
+            var id: Int = 0
+            var layer: Int = 0
+            var x: CGFloat = 0
+            var y: CGFloat = 0
+            var width: CGFloat = 0
+            var height: CGFloat = 0
+        }
+
         var results: [WindowInfo] = []
-        var current: (app: String, window: String, id: Int, layer: Int, x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat)?
+        var current: Acc?
+
+        func flush(_ c: Acc) -> WindowInfo {
+            WindowInfo(
+                id: c.id, app: c.app, bundleId: c.bundleId,
+                window: c.window, layer: c.layer,
+                pos: WindowPosition(x: c.x, y: c.y),
+                size: WindowSize(width: c.width, height: c.height)
+            )
+        }
 
         for line in content.components(separatedBy: .newlines) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
 
             if trimmed.hasPrefix("- app:") {
-                if let c = current {
-                    results.append(WindowInfo(
-                        id: c.id, app: c.app, window: c.window, layer: c.layer,
-                        pos: WindowPosition(x: c.x, y: c.y),
-                        size: WindowSize(width: c.width, height: c.height)
-                    ))
-                }
-                let val = parseStringValue(String(trimmed.dropFirst(6)))
-                current = (app: val, window: "", id: 0, layer: 0, x: 0, y: 0, width: 0, height: 0)
+                if let c = current { results.append(flush(c)) }
+                var acc = Acc()
+                acc.app = parseStringValue(String(trimmed.dropFirst(6)))
+                current = acc
+            } else if trimmed.hasPrefix("bundleId:") {
+                current?.bundleId = parseStringValue(String(trimmed.dropFirst(9)))
             } else if trimmed.hasPrefix("window:") {
                 current?.window = parseStringValue(String(trimmed.dropFirst(7)))
             } else if trimmed.hasPrefix("layer:") {
@@ -219,13 +240,7 @@ final class YAMLLayoutStorageService: LayoutStorageService {
             }
         }
 
-        if let c = current {
-            results.append(WindowInfo(
-                id: c.id, app: c.app, window: c.window, layer: c.layer,
-                pos: WindowPosition(x: c.x, y: c.y),
-                size: WindowSize(width: c.width, height: c.height)
-            ))
-        }
+        if let c = current { results.append(flush(c)) }
 
         return results
     }
