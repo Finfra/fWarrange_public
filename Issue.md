@@ -5,7 +5,8 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 71
-* Save Point: 2026-04-27 (close Issue55/57/56 — API v2 문서 정합성 감사)
+* Save Point: 2026-05-08 (close Issue71 — bundleId 우선 매칭으로 VSCode 복구 실패 해결)
+  - 7b41337 (2026-05-08) - Fix(Restore): Issue71 — bundleId 우선 매칭으로 ownerName↔localizedName 불일치 앱 복구
   - c47bbcd (2026-05-05) - Docs: Close Issue70
   - 1a375a1 (2026-05-04) - Feat(MenuBar): Issue69 — paidApp 동작 시 About/Open Main Window 분기
 
@@ -19,32 +20,6 @@ date: 2026-04-07
 
 
 # 🚧 진행중
-## Issue71: [Fix] VSCode 등 CGWindowOwnerName ↔ localizedName 불일치 앱 복구 실패 (등록: 2026-05-08)
-* 목적: VSCode·Code Helper 등 `kCGWindowOwnerName` 과 `NSRunningApplication.localizedName` 이 다른 앱이 복구되지 않는 문제 해결.
-* 상세:
-    - 현상: REST `/api/v2/layouts/{name}/restore` 호출 시 `[복구] 'Visual Studio Code' - 성공: 0, 대기: 10` → `[조기 종료] 남은 창의 앱이 모두 미실행 상태: Visual Studio Code` 로 1회 시도 만에 종료. VSCode가 명백히 실행 중인데도 매칭 실패.
-    - 근본 원인 (실측):
-        - `kCGWindowOwnerName` = `"Visual Studio Code"` (yml `app` 필드에 저장)
-        - `NSRunningApplication.localizedName` = `"Code"` (복구 매칭 기준)
-        - 매칭 로직 `name == appName || name.hasPrefix(appName) || appName.hasPrefix(name)` 가 `"Code"` ↔ `"Visual Studio Code"` 양방향 prefix를 모두 false 로 판정 → 매칭 0건
-    - 영향 범위: VSCode 외에도 `bundleURL` 표시명과 `localizedName` 이 다른 모든 앱 (예: 일부 Helper, JetBrains IDE 변형 등)
-    - 관련 파일:
-        - `cli/fWarrangeCli/Services/WindowRestoreService.swift` (line 110, 184, 256 — 동일 매칭 로직 3개소)
-        - `cli/fWarrangeCli/Services/WindowCaptureService.swift` (line 71 — `ownerName` 사용)
-* 구현 명세:
-    - 1단계 — 다중 식별자 매칭 헬퍼 추가 (`WindowRestoreService.swift`):
-        - 비교 후보: `localizedName`, `bundleURL.deletingPathExtension().lastPathComponent` (=Visual Studio Code), `executableURL.lastPathComponent` (=Code)
-        - 모든 후보에 대해 정확 일치 / 양방향 prefix 검사
-        - private `appMatches(_ app: NSRunningApplication, target: String) -> Bool` 형태
-    - 2단계 — 3개소 매칭 로직 헬퍼 호출로 교체:
-        - 병렬 경로(line 110): `runningApps.filter { appMatches($0, target: appName) }`
-        - 순차 경로(line 184): 동일
-        - 조기 종료 체크(line 256): `pendingWindows.allSatisfy { target in !runningApps.contains(where: { appMatches($0, target: target.app) }) }`
-    - 3단계 — 검증:
-        - VSCode 창 포함 레이아웃 캡처 → 이동 → 복구 시 `[복구] 'Visual Studio Code' - 성공: N` 로그 확인
-        - Xcode 같은 정상 매칭 케이스 회귀 없음 확인
-        - Release 빌드 통과
-    - 비목표(별도 이슈로 분리 가능): `WindowInfo` 에 `bundleIdentifier` 추가 저장 (스키마 변경 + 마이그레이션 필요 → 본 이슈 범위 외)
 
 # 📕 중요
 
@@ -53,6 +28,31 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue71: [Fix] VSCode 등 CGWindowOwnerName ↔ localizedName 불일치 앱 복구 실패 (등록: 2026-05-08) (✅ 완료, 7b41337) ✅
+* 목적: VSCode·Code Helper 등 `kCGWindowOwnerName` 과 `NSRunningApplication.localizedName` 이 다른 앱이 복구되지 않는 문제를 근본 해결.
+* 상세:
+    - 현상: REST `/api/v2/layouts/{name}/restore` 호출 시 `[복구] 'Visual Studio Code' - 성공: 0, 대기: 10` → `[조기 종료] 남은 창의 앱이 모두 미실행 상태: Visual Studio Code` 로 1회 시도 만에 종료. VSCode가 명백히 실행 중인데도 매칭 실패.
+    - 근본 원인 (실측):
+        - `kCGWindowOwnerName` = `"Visual Studio Code"` (yml `app` 필드에 저장)
+        - `NSRunningApplication.localizedName` = `"Code"` (복구 매칭 기준)
+        - 기존 매칭 로직 `name == appName || name.hasPrefix(appName) || appName.hasPrefix(name)` 가 `"Code"` ↔ `"Visual Studio Code"` 양방향 prefix 모두 false → 매칭 0건
+    - 영향 범위: bundleURL 표시명과 localizedName 이 다른 모든 앱 (이름 기반 매칭의 구조적 한계)
+* 구현 명세 (해결 방식 — 단순 매칭 강화가 아닌 식별자 자체를 안정화):
+    - WindowInfo 모델에 `bundleId: String?` 옵셔널 필드 추가 (CFBundleIdentifier — OS·언어·표시명 변경 무관)
+    - WindowCaptureService: `kCGWindowOwnerPID` → NSRunningApplication.bundleIdentifier 매핑 후 저장
+    - LayoutStorageService: YAML 직렬화·파싱에 `bundleId:` 라인 추가 (구 yml 호환 — 없으면 nil)
+    - WindowRestoreService 매칭 헬퍼 `appMatches(_:targetApp:targetBundleId:)`:
+        - 1순위: bundleIdentifier 정확 일치
+        - 2순위: 다중 이름 후보(localizedName, bundleURL `.app` 제거 형식, executableURL) 정확/양방향 prefix
+        - 3개소(병렬 경로·순차 경로·조기 종료 체크) 헬퍼 호출 통일
+    - RESTServer.windowInfoToDict: bundleId 응답 포함 (옵셔널)
+    - OpenAPI v2 WindowInfo 스키마 동기화
+* 검증:
+    - 신 yml(bundleId 포함) 47/47 복구 성공 (VSCode 10/10 포함)
+    - 구 yml(2026-05-08-3, bundleId 없음) VSCode 10/10 — 이름 기반 fallback 정상 동작
+    - REST `/capture` 응답에 `bundleId='com.microsoft.VSCode'`, `'com.apple.dt.Xcode'` 노출 확인
+    - Release 빌드·brew local 재배포·헬스체크 OK
+
 ## Issue70: [Feat] cliApp 메뉴바 종료 항목 단축키 표시 정비 + 다국어 지원 (등록: 2026-05-04) (✅ 완료, c47bbcd) ✅
 * 목적: cliApp 메뉴바의 종료 항목 단축키 표시를 종료 정책(`paid_cli_protocol.md` §3.3)과 일치시키고, 메뉴 항목 다국어 지원을 추가. paidApp Cmd+Q는 paidApp 단독 종료에만 표시되어야 하며, cliApp Quit All에는 단축키 미부여(오발화 방지).
 * 상세:
