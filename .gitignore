@@ -1,13 +1,14 @@
 # agent
 .claude/
 CLAUDE.md
-_doc_design
-_doc_work
-
 
 # 작업 문서 (로컬 전용)
-cli/_doc_work/
+# 본 레포는 cli/_doc_design/, cli/_doc_work/만 사용 — 루트 _doc_design/, _doc_work/ 사용 금지
+# 상세: .claude/rules/path-rules.md "cli 하위 _doc 운영 규칙" 섹션
+_doc_design/
+_doc_work/
 cli/_doc_design/
+cli/_doc_work/
 
 # claudeCode_xcode_Skel
 Issue.md
@@ -31,10 +32,6 @@ Icon?
 Network Trash Folder
 Temporary Items
 .apdisk
-
-# 작업 문서 (_doc_work 루트 포함)
-_doc_work/
-cli/_doc_work/
 
 # VSCode
 .history

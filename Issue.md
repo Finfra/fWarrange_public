@@ -12,8 +12,8 @@ date: 2026-04-07
 
 
 # 🤔 결정사항
-* _doc_design/paid_cli_protocol.md 기준 진행(paidApp앱과 연동)
-* _doc_design/menuBar_enhance.md 기준 진행(메뉴바)
+* `~/_git/__all/fWarrange/_doc_design/paid_cli_protocol.md` 기준 진행(상위 메인 레포, paidApp앱과 연동)
+* `cli/_doc_design/menuBar_enhance.md` 기준 진행(메뉴바, 로컬 SSOT — gitignored)
 
 # 🌱 이슈후보
 1. 정밀하게 복구 않되는데 원인이 아이디 방식때문인지 윈도우명 때문인지 확인, 혹은 이중 메칭문제인지?
@@ -58,14 +58,14 @@ date: 2026-04-07
 * 상세:
     - 배경:
         - paidApp Issue239(Cmd+Q로 cliApp 동반 종료) 취소 — 정책: Cmd+Q는 paidApp 단독 종료, 메뉴바 Quit All은 cliApp 메뉴 단일 진입점
-        - 현재 `_doc_design/menuBar_enhance.md`의 메뉴 구조에서 `Quit ⌘Q` 표기가 단일 항목에 부여되어 있어 정책과 불일치
+        - 현재 `cli/_doc_design/menuBar_enhance.md`의 메뉴 구조에서 `Quit ⌘Q` 표기가 단일 항목에 부여되어 있어 정책과 불일치
         - 메뉴 항목 텍스트가 영어 하드코딩으로 추정 — 다국어 미지원
     - 관련 파일:
         - `cli/fWarrangeCli/Managers/MenuBarManager.swift` (NSMenu 구성)
-        - `_doc_design/menuBar_enhance.md` (SSOT 메뉴 구조 — 본 이슈에서 수정)
+        - `cli/_doc_design/menuBar_enhance.md` (SSOT 메뉴 구조 — 본 이슈에서 수정)
         - `cli/fWarrangeCli/*.lproj/Localizable.strings` 또는 `.xcstrings` (다국어 리소스)
 * 구현 명세:
-    - 1단계 — `_doc_design/menuBar_enhance.md` 수정:
+    - 1단계 — `cli/_doc_design/menuBar_enhance.md` 수정:
         - "Quit ⌘Q" 단일 항목을 정책 기반 2~1항목 구조로 분리:
             - paidApp 활성(`paidAppStatus = started`): `Quit fWarrange ⌘Q` + `Quit All` (단축키 없음)
             - paidApp 비활성(`stopped`/`notInstall`): `Quit fWarrangeCli` (cliApp 단독, 단축키 없음)
