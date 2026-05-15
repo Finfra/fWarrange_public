@@ -505,6 +505,16 @@ final class AXWindowRestoreService: WindowRestoreService {
             score += bonus
         }
 
+        // Issue72_6 (Phase 6-1): spaceId 일치 시 보조 가산점 (+3).
+        // 다른 Space의 동명 창과 구분. 비공개 API 실패(nil) 시 가산 안 함.
+        // 카테고리 경계 보존 위해 작게 부여 (+3, 상한 99).
+        if score > 0 && score < 100, let targetSpace = target.spaceId {
+            let axSpace = _spaceIdForCGWindowID(cgWindowId)
+            if axSpace == targetSpace {
+                score = min(score + 3, 99)
+            }
+        }
+
         return (score, mType, axTitle, distance, cgWindowId)
     }
 

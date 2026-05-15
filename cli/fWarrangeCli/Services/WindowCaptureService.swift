@@ -52,6 +52,9 @@ final class CGWindowCaptureService: WindowCaptureService {
         // CGWindowListCopyWindowInfo는 onscreen 정렬(최전면 첫 번째)이므로 등장 순서로 0,1,2,... 부여.
         var orderByPID: [pid_t: Int] = [:]
 
+        // Issue72_6 (Phase 6-2): PID → originURL(Chrome --app= 등 PWA 식별자) 캐시.
+        var pidToOriginURL: [pid_t: String?] = [:]
+
         var results: [WindowInfo] = []
 
         for dict in windowListInfo {
@@ -111,6 +114,19 @@ final class CGWindowCaptureService: WindowCaptureService {
             let centerY = y + height / 2
             let displayUUID = displayUUIDForPoint(CGPoint(x: centerX, y: centerY), displayInfo: displayInfo)
 
+            // Issue72_6 (Phase 6-1): 비공개 API로 spaceId 조회 (실패 시 nil)
+            let spaceId = _spaceIdForCGWindowID(CGWindowID(windowId))
+
+            // Issue72_6 (Phase 6-2): PWA originURL 추출 (Chrome계열만, PID별 캐시)
+            let originURL: String?
+            if pidToOriginURL.keys.contains(ownerPID) {
+                originURL = pidToOriginURL[ownerPID] ?? nil
+            } else {
+                let extracted = extractOriginURL(pid: ownerPID, bundleId: bundleId)
+                pidToOriginURL[ownerPID] = extracted
+                originURL = extracted
+            }
+
             let info = WindowInfo(
                 id: windowId,
                 app: ownerName,
@@ -121,7 +137,9 @@ final class CGWindowCaptureService: WindowCaptureService {
                 size: WindowSize(width: width, height: height),
                 windowOrder: order,
                 displayUUID: displayUUID,
-                windowRaw: windowRaw
+                windowRaw: windowRaw,
+                spaceId: spaceId,
+                originURL: originURL
             )
             results.append(info)
         }
@@ -182,6 +200,46 @@ final class CGWindowCaptureService: WindowCaptureService {
         let dx = max(rect.minX - point.x, 0, point.x - rect.maxX)
         let dy = max(rect.minY - point.y, 0, point.y - rect.maxY)
         return dx * dx + dy * dy
+    }
+
+    // MARK: - Issue72_6 (Phase 6-2): PWA originURL 추출
+
+    /// Chromium 계열 PWA의 `--app=URL` 명령행 인자 추출.
+    /// 대상 bundleId: Chrome / Edge / Brave 등. 그 외는 nil.
+    /// 실패 시(권한·헬퍼 프로세스 등) nil — 매칭 시 fallback.
+    private func extractOriginURL(pid: pid_t, bundleId: String?) -> String? {
+        // Chromium 계열만 대상 (불필요한 ps 호출 방지)
+        let chromiumBundles: Set<String> = [
+            "com.google.Chrome", "com.google.Chrome.beta", "com.google.Chrome.canary",
+            "com.microsoft.edgemac", "com.brave.Browser", "company.thebrowser.Browser",
+            "org.chromium.Chromium"
+        ]
+        guard let bid = bundleId, chromiumBundles.contains(bid) else { return nil }
+
+        // `ps -p {pid} -o command=` 로 명령행 추출
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/ps")
+        task.arguments = ["-p", "\(pid)", "-o", "command="]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = Pipe()
+        do {
+            try task.run()
+            task.waitUntilExit()
+        } catch {
+            return nil
+        }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        guard let output = String(data: data, encoding: .utf8) else { return nil }
+
+        // `--app=https://...` 토큰 추출 (URL은 공백·따옴표 포함 가능 — 단순 토큰 분리로 처리)
+        for token in output.components(separatedBy: " ") {
+            if token.hasPrefix("--app=") {
+                let url = String(token.dropFirst(6))
+                if !url.isEmpty { return url }
+            }
+        }
+        return nil
     }
 
     // MARK: - Accessibility API 창 제목 조회

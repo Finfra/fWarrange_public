@@ -35,6 +35,14 @@ struct WindowInfo: Identifiable, Codable, Equatable {
     /// 옵셔널 — nil 시 복구 호출 시점의 기본 모드(REST 파라미터 또는 normal)를 사용.
     /// 사용자가 특정 창만 strict로 잠그거나 loose로 풀고 싶을 때 yml에 직접 명시.
     var matchMode: MatchMode?
+    /// Issue72_6 (Phase 6): macOS Space ID (`CGSCopySpacesForWindows`).
+    /// 풀스크린 창, Stage Manager, 다중 데스크탑 환경에서 어느 Space에 속했는지 추적.
+    /// 비공개 API라 추출 실패 시 nil. 매칭 시 가산점(보조 신호).
+    var spaceId: Int?
+    /// Issue72_6 (Phase 6): PWA 등 같은 bundleId 안에서 논리적으로 분리된 앱의 원본 URL/식별자.
+    /// Chrome PWA는 `--app=https://...` 명령행 인자에서 추출.
+    /// 일반 Chrome 창은 nil. PWA 분리 매칭의 핵심 키.
+    var originURL: String?
 
     init(
         id: Int,
@@ -47,7 +55,9 @@ struct WindowInfo: Identifiable, Codable, Equatable {
         windowOrder: Int? = nil,
         displayUUID: String? = nil,
         windowRaw: String? = nil,
-        matchMode: MatchMode? = nil
+        matchMode: MatchMode? = nil,
+        spaceId: Int? = nil,
+        originURL: String? = nil
     ) {
         self.id = id
         self.app = app
@@ -60,5 +70,7 @@ struct WindowInfo: Identifiable, Codable, Equatable {
         self.displayUUID = displayUUID
         self.windowRaw = windowRaw
         self.matchMode = matchMode
+        self.spaceId = spaceId
+        self.originURL = originURL
     }
 }

@@ -192,6 +192,14 @@ final class YAMLLayoutStorageService: LayoutStorageService {
             if let mode = w.matchMode {
                 yaml += "  matchMode: \"\(mode.rawValue)\"\n"
             }
+            // Issue72_6 (Phase 6): spaceId·originURL 옵셔널 출력
+            if let sid = w.spaceId {
+                yaml += "  spaceId: \(sid)\n"
+            }
+            if let url = w.originURL, !url.isEmpty {
+                let safeURL = url.replacingOccurrences(of: "\"", with: "\\\"")
+                yaml += "  originURL: \"\(safeURL)\"\n"
+            }
             yaml += "  pos:\n"
             yaml += "    x: \(w.pos.x)\n"
             yaml += "    y: \(w.pos.y)\n"
@@ -221,6 +229,8 @@ final class YAMLLayoutStorageService: LayoutStorageService {
             var displayUUID: String? = nil
             var windowRaw: String? = nil
             var matchMode: MatchMode? = nil
+            var spaceId: Int? = nil
+            var originURL: String? = nil
         }
 
         var results: [WindowInfo] = []
@@ -235,7 +245,9 @@ final class YAMLLayoutStorageService: LayoutStorageService {
                 windowOrder: c.windowOrder,
                 displayUUID: c.displayUUID,
                 windowRaw: c.windowRaw,
-                matchMode: c.matchMode
+                matchMode: c.matchMode,
+                spaceId: c.spaceId,
+                originURL: c.originURL
             )
         }
 
@@ -264,6 +276,10 @@ final class YAMLLayoutStorageService: LayoutStorageService {
             } else if trimmed.hasPrefix("matchMode:") {
                 let raw = parseStringValue(String(trimmed.dropFirst(10)))
                 current?.matchMode = MatchMode(rawValue: raw.lowercased())
+            } else if trimmed.hasPrefix("spaceId:") {
+                current?.spaceId = Int(trimmed.dropFirst(8).trimmingCharacters(in: .whitespaces))
+            } else if trimmed.hasPrefix("originURL:") {
+                current?.originURL = parseStringValue(String(trimmed.dropFirst(10)))
             } else if trimmed.hasPrefix("x:") {
                 current?.x = CGFloat(Double(trimmed.dropFirst(2).trimmingCharacters(in: .whitespaces)) ?? 0)
             } else if trimmed.hasPrefix("y:") {
