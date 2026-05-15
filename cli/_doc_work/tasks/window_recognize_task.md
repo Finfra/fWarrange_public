@@ -7,6 +7,20 @@ plan: cli/_doc_work/plan/window_recognize_plan.md
 design: cli/_doc_design/window_recognize.md
 ---
 
+# 진행 현황 (Progress)
+
+| Phase | 이슈        | 상태                                  | 커밋·메모                                                    |
+| :---: | :---------- | :------------------------------------ | :----------------------------------------------------------- |
+|   1   | Issue72_1   | 🟢 코드 완료 · 베이스라인 수집 대기   | 코드 `02d2bd0` · 1.6은 1주일 실사용 데이터 수집 후 보고서 작성 |
+|   2   | Issue72_2   | ⚪ 대기                                | Phase 1 베이스라인 영향 無 → 선행 가능                       |
+|   3   | Issue72_3   | ⚪ 대기                                |                                                              |
+|   4   | Issue72_4   | ⚪ 대기                                |                                                              |
+|   5   | Issue72_5   | ⚪ 대기                                | Phase 2/3/4 후 진행                                          |
+|   6   | Issue72_6   | ⚪ 대기                                | Phase 5 후 진행 (paidApp protocol 합의 필요)                 |
+|   7   | Issue72_7   | ⚪ 대기                                | Phase 5 후 진행 (paidApp 별도 레포 작업 포함)                |
+
+* 🟢 진행 완료 · 🟡 진행 중 · ⚪ 대기
+
 # 실행 원칙
 
 * **Phase별 별도 이슈·별도 커밋** — 본 task는 7개 Phase를 한 파일에 모으되, 등록 시 Phase별 이슈로 분리 권장
@@ -27,49 +41,75 @@ design: cli/_doc_design/window_recognize.md
 * [ ] 베이스라인 통계(Phase 1 이후) 대비 회귀 없음
 * [ ] 커밋 메시지 형식: `Feat/Fix/Refactor({Phase}): {요약}` (Issue번호 포함)
 
-# Phase 1 — 측정 인프라 (C-1)
+# Phase 1 — 측정 인프라 (C-1) — 🟢 코드 완료
 
-## Task 1.1: `RestoreStats` 모델
+> **이슈**: Issue72_1 · **커밋**: `02d2bd0` (Phase 1 코드) + `8f09955` (Issue.md Save Point)
+> **남은 작업**: Task 1.6 (1주일 베이스라인 수집)
 
-* [ ] `cli/fWarrangeCli/Models/RestoreStats.swift` 신설
-* [ ] 필드: `totalAttempts`, `successes`, `failures`, `matchTypeCounts: [String: Int]`, `averageScore`, `recentEvents: [RestoreEvent]`
-* [ ] `Codable` 채택, `RestoreEvent`는 `(timestamp, app, title, score, matchType)`
-* [ ] 최근 이벤트 윈도우 크기 상수화 (기본 200)
+## Task 1.1: `RestoreStats` 모델 ✅
 
-## Task 1.2: `RestoreStatsCollector` 서비스
+* [x] `cli/fWarrangeCli/Models/RestoreStats.swift` 신설
+* [x] 필드: `totalAttempts`, `successes`, `failures`, `matchTypeCounts: [String: Int]`, `successScoreSum`/`successScoreCount`(`averageScore` 파생), `recentEvents: [RestoreEvent]`, `failureKeyCounts`, `sessionStartedAt`, `lastUpdated`
+* [x] `Codable` 채택, `RestoreEvent`는 `(timestamp, app, title, score, matchType, success)` (`success` 추가 — 실패 키 분류용)
+* [x] 최근 이벤트 윈도우 크기 상수화 (`recentEventsCapacity = 200`, `topFailuresLimit = 10`)
+* [x] `toJSONDictionary()` REST 응답 직렬화 헬퍼
 
-* [ ] `cli/fWarrangeCli/Services/RestoreStatsCollector.swift` 신설
-* [ ] `@MainActor final class` + `@Observable` 검토
-* [ ] `recordMatchAttempt(target:result:score:matchType:)` 진입점
-* [ ] 자주 실패하는 `(app, titlePattern)` Top 10 집계 메서드
-* [ ] 디스크 영속: `~/Library/Application Support/fWarrangeCli/restore-stats.json` (LayoutStorageService 패턴 차용)
-* [ ] 앱 종료 시 flush, 시작 시 load
+## Task 1.2: `RestoreStatsCollector` 서비스 ✅
 
-## Task 1.3: `WindowRestoreService` 통계 push
+* [x] `cli/fWarrangeCli/Services/RestoreStatsCollector.swift` 신설
+* [x] **actor 채택** (계획서의 `@MainActor final class @Observable`에서 변경 — async/await 친화적 + isolation 보장)
+* [x] 진입점: `record(app:title:score:matchType:success:)` + `recordBatch(_ results: [WindowMatchResult])` (계획서의 `recordMatchAttempt`에서 명명 변경)
+* [x] 자주 실패하는 `(app|title)` Top 10 — `RestoreStats.topFailures` 파생 지표로 구현
+* [x] 디스크 영속: `~/Library/Application Support/fWarrangeCli/restore-stats.json` (env `fWarrangeCli_stats_path` 재정의 가능)
+* [x] 시작 시 `load()` (AppState.initialize에서 호출), `flush()`/`reset()` 노출
+* [x] **즉시 write 정책 채택** (계획서의 "앱 종료 시 flush"에서 변경 — 5초 디바운스 도입했다가 launchd kill 시 손실 위험으로 폐기. 매칭은 빈번 작업이 아니므로 record마다 즉시 write가 안전)
 
-* [ ] `WindowRestoreService.swift` 매칭 결과 push 지점 식별 (`logD("[복구] ...")` 인접)
-* [ ] DI로 `RestoreStatsCollector` 주입
-* [ ] 매칭 성공·실패·MatchType 모두 push
+## Task 1.3: `WindowRestoreService` 통계 push ✅
 
-## Task 1.4: REST 엔드포인트
+* [x] **`WindowManager.restoreWindows` 지점에서 push** (계획서의 `WindowRestoreService` 직접 push에서 변경 — `WindowRestoreService`가 nonisolated인 반면 actor 호출은 await 필요하므로 `@MainActor WindowManager`에서 한 번에 `recordBatch` 호출이 더 깔끔)
+* [x] DI로 `RestoreStatsCollector?` 옵셔널 주입 (테스트·하위호환용)
+* [x] 매칭 성공·실패·MatchType 모두 push (`recordBatch`)
+* [x] `AppState`에서 `JSONRestoreStatsCollector` 인스턴스 생성·주입
 
-* [ ] `RESTServer.swift`에 `GET /api/v2/restore-stats` 라우팅 추가
-* [ ] 응답 JSON: `{ totalAttempts, successes, failures, matchTypeCounts, averageScore, topFailures }`
-* [ ] `openapi_v2.yaml` 동기화 (`restore-stats` 태그 추가)
-* [ ] `RestAPI_v2.md` 5.x 섹션에 신규 엔드포인트 기술
+## Task 1.4: REST 엔드포인트 ✅
 
-## Task 1.5: 테스트
+* [x] `RESTServer.swift`에 `GET /api/v2/restore-stats` 라우팅 추가
+* [x] **DELETE `/api/v2/restore-stats` 추가** (계획에 없던 reset 엔드포인트 — 베이스라인 재시작용)
+* [x] `RESTServerHandlers`에 `getRestoreStats`, `resetRestoreStats` async 핸들러 추가
+* [x] 응답 JSON: `{status, data: {totalAttempts, successes, failures, successRate, averageScore, matchTypeCounts, topFailures[], recentEventsCount, recentEventsCapacity, sessionStartedAt, lastUpdated}}`
+* [x] `openapi_v2.yaml` 동기화 (`RestoreStats` 태그 + GET/DELETE 스키마)
+* [x] `RestAPI_v2.md` §4.8 신설
 
-* [ ] `apiTestDo.sh v2`에 신규 케이스 추가 (`curl GET /api/v2/restore-stats`)
-* [ ] 5회 복구 후 통계 누적 정확성 검증
-* [ ] cliApp 재시작 후 통계 보존 검증
-* [ ] 컴파일·런타임 회귀 없음
+## Task 1.5: 테스트 ✅
 
-## Task 1.6: 베이스라인 수집
+* [x] `apiTest/v2/33.v2-restore-stats.sh` 신규 (GET)
+* [x] `apiTest/v2/34.v2-restore-stats-reset.sh` 신규 (DELETE + 재확인)
+* [x] **검증 결과**:
+    - capture 54건 → restore 54건 즉시 (모두 ID 100점 매칭)
+    - `totalAttempts=54, successes=54, successRate=1, averageScore=100, matchTypeCounts={"ID":54}`
+    - 디스크 파일 11,409 bytes 확인
+    - DELETE 후 0 → 1회 재복구 → 54 정확 누적
+    - cliApp 강제 종료(`pkill -KILL`) 후 자동 재기동 — 통계 보존 (sessionStartedAt·lastUpdated 동일)
+* [x] xcodebuild Debug 통과
+* [x] 컴파일·런타임 회귀 없음
 
-* [ ] 1주일 실제 사용 통계 수집
+## Task 1.6: 베이스라인 수집 — ⚪ 진행 대기
+
+* [ ] 1주일 실제 사용 통계 수집 (2026-05-15 ~ 2026-05-22 예정)
 * [ ] `cli/_doc_work/report/window_recognize_baseline.md` 보고서 작성
 * [ ] 전체 매칭 성공률, MatchType 분포, 평균 score, Top 10 실패 패턴 기록
+* [ ] Issue72_1을 ✅ 완료 섹션으로 최종 이동
+
+## Phase 1 설계 변경 사항 요약
+
+| 항목 | 계획 (초안) | 실제 구현 | 사유 |
+| :--- | :--- | :--- | :--- |
+| Collector 격리 | `@MainActor final class @Observable` | `actor` | async/await 친화, isolation 안전 |
+| Collector 진입점 | `recordMatchAttempt(target:result:score:matchType:)` | `record(...)` + `recordBatch(_:)` | API 명확성 (단건/일괄) |
+| Push 위치 | `WindowRestoreService` 직접 | `WindowManager.restoreWindows` 종료 시 일괄 | `WindowRestoreService` nonisolated → actor 호출 비용. WindowManager는 @MainActor라 await 자연스러움 |
+| 디스크 영속 정책 | 종료 시 flush + 시작 시 load | record마다 즉시 write + 시작 시 load | launchd kill·crash 데이터 손실 방지 |
+| REST 메서드 | GET 만 | GET + DELETE | 베이스라인 재시작용 reset 필요 |
+| `topFailures` 키 형식 | `(app, titlePattern)` 페어 | `"app|title"` 단일 문자열 (`Self.failureKey` 정규화) | JSON 직렬화 단순화, title 80자 트림 |
 
 # Phase 2 — 데이터 수집 확장 (Track A-1)
 
