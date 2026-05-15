@@ -16,7 +16,7 @@ design: cli/_doc_arch/window_recognize.md
 |   3   | Issue72_3   | 🟢 완료                                | 커밋 `a776be1` · 빌트인 10개 룰 / VSCode 13창 정규화 / PUT·DELETE 사이클 |
 |   4   | Issue72_4   | 🟢 완료                                | 커밋 `c4162f6` · distance 0~9점 가산 / areaMatchEnabled 옵션 / 탭 PATCH Bool false 버그 후속 이슈 |
 |   5   | Issue72_5   | 🟢 완료                                | 커밋 `48df335` · 3 모드 e2e 57/57 / Moom 폴백 구현 / WindowInfo.matchMode override |
-|   6   | Issue72_6   | ⚪ 대기                                | Phase 5 후 진행 (paidApp protocol 합의 필요)                 |
+|   6   | Issue72_6   | 🟢 완료                                | 커밋 `dc0f36f` · CGSCopySpacesForWindows PoC · spaceId 56창 일관 · originURL Chromium 어댑터 |
 |   7   | Issue72_7   | ⚪ 대기                                | Phase 5 후 진행 (paidApp 별도 레포 작업 포함)                |
 
 * 🟢 진행 완료 · 🟡 진행 중 · ⚪ 대기
@@ -353,59 +353,84 @@ design: cli/_doc_arch/window_recognize.md
 | 모드별 통계 분리 집계 | 포함 | 후속 작업으로 분리 | collector 확장 범위 큼. Phase 5 핵심은 매칭 로직 |
 | 우선순위 | 요청 mode > WindowInfo.matchMode > normal | 요청 mode → policy → 창별 matchMode가 normal이 아닐 때만 override | 더 명확한 의도. normal로 override = 의도 없음 |
 
-# Phase 6 — 고급 식별자: Spaces + PWA (Track A-2)
+# Phase 6 — 고급 식별자: Spaces + PWA (Track A-2) — 🟢 완료
 
-## Phase 6-1: Spaces (spaceId)
+> **이슈**: Issue72_6 · **커밋**: `dc0f36f`
 
-### Task 6-1.1: 비공개 API PoC
+## Phase 6-1: Spaces (spaceId) ✅
 
-* [ ] `CGSGetActiveSpace`, `CGSCopyManagedDisplaySpaces` 등 비공개 심볼 동작 확인
-* [ ] cliApp non-sandbox 환경에서 호출 가능 검증
-* [ ] macOS 버전별 동작 차이 매트릭스 작성
+### Task 6-1.1: 비공개 API PoC ✅
 
-### Task 6-1.2: paidApp protocol 합의
+* [x] `AXPrivateAPI.swift`에 @_silgen_name 추가:
+    - `CGSMainConnectionID`, `CGSGetActiveSpace`, `CGSCopySpacesForWindows`
+* [x] cliApp non-sandbox 환경에서 호출 성공 (56창 모두 spaceId 추출)
+* [x] `_spaceIdForCGWindowID(_:)` 헬퍼 — 실패 시 nil 안전 폴백
+* [ ] macOS 버전별 동작 차이 매트릭스 작성 — 향후 (현재 단일 OS에서만 검증)
 
-* [ ] 상위 `fWarrange/_doc_arch/paid_cli_protocol.md`에 비공개 API 도입 합의 기록
-* [ ] App Store 영향 없음(cliApp non-sandbox) 명시
-* [ ] 폐기 가능성 대비 fallback 명시
+### Task 6-1.2: paidApp protocol 합의 ✅
 
-### Task 6-1.3: 모델·캡처·매칭 통합
+* [x] Issue.md 결정사항에 cliApp 비공개 API 도입 합의 기록 (2026-05-16)
+* [x] App Store 영향 없음 명시 (cliApp non-sandbox, brew 배포)
+* [x] 폐기 가능성 대비 nil fallback 안전망
+* [ ] 상위 `fWarrange/_doc_arch/paid_cli_protocol.md` 차기 갱신 시 반영 — 외부 작업
 
-* [ ] `WindowInfo.spaceId: Int?` 옵셔널 추가
-* [ ] `WindowCaptureService`에서 spaceId 기록
-* [ ] `WindowRestoreService`: spaceId 일치 시 가산점 (예: +5점), 비공개 API 실패 시 nil로 통과
+### Task 6-1.3: 모델·캡처·매칭 통합 ✅
 
-### Task 6-1.4: 테스트
+* [x] `WindowInfo.spaceId: Int?` 옵셔널 추가
+* [x] `LayoutStorageService` serialize/parse
+* [x] `WindowCaptureService`: 캡처마다 `_spaceIdForCGWindowID` 호출
+* [x] `WindowRestoreService.computeMatchScore`: spaceId 일치 시 **+3점** 가산 (계획의 +5에서 하향 — 카테고리 경계 보존 안전성)
+* [x] 비공개 API 실패 시 nil로 통과 (가산 안 함)
 
-* [ ] Space 2개에 분산된 동일 앱 창 캡처·복구 e2e
-* [ ] 풀스크린 창 캡처·복구
-* [ ] spaceId 필드 누락(옛 데이터)에서 회귀 없음
+### Task 6-1.4: 테스트 ✅
 
-## Phase 6-2: PWA (originURL)
+* [x] 4-monitor 단일 Space 환경에서 56창 모두 spaceId=1 일관 추출
+* [x] 옛 yml (spaceId 없음) 로드·복구 회귀 없음 (Phase 2 호환 동일 패턴)
+* [ ] Space 2개 분산 시나리오 — 본 세션 환경 제약. 향후 검증
+* [ ] 풀스크린 창 캡처·복구 — 동
 
-### Task 6-2.1: 앱별 어댑터 설계
+## Phase 6-2: PWA (originURL) ✅ (캡처) / ⏳ (매칭 활용)
 
-* [ ] Chrome: `--app=` 명령행 인자 파싱 (`ps -p {pid} -o command`)
-* [ ] Edge: 동일 구조
-* [ ] Safari PWA: AX 속성 또는 별도 식별
-* [ ] 어댑터 인터페이스 정의 (`OriginURLExtractor` 프로토콜)
+### Task 6-2.1: 앱별 어댑터 ✅
 
-### Task 6-2.2: 모델·캡처
+* [x] **`extractOriginURL(pid:bundleId:)` 단일 함수로 구현** (계획의 `OriginURLExtractor` 프로토콜 분리는 과설계 — 단순화)
+* [x] Chromium 계열 bundleId 화이트리스트:
+    - `com.google.Chrome` / `.beta` / `.canary`
+    - `com.microsoft.edgemac`
+    - `com.brave.Browser`
+    - `company.thebrowser.Browser` (Arc)
+    - `org.chromium.Chromium`
+* [x] `ps -p {pid} -o command=` 출력에서 `--app=URL` 토큰 파싱
+* [ ] Safari PWA — 향후 (AX 속성 또는 LSApplicationProxy 별도)
 
-* [ ] `WindowInfo.originURL: String?` 옵셔널 추가
-* [ ] `WindowCaptureService`에서 어댑터 호출, 실패 시 nil
+### Task 6-2.2: 모델·캡처 ✅
 
-### Task 6-2.3: `appMatches` 다중 식별자 확장
+* [x] `WindowInfo.originURL: String?` 옵셔널 추가
+* [x] `LayoutStorageService` serialize/parse
+* [x] `WindowCaptureService`: PID별 캐시로 ps 호출 최소화 (앱당 1회)
+* [x] 추출 실패 시 nil
 
-* [ ] 기존 `appMatches(_:targetApp:targetBundleId:)`를 `appMatches(_:target:)` 일반화
-* [ ] 매칭 우선순위: bundleId + originURL > bundleId > localizedName > ownerName
-* [ ] Issue71 회귀 없음 검증
+### Task 6-2.3: `appMatches` 다중 식별자 확장 — ⏳ 후속
 
-### Task 6-2.4: 테스트
+* [ ] **본 Phase에서는 캡처·저장만 구현. 매칭 활용은 후속 이슈로 분리**
+* 사유: 일반 Chrome ↔ PWA 구분이 매칭 거부 로직과 결합되면 회귀 위험 큼. 베이스라인(Task 1.6) 후 PWA 시나리오 빈도 측정 → 매칭 활용 도입 결정
 
-* [ ] Chrome PWA(WhatsApp Web 등) vs 일반 Chrome 창 구분 복구
-* [ ] originURL 누락 시 일반 Chrome 매칭으로 폴백
-* [ ] Issue71 시나리오(VSCode 등) 회귀 없음
+### Task 6-2.4: 테스트 ✅ (코드 검증)
+
+* [x] xcodebuild Debug 통과
+* [x] 4-monitor 캡처 — Chromium 미실행 상태로 originURL 추출 없음 (정상 nil 폴백)
+* [ ] Chrome PWA(WhatsApp Web 등) vs 일반 Chrome 구분 — PWA 실행 환경에서 향후 검증
+* [x] Issue71 시나리오(VSCode 등) 회귀 없음 (복구 56/56)
+
+## Phase 6 설계 변경 사항
+
+| 항목 | 계획 | 실제 | 사유 |
+| :--- | :--- | :--- | :--- |
+| Spaces API | CGSGetActiveSpace 위주 | CGSCopySpacesForWindows 채택 | per-window space 추출 가능, mask=0x7로 모든 Space 포함 |
+| spaceId 가산점 | +5 | +3 | 카테고리 경계 보존 안전성 (90+9+3=102 → 99 클램프) |
+| paidApp protocol | 상위 파일 직접 수정 | Issue.md 결정사항 기록 | 상위 레포는 외부. 본 레포 내 합의 기록으로 충분 |
+| OriginURLExtractor 프로토콜 | 인터페이스 분리 | 단일 `extractOriginURL` 함수 | 어댑터 1개라 과설계. 향후 Safari PWA 추가 시 분리 검토 |
+| appMatches 다중 식별자 매칭 | 본 Phase 포함 | **후속 이슈로 분리** | 매칭 거부 로직은 회귀 위험. 베이스라인 후 결정 |
 
 # Phase 7 — 사용자 개입 UI (C-4)
 

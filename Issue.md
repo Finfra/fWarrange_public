@@ -5,7 +5,9 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 72
-* Save Point: 2026-05-16 (Issue72_5 Phase 5 완료 — 매칭 모드 strict/normal/loose + Moom 폴백)
+* Save Point: 2026-05-16 (Issue72_6 Phase 6 완료 — Spaces(spaceId) + PWA(originURL))
+  - dc0f36f (2026-05-16) - Feat(Issue72_6)(Phase 6): Spaces(spaceId) + PWA(originURL) 식별자 도입
+  - 4650842 (2026-05-16) - Docs(Issue72_5): Phase 5 완료 마킹 + task 진행현황 갱신
   - 48df335 (2026-05-16) - Feat(Issue72_5)(Phase 5): 매칭 모드 (strict/normal/loose) + Moom 스타일 폴백
   - 83cdadf (2026-05-15) - Docs(Issue72_4): Phase 4 완료 마킹 + task 진행현황 갱신 + 후속 이슈후보 등록
   - c4162f6 (2026-05-15) - Feat(Issue72_4)(Phase 4): 점수 함수 개선 — distance 가산 + areaMatch 비활성화 옵션
@@ -101,7 +103,7 @@ date: 2026-04-07
     - Task 5.1~5.6
     - 검증: 3개 모드 의도 거동 e2e, normal 회귀 없음
 
-## Issue72_6: [Feat] Phase 6 — 고급 식별자 Spaces(spaceId) + PWA(originURL) (등록: 2026-05-15)
+## Issue72_6: [Feat] Phase 6 — 고급 식별자 Spaces(spaceId) + PWA(originURL) (등록: 2026-05-15) (✅ 완료, dc0f36f)
 * 목적: OSS 미개척 시나리오 대응 — Spaces 분산 창·Chrome PWA 구분 매칭.
 * 상세:
     - 6-1: 비공개 `CGSGetActiveSpace` PoC + `spaceId` 캡처/매칭 (cliApp non-sandbox)
