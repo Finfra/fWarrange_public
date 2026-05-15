@@ -21,8 +21,8 @@ date: 2026-04-07
 
 
 # 🤔 결정사항
-* `~/_git/__all/fWarrange/_doc_design/paid_cli_protocol.md` 기준 진행(상위 메인 레포, paidApp앱과 연동)
-* `cli/_doc_design/menuBar_enhance.md` 기준 진행(메뉴바, 로컬 SSOT — gitignored)
+* `~/_git/__all/fWarrange/_doc_arch/paid_cli_protocol.md` 기준 진행(상위 메인 레포, paidApp앱과 연동)
+* `cli/_doc_arch/menuBar_enhance.md` 기준 진행(메뉴바, 로컬 SSOT — gitignored)
 * **Issue72_1 베이스라인 검토일: 2026-05-22** — 통계 인프라 가동 후 1주일(2026-05-15~22) 실사용 데이터 수집 → `cli/_doc_work/report/window_recognize_baseline.md` 보고서 작성 → Issue72_1 ✅ 완료 처리 → Phase 2~7 우선순위 데이터 기반 재조정
 
 # 🌱 이슈후보
@@ -35,7 +35,7 @@ date: 2026-04-07
 * 목적: "정밀 복구 실패의 원인이 ID 방식인지 윈도우명인지 이중 매칭 문제인지" 토의(이슈후보 출신)를 시발점으로, 측정 인프라부터 사용자 개입 UI까지 7개 Phase로 매칭 알고리즘을 체계적으로 개선. 베이스라인 측정 후 정량 목표 달성(매칭 성공률 +25%, exactTitle 비율 +20%, areaMatch 오탐 -90%).
 * plan: `cli/_doc_work/plan/window_recognize_plan.md`
 * task: `cli/_doc_work/tasks/window_recognize_task.md`
-* design: `cli/_doc_design/window_recognize.md`
+* design: `cli/_doc_arch/window_recognize.md`
 * 상세:
     - 부모 이슈로 plan/task 전체 추적
     - 서브 이슈 Issue72_1~Issue72_7은 각 Phase별 독립 진행·커밋·완료
@@ -155,14 +155,14 @@ date: 2026-04-07
 * 상세:
     - 배경:
         - paidApp Issue239(Cmd+Q로 cliApp 동반 종료) 취소 — 정책: Cmd+Q는 paidApp 단독 종료, 메뉴바 Quit All은 cliApp 메뉴 단일 진입점
-        - 현재 `cli/_doc_design/menuBar_enhance.md`의 메뉴 구조에서 `Quit ⌘Q` 표기가 단일 항목에 부여되어 있어 정책과 불일치
+        - 현재 `cli/_doc_arch/menuBar_enhance.md`의 메뉴 구조에서 `Quit ⌘Q` 표기가 단일 항목에 부여되어 있어 정책과 불일치
         - 메뉴 항목 텍스트가 영어 하드코딩으로 추정 — 다국어 미지원
     - 관련 파일:
         - `cli/fWarrangeCli/Managers/MenuBarManager.swift` (NSMenu 구성)
-        - `cli/_doc_design/menuBar_enhance.md` (SSOT 메뉴 구조 — 본 이슈에서 수정)
+        - `cli/_doc_arch/menuBar_enhance.md` (SSOT 메뉴 구조 — 본 이슈에서 수정)
         - `cli/fWarrangeCli/*.lproj/Localizable.strings` 또는 `.xcstrings` (다국어 리소스)
 * 구현 명세:
-    - 1단계 — `cli/_doc_design/menuBar_enhance.md` 수정:
+    - 1단계 — `cli/_doc_arch/menuBar_enhance.md` 수정:
         - "Quit ⌘Q" 단일 항목을 정책 기반 2~1항목 구조로 분리:
             - paidApp 활성(`paidAppStatus = started`): `Quit fWarrange ⌘Q` + `Quit All` (단축키 없음)
             - paidApp 비활성(`stopped`/`notInstall`): `Quit fWarrangeCli` (cliApp 단독, 단축키 없음)
@@ -208,14 +208,14 @@ date: 2026-04-07
 * 목적: cliApp 메뉴바 Quit 클릭 시 cliApp만 종료되고 paidApp(`fWarrange`)이 잔존하는 현상(2026-05-03 재현 확인). paidApp 측 Cmd+Q는 정상 동작하므로 본 이슈는 **cliApp 측 작업**임. paidApp 레포 Issue232에서 paidApp `MenuBarExtra` 제거 후 cliApp 메뉴바가 유일한 paidApp 종료 트리거가 되어야 하나 미연결 상태.
 * 상세:
     - 현상: cliApp 메뉴바 → Quit → cliApp 프로세스만 종료, paidApp(`/Applications/_nowage_app/fWarrange.app`) 프로세스는 좀비처럼 잔존
-    - 관련 SSOT: 상위 paidApp 레포 `_doc_design/paid_cli_protocol.md` §3.3 "Quit All 시퀀스" — cliApp 트리거 흐름 미반영
+    - 관련 SSOT: 상위 paidApp 레포 `_doc_arch/paid_cli_protocol.md` §3.3 "Quit All 시퀀스" — cliApp 트리거 흐름 미반영
     - 관련: paidApp 레포 Issue232 (paidApp 메뉴바 제거, 2026-05-03 완료)
 * 구현 명세:
     - `MenuBarManager.swift` 또는 `MenuBarView.swift` Quit 액션 핸들러에서 paidApp 종료 신호 발송
     - 옵션 A: paidApp URL Scheme `fwarrange://command?action=quit` open
     - 옵션 B: paidApp pid 검색 후 `kill -TERM`
     - 옵션 C: REST `/api/v2/paidapp/quit` 신규 엔드포인트 추가 후 paidApp이 self-terminate
-    - 옵션 결정 후 paidApp 레포 SSOT `_doc_design/paid_cli_protocol.md` §3.3 갱신 필요 (양 레포 동기 PR)
+    - 옵션 결정 후 paidApp 레포 SSOT `_doc_arch/paid_cli_protocol.md` §3.3 갱신 필요 (양 레포 동기 PR)
     - 검증: cliApp 메뉴바 Quit → paidApp + cliApp 모두 종료, ps에서 잔존 0개 확인
 
 

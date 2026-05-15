@@ -6,7 +6,7 @@ date: 2026-04-13
 
 # 개요
 
-`cli/_doc_design/cmd_design.md` 기반 CLI **v1** 커맨드 테스트 스크립트 매핑.
+`cli/_doc_arch/cmd_design.md` 기반 CLI **v1** 커맨드 테스트 스크립트 매핑.
 v2 커맨드는 [cmdTest_plan_v2.md](cmdTest_plan_v2.md) 참조.
 
 * 파일명 규칙: `{00-99}.{내역}.sh`

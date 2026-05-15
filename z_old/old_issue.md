@@ -124,7 +124,7 @@ date: 2026-05-02
     - 빌드 검증: `cd cli && xcodebuild -scheme fWarrangeCli -configuration Release build -quiet` 통과 (BUILD SUCCEEDED)
 
 ## Issue58: cliApp 메뉴바 개선안 적용 (menuBar_enhance.md SSOT) (등록: 2026.04.27) (✅ 완료, 5314ec3) ✅
-* 목적: _doc_design/menuBar_enhance.md SSOT의 cliApp 메뉴 개선안을 적용하여 paidApp 부재 시에도 핵심 기능(Save/Restore/Layout 직접 클릭) 노출 + paidApp과 동형 구조로 학습 비용 0 달성. Issue46 시간적 배타성 적용 분기와 design doc(미적용 정책) 충돌 동시 해소.
+* 목적: _doc_arch/menuBar_enhance.md SSOT의 cliApp 메뉴 개선안을 적용하여 paidApp 부재 시에도 핵심 기능(Save/Restore/Layout 직접 클릭) 노출 + paidApp과 동형 구조로 학습 비용 0 달성. Issue46 시간적 배타성 적용 분기와 design doc(미적용 정책) 충돌 동시 해소.
 * plan: `cli/_doc_work/z_done/plan/menuBar_enhance_plan.md`
 * 상세: 
   - Issue46 충돌 해소: cliOnlySection 분기 폐기, paidApp 실행/미실행 무관 동일 메뉴 표시 (design doc §7.2.1/§7.4 SSOT)
@@ -146,12 +146,12 @@ date: 2026-05-02
     - cmd_design.md 91줄 `static let baseURL = "http://localhost:\(port)/api/v1"` → `/api/v2`로 갱신
     - 등록 시 추정한 "여러 v1 경로 인용" 및 "184줄 CLI 핸들러 매핑"은 실제 파일(173줄) 기준 부정확 — 표·코드 예시 모두 prefix 없이 path만 표기(`GET /cli/version`, `fetchAndPrint("/cli/version")`)하여 `baseURL` prefix 자동 부착 구조였음. 따라서 baseURL 1건 갱신만으로 전체 문서가 v2로 정합됨
 * 구현 명세:
-    - `grep -nE "/api/v1" cli/_doc_design/cmd_design.md`로 stale 영역 정확히 식별 → 91줄 단일 라인
+    - `grep -nE "/api/v1" cli/_doc_arch/cmd_design.md`로 stale 영역 정확히 식별 → 91줄 단일 라인
     - 91줄 `static let baseURL = "http://localhost:\(port)/api/v1"` → `"http://localhost:\(port)/api/v2"` 교체
     - frontmatter `date: 2026-04-08` → `date: 2026-04-27` 갱신
-    - 검증: `grep -nE "/api/v1|api/v1" cli/_doc_design/cmd_design.md` → 0건 (잔존물 없음)
+    - 검증: `grep -nE "/api/v1|api/v1" cli/_doc_arch/cmd_design.md` → 0건 (잔존물 없음)
 * 영향 파일:
-    - `cli/_doc_design/cmd_design.md` (91줄 baseURL + frontmatter date)
+    - `cli/_doc_arch/cmd_design.md` (91줄 baseURL + frontmatter date)
 * 비고: 코드 동작에는 영향 없음 — 문서 정확성 이슈. CLI 커맨드 구현(Issue6, `584819e`)은 정상이며, 문서만 현행 v2와 정렬됨. 표 헤더 컬럼명 "대응 API"의 path가 prefix 없는 것은 의도된 설계 — baseURL 단일 SSOT 패턴이라 향후 v3 전환 시에도 baseURL 한 줄만 갱신하면 됨
 
 ## Issue57: openapi_v2.yaml SSOT 누락 엔드포인트 3종 추가 (코드↔스펙 동기화) (등록: 2026-04-26, 해결: 2026-04-27, commit: 8969653) ✅
@@ -171,22 +171,22 @@ date: 2026-05-02
         * `DefaultLayoutResponse` (status·data.defaultLayoutName)
         * `DefaultLayoutUpdateRequest` (name minLength:1)
         * `V2StatusResponse` (status, app, version, port, uptimeSeconds, isRunning, optional activeMode — required: 6 필드)
-    - `cli/_doc_design/RestAPI_v2.md`:
+    - `cli/_doc_arch/RestAPI_v2.md`:
         * §4.2 Settings (전체) 표에 default-layout GET/PUT 2행 추가
         * §4.6 Windows / UI / System / CLI 표에 `/status` 1행 추가 (`/status/accessibility`와 구분 — 후자는 TCC 권한 명시)
-    - `cli/_doc_design/cliApp_design.md` 표 갱신 (Issue55 후속):
+    - `cli/_doc_arch/cliApp_design.md` 표 갱신 (Issue55 후속):
         * 설정 카테고리 표에 default-layout GET/PUT 2행 추가 (총 18→20행)
         * 창·UI 상태 카테고리 표에 `/status` 1행 추가 (총 4→5행)
     - 검증: `python3 -c "import yaml; yaml.safe_load(open('api/openapi_v2.yaml'))"` → "OK yaml parses"
     - 검증: `grep ^  /(settings/default-layout|status)\b` → 3종 path 라인 확인 (552, 923, 940)
 * 영향 파일:
     - `api/openapi_v2.yaml` (paths 3종 + schemas 3종)
-    - `cli/_doc_design/RestAPI_v2.md` (표 2개에 3행 추가)
-    - `cli/_doc_design/cliApp_design.md` (표 2개에 3행 추가)
+    - `cli/_doc_arch/RestAPI_v2.md` (표 2개에 3행 추가)
+    - `cli/_doc_arch/cliApp_design.md` (표 2개에 3행 추가)
 * 비고: 코드 변경 없음 — 스펙↔코드 동기화. `cli/_tool/apiTestDo.sh`에 테스트 케이스 추가는 후속 이슈 후보 (현 범위 외). yaml 1775줄 → 1879줄로 +104줄 증가
 
 ## Issue55: cliApp_design.md 엔드포인트 표를 v2 기준으로 갱신 (등록: 2026-04-26, 해결: 2026-04-26, commit: 72d1239) ✅
-* 목적: cliApp 분리 초기(2026-04-07) 작성된 `cli/_doc_design/cliApp_design.md`의 REST API 엔드포인트 표가 v1 경로 기반이며 미구현 엔드포인트(`/locale`)를 포함하고 있어 잘못된 정보를 제공함. v2 슈펴셋 전환(Issue54) 및 신규 엔드포인트 추가 이력을 반영하여 갱신함.
+* 목적: cliApp 분리 초기(2026-04-07) 작성된 `cli/_doc_arch/cliApp_design.md`의 REST API 엔드포인트 표가 v1 경로 기반이며 미구현 엔드포인트(`/locale`)를 포함하고 있어 잘못된 정보를 제공함. v2 슈펴셋 전환(Issue54) 및 신규 엔드포인트 추가 이력을 반영하여 갱신함.
 * 상세:
     - cliApp_design.md 17줄 "기존 REST API 스펙(`api/openapi.yaml`) 최대한 유지 — 외부 연동 호환성 보존" 문구가 v1→v2 슈펴셋 전환 후 stale
     - 75-93줄 엔드포인트 표 16개 모두 `/api/v1/*` 경로 → `/api/v2/*`로 갱신
@@ -196,14 +196,14 @@ date: 2026-05-02
 * 구현 명세:
     - `api/openapi_v2.yaml`에서 `^  /` 패턴으로 paths 30종 추출, summary 필드와 method 매핑 → SSOT 데이터 확보
     - `cli/fWarrangeCli/Services/RESTServer.swift`로 라우팅 교차검증 (모든 path가 `/api/v2/*` prefix, `/api/v1/*` 호출 시 `routeInternal`이 410 Gone 반환 — 라인 361-364)
-    - `cli/_doc_design/cliApp_design.md` 17줄 한 줄 수정: "기존 호환성 유지" → "v2 슈펴셋 확장(Issue54) SSOT는 `api/openapi_v2.yaml`" 명시
-    - `cli/_doc_design/cliApp_design.md` 75-101줄 단일 표(16+3행, v1 기준) → 7개 카테고리 표(총 47행, v2 기준)로 재구성: 기본/변경 알림(3) · 레이아웃·캡처·복원(8) · 창·UI 상태(4) · 설정 18종 · Modes 6종 · CLI 자기제어(4) · paidApp 라이프사이클(3)
+    - `cli/_doc_arch/cliApp_design.md` 17줄 한 줄 수정: "기존 호환성 유지" → "v2 슈펴셋 확장(Issue54) SSOT는 `api/openapi_v2.yaml`" 명시
+    - `cli/_doc_arch/cliApp_design.md` 75-101줄 단일 표(16+3행, v1 기준) → 7개 카테고리 표(총 47행, v2 기준)로 재구성: 기본/변경 알림(3) · 레이아웃·캡처·복원(8) · 창·UI 상태(4) · 설정 18종 · Modes 6종 · CLI 자기제어(4) · paidApp 라이프사이클(3)
     - 242줄 paidApp UI 구성 표의 잔존물 `GET /api/v1/cli/version` → `GET /api/v2/cli/version` 교체
     - frontmatter `date: 2026-04-07` → `date: 2026-04-26` 업데이트
-    - 검증: `grep -nE "/api/v1|/locale" cli/_doc_design/cliApp_design.md` exit 1 (잔존물 0건 확인)
+    - 검증: `grep -nE "/api/v1|/locale" cli/_doc_arch/cliApp_design.md` exit 1 (잔존물 0건 확인)
 * 영향 파일:
-    - `cli/_doc_design/cliApp_design.md` (수정 — 파일이 `.gitignore` 패턴(`cli/_doc_design/`)에 매치되지만 이전에 이미 추적 중인 상태라 `git ls-files`로 확인됨, 변경사항 정상 커밋됨)
-* 비고: 코드 동작에는 영향 없음 — 문서 정확성 이슈. 작업 중 yaml SSOT 자체의 누락(`/api/v2/settings/default-layout`, `/api/v2/status`)을 발견 → Issue57로 분리 등록. `.gitignore`에 `cli/_doc_design/` 패턴이 등록되어 있으나 기존 파일은 추적 유지되는 표준 Git 동작 확인됨 — 신규 파일은 추적 제외이므로 향후 새 디자인 문서 추가 시 정책 재검토 필요
+    - `cli/_doc_arch/cliApp_design.md` (수정 — 파일이 `.gitignore` 패턴(`cli/_doc_arch/`)에 매치되지만 이전에 이미 추적 중인 상태라 `git ls-files`로 확인됨, 변경사항 정상 커밋됨)
+* 비고: 코드 동작에는 영향 없음 — 문서 정확성 이슈. 작업 중 yaml SSOT 자체의 누락(`/api/v2/settings/default-layout`, `/api/v2/status`)을 발견 → Issue57로 분리 등록. `.gitignore`에 `cli/_doc_arch/` 패턴이 등록되어 있으나 기존 파일은 추적 유지되는 표준 Git 동작 확인됨 — 신규 파일은 추적 제외이므로 향후 새 디자인 문서 추가 시 정책 재검토 필요
 
 ## Issue54: RESTServer API 경로를 v1에서 v2로 전환 (v1 제거 준비) (등록: 2026.04.24) (✅ 완료, 44c6fbc) ✅
 * 목적: v1 API 경로를 코드·테스트·스크립트 전체에서 v2로 교체하고, routeV1Internal 폴백 구조를 v2 직접 라우팅으로 정리함
@@ -294,7 +294,7 @@ date: 2026-05-02
 * 목적: paidApp Issue203과 동일 용어 규약을 cliApp 레포 전반에 적용 — `paidApp`(fWarrange GUI) / `cliApp`(fWarrangeCli Helper) 통일
 * 구현 명세:
     - `.claude/rules/coding-rules.md`: 앱 소개 문구 `fWarrangeCli는` → `cliApp(\`fWarrangeCli\`)는`, `fWarrange (App Store)의 companion daemon` → `paidApp(\`fWarrange\`, App Store)의 companion daemon`
-    - `cli/_doc_design/`: grep 전수 조사 — 위반 없음 확인
+    - `cli/_doc_arch/`: grep 전수 조사 — 위반 없음 확인
     - `.claude/rules/` 전체: grep 전수 조사 — coding-rules.md 1건 외 위반 없음
 
 ## Issue46: paidApp 실행 시 cliApp MenuBarExtra 조건부 숨김 (등록: 2026.04.20) (✅ 완료, 08eadd5) ✅
@@ -611,8 +611,8 @@ date: 2026-05-02
         * Release 빌드 경로는 xcodebuild CLI 유지 (별도 이슈로 분리)
 
 ## Issue30: paidApp_version.md 설계 문서 정합성 개선 (등록: 2026-04-18) (✅ 완료, 0713f46) ✅
-* 목적: `cli/_doc_design/paidApp_version.md` 설계 문서를 실제 `AppState.swift` 구현 및 프로젝트 규칙과 일치하도록 정비
-* 관련 파일: `cli/_doc_design/paidApp_version.md`, `cli/fWarrangeCli/AppState.swift`
+* 목적: `cli/_doc_arch/paidApp_version.md` 설계 문서를 실제 `AppState.swift` 구현 및 프로젝트 규칙과 일치하도록 정비
+* 관련 파일: `cli/_doc_arch/paidApp_version.md`, `cli/fWarrangeCli/AppState.swift`
 * 연계 이슈: paidApp `Issue191` (paidApp 측 참조 링크 정비)
 * 상세:
     - `isPaidAppRunning` 섹션(문서 L189-196)이 실제 `AppState.swift`에 구현되어 있지 않음 — "향후 활용 가능"만 기재되어 오해 소지

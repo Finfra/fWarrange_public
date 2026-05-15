@@ -3,7 +3,7 @@ name: window_recognize_plan
 description: 창 인식률 개선 — 측정 인프라부터 사용자 개입 UI까지 7단계 Phase 실행 계획
 date: 2026-05-15
 issue: Issue72
-design: cli/_doc_design/window_recognize.md
+design: cli/_doc_arch/window_recognize.md
 task: cli/_doc_work/tasks/window_recognize_task.md
 ---
 
@@ -40,7 +40,7 @@ task: cli/_doc_work/tasks/window_recognize_task.md
 | REST API               | [`cli/fWarrangeCli/Services/RESTServer.swift`](../../fWarrangeCli/Services/RESTServer.swift), [`cli/api/openapi_v2.yaml`](../../api/openapi_v2.yaml)                                    |
 | 스토리지               | [`cli/fWarrangeCli/Services/LayoutStorageService.swift`](../../fWarrangeCli/Services/LayoutStorageService.swift)                                                                        |
 | 정규화 룰셋            | (신규) `cli/fWarrangeCli/Resources/title_normalize.yml`                                                                                                                                 |
-| API 문서               | [`cli/_doc_design/RestAPI_v2.md`](../../_doc_design/RestAPI_v2.md)                                                                                                                      |
+| API 문서               | [`cli/_doc_arch/RestAPI_v2.md`](../../_doc_arch/RestAPI_v2.md)                                                                                                                      |
 | paidApp UI (별도 레포) | `fWarrange/fWarrange/Views/...` (Phase 7 한정)                                                                                                                                          |
 
 # 전제조건
@@ -351,7 +351,7 @@ Phase 1 (측정) ─────────────────────
 
 # 참고
 
-* design SSOT: [`cli/_doc_design/window_recognize.md`](../../_doc_design/window_recognize.md)
+* design SSOT: [`cli/_doc_arch/window_recognize.md`](../../_doc_arch/window_recognize.md)
 * 코드 SSOT: [`WindowRestoreService.swift`](../../fWarrangeCli/Services/WindowRestoreService.swift)
 * 점수표 SSOT: [`fWarrange/.claude/rules/window-rules.md`](../../../../fWarrange/.claude/rules/window-rules.md)
-* 상위 협업 규약: [`fWarrange/_doc_design/paid_cli_protocol.md`](../../../../fWarrange/_doc_design/paid_cli_protocol.md)
+* 상위 협업 규약: [`fWarrange/_doc_arch/paid_cli_protocol.md`](../../../../fWarrange/_doc_arch/paid_cli_protocol.md)

@@ -219,7 +219,7 @@ date: 2026-05-11
 * **현재 한계 명시**: [`window_recognize.md` §F](#f-풀스크린stage-managerspaces) — 다른 Space 창은 AX 목록에 미노출
 * **시도된 우회**: 본 레포 코드 grep 결과 `CGSpace`, `CGSGetActiveSpace`, fullscreen 관련 처리 **전무**
 * **간접 사례**: [`menubar-icon-design.md`](menubar-icon-design.md)에서 NSWorkspace 이벤트로 앱 라이프사이클을 추적하나 Space 단위는 다루지 않음
-* **상위 paidApp 측**: `_doc_design/paid_cli_protocol.md`에 Space 관련 정의 없음
+* **상위 paidApp 측**: `_doc_arch/paid_cli_protocol.md`에 Space 관련 정의 없음
 * **결론**: 완전 미시도. 비공개 API(`CGSGetActiveSpace`) 도입이 필요한 영역
 
 ## Q4. 사용자 의도 (strict vs loose)
@@ -234,7 +234,7 @@ date: 2026-05-11
 
 ## Q5. paidApp vs cliApp 역할 분담 / 정규화 룰셋 위치
 
-* **상위 SSOT**: `~/_git/__all/fWarrange/_doc_design/paid_cli_protocol.md` — 분리 배경·REST/URL Scheme·기능 경계 정의됨 (현재 컨텍스트에서 직접 grep 안 됨, 메모리 기준)
+* **상위 SSOT**: `~/_git/__all/fWarrange/_doc_arch/paid_cli_protocol.md` — 분리 배경·REST/URL Scheme·기능 경계 정의됨 (현재 컨텍스트에서 직접 grep 안 됨, 메모리 기준)
 * **메모리 단언**: `project_paidapp-ui-scope.md` — "고급 기능 GUI(Screen 설정·Settings·Layout 목록/상세)는 **paidApp 전담**, cliApp은 **데이터·REST만**"
 * **메모리 단언**: `project_ssot-split.md` — 메뉴 구조는 `menuBar_enhance.md`, 라이프사이클은 `paid_cli_protocol.md`
 * **코드 사례**: Issue.md 진행 이슈들(예: 메뉴 단축키 정책)은 정책을 paidApp 측 protocol에 두고 구현을 cliApp에 두는 패턴 일관
@@ -255,7 +255,7 @@ date: 2026-05-11
 |  Q2  | Issue71 `appMatches` 헬퍼 확장 설계 — 다중 식별자(`bundleId + originURL/appPath`) 시그니처 추가 |
 |  Q3  | 별도 이슈 등록 — 비공개 API 도입 PoC + paidApp 측 protocol 합의 |
 |  Q4  | `WindowInfo` 스키마에 옵셔널 `matchMode: "strict"|"loose"` 필드 + API `restore` 옵션 추가 안 |
-|  Q5  | `cli/_doc_design/title_normalize.yml` (SSOT) + REST `/api/v2/normalize-rules` CRUD 엔드포인트 설계 |
+|  Q5  | `cli/_doc_arch/title_normalize.yml` (SSOT) + REST `/api/v2/normalize-rules` CRUD 엔드포인트 설계 |
 
 # 유사 프로젝트 비교 (Prior Art Survey)
 
@@ -443,7 +443,7 @@ date: 2026-05-11
 
 * 동적 타이틀(브라우저·에디터·터미널) 정규화 → exactTitle(90점) 회복
 * 예시: `Slack — finfra (12)` → `Slack — finfra`, `file.swift — Code` → `Code`
-* 형식: `cli/_doc_design/title_normalize.yml` (cliApp SSOT) + paidApp이 REST `/api/v2/normalize-rules` CRUD로 편집
+* 형식: `cli/_doc_arch/title_normalize.yml` (cliApp SSOT) + paidApp이 REST `/api/v2/normalize-rules` CRUD로 편집
 * 차용: yabai의 룰 YAML 패턴
 
 #### C-3. 사용자 의도 표현 (strict / loose)
@@ -540,7 +540,7 @@ date: 2026-05-11
 
 # 참고
 
-* [`cli/_doc_design/cliApp_design.md`](cliApp_design.md) — cliApp 전체 아키텍처
+* [`cli/_doc_arch/cliApp_design.md`](cliApp_design.md) — cliApp 전체 아키텍처
 * [`fWarrange/.claude/rules/window-rules.md`](../../../fWarrange/.claude/rules/window-rules.md) — 점수표 SSOT (paidApp 측)
 * [`fWarrange/.claude/rules/coding-rules.md`](../../../fWarrange/.claude/rules/coding-rules.md) §5 — 매칭 임계값·허용오차
 * 코드: [`WindowRestoreService.swift`](../fWarrangeCli/Services/WindowRestoreService.swift), [`MatchType.swift`](../fWarrangeCli/Models/MatchType.swift), [`WindowCaptureService.swift`](../fWarrangeCli/Services/WindowCaptureService.swift)
