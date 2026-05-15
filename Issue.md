@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 71
+* Issue HWM: 72
 * Save Point: 2026-05-08 (close Issue71 — bundleId 우선 매칭으로 VSCode 복구 실패 해결)
   - 7b41337 (2026-05-08) - Fix(Restore): Issue71 — bundleId 우선 매칭으로 ownerName↔localizedName 불일치 앱 복구
   - c47bbcd (2026-05-05) - Docs: Close Issue70
@@ -16,10 +16,96 @@ date: 2026-04-07
 * `cli/_doc_design/menuBar_enhance.md` 기준 진행(메뉴바, 로컬 SSOT — gitignored)
 
 # 🌱 이슈후보
-1. 정밀하게 복구 않되는데 원인이 아이디 방식때문인지 윈도우명 때문인지 확인, 혹은 이중 메칭문제인지?
 
 
 # 🚧 진행중
+
+## Issue72: [Feat] 창 인식률 개선 — 7-Phase 통합 작업 (등록: 2026-05-15)
+* 목적: "정밀 복구 실패의 원인이 ID 방식인지 윈도우명인지 이중 매칭 문제인지" 토의(이슈후보 출신)를 시발점으로, 측정 인프라부터 사용자 개입 UI까지 7개 Phase로 매칭 알고리즘을 체계적으로 개선. 베이스라인 측정 후 정량 목표 달성(매칭 성공률 +25%, exactTitle 비율 +20%, areaMatch 오탐 -90%).
+* plan: `cli/_doc_work/plan/window_recognize_plan.md`
+* task: `cli/_doc_work/tasks/window_recognize_task.md`
+* design: `cli/_doc_design/window_recognize.md`
+* 상세:
+    - 부모 이슈로 plan/task 전체 추적
+    - 서브 이슈 Issue72_1~Issue72_7은 각 Phase별 독립 진행·커밋·완료
+    - Phase 1(측정 인프라) 선행 필수, Phase 2/3/4 병렬 가능, Phase 5/6/7 직렬
+    - 7개 서브 이슈 모두 완료 시 부모 이슈 종결
+
+## Issue72_1: [Feat] Phase 1 — 측정 인프라 (RestoreStats + REST + 베이스라인) (등록: 2026-05-15)
+* 목적: 모든 후속 Phase의 효과 검증 토대 구축. 복구 매칭 결과를 누적 통계로 노출하여 인식률을 수치화.
+* 상세:
+    - `RestoreStats` 모델 + `RestoreStatsCollector` 서비스 신설
+    - `WindowRestoreService` 매칭 결과 push (성공·실패·MatchType 분포)
+    - `~/Library/Application Support/fWarrangeCli/restore-stats.json` 디스크 영속
+    - `GET /api/v2/restore-stats` REST 엔드포인트
+    - `openapi_v2.yaml` + `RestAPI_v2.md` 동기화 (api-rules.md 준수)
+    - `apiTestDo.sh v2` 신규 케이스 추가
+    - 1주일 베이스라인 수집 → `cli/_doc_work/report/window_recognize_baseline.md`
+* 구현 명세:
+    - Task 1.1~1.6 (task 파일 참조)
+    - 검증: 5회 복구 후 통계 정확성, 재시작 후 보존, MatchType 분포 합 = 시도 수
+
+## Issue72_2: [Feat] Phase 2 — 데이터 수집 확장 (windowOrder + displayUUID) (등록: 2026-05-15)
+* 목적: 매칭 정확도 향상을 위해 캡처 시점에 추가 시그널 수집. 본 Phase는 수집만, 매칭 로직 변경 없음.
+* 상세:
+    - `WindowInfo`에 옵셔널 `windowOrder: Int?`, `displayUUID: String?` 추가
+    - `WindowCaptureService`에서 두 필드 채움
+    - YAML 직렬화 하위호환 (구 파일 로드 가능)
+* 구현 명세:
+    - Task 2.1~2.4
+    - 검증: 신규 캡처에 두 필드 존재, 옛 YAML 회귀 없음, 멀티 디스플레이 UUID 일관성
+
+## Issue72_3: [Feat] Phase 3 — 타이틀 정규화 룰셋 (C-2) (등록: 2026-05-15)
+* 목적: 동적 타이틀(브라우저·에디터·터미널·채팅)로 인한 exactTitle(90점) 매칭 실패 회복.
+* 상세:
+    - `title_normalize.yml` 빌트인 룰셋 (Top 10 앱: Safari, Chrome, Code, Slack 등)
+    - `TitleNormalizer` 서비스 — `strip_prefix`/`strip_suffix`/`strip_pattern`/`mask_pattern` 지원
+    - 캡처·복구 양쪽 동일 정규화 적용
+    - `GET/PUT /api/v2/normalize-rules` REST CRUD
+* 구현 명세:
+    - Task 3.1~3.6
+    - 검증: Phase 1 통계 대비 exactTitle 비율 +20% 이상
+
+## Issue72_4: [Feat] Phase 4 — 점수 함수 개선 (distance 가산 + areaMatch 약화) (등록: 2026-05-15)
+* 목적: 카테고리 점수 → distance 가산 + areaMatch 비활성화 옵션으로 노이즈 매칭 감소.
+* 상세:
+    - `computeMatchScore`에 distance 기반 0~10점 가산 (동률 시 가까운 위치 선호)
+    - `AppSettings.matchAreaMatchEnabled: Bool` 옵션 추가
+    - `minimumScore` 인터페이스 정리 (Phase 5 모드 연동 준비)
+* 구현 명세:
+    - Task 4.1~4.4
+    - 검증: areaMatch 비활성 후 오탐 감소(통계), 정상 케이스 회귀 없음
+
+## Issue72_5: [Feat] Phase 5 — 매칭 모드 + Moom 폴백 (strict/normal/loose) (등록: 2026-05-15)
+* 목적: 사용자가 "정확히"/"비슷하게" 의도 표현. loose 모드에서 Moom 스타일 최후 폴백 활성.
+* 상세:
+    - `MatchMode` enum: strict(≥80), normal(≥50, 현행), loose(≥30 + 1:N + Moom 폴백)
+    - `WindowInfo.matchMode: MatchMode?` 옵셔널 필드
+    - Moom 폴백: 앱별 창 개수 동일 시 windowOrder 정렬로 위치 배분
+    - `POST /api/v2/layouts/{name}/restore`에 `mode` 파라미터
+* 구현 명세:
+    - Task 5.1~5.6
+    - 검증: 3개 모드 의도 거동 e2e, normal 회귀 없음
+
+## Issue72_6: [Feat] Phase 6 — 고급 식별자 Spaces(spaceId) + PWA(originURL) (등록: 2026-05-15)
+* 목적: OSS 미개척 시나리오 대응 — Spaces 분산 창·Chrome PWA 구분 매칭.
+* 상세:
+    - 6-1: 비공개 `CGSGetActiveSpace` PoC + `spaceId` 캡처/매칭 (cliApp non-sandbox)
+    - 6-2: Chrome `--app=` 등 PWA `originURL` 어댑터 + `appMatches` 다중 식별자 일반화
+    - 상위 paidApp `paid_cli_protocol.md`에 비공개 API 도입 합의 기록
+* 구현 명세:
+    - Task 6-1.1~6-1.4, Task 6-2.1~6-2.4
+    - 검증: Space 분산 e2e, Chrome PWA vs 일반 Chrome 구분, Issue71 회귀 없음
+
+## Issue72_7: [Feat] Phase 7 — 사용자 개입 UI (interactive REST + paidApp 다이얼로그) (등록: 2026-05-15)
+* 목적: 자동 매칭이 애매할 때 paidApp 후보 선택 다이얼로그로 사용자 개입 경로 제공.
+* 상세:
+    - cliApp: 애매 케이스(<50점 또는 동률 다중매치) 검출, `interactive: true` 옵션, `resolve` 엔드포인트
+    - paidApp(별도 레포): 후보 카드 다이얼로그, `CGWindowListCreateImage` 썸네일, 다국어
+    - 선택 결과 학습 누적 (선택 항목, 1차 미포함 가능)
+* 구현 명세:
+    - Task 7-1.1~7-1.3, Task 7-2.1~7-2.3, Task 7-3
+    - 검증: 동일 타이틀 다중 창 사용자 선택 e2e, non-interactive 자동화 회귀 없음
 
 # 📕 중요
 
