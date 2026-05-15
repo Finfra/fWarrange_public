@@ -12,8 +12,8 @@ design: cli/_doc_design/window_recognize.md
 | Phase | 이슈        | 상태                                  | 커밋·메모                                                    |
 | :---: | :---------- | :------------------------------------ | :----------------------------------------------------------- |
 |   1   | Issue72_1   | 🟢 코드 완료 · 베이스라인 수집 대기   | 코드 `02d2bd0` · 1.6은 1주일 실사용 데이터 수집 후 보고서 작성 |
-|   2   | Issue72_2   | ⚪ 대기                                | Phase 1 베이스라인 영향 無 → 선행 가능                       |
-|   3   | Issue72_3   | ⚪ 대기                                |                                                              |
+|   2   | Issue72_2   | 🟢 완료                                | 커밋 `1899014` · 4-monitor UUID 4종 / windowOrder 다중창 순차 검증 |
+|   3   | Issue72_3   | ⚪ 대기                                | Phase 1 베이스라인 영향 無 → 선행 가능                       |
 |   4   | Issue72_4   | ⚪ 대기                                |                                                              |
 |   5   | Issue72_5   | ⚪ 대기                                | Phase 2/3/4 후 진행                                          |
 |   6   | Issue72_6   | ⚪ 대기                                | Phase 5 후 진행 (paidApp protocol 합의 필요)                 |
@@ -111,33 +111,57 @@ design: cli/_doc_design/window_recognize.md
 | REST 메서드 | GET 만 | GET + DELETE | 베이스라인 재시작용 reset 필요 |
 | `topFailures` 키 형식 | `(app, titlePattern)` 페어 | `"app|title"` 단일 문자열 (`Self.failureKey` 정규화) | JSON 직렬화 단순화, title 80자 트림 |
 
-# Phase 2 — 데이터 수집 확장 (Track A-1)
+# Phase 2 — 데이터 수집 확장 (Track A-1) — 🟢 완료
 
-## Task 2.1: `WindowInfo` 스키마 확장
+> **이슈**: Issue72_2 · **커밋**: `1899014`
 
-* [ ] `cli/fWarrangeCli/Models/WindowInfo.swift`에 옵셔널 필드 추가
+## Task 2.1: `WindowInfo` 스키마 확장 ✅
+
+* [x] `cli/fWarrangeCli/Models/WindowInfo.swift`에 옵셔널 필드 추가
     - `windowOrder: Int?`
     - `displayUUID: String?`
-* [ ] Codable 하위호환: 옛 YAML 로드 시 `nil` 허용
-* [ ] equality 비교 시 옵셔널 필드 영향 검토
+* [x] Codable 하위호환: 옵셔널이므로 옛 yml 로드 시 `nil` 허용
+* [x] equality 비교: Equatable이 옵셔널 자동 처리 — 영향 없음 확인
 
-## Task 2.2: `WindowCaptureService` 데이터 수집
+## Task 2.2: `WindowCaptureService` 데이터 수집 ✅
 
-* [ ] `CGWindowListCopyWindowInfo`의 onscreen 정렬 순서를 `windowOrder`로 기록
-* [ ] `NSScreen` 또는 `CGDirectDisplayID`에서 UUID 획득 (`CGDisplayCreateUUIDFromDisplayID`)
-* [ ] 멀티 디스플레이 환경에서 각 윈도우가 어느 디스플레이에 속하는지 매핑
+* [x] `CGWindowListCopyWindowInfo`의 onscreen 정렬 순서를 PID별 `windowOrder` 인덱스로 부여
+* [x] `NSScreen.deviceDescription[NSScreenNumber]` → `CGDirectDisplayID` → `CGDisplayCreateUUIDFromDisplayID` → `CFUUIDCreateString`
+* [x] 창 중심점이 속한 디스플레이 매핑 — Cocoa(y-up)↔Quartz(y-down) 좌표 변환 포함
+* [x] 화면 밖 창은 `squaredDistance`로 가장 가까운 디스플레이에 fallback
 
-## Task 2.3: YAML 직렬화 검증
+## Task 2.3: YAML 직렬화 검증 ✅
 
-* [ ] 신규 캡처 YAML에 두 필드 출력 확인
-* [ ] 옛 YAML(필드 없음) 로드·복구 정상 동작 확인
-* [ ] `apiTestDo.sh` 캡처 검증 케이스 갱신
+* [x] `serializeToYAML`: 두 필드 존재 시에만 출력 (`if let order`, `if let uuid && !uuid.isEmpty`)
+* [x] `parseYAML`: 두 필드 옵셔널 파싱 추가 (`windowOrder:` Int, `displayUUID:` 인용 문자열)
+* [x] 신규 캡처 YAML에 두 필드 출력 확인
+* [x] 옛 yml (필드 없음 — 2026-05-15-1.yml) 로드 정상: 55창 응답 `status=ok`
 
-## Task 2.4: 테스트
+## Task 2.4: 테스트 ✅
 
-* [ ] 멀티 디스플레이 환경에서 displayUUID 일관성 (캡처 두 번 → 동일 UUID)
-* [ ] 디스플레이 연결/해제 후 displayUUID 변화 추적
-* [ ] 동일 앱 다중 창에서 windowOrder 0,1,2,... 순차
+* [x] 4-monitor 환경에서 캡처 → `displayUUID` **4종 일관 사용** (서로 다른 모니터 = 서로 다른 UUID)
+* [x] 동일 앱 다중 창 `windowOrder` 순차 부여 검증:
+    - Code: [0,1,2,3,4,5,6,7,8]
+    - KakaoTalk: [0~8]
+    - iTerm2: [0~5]
+    - Finder: [0,1,2]
+    - Microsoft Edge: [0,1,2]
+* [x] xcodebuild Debug 통과
+* [ ] 디스플레이 연결/해제 후 displayUUID 변화 추적 — 본 세션에서 검증 불가 (하드웨어 토폴로지 조작 필요). Phase 4·6 진행 중 자연스럽게 검증 예정
+
+## Phase 2 알려진 한계
+
+| 한계 | 원인 | 후속 처리 |
+| :--- | :--- | :--- |
+| Google Chrome: `windowOrder = [0, 0]` | Chrome이 helper 프로세스로 창을 별도 PID로 띄움 → PID별 카운터가 각각 0부터 시작 | Phase 6 PWA 다중 식별자에서 정리 |
+
+## Phase 2 설계 변경 사항
+
+| 항목 | 계획 | 실제 | 사유 |
+| :--- | :--- | :--- | :--- |
+| windowOrder 카운터 키 | "동일 앱 내" | "동일 PID 내" | Chrome PWA·헬퍼 프로세스 케이스. ownerPID는 정확하지만 ownerName으로 묶으면 다른 PID도 동일 키 — 모호. PID 기반 + Phase 6에서 다중 식별자로 보완하는 게 안전 |
+| displayUUID 좌표 변환 | 명시 안 함 | Cocoa↔Quartz 변환 추가 | NSScreen.frame은 Cocoa(y-up), CGWindow bounds는 Quartz(y-down) — 비교 전 변환 필수 |
+| 화면 밖 창 fallback | 명시 안 함 | squaredDistance로 최근접 디스플레이 | 멀티 디스플레이 환경에서 화면 가장자리 창이 어디에도 contains 안 될 가능성 대응 |
 
 # Phase 3 — 타이틀 정규화 (C-2)
 

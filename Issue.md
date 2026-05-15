@@ -5,7 +5,10 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 72
-* Save Point: 2026-05-15 (Issue72_1 Phase 1 완료 — 매칭 통계 인프라)
+* Save Point: 2026-05-15 (Issue72_2 Phase 2 완료 — windowOrder + displayUUID 수집)
+  - 1899014 (2026-05-15) - Feat(Issue72_2)(Phase 2): 데이터 수집 확장 — windowOrder + displayUUID
+  - ff8811d (2026-05-15) - Docs(Issue72_1): task 진행현황 + 베이스라인 검토일 결정사항 추가
+  - 8f09955 (2026-05-15) - Docs(Issue72_1): Phase 1 코드 완료 마킹 + Save Point 갱신
   - 02d2bd0 (2026-05-15) - Feat(Issue72_1)(Phase 1): 창 복구 매칭 누적 통계 인프라
   - 917f2a1 (2026-05-15) - Docs(Issue72): 창 인식률 개선 — 7-Phase 통합 작업 등록
   - 7b41337 (2026-05-08) - Fix(Restore): Issue71 — bundleId 우선 매칭으로 ownerName↔localizedName 불일치 앱 복구
@@ -48,7 +51,7 @@ date: 2026-04-07
     - Task 1.1~1.6 (task 파일 참조)
     - 검증: 5회 복구 후 통계 정확성, 재시작 후 보존, MatchType 분포 합 = 시도 수
 
-## Issue72_2: [Feat] Phase 2 — 데이터 수집 확장 (windowOrder + displayUUID) (등록: 2026-05-15)
+## Issue72_2: [Feat] Phase 2 — 데이터 수집 확장 (windowOrder + displayUUID) (등록: 2026-05-15) (✅ 완료, 1899014)
 * 목적: 매칭 정확도 향상을 위해 캡처 시점에 추가 시그널 수집. 본 Phase는 수집만, 매칭 로직 변경 없음.
 * 상세:
     - `WindowInfo`에 옵셔널 `windowOrder: Int?`, `displayUUID: String?` 추가
