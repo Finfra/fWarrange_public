@@ -57,6 +57,11 @@ tags:
       paidApp이 실행/종료 시점을 cliApp에 통지하여, 기존 5s polling(CLIHealthMonitor)
       및 observePaidAppTermination 2차 안전망과 함께 정확한 상태 추적을 제공함.
       발신자 검증: NSRunningApplication.bundleIdentifier == "kr.finfra.fWarrange"
+  - name: RestoreStats
+    description: |
+      창 복구 매칭 누적 통계 (Issue72_1 Phase 1). 복구 시도마다 자동 누적되며
+      `~/Library/Application Support/fWarrangeCli/restore-stats.json`에 즉시 영속됨.
+      베이스라인 측정 → Phase 2~7 효과 검증의 정량 토대로 사용.
 
 paths:
   # ---------- Modes: context switching ----------
@@ -182,6 +187,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ChangesResponse'
+
+  # ---------- RestoreStats: Issue72_1 Phase 1 ----------
+  /restore-stats:
+    get:
+      summary: 창 복구 매칭 누적 통계 조회
+      description: |
+        창 복구(`POST /layouts/{name}/restore`)가 호출될 때마다 자동 누적되는 매칭 통계.
+        `WindowRestoreService.computeMatchScore` 결과를 `RestoreStatsCollector`가 수집함.
+
+        **포함 지표**:
+        - `totalAttempts`: 매칭 시도 수 (target 단위, 성공+실패 합)
+        - `successes` / `failures` / `successRate` (0~1)
+        - `averageScore`: 성공 매칭의 평균 score (0~100)
+        - `matchTypeCounts`: MatchType별 카운트 (`ID`, `Title(Exact)`, `Regex`, `Title(Contains)`, `Width`, `Height`, `Ratio`, `Area`, `None`)
+        - `topFailures`: 자주 실패하는 `(app|title)` 페어 Top 10
+        - `recentEventsCount`: 메모리에 보관 중인 최근 이벤트 수 (capacity 200)
+        - `sessionStartedAt` / `lastUpdated`: ISO8601
+
+        **영속**: `~/Library/Application Support/fWarrangeCli/restore-stats.json` (env `fWarrangeCli_stats_path`로 재정의 가능)
+      operationId: getRestoreStats
+      tags: [RestoreStats]
+      responses:
+        '200':
+          description: 누적 통계 스냅샷
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  data:
+                    type: object
+                    properties:
+                      totalAttempts: { type: integer }
+                      successes: { type: integer }
+                      failures: { type: integer }
+                      successRate: { type: number, format: double, minimum: 0, maximum: 1 }
+                      averageScore: { type: number, format: double, minimum: 0, maximum: 100 }
+                      matchTypeCounts:
+                        type: object
+                        additionalProperties: { type: integer }
+                      topFailures:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            key: { type: string }
+                            count: { type: integer }
+                      recentEventsCount: { type: integer }
+                      recentEventsCapacity: { type: integer }
+                      sessionStartedAt: { type: string, format: date-time }
+                      lastUpdated: { type: string, format: date-time }
+    delete:
+      summary: 매칭 통계 초기화 (베이스라인 재시작용)
+      description: |
+        누적 통계를 모두 0으로 초기화. 디스크 영속 파일도 즉시 갱신됨.
+        Phase 2~7 변경 전후 비교를 위한 베이스라인 재시작 시 사용.
+      operationId: resetRestoreStats
+      tags: [RestoreStats]
+      responses:
+        '200':
+          description: 초기화 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  data:
+                    type: object
+                    properties:
+                      message: { type: string }
 
   /health:
     get:

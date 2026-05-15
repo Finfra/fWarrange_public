@@ -9,15 +9,19 @@ final class WindowManager {
     private let captureService: WindowCaptureService
     private let restoreService: WindowRestoreService
     private let accessibilityService: AccessibilityService
+    /// Issue72_1: 복구 매칭 결과 누적 통계 수집기. nil이면 통계 미수집(테스트·하위 호환용).
+    private let statsCollector: RestoreStatsCollector?
 
     init(
         captureService: WindowCaptureService,
         restoreService: WindowRestoreService,
-        accessibilityService: AccessibilityService
+        accessibilityService: AccessibilityService,
+        statsCollector: RestoreStatsCollector? = nil
     ) {
         self.captureService = captureService
         self.restoreService = restoreService
         self.accessibilityService = accessibilityService
+        self.statsCollector = statsCollector
     }
 
     func captureCurrentWindows(filterApps: [String]?) -> [WindowInfo] {
@@ -53,6 +57,11 @@ final class WindowManager {
         let elapsed = CFAbsoluteTimeGetCurrent() - startTime
         let succeeded = results.filter { $0.success }.count
         logD("[WindowManager.restoreWindows] 종료 - 성공: \(succeeded)/\(results.count), 경과: \(String(format: "%.3f", elapsed))초")
+
+        // Issue72_1 (Phase 1): 매칭 결과를 통계 수집기에 push. 디바운스 후 디스크 flush.
+        if let statsCollector = statsCollector {
+            await statsCollector.recordBatch(results)
+        }
 
         restoreStatus = .completed(total: results.count, succeeded: succeeded)
         return results

@@ -66,6 +66,12 @@ struct RESTServerHandlers {
     var deleteMode: (_ name: String) throws -> Void
     var activateMode: (_ name: String) async throws -> (mode: Mode, restoreResults: [WindowMatchResult])
     var getActiveModeName: () -> String?
+
+    // Issue72_1 (Phase 1): 매칭 통계
+    /// 현재 누적 통계 스냅샷 (JSON 직렬화용 dictionary).
+    var getRestoreStats: () async -> [String: Any]
+    /// 통계 초기화 (베이스라인 재시작용).
+    var resetRestoreStats: () async -> Void
 }
 
 // MARK: - Notification.Name 확장 (fWarrangeCli용)
@@ -806,6 +812,24 @@ final class RESTServer: RESTServerProtocol {
         // POST /api/v2/shutdown (Issue42 Phase 1)
         if method == "POST" && path == "\(base)/shutdown" {
             handleShutdown(request: request, completion: completion)
+            return true
+        }
+
+        // Issue72_1 (Phase 1): GET /api/v2/restore-stats — 매칭 통계 스냅샷
+        if method == "GET" && path == "\(base)/restore-stats" {
+            Task { [handlers] in
+                let snapshot = await handlers.getRestoreStats()
+                completion(.ok(json: ["status": "ok", "data": snapshot]))
+            }
+            return true
+        }
+
+        // Issue72_1 (Phase 1): DELETE /api/v2/restore-stats — 통계 초기화 (베이스라인 재시작)
+        if method == "DELETE" && path == "\(base)/restore-stats" {
+            Task { [handlers] in
+                await handlers.resetRestoreStats()
+                completion(.ok(json: ["status": "ok", "data": ["message": "통계 초기화 완료"]]))
+            }
             return true
         }
 

@@ -9,6 +9,8 @@ final class AppState {
     let restServer: RESTServer
     let paidAppStore: PaidAppStateStore
     let paidAppMonitor: PaidAppMonitor
+    /// Issue72_1 (Phase 1): 창 복구 매칭 누적 통계 수집기.
+    let restoreStatsCollector: RestoreStatsCollector
     private let hotKeyService: HotKeyService
     private let screenMoveService: ScreenMoveService
     private let modeStorageService: ModeStorageService
@@ -63,10 +65,15 @@ final class AppState {
         )
         let accessService = SystemAccessibilityService()
 
+        // Issue72_1 (Phase 1): 매칭 통계 수집기. 디스크 영속은 init 후 initialize()에서 load 호출.
+        let statsCollector = JSONRestoreStatsCollector()
+        self.restoreStatsCollector = statsCollector
+
         self.windowManager = WindowManager(
             captureService: captureService,
             restoreService: restoreService,
-            accessibilityService: accessService
+            accessibilityService: accessService,
+            statsCollector: statsCollector
         )
         self.layoutManager = LayoutManager(storageService: storageService)
         self.modeStorageService = YAMLModeStorageService(baseDirectory: baseDir)
@@ -329,6 +336,13 @@ final class AppState {
             },
             getActiveModeName: {
                 weakSelf?.activeModeName
+            },
+            // Issue72_1 (Phase 1): 매칭 통계 핸들러
+            getRestoreStats: { [statsCollector] in
+                await statsCollector.currentSnapshot()
+            },
+            resetRestoreStats: { [statsCollector] in
+                await statsCollector.reset()
             }
         )
         let paidAppStore = PaidAppStateStore { oldSessionId, newSessionId, oldPid, newPid in
@@ -351,6 +365,9 @@ final class AppState {
     func initialize() {
         let effectiveLogLevel = Env.logLevel ?? LogLevel(rawValue: settings.logLevel ?? 5) ?? .critical
         Logger.shared.setLogLevel(effectiveLogLevel)
+
+        // Issue72_1 (Phase 1): 매칭 통계 디스크에서 로드 — 앱 재시작 후에도 누적 유지.
+        Task { await restoreStatsCollector.load() }
 
         // 2-모드 메뉴바 — cliApp이 직접 관리. paidApp 실행 여부는 PaidAppMonitor로 감지.
         if detectPaidApp() != nil {
