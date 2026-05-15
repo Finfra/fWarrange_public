@@ -125,6 +125,10 @@ struct AppSettings: Codable {
     var retryInterval: Double
     var minimumMatchScore: Int
     var enableParallelRestore: Bool?  // nil = 기본값 true, 앱별 병렬 복구 활성화
+    /// Issue72_4 (Phase 4): areaMatch(30점, 면적 유사도) 매칭 활성 여부.
+    /// nil = 기본값 true. 베이스라인 통계에서 areaMatch 비율이 높으면 false 전환 권장.
+    /// false 시 모든 다른 매칭(ID/title/width/height/ratio)이 실패해야만 .noMatch 처리.
+    var matchAreaMatchEnabled: Bool?
     var restServerPort: Int?           // nil = 기본값 3016, 서버 포트
     var logLevel: Int?
     var dataStorageMode: DataStorageMode?  // nil = 기본값 .host
@@ -183,6 +187,7 @@ struct AppSettings: Codable {
         retryInterval: 0.5,
         minimumMatchScore: 30,
         enableParallelRestore: true,
+        matchAreaMatchEnabled: true,
         restServerPort: 3016,
         logLevel: 5,
         dataStorageMode: .host,

@@ -76,6 +76,7 @@ final class YAMLSettingsService: SettingsService {
         lines.append("retryInterval: \(s.retryInterval)")
         lines.append("minimumMatchScore: \(s.minimumMatchScore)")
         lines.append("enableParallelRestore: \(s.enableParallelRestore ?? true)")
+        lines.append("matchAreaMatchEnabled: \(s.matchAreaMatchEnabled ?? true)")
         lines.append("restServerPort: \(s.restServerPort ?? 3016)")
         lines.append("# logLevel: 0=verbose, 1=debug, 2=info, 3=warning, 4=error, 5=critical")
         lines.append("logLevel: \(s.logLevel ?? 5)")
@@ -169,6 +170,7 @@ final class YAMLSettingsService: SettingsService {
         if let v = dict["retryInterval"], let d = Double(v) { s.retryInterval = d }
         if let v = dict["minimumMatchScore"], let i = Int(v) { s.minimumMatchScore = i }
         if let v = dict["enableParallelRestore"], let b = Bool(v) { s.enableParallelRestore = b }
+        if let v = dict["matchAreaMatchEnabled"], let b = Bool(v) { s.matchAreaMatchEnabled = b }
         if let v = dict["restServerPort"], let i = Int(v) { s.restServerPort = i }
         if let v = dict["logLevel"], let i = Int(v) { s.logLevel = i }
         if let v = dict["dataStorageMode"], let m = DataStorageMode(rawValue: v) { s.dataStorageMode = m }

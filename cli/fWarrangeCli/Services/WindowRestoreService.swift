@@ -91,9 +91,14 @@ final class AXWindowRestoreService: WindowRestoreService {
     /// Issue72_3 (Phase 3): 타이틀 정규화 서비스. axTitle 비교 전 동일 정규화 적용.
     /// 옵셔널 — 미주입 시 원본 비교 (Phase 1·2 호환).
     private let titleNormalizer: TitleNormalizer?
+    /// Issue72_4 (Phase 4): areaMatch(30점, 면적 유사도) 활성 여부.
+    /// false 시 30점 매칭 케이스가 노이즈 매칭으로 분류되어 .noMatch 처리됨.
+    /// 베이스라인 통계에서 areaMatch 비율이 높으면 false로 전환 검토.
+    private let areaMatchEnabled: Bool
 
-    init(titleNormalizer: TitleNormalizer? = nil) {
+    init(titleNormalizer: TitleNormalizer? = nil, areaMatchEnabled: Bool = true) {
         self.titleNormalizer = titleNormalizer
+        self.areaMatchEnabled = areaMatchEnabled
     }
 
     nonisolated func restoreWindows(
@@ -420,14 +425,23 @@ final class AXWindowRestoreService: WindowRestoreService {
         } else if target.size.height > 0 && currentSize.height > 0 &&
                   abs((currentSize.width / currentSize.height) - (target.size.width / target.size.height)) < 0.05 {
             score = 40; mType = .ratioMatch
-        } else if currentArea > 0 && targetArea > 0 &&
+        } else if areaMatchEnabled && currentArea > 0 && targetArea > 0 &&
                   abs(currentArea - targetArea) / max(currentArea, targetArea) < 0.05 {
+            // Issue72_4 (Phase 4): areaMatchEnabled=false 시 30점 매칭 비활성 → noMatch
             score = 30; mType = .areaMatch
         }
 
         let dx = Double(currentPos.x - target.pos.x)
         let dy = Double(currentPos.y - target.pos.y)
         let distance = sqrt(dx * dx + dy * dy)
+
+        // Issue72_4 (Phase 4): 동일 카테고리 내에서 가까운 위치 우선.
+        // distance 0px → +9점, 900px+ → 0점. 가산점 상한 9점이므로 카테고리 경계는 보존
+        // (예: exactTitle 90 + 9 = 99 < ID 100). noMatch(0)·windowID(100)에는 가산하지 않음.
+        if score > 0 && score < 100 {
+            let bonus = max(0, 9 - Int(distance / 100))
+            score += bonus
+        }
 
         return (score, mType, axTitle, distance, cgWindowId)
     }

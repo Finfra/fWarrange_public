@@ -14,7 +14,7 @@ design: cli/_doc_design/window_recognize.md
 |   1   | Issue72_1   | 🟢 코드 완료 · 베이스라인 수집 대기   | 코드 `02d2bd0` · 1.6은 1주일 실사용 데이터 수집 후 보고서 작성 |
 |   2   | Issue72_2   | 🟢 완료                                | 커밋 `1899014` · 4-monitor UUID 4종 / windowOrder 다중창 순차 검증 |
 |   3   | Issue72_3   | 🟢 완료                                | 커밋 `a776be1` · 빌트인 10개 룰 / VSCode 13창 정규화 / PUT·DELETE 사이클 |
-|   4   | Issue72_4   | ⚪ 대기                                |                                                              |
+|   4   | Issue72_4   | 🟡 진행 중                             | distance 가산 + areaMatch 비활성화 옵션 + minimumScore 모드 연동 준비 |
 |   5   | Issue72_5   | ⚪ 대기                                | Phase 2/3/4 후 진행                                          |
 |   6   | Issue72_6   | ⚪ 대기                                | Phase 5 후 진행 (paidApp protocol 합의 필요)                 |
 |   7   | Issue72_7   | ⚪ 대기                                | Phase 5 후 진행 (paidApp 별도 레포 작업 포함)                |

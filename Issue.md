@@ -24,6 +24,7 @@ date: 2026-04-07
 * **Issue72_1 베이스라인 검토일: 2026-05-22** — 통계 인프라 가동 후 1주일(2026-05-15~22) 실사용 데이터 수집 → `cli/_doc_work/report/window_recognize_baseline.md` 보고서 작성 → Issue72_1 ✅ 완료 처리 → Phase 2~7 우선순위 데이터 기반 재조정
 
 # 🌱 이슈후보
+1. `/api/v2/settings/{tab}` 탭별 PATCH가 Bool `false` 값을 디스크에 영속화하지 않는 버그 (Phase 4 발견 — `/settings` 전체 PATCH는 정상). tabPaths filter 또는 NSNumber/Bool 변환 로직 추적 필요.
 
 
 # 🚧 진행중

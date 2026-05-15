@@ -65,7 +65,11 @@ final class AppState {
         self.titleNormalizer = normalizer
 
         let captureService = CGWindowCaptureService(titleNormalizer: normalizer)
-        let restoreService = AXWindowRestoreService(titleNormalizer: normalizer)
+        // Issue72_4 (Phase 4): areaMatch 활성 여부를 settings에서 주입.
+        let restoreService = AXWindowRestoreService(
+            titleNormalizer: normalizer,
+            areaMatchEnabled: settings.matchAreaMatchEnabled ?? true
+        )
         let storageService = YAMLLayoutStorageService(
             storageMode: storageMode
         )

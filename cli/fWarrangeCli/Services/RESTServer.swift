@@ -619,7 +619,7 @@ final class RESTServer: RESTServerProtocol {
         // 탭별 설정: General / Restore / API / Advanced 는 동일 PATCH 경로로 처리
         let tabPaths: [String: [String]] = [
             "\(base)/settings/general": ["appLanguage", "dataStorageMode", "dataDirectoryPath", "launchAtLogin", "theme"],
-            "\(base)/settings/restore": ["maxRetries", "retryInterval", "minimumMatchScore", "enableParallelRestore"],
+            "\(base)/settings/restore": ["maxRetries", "retryInterval", "minimumMatchScore", "enableParallelRestore", "matchAreaMatchEnabled"],
             "\(base)/settings/advanced": ["logLevel", "autoSaveOnSleep", "maxAutoSaves", "restoreButtonStyle", "confirmBeforeDelete", "showInCmdTab", "clickSwitchToMain"]
         ]
         if let fields = tabPaths[path] {

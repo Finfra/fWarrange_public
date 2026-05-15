@@ -11,6 +11,7 @@ extension AppSettings {
             "retryInterval": s.retryInterval,
             "minimumMatchScore": s.minimumMatchScore,
             "enableParallelRestore": s.enableParallelRestore ?? true,
+            "matchAreaMatchEnabled": s.matchAreaMatchEnabled ?? true,
             "restServerPort": s.restServerPort ?? 3016,
             "logLevel": s.logLevel ?? 5,
             "dataStorageMode": (s.dataStorageMode ?? .host).rawValue,
@@ -48,6 +49,7 @@ extension AppSettings {
         if let v = body["retryInterval"] as? Int { s.retryInterval = Double(v) }
         if let v = body["minimumMatchScore"] as? Int { s.minimumMatchScore = v }
         if let v = body["enableParallelRestore"] as? Bool { s.enableParallelRestore = v }
+        if let v = body["matchAreaMatchEnabled"] as? Bool { s.matchAreaMatchEnabled = v }
         if let v = body["excludedApps"] as? [String] { s.excludedApps = v }
         if let v = body["restServerEnabled"] as? Bool { s.restServerEnabled = v }
         if let v = body["restServerPort"] as? Int { s.restServerPort = v }
