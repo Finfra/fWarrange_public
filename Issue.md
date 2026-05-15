@@ -5,7 +5,9 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 72
-* Save Point: 2026-05-08 (close Issue71 — bundleId 우선 매칭으로 VSCode 복구 실패 해결)
+* Save Point: 2026-05-15 (Issue72_1 Phase 1 완료 — 매칭 통계 인프라)
+  - 02d2bd0 (2026-05-15) - Feat(Issue72_1)(Phase 1): 창 복구 매칭 누적 통계 인프라
+  - 917f2a1 (2026-05-15) - Docs(Issue72): 창 인식률 개선 — 7-Phase 통합 작업 등록
   - 7b41337 (2026-05-08) - Fix(Restore): Issue71 — bundleId 우선 매칭으로 ownerName↔localizedName 불일치 앱 복구
   - c47bbcd (2026-05-05) - Docs: Close Issue70
   - 1a375a1 (2026-05-04) - Feat(MenuBar): Issue69 — paidApp 동작 시 About/Open Main Window 분기
@@ -31,7 +33,7 @@ date: 2026-04-07
     - Phase 1(측정 인프라) 선행 필수, Phase 2/3/4 병렬 가능, Phase 5/6/7 직렬
     - 7개 서브 이슈 모두 완료 시 부모 이슈 종결
 
-## Issue72_1: [Feat] Phase 1 — 측정 인프라 (RestoreStats + REST + 베이스라인) (등록: 2026-05-15)
+## Issue72_1: [Feat] Phase 1 — 측정 인프라 (RestoreStats + REST + 베이스라인) (등록: 2026-05-15) (✅ 코드 완료, 02d2bd0 — 베이스라인 1주일 수집 대기 중)
 * 목적: 모든 후속 Phase의 효과 검증 토대 구축. 복구 매칭 결과를 누적 통계로 노출하여 인식률을 수치화.
 * 상세:
     - `RestoreStats` 모델 + `RestoreStatsCollector` 서비스 신설
