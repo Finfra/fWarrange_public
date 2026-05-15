@@ -175,6 +175,14 @@ final class YAMLLayoutStorageService: LayoutStorageService {
             yaml += "  window: \"\(safeWindow)\"\n"
             yaml += "  layer: \(w.layer)\n"
             yaml += "  id: \(w.id)\n"
+            // Issue72_2 (Phase 2): windowOrder·displayUUID는 있을 때만 직렬화 (구 yml 호환)
+            if let order = w.windowOrder {
+                yaml += "  windowOrder: \(order)\n"
+            }
+            if let uuid = w.displayUUID, !uuid.isEmpty {
+                let safeUUID = uuid.replacingOccurrences(of: "\"", with: "\\\"")
+                yaml += "  displayUUID: \"\(safeUUID)\"\n"
+            }
             yaml += "  pos:\n"
             yaml += "    x: \(w.pos.x)\n"
             yaml += "    y: \(w.pos.y)\n"
@@ -189,6 +197,7 @@ final class YAMLLayoutStorageService: LayoutStorageService {
 
     private func parseYAML(_ content: String) -> [WindowInfo] {
         // Issue71: bundleId 옵셔널 필드 추가 (구 yml 호환 — 없으면 nil)
+        // Issue72_2 (Phase 2): windowOrder·displayUUID 옵셔널 필드 추가 (구 yml 호환)
         struct Acc {
             var app: String = ""
             var bundleId: String? = nil
@@ -199,6 +208,8 @@ final class YAMLLayoutStorageService: LayoutStorageService {
             var y: CGFloat = 0
             var width: CGFloat = 0
             var height: CGFloat = 0
+            var windowOrder: Int? = nil
+            var displayUUID: String? = nil
         }
 
         var results: [WindowInfo] = []
@@ -209,7 +220,9 @@ final class YAMLLayoutStorageService: LayoutStorageService {
                 id: c.id, app: c.app, bundleId: c.bundleId,
                 window: c.window, layer: c.layer,
                 pos: WindowPosition(x: c.x, y: c.y),
-                size: WindowSize(width: c.width, height: c.height)
+                size: WindowSize(width: c.width, height: c.height),
+                windowOrder: c.windowOrder,
+                displayUUID: c.displayUUID
             )
         }
 
@@ -229,6 +242,10 @@ final class YAMLLayoutStorageService: LayoutStorageService {
                 current?.layer = Int(trimmed.dropFirst(6).trimmingCharacters(in: .whitespaces)) ?? 0
             } else if trimmed.hasPrefix("id:") {
                 current?.id = Int(trimmed.dropFirst(3).trimmingCharacters(in: .whitespaces)) ?? 0
+            } else if trimmed.hasPrefix("windowOrder:") {
+                current?.windowOrder = Int(trimmed.dropFirst(12).trimmingCharacters(in: .whitespaces))
+            } else if trimmed.hasPrefix("displayUUID:") {
+                current?.displayUUID = parseStringValue(String(trimmed.dropFirst(12)))
             } else if trimmed.hasPrefix("x:") {
                 current?.x = CGFloat(Double(trimmed.dropFirst(2).trimmingCharacters(in: .whitespaces)) ?? 0)
             } else if trimmed.hasPrefix("y:") {

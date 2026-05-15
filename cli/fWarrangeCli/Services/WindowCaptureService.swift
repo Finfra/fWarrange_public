@@ -37,6 +37,14 @@ final class CGWindowCaptureService: WindowCaptureService {
         // Accessibility API로 실제 창 제목 조회 (CGWindowID → 제목 매핑)
         let axTitleMap = buildAXTitleMap()
 
+        // Issue72_2 (Phase 2): 디스플레이 ID → 영구 UUID 매핑 + 디스플레이별 frame
+        // 멀티 디스플레이 환경에서 창의 중심점이 어느 디스플레이에 속하는지 판정용.
+        let displayInfo = buildDisplayInfo()
+
+        // Issue72_2 (Phase 2): 같은 앱(PID)별 windowOrder 카운터.
+        // CGWindowListCopyWindowInfo는 onscreen 정렬(최전면 첫 번째)이므로 등장 순서로 0,1,2,... 부여.
+        var orderByPID: [pid_t: Int] = [:]
+
         var results: [WindowInfo] = []
 
         for dict in windowListInfo {
@@ -73,6 +81,15 @@ final class CGWindowCaptureService: WindowCaptureService {
                 continue
             }
 
+            // Issue72_2: windowOrder 부여 (필터 통과한 유효한 창만 카운트)
+            let order = orderByPID[ownerPID, default: 0]
+            orderByPID[ownerPID] = order + 1
+
+            // Issue72_2: 창 중심점이 속한 디스플레이의 UUID 조회
+            let centerX = x + width / 2
+            let centerY = y + height / 2
+            let displayUUID = displayUUIDForPoint(CGPoint(x: centerX, y: centerY), displayInfo: displayInfo)
+
             let info = WindowInfo(
                 id: windowId,
                 app: ownerName,
@@ -80,12 +97,69 @@ final class CGWindowCaptureService: WindowCaptureService {
                 window: windowName,
                 layer: layer,
                 pos: WindowPosition(x: x, y: y),
-                size: WindowSize(width: width, height: height)
+                size: WindowSize(width: width, height: height),
+                windowOrder: order,
+                displayUUID: displayUUID
             )
             results.append(info)
         }
 
         return results
+    }
+
+    // MARK: - Issue72_2 (Phase 2): 디스플레이 정보
+
+    /// (displayID, NSScreen.frame, UUID) 튜플 목록. 매 캡처마다 빌드.
+    private struct DisplayEntry {
+        let frame: CGRect
+        let uuid: String
+    }
+
+    /// 활성 디스플레이 전체에 대해 `(NSScreen.frame, CGDisplayCreateUUIDFromDisplayID UUID 문자열)` 매핑 빌드.
+    private func buildDisplayInfo() -> [DisplayEntry] {
+        var entries: [DisplayEntry] = []
+        for screen in NSScreen.screens {
+            guard let displayNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
+                continue
+            }
+            let displayID = CGDirectDisplayID(displayNumber.uint32Value)
+            guard let cfUUID = CGDisplayCreateUUIDFromDisplayID(displayID)?.takeRetainedValue() else {
+                continue
+            }
+            guard let uuidCFString = CFUUIDCreateString(nil, cfUUID) else {
+                continue
+            }
+            let uuid = uuidCFString as String
+            entries.append(DisplayEntry(frame: screen.frame, uuid: uuid))
+        }
+        return entries
+    }
+
+    /// 중심점이 속하는 디스플레이의 UUID. 없으면 nil(=주 디스플레이 외 좌표 또는 디스플레이 없음).
+    /// NSScreen.frame은 Cocoa 좌표(원점=주 디스플레이 좌하단, y-up).
+    /// CGWindow bounds는 Quartz 좌표(원점=주 디스플레이 좌상단, y-down) → 변환 후 비교.
+    private func displayUUIDForPoint(_ pointQuartz: CGPoint, displayInfo: [DisplayEntry]) -> String? {
+        guard !displayInfo.isEmpty else { return nil }
+        // 주 디스플레이 높이 (Cocoa↔Quartz 변환 기준)
+        let primaryHeight = displayInfo.first?.frame.height ?? 0
+        // Quartz(y-down) → Cocoa(y-up) 변환: cocoaY = primaryHeight - quartzY
+        let cocoaPoint = CGPoint(x: pointQuartz.x, y: primaryHeight - pointQuartz.y)
+        for entry in displayInfo {
+            if entry.frame.contains(cocoaPoint) {
+                return entry.uuid
+            }
+        }
+        // 어느 디스플레이에도 정확히 안 들어가면 가장 가까운 디스플레이 선택 (창 일부가 화면 밖에 걸쳐있는 경우)
+        return displayInfo.min { lhs, rhs in
+            squaredDistance(from: cocoaPoint, to: lhs.frame) < squaredDistance(from: cocoaPoint, to: rhs.frame)
+        }?.uuid
+    }
+
+    /// 점에서 사각형까지의 제곱 거리 (점이 사각형 내부면 0).
+    private func squaredDistance(from point: CGPoint, to rect: CGRect) -> CGFloat {
+        let dx = max(rect.minX - point.x, 0, point.x - rect.maxX)
+        let dy = max(rect.minY - point.y, 0, point.y - rect.maxY)
+        return dx * dx + dy * dy
     }
 
     // MARK: - Accessibility API 창 제목 조회
