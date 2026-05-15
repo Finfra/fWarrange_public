@@ -88,6 +88,14 @@ final class AXWindowRestoreService: WindowRestoreService {
     /// AX 메시징 타임아웃 (초) - 응답 없는 앱 대기 제한
     private let axTimeout: Float = 0.5
 
+    /// Issue72_3 (Phase 3): 타이틀 정규화 서비스. axTitle 비교 전 동일 정규화 적용.
+    /// 옵셔널 — 미주입 시 원본 비교 (Phase 1·2 호환).
+    private let titleNormalizer: TitleNormalizer?
+
+    init(titleNormalizer: TitleNormalizer? = nil) {
+        self.titleNormalizer = titleNormalizer
+    }
+
     nonisolated func restoreWindows(
         _ windows: [WindowInfo],
         maxRetries: Int,
@@ -361,7 +369,15 @@ final class AXWindowRestoreService: WindowRestoreService {
     ) -> (score: Int, matchType: MatchType, title: String, distance: Double, cgWindowId: CGWindowID) {
         var titleValue: CFTypeRef?
         AXUIElementCopyAttributeValue(axWindow, kAXTitleAttribute as CFString, &titleValue)
-        let axTitle = titleValue as? String ?? ""
+        let axTitleRaw = titleValue as? String ?? ""
+        // Issue72_3 (Phase 3): axTitle을 정규화하여 캡처 시점에 정규화된 target.window와 비교.
+        // normalizer가 없으면 원본 그대로 (Phase 1·2 동작 유지).
+        let axTitle: String
+        if let normalizer = titleNormalizer {
+            axTitle = normalizer.normalize(title: axTitleRaw, bundleId: target.bundleId, app: target.app)
+        } else {
+            axTitle = axTitleRaw
+        }
 
         var cgWindowId: CGWindowID = 0
         _ = _AXUIElementGetWindow(axWindow, &cgWindowId)

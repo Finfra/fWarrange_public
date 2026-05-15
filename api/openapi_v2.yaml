@@ -62,6 +62,12 @@ tags:
       창 복구 매칭 누적 통계 (Issue72_1 Phase 1). 복구 시도마다 자동 누적되며
       `~/Library/Application Support/fWarrangeCli/restore-stats.json`에 즉시 영속됨.
       베이스라인 측정 → Phase 2~7 효과 검증의 정량 토대로 사용.
+  - name: NormalizeRules
+    description: |
+      타이틀 정규화 룰셋 (Issue72_3 Phase 3). 동적 타이틀(브라우저·에디터·터미널·채팅)을
+      흡수하여 exactTitle(90점) 매칭률을 회복함. 캡처·복구 양쪽에서 동일 룰 적용.
+      빌트인 Top 10 앱 룰 + 사용자 편집본
+      (`~/Library/Application Support/fWarrangeCli/title_normalize.yml`).
 
 paths:
   # ---------- Modes: context switching ----------
@@ -263,6 +269,93 @@ paths:
                     type: object
                     properties:
                       message: { type: string }
+
+  # ---------- NormalizeRules: Issue72_3 Phase 3 ----------
+  /normalize-rules:
+    get:
+      summary: 타이틀 정규화 룰셋 조회
+      description: |
+        현재 활성 룰셋 반환. 사용자 편집본이 있으면 그것, 없으면 빌트인.
+      operationId: getNormalizeRules
+      tags: [NormalizeRules]
+      responses:
+        '200':
+          description: 룰셋
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok] }
+                  data:
+                    type: object
+                    properties:
+                      count: { type: integer }
+                      rules:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/NormalizeRule'
+    put:
+      summary: 타이틀 정규화 룰셋 교체
+      description: |
+        룰셋 전체 교체. `rules` 배열을 전체 새로 적용. 빈 배열 또는 `rules: null` 시 빌트인 리셋.
+        디스크 영속(`~/Library/Application Support/fWarrangeCli/title_normalize.yml`) 즉시 갱신.
+        regex 캐시 자동 무효화.
+      operationId: updateNormalizeRules
+      tags: [NormalizeRules]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rules:
+                  type: array
+                  nullable: true
+                  items:
+                    $ref: '#/components/schemas/NormalizeRule'
+      responses:
+        '200':
+          description: 갱신된 룰셋
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok] }
+                  data:
+                    type: object
+                    properties:
+                      count: { type: integer }
+                      rules:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/NormalizeRule'
+    delete:
+      summary: 빌트인 룰셋으로 리셋
+      description: |
+        사용자 편집본 파일 삭제 + 빌트인 룰셋 적용.
+      operationId: resetNormalizeRules
+      tags: [NormalizeRules]
+      responses:
+        '200':
+          description: 리셋 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok] }
+                  data:
+                    type: object
+                    properties:
+                      count: { type: integer }
+                      message: { type: string }
+                      rules:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/NormalizeRule'
 
   /health:
     get:
@@ -2072,3 +2165,27 @@ components:
           type: string
           description: 현재 활성 모드 이름 (없으면 필드 자체 생략)
       required: [status, app, version, port, uptimeSeconds, isRunning]
+
+    # ---- NormalizeRule (Issue72_3 Phase 3) ----
+    NormalizeRule:
+      type: object
+      description: |
+        타이틀 정규화 룰. 매칭 우선순위: bundleId 정확 일치 > app 정확 일치.
+        적용 순서: stripPrefix → stripSuffix → stripPattern(regex). 마지막에 공백 trim.
+      properties:
+        bundleId:
+          type: string
+          description: 매칭 키 1순위 (가장 안정적). 예 'com.apple.Safari'
+        app:
+          type: string
+          description: 매칭 키 2순위 (ownerName). 예 'Safari'
+        stripPrefix:
+          type: string
+          description: 제거할 접두 (리터럴)
+        stripSuffix:
+          type: string
+          description: 제거할 접미 (리터럴)
+        stripPattern:
+          type: string
+          description: 제거할 정규식 (ICU). 매칭 부분 전체를 빈 문자열로 치환
+      required: []

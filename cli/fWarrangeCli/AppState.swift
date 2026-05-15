@@ -11,6 +11,8 @@ final class AppState {
     let paidAppMonitor: PaidAppMonitor
     /// Issue72_1 (Phase 1): 창 복구 매칭 누적 통계 수집기.
     let restoreStatsCollector: RestoreStatsCollector
+    /// Issue72_3 (Phase 3): 타이틀 정규화 서비스 (캡처·복구 공유).
+    let titleNormalizer: TitleNormalizer
     private let hotKeyService: HotKeyService
     private let screenMoveService: ScreenMoveService
     private let modeStorageService: ModeStorageService
@@ -58,8 +60,12 @@ final class AppState {
             YAMLLayoutStorageService.copyShareDataIfNeeded()
         }
 
-        let captureService = CGWindowCaptureService()
-        let restoreService = AXWindowRestoreService()
+        // Issue72_3 (Phase 3): 타이틀 정규화 서비스 — 캡처·복구가 공유.
+        let normalizer = FileTitleNormalizer()
+        self.titleNormalizer = normalizer
+
+        let captureService = CGWindowCaptureService(titleNormalizer: normalizer)
+        let restoreService = AXWindowRestoreService(titleNormalizer: normalizer)
         let storageService = YAMLLayoutStorageService(
             storageMode: storageMode
         )
@@ -343,6 +349,44 @@ final class AppState {
             },
             resetRestoreStats: { [statsCollector] in
                 await statsCollector.reset()
+            },
+            // Issue72_3 (Phase 3): 정규화 룰셋 핸들러
+            getNormalizeRules: { [normalizer] in
+                normalizer.currentRules().map { rule in
+                    var dict: [String: Any] = [:]
+                    if let v = rule.bundleId { dict["bundleId"] = v }
+                    if let v = rule.app { dict["app"] = v }
+                    if let v = rule.stripPrefix { dict["stripPrefix"] = v }
+                    if let v = rule.stripSuffix { dict["stripSuffix"] = v }
+                    if let v = rule.stripPattern { dict["stripPattern"] = v }
+                    return dict
+                }
+            },
+            updateNormalizeRules: { [normalizer] payload in
+                let parsed: [TitleNormalizeRule]?
+                if let payload = payload {
+                    parsed = payload.map { dict in
+                        TitleNormalizeRule(
+                            bundleId: dict["bundleId"] as? String,
+                            app: dict["app"] as? String,
+                            stripPrefix: dict["stripPrefix"] as? String,
+                            stripSuffix: dict["stripSuffix"] as? String,
+                            stripPattern: dict["stripPattern"] as? String
+                        )
+                    }
+                } else {
+                    parsed = nil
+                }
+                try normalizer.updateRules(parsed)
+                return normalizer.currentRules().map { rule in
+                    var dict: [String: Any] = [:]
+                    if let v = rule.bundleId { dict["bundleId"] = v }
+                    if let v = rule.app { dict["app"] = v }
+                    if let v = rule.stripPrefix { dict["stripPrefix"] = v }
+                    if let v = rule.stripSuffix { dict["stripSuffix"] = v }
+                    if let v = rule.stripPattern { dict["stripPattern"] = v }
+                    return dict
+                }
             }
         )
         let paidAppStore = PaidAppStateStore { oldSessionId, newSessionId, oldPid, newPid in

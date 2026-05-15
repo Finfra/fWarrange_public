@@ -28,6 +28,9 @@ struct WindowInfo: Identifiable, Codable, Equatable {
     /// Issue72_2 (Phase 2): 창이 위치했던 디스플레이의 영구 UUID (`CGDisplayCreateUUIDFromDisplayID`).
     /// 디스플레이 토폴로지 변경 시 좌표 보정·정규화의 기준점. 구 yml 호환을 위해 옵셔널.
     var displayUUID: String?
+    /// Issue72_3 (Phase 3): 정규화 적용 전 원본 axTitle. `window`는 TitleNormalizer 적용 후 값.
+    /// 정규화 룰셋이 변경되어도 원본 추적 가능하도록 보존. 구 yml 호환을 위해 옵셔널.
+    var windowRaw: String?
 
     init(
         id: Int,
@@ -38,7 +41,8 @@ struct WindowInfo: Identifiable, Codable, Equatable {
         pos: WindowPosition,
         size: WindowSize,
         windowOrder: Int? = nil,
-        displayUUID: String? = nil
+        displayUUID: String? = nil,
+        windowRaw: String? = nil
     ) {
         self.id = id
         self.app = app
@@ -49,5 +53,6 @@ struct WindowInfo: Identifiable, Codable, Equatable {
         self.size = size
         self.windowOrder = windowOrder
         self.displayUUID = displayUUID
+        self.windowRaw = windowRaw
     }
 }

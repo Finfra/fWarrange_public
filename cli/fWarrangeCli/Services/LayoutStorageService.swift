@@ -173,6 +173,11 @@ final class YAMLLayoutStorageService: LayoutStorageService {
                 yaml += "  bundleId: \"\(safeBid)\"\n"
             }
             yaml += "  window: \"\(safeWindow)\"\n"
+            // Issue72_3 (Phase 3): 정규화 전 원본 타이틀 — 정규화 결과가 원본과 다를 때만 출력
+            if let raw = w.windowRaw, !raw.isEmpty, raw != w.window {
+                let safeRaw = raw.replacingOccurrences(of: "\"", with: "\\\"")
+                yaml += "  windowRaw: \"\(safeRaw)\"\n"
+            }
             yaml += "  layer: \(w.layer)\n"
             yaml += "  id: \(w.id)\n"
             // Issue72_2 (Phase 2): windowOrder·displayUUID는 있을 때만 직렬화 (구 yml 호환)
@@ -210,6 +215,7 @@ final class YAMLLayoutStorageService: LayoutStorageService {
             var height: CGFloat = 0
             var windowOrder: Int? = nil
             var displayUUID: String? = nil
+            var windowRaw: String? = nil
         }
 
         var results: [WindowInfo] = []
@@ -222,7 +228,8 @@ final class YAMLLayoutStorageService: LayoutStorageService {
                 pos: WindowPosition(x: c.x, y: c.y),
                 size: WindowSize(width: c.width, height: c.height),
                 windowOrder: c.windowOrder,
-                displayUUID: c.displayUUID
+                displayUUID: c.displayUUID,
+                windowRaw: c.windowRaw
             )
         }
 
@@ -236,6 +243,8 @@ final class YAMLLayoutStorageService: LayoutStorageService {
                 current = acc
             } else if trimmed.hasPrefix("bundleId:") {
                 current?.bundleId = parseStringValue(String(trimmed.dropFirst(9)))
+            } else if trimmed.hasPrefix("windowRaw:") {
+                current?.windowRaw = parseStringValue(String(trimmed.dropFirst(10)))
             } else if trimmed.hasPrefix("window:") {
                 current?.window = parseStringValue(String(trimmed.dropFirst(7)))
             } else if trimmed.hasPrefix("layer:") {

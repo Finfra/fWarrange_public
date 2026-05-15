@@ -13,6 +13,13 @@ protocol WindowCaptureService {
 
 final class CGWindowCaptureService: WindowCaptureService {
 
+    /// Issue72_3 (Phase 3): 타이틀 정규화 서비스 — 주입 없으면 원본 그대로 사용.
+    private let titleNormalizer: TitleNormalizer?
+
+    init(titleNormalizer: TitleNormalizer? = nil) {
+        self.titleNormalizer = titleNormalizer
+    }
+
     func captureWindows(filterApps: [String]?) -> [WindowInfo] {
         guard let windowListInfo = CGWindowListCopyWindowInfo(
             [.optionOnScreenOnly, .excludeDesktopElements],
@@ -55,7 +62,21 @@ final class CGWindowCaptureService: WindowCaptureService {
             let windowId = dict[kCGWindowNumber as String] as? Int ?? 0
 
             // AX 제목 우선, CG 이름 fallback
-            let windowName = axTitleMap[CGWindowID(windowId)] ?? cgWindowName ?? "No Name"
+            let rawWindowName = axTitleMap[CGWindowID(windowId)] ?? cgWindowName ?? "No Name"
+
+            // Issue72_3 (Phase 3): 타이틀 정규화. normalizer 주입 시에만 적용.
+            let bundleId = pidToBundleId[ownerPID]
+            let windowName: String
+            let windowRaw: String?
+            if let normalizer = titleNormalizer {
+                let normalized = normalizer.normalize(title: rawWindowName, bundleId: bundleId, app: ownerName)
+                windowName = normalized
+                // 원본 보존 — 정규화 결과가 다를 때만 windowRaw에 기록
+                windowRaw = (normalized == rawWindowName) ? nil : rawWindowName
+            } else {
+                windowName = rawWindowName
+                windowRaw = nil
+            }
 
             // 1. 사용자 지정 필터(filterApps)가 존재하면 해당 앱만 캡처
             if let apps = filterApps, !apps.contains(ownerName) {
@@ -93,13 +114,14 @@ final class CGWindowCaptureService: WindowCaptureService {
             let info = WindowInfo(
                 id: windowId,
                 app: ownerName,
-                bundleId: pidToBundleId[ownerPID],
+                bundleId: bundleId,
                 window: windowName,
                 layer: layer,
                 pos: WindowPosition(x: x, y: y),
                 size: WindowSize(width: width, height: height),
                 windowOrder: order,
-                displayUUID: displayUUID
+                displayUUID: displayUUID,
+                windowRaw: windowRaw
             )
             results.append(info)
         }

@@ -72,6 +72,13 @@ struct RESTServerHandlers {
     var getRestoreStats: () async -> [String: Any]
     /// 통계 초기화 (베이스라인 재시작용).
     var resetRestoreStats: () async -> Void
+
+    // Issue72_3 (Phase 3): 타이틀 정규화 룰셋
+    /// 현재 정규화 룰셋 (REST GET 응답용 array of dict).
+    var getNormalizeRules: () -> [[String: Any]]
+    /// 룰셋 갱신. nil 전달 시 빌트인 리셋.
+    /// throws 시 잘못된 페이로드/디스크 IO 오류.
+    var updateNormalizeRules: (_ rules: [[String: Any]]?) throws -> [[String: Any]]
 }
 
 // MARK: - Notification.Name 확장 (fWarrangeCli용)
@@ -134,6 +141,16 @@ final class RESTServer: RESTServerProtocol {
 
     /// paidApp 라우터. HTTP 파싱은 RESTServer, 비즈니스 로직은 Router가 담당.
     private let paidAppRouter: PaidAppRouter
+
+    // MARK: - 폴링 엔드포인트 로그 1회 억제
+
+    /// 첫 호출 시 1회만 로그하고 이후 동일 path 호출은 로그 생략하는 폴링 path 목록
+    private static let pollingSuppressedPaths: Set<String> = [
+        "\(apiBasePath)/changes",
+        "\(apiBasePath)/health"
+    ]
+    private var loggedPollingPaths: Set<String> = []
+    private let pollingLogLock = NSLock()
 
     // MARK: - 초기화
 
@@ -230,6 +247,16 @@ final class RESTServer: RESTServerProtocol {
 
             if request.path == "\(Self.apiBasePath)/cli/status" || request.path == "/" {
                 logV("[RESTServer] \(request.method) \(request.path) from \(connection.endpoint)")
+            } else if Self.pollingSuppressedPaths.contains(request.path) {
+                self.pollingLogLock.lock()
+                let alreadyLogged = self.loggedPollingPaths.contains(request.path)
+                if !alreadyLogged {
+                    self.loggedPollingPaths.insert(request.path)
+                }
+                self.pollingLogLock.unlock()
+                if !alreadyLogged {
+                    logD("[RESTServer] \(request.method) \(request.path) from \(connection.endpoint) (이후 동일 요청 로그 생략 — no issue)")
+                }
             } else {
                 logD("[RESTServer] \(request.method) \(request.path) from \(connection.endpoint)")
             }
@@ -829,6 +856,47 @@ final class RESTServer: RESTServerProtocol {
             Task { [handlers] in
                 await handlers.resetRestoreStats()
                 completion(.ok(json: ["status": "ok", "data": ["message": "통계 초기화 완료"]]))
+            }
+            return true
+        }
+
+        // Issue72_3 (Phase 3): GET /api/v2/normalize-rules — 정규화 룰셋 조회
+        if method == "GET" && path == "\(base)/normalize-rules" {
+            let rules = handlers.getNormalizeRules()
+            completion(.ok(json: ["status": "ok", "data": ["rules": rules, "count": rules.count]]))
+            return true
+        }
+
+        // Issue72_3 (Phase 3): PUT /api/v2/normalize-rules — 룰셋 전체 교체
+        // 빈 배열 또는 누락 시 빌트인 리셋
+        if method == "PUT" && path == "\(base)/normalize-rules" {
+            let body = request.jsonBody()
+            let rulesAny = body?["rules"]
+            do {
+                let rulesArray: [[String: Any]]?
+                if let array = rulesAny as? [[String: Any]] {
+                    rulesArray = array.isEmpty ? nil : array
+                } else if rulesAny == nil || rulesAny is NSNull {
+                    rulesArray = nil
+                } else {
+                    completion(.badRequest(message: "rules 필드는 배열이어야 합니다"))
+                    return true
+                }
+                let updated = try handlers.updateNormalizeRules(rulesArray)
+                completion(.ok(json: ["status": "ok", "data": ["rules": updated, "count": updated.count]]))
+            } catch {
+                completion(.badRequest(message: "룰셋 갱신 실패: \(error.localizedDescription)"))
+            }
+            return true
+        }
+
+        // Issue72_3 (Phase 3): DELETE /api/v2/normalize-rules — 빌트인 리셋
+        if method == "DELETE" && path == "\(base)/normalize-rules" {
+            do {
+                let updated = try handlers.updateNormalizeRules(nil)
+                completion(.ok(json: ["status": "ok", "data": ["rules": updated, "count": updated.count, "message": "빌트인 룰셋으로 리셋 완료"]]))
+            } catch {
+                completion(.badRequest(message: "룰셋 리셋 실패: \(error.localizedDescription)"))
             }
             return true
         }

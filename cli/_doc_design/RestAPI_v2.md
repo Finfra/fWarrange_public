@@ -166,6 +166,23 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 * **응답 필드**: `totalAttempts`, `successes`, `failures`, `successRate`, `averageScore`, `matchTypeCounts`(MatchType별 카운트), `topFailures`(`(app|title)` Top 10), `recentEventsCount`, `recentEventsCapacity`(200), `sessionStartedAt`, `lastUpdated`
 * **수집 시점**: 매칭 시도마다 즉시 디스크 기록 (디바운스 없음 — kill 시 데이터 손실 방지)
 
+## 4.9 NormalizeRules (Issue72_3 Phase 3)
+
+타이틀 정규화 룰셋. 캡처·복구 양쪽에서 동일 룰을 적용하여 동적 타이틀(브라우저 페이지명, Slack 알림 카운트, VSCode 미저장 dot 등)을 흡수. exactTitle(90점) 매칭률 회복이 핵심 효과.
+
+| Method | Path                  | 설명                                  |
+| ------ | --------------------- | ------------------------------------- |
+| GET    | `/normalize-rules`    | 현재 룰셋 조회                        |
+| PUT    | `/normalize-rules`    | 룰셋 전체 교체 (`rules: null` 시 리셋) |
+| DELETE | `/normalize-rules`    | 빌트인 룰셋으로 리셋                  |
+
+* **룰 구조**: `{bundleId?, app?, stripPrefix?, stripSuffix?, stripPattern?}`
+* **매칭 우선순위**: `bundleId` 정확 일치 > `app` 정확 일치
+* **적용 순서**: `stripPrefix` → `stripSuffix` → `stripPattern`(regex replace "") → 양 끝 공백 trim
+* **영속 위치**: `~/Library/Application Support/fWarrangeCli/title_normalize.yml` (env `fWarrangeCli_normalize_path`로 재정의). 파일 없으면 빌트인 사용.
+* **빌트인**: Safari, Chrome, Edge, Firefox, Code(VSCode), Cursor, Slack, iTerm2, Terminal, Xcode (Top 10)
+* **WindowInfo 필드**: 정규화 결과는 `window`에 저장. 원본은 `windowRaw`에 보존 (정규화 결과가 원본과 다를 때만)
+
 ---
 
 # 5. 이벤트 모델

@@ -27,6 +27,7 @@
 		638565B82365C5E0C2944001 /* PaidAppAPIModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA432610AC9B58EA3638AEBA /* PaidAppAPIModelsTests.swift */; };
 		66EA8ECE678E75D6BBC6EF56 /* PaidAppMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1919E0DE2282826243C9BF78 /* PaidAppMonitor.swift */; };
 		6E8CAAC3C32A6DFFC0772B6A /* PaidAppRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F83A9BD5E1D62D0865CA6E8 /* PaidAppRouterTests.swift */; };
+		7278AF4559F0EC5009C2CC5C /* TitleNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A465F6F118008C206B5DAC8C /* TitleNormalizer.swift */; };
 		777BCC6E3242282BF52941EC /* PaidAppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E137415D6E8C59805CCF00 /* PaidAppRouter.swift */; };
 		80592DA154C35E61440B959E /* LayoutStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 662A96F421AC4E825C14B86F /* LayoutStorageService.swift */; };
 		83167584CB3AC9496AFA89A6 /* DisplayNumberHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA88D59968E1BC4657A3D8B4 /* DisplayNumberHelper.swift */; };
@@ -107,6 +108,7 @@
 		9F83A9BD5E1D62D0865CA6E8 /* PaidAppRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppRouterTests.swift; sourceTree = "<group>"; };
 		A0D0D47C31F3DB1D08190C0C /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		A1E137415D6E8C59805CCF00 /* PaidAppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppRouter.swift; sourceTree = "<group>"; };
+		A465F6F118008C206B5DAC8C /* TitleNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleNormalizer.swift; sourceTree = "<group>"; };
 		A804ACAAB31972F56325FA7F /* AppSettings+Patch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings+Patch.swift"; sourceTree = "<group>"; };
 		AEC521474E835C8993023C58 /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
 		B06E1306C0A7E734A73B6052 /* PaidAppStateLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppStateLogger.swift; sourceTree = "<group>"; };
@@ -201,6 +203,7 @@
 				95BA5BF6280F4128EDF4285D /* ScreenMoveService.swift */,
 				484BEF5CA60BA4E18244F756 /* SettingsService.swift */,
 				6F1B359E8EBF17D392F07492 /* SingleInstanceGuard.swift */,
+				A465F6F118008C206B5DAC8C /* TitleNormalizer.swift */,
 				3CF3DC701F6F34498C5A607B /* WindowCaptureService.swift */,
 				D014B086F458FF9FFCC06DFF /* WindowRestoreService.swift */,
 			);
@@ -390,6 +393,7 @@
 				8CA4F284AB6BBB5352D573D7 /* ScreenMoveService.swift in Sources */,
 				C3679BE6E8D43FFC3CC11276 /* SettingsService.swift in Sources */,
 				F878E1D3666F861CF06C0ABA /* SingleInstanceGuard.swift in Sources */,
+				7278AF4559F0EC5009C2CC5C /* TitleNormalizer.swift in Sources */,
 				E58108B1DF458379DB3E8C90 /* WindowCaptureService.swift in Sources */,
 				DF36E5E2B8875DDC165C24BD /* WindowInfo.swift in Sources */,
 				BC5A6F4B54C6220CFF559455 /* WindowManager.swift in Sources */,
