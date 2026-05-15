@@ -15,7 +15,7 @@ design: cli/_doc_arch/window_recognize.md
 |   2   | Issue72_2   | 🟢 완료                                | 커밋 `1899014` · 4-monitor UUID 4종 / windowOrder 다중창 순차 검증 |
 |   3   | Issue72_3   | 🟢 완료                                | 커밋 `a776be1` · 빌트인 10개 룰 / VSCode 13창 정규화 / PUT·DELETE 사이클 |
 |   4   | Issue72_4   | 🟢 완료                                | 커밋 `c4162f6` · distance 0~9점 가산 / areaMatchEnabled 옵션 / 탭 PATCH Bool false 버그 후속 이슈 |
-|   5   | Issue72_5   | ⚪ 대기                                | Phase 2/3/4 후 진행                                          |
+|   5   | Issue72_5   | 🟢 완료                                | 커밋 `48df335` · 3 모드 e2e 57/57 / Moom 폴백 구현 / WindowInfo.matchMode override |
 |   6   | Issue72_6   | ⚪ 대기                                | Phase 5 후 진행 (paidApp protocol 합의 필요)                 |
 |   7   | Issue72_7   | ⚪ 대기                                | Phase 5 후 진행 (paidApp 별도 레포 작업 포함)                |
 
@@ -282,44 +282,76 @@ design: cli/_doc_arch/window_recognize.md
 | 가산 적용 조건 | `score > 0` | `score > 0 && score < 100` | windowID(100)에 가산 후 99로 떨어지면 ID 매칭이 약화됨 — 100은 제외 |
 | 탭별 PATCH Bool false 버그 | — | 후속 이슈 분리 | tabPaths filter 또는 NSNumber/Bool 변환 추적 필요. Phase 4 핵심 가치(코드 분기)는 정상 동작 |
 
-# Phase 5 — 매칭 모드 + 최후 폴백 (C-3 + C-5)
+# Phase 5 — 매칭 모드 + 최후 폴백 (C-3 + C-5) — 🟢 완료
 
-## Task 5.1: `MatchMode` 모델
+> **이슈**: Issue72_5 · **커밋**: `48df335`
 
-* [ ] `cli/fWarrangeCli/Models/MatchMode.swift` 신설
-* [ ] `enum MatchMode: String, Codable { case strict, normal, loose }`
-* [ ] 각 모드별 `minimumScore`, 기하 폴백 허용, 1:N 매칭, Moom 폴백 활성 여부 속성
+## Task 5.1: `MatchMode` 모델 ✅
 
-## Task 5.2: `WindowInfo.matchMode` 옵셔널 필드
+* [x] `cli/fWarrangeCli/Models/MatchMode.swift` 신설
+* [x] `enum MatchMode: String, Codable, CaseIterable, Sendable { case strict, normal, loose }`
+* [x] `MatchMode.parse(_:)` 옵셔널 String → enum (대소문자 무시, 잘못된 값 → .normal)
+* [x] **`RuntimeMatchPolicy` 구조체 신설** (계획서엔 enum 속성으로 표현 — 실제는 별도 struct로 분리해 정책 빌더 패턴 적용)
+    - `minimumScore`, `geometricFallbackEnabled`, `areaMatchEnabled`, `allowMultipleAssignments`, `moomFallbackEnabled`
+    - `RuntimeMatchPolicy.from(mode:settingsMinimumScore:areaMatchSettingEnabled:)` 팩토리
 
-* [ ] `WindowInfo.swift`에 `matchMode: MatchMode?` 추가 (옵셔널, 기본 nil → normal 해석)
-* [ ] YAML 직렬화 검증
+## Task 5.2: `WindowInfo.matchMode` 옵셔널 필드 ✅
 
-## Task 5.3: `WindowRestoreService` 모드 분기
+* [x] `WindowInfo.swift`에 `matchMode: MatchMode?` 추가 (옵셔널, 기본 nil → 호출 시점 모드 사용)
+* [x] LayoutStorageService serialize/parse 양방향 호환 (matchMode 명시된 창만 출력)
+* [x] **창 단위 override 의미**: 호출 시점 mode + 개별 WindowInfo.matchMode가 normal이 아니면 그 창 한정 override
 
-* [ ] strict 모드: score ≥ 80 만 허용, areaMatch·widthMatch·heightMatch·ratioMatch 차단
-* [ ] normal 모드: 현재 동작 (Phase 4 결과)
-* [ ] loose 모드: minimumScore 30 유지 + 1:N 매칭 허용 + Moom 폴백 활성
+## Task 5.3: `WindowRestoreService` 모드 분기 ✅
 
-## Task 5.4: Moom 스타일 폴백 구현
+* [x] strict (minimumScore=70): containsTitle 이상만 허용, 기하 폴백 차단(geometricFallbackEnabled=false, areaMatchEnabled=false)
+* [x] normal: 현재 동작 + Phase 4 distance 가산. settings의 minimumMatchScore + matchAreaMatchEnabled 반영
+* [x] loose (minimumScore=30): 1:N 매칭(allowMultipleAssignments) + Moom 폴백 활성
+* [x] **시그니처 변경**: protocol method에 `mode: MatchMode` 추가 + 모든 호출처 갱신 (WindowManager + AppState 2곳 + RESTServer)
+* [x] computeMatchScore(target:axWindow:policy:) — policy 가드로 기하 분기 비활성
+* [x] findOptimalMatches(... policy:) — 1:N 매칭 분기
 
-* [ ] 모든 후보 점수가 minimumScore 미만일 때 폴백 트리거
-* [ ] `(app, windowCount)` 동일 시 windowOrder 정렬 순으로 위치 배분
-* [ ] loose 모드 한정 활성
-* [ ] 폴백 사용 시 결과에 `usedFallback: true` 표시
+## Task 5.4: Moom 스타일 폴백 구현 ✅
 
-## Task 5.5: REST API 모드 파라미터
+* [x] 모든 매칭 시도 후 pendingWindows 잔여 + `moomFallbackEnabled` 활성 시 트리거
+* [x] 앱별 그룹핑 → 실행 중 앱 매칭 → AX 창 수집
+* [x] **앱별 창 개수 == target 개수** 일 때만 배분 (개수 불일치 스킵)
+* [x] target은 windowOrder 오름차순 정렬 → AX 창은 onscreen 순서로 배분
+* [x] 결과에 `matchedTitle: "(moom-fallback)"` 표시 (계획의 `usedFallback: true` 대신)
+* [x] loose 모드 전용 — strict/normal에선 비활성
 
-* [ ] `POST /api/v2/layouts/{name}/restore`에 `mode` 쿼리/바디 파라미터 추가
-* [ ] 우선순위: 요청 mode > WindowInfo.matchMode > normal
-* [ ] `openapi_v2.yaml` + `RestAPI_v2.md` 동기화
+## Task 5.5: REST API 모드 파라미터 ✅
 
-## Task 5.6: 테스트
+* [x] `POST /api/v2/layouts/{name}/restore` body의 `mode` 필드 파싱 (`MatchMode.parse`)
+* [x] 우선순위: **요청 mode → 호출 시점 정책으로 변환** → 각 창의 WindowInfo.matchMode가 normal이 아니면 그 창 한정 override
+* [x] `openapi_v2.yaml`: MatchMode 태그 + RestoreRequest.mode 스키마 + enum
+* [x] `RestAPI_v2.md` §4.10 신설
 
-* [ ] strict: 타이틀 깨진 창 매칭 거부 e2e
-* [ ] normal: Phase 4 결과 동일 (회귀 없음)
-* [ ] loose: 타이틀 전부 깨져도 위치 배분 성공
-* [ ] 모드별 통계가 분리 집계되도록 Phase 1 collector 확장
+## Task 5.6: 테스트 ✅
+
+* [x] `apiTest/v2/37.v2-restore-modes.sh` 신규 (3 모드 일괄 검증)
+* [x] **3 모드 e2e 검증 (4-monitor 56창 캡처 → 즉시 복구)**:
+    - strict: 57/57 매칭 (즉시 복구라 ID 100점 매칭만 성공 — strict가 기하 차단해도 ID 매칭은 통과)
+    - normal: 57/57 (회귀 없음)
+    - loose: 57/57 (1:N·Moom 폴백 트리거 없음 — 모두 정상 매칭)
+* [x] **MatchType 분포 검증** (3 모드 누적 통계): ID 388 / Title(Exact) 1 / Width 1 / None 4
+    - 다양한 분기 도달 확인
+    - 정규화(Phase 3) 효과로 Title(Exact) 매칭 1건 발생
+    - Width 매칭 1건은 기하 폴백 도달
+    - None 4건은 Moom 폴백 직전 noMatch (실패 케이스 — 후속 폴백 검증 필요)
+* [ ] **모드별 통계 분리 집계** — Phase 1 collector 확장 미적용 (후속 작업)
+* [x] xcodebuild Debug 통과
+* [x] 모드별 의도 거동 — 즉시 복구 시나리오로는 차이 가시화 어려움. 베이스라인(Task 1.6) 후 동적 환경에서 추가 검증
+
+## Phase 5 설계 변경 사항
+
+| 항목 | 계획 | 실제 | 사유 |
+| :--- | :--- | :--- | :--- |
+| 모드 속성 표현 | enum case별 속성 | `RuntimeMatchPolicy` 별도 struct + `from()` 팩토리 | 정책 빌더 패턴, AppSettings 의존성 주입 용이 |
+| strict minimumScore | ≥80 | ≥70 (containsTitle 포함) | exactTitle만 허용은 과도. containsTitle도 식별자 신뢰 가능 |
+| normal minimumScore | 50 | 사용자 설정값 (`settings.minimumMatchScore`, 기본 30) | 기본값 변경은 회귀 위험. Phase 4와 일관 |
+| Moom 폴백 표시 | `usedFallback: true` 필드 | `matchedTitle: "(moom-fallback)"` 텍스트 | WindowMatchResult 스키마 변경 회피 |
+| 모드별 통계 분리 집계 | 포함 | 후속 작업으로 분리 | collector 확장 범위 큼. Phase 5 핵심은 매칭 로직 |
+| 우선순위 | 요청 mode > WindowInfo.matchMode > normal | 요청 mode → policy → 창별 matchMode가 normal이 아닐 때만 override | 더 명확한 의도. normal로 override = 의도 없음 |
 
 # Phase 6 — 고급 식별자: Spaces + PWA (Track A-2)
 

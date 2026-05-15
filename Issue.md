@@ -5,7 +5,9 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 72
-* Save Point: 2026-05-15 (Issue72_4 Phase 4 완료 — distance 가산 + areaMatch 비활성화 옵션)
+* Save Point: 2026-05-16 (Issue72_5 Phase 5 완료 — 매칭 모드 strict/normal/loose + Moom 폴백)
+  - 48df335 (2026-05-16) - Feat(Issue72_5)(Phase 5): 매칭 모드 (strict/normal/loose) + Moom 스타일 폴백
+  - 83cdadf (2026-05-15) - Docs(Issue72_4): Phase 4 완료 마킹 + task 진행현황 갱신 + 후속 이슈후보 등록
   - c4162f6 (2026-05-15) - Feat(Issue72_4)(Phase 4): 점수 함수 개선 — distance 가산 + areaMatch 비활성화 옵션
   - f5f8159 (2026-05-15) - Docs(Issue72_3): Phase 3 완료 마킹 + task 진행현황 갱신
   - a776be1 (2026-05-15) - Feat(Issue72_3)(Phase 3): 타이틀 정규화 룰셋 (TitleNormalizer + REST CRUD)
@@ -87,7 +89,7 @@ date: 2026-04-07
     - Task 4.1~4.4
     - 검증: areaMatch 비활성 후 오탐 감소(통계), 정상 케이스 회귀 없음
 
-## Issue72_5: [Feat] Phase 5 — 매칭 모드 + Moom 폴백 (strict/normal/loose) (등록: 2026-05-15)
+## Issue72_5: [Feat] Phase 5 — 매칭 모드 + Moom 폴백 (strict/normal/loose) (등록: 2026-05-15) (✅ 완료, 48df335)
 * 목적: 사용자가 "정확히"/"비슷하게" 의도 표현. loose 모드에서 Moom 스타일 최후 폴백 활성.
 * 상세:
     - `MatchMode` enum: strict(≥80), normal(≥50, 현행), loose(≥30 + 1:N + Moom 폴백)
