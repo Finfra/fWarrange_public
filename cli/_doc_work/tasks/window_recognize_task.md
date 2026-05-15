@@ -13,7 +13,7 @@ design: cli/_doc_design/window_recognize.md
 | :---: | :---------- | :------------------------------------ | :----------------------------------------------------------- |
 |   1   | Issue72_1   | 🟢 코드 완료 · 베이스라인 수집 대기   | 코드 `02d2bd0` · 1.6은 1주일 실사용 데이터 수집 후 보고서 작성 |
 |   2   | Issue72_2   | 🟢 완료                                | 커밋 `1899014` · 4-monitor UUID 4종 / windowOrder 다중창 순차 검증 |
-|   3   | Issue72_3   | ⚪ 대기                                | Phase 1 베이스라인 영향 無 → 선행 가능                       |
+|   3   | Issue72_3   | 🟢 완료                                | 커밋 `a776be1` · 빌트인 10개 룰 / VSCode 13창 정규화 / PUT·DELETE 사이클 |
 |   4   | Issue72_4   | ⚪ 대기                                |                                                              |
 |   5   | Issue72_5   | ⚪ 대기                                | Phase 2/3/4 후 진행                                          |
 |   6   | Issue72_6   | ⚪ 대기                                | Phase 5 후 진행 (paidApp protocol 합의 필요)                 |
@@ -163,53 +163,80 @@ design: cli/_doc_design/window_recognize.md
 | displayUUID 좌표 변환 | 명시 안 함 | Cocoa↔Quartz 변환 추가 | NSScreen.frame은 Cocoa(y-up), CGWindow bounds는 Quartz(y-down) — 비교 전 변환 필수 |
 | 화면 밖 창 fallback | 명시 안 함 | squaredDistance로 최근접 디스플레이 | 멀티 디스플레이 환경에서 화면 가장자리 창이 어디에도 contains 안 될 가능성 대응 |
 
-# Phase 3 — 타이틀 정규화 (C-2)
+# Phase 3 — 타이틀 정규화 (C-2) — 🟢 완료
 
-## Task 3.1: 룰셋 파일 작성
+> **이슈**: Issue72_3 · **커밋**: `a776be1`
 
-* [ ] `cli/fWarrangeCli/Resources/title_normalize.yml` 신설
-* [ ] Top 10 앱 룰 작성:
-    - Safari: `strip_suffix: " — Safari"`
-    - Chrome: `strip_suffix: " - Google Chrome"`
-    - Firefox: `strip_suffix: " — Mozilla Firefox"`
-    - Code (VSCode): `strip_suffix: " — Visual Studio Code"`, `strip_prefix: "● "`
-    - Cursor: `strip_suffix: " — Cursor"`, `strip_prefix: "● "`
-    - Slack: `strip_pattern: " \\(\\d+\\)"`
-    - iTerm2/Terminal: `mask_pattern: ".*[/\\\\].*"` (옵션)
-    - Xcode: `strip_pattern: " — .*"`
-    - Finder: 경로 마스킹 옵션
+## Task 3.1: 룰셋 — ✅ (코드 내장 채택)
 
-## Task 3.2: `TitleNormalizer` 서비스
+* [x] **빌트인 룰셋을 코드 내장으로 변경** (계획서의 `Resources/title_normalize.yml`에서 변경)
+    - 사유: XcodeGen 리소스 번들링 복잡도 회피. 사용자 편집본은 별도 외부 경로 유지
+* [x] Top 10 빌트인 룰 (`FileTitleNormalizer.builtInRules`):
+    - Safari (bundleId `com.apple.Safari`): `stripPattern: " — Safari$"`
+    - Chrome (`com.google.Chrome`): `stripPattern: " - Google Chrome$"`
+    - Microsoft Edge (`com.microsoft.edgemac`): `stripPattern: " - Microsoft.+$"`
+    - Firefox (`org.mozilla.firefox`): `stripPattern: " — Mozilla Firefox$"`
+    - Code/VSCode (`com.microsoft.VSCode`): `stripPrefix: "● "`, `stripPattern: " — .+$"`
+    - Cursor (`com.todesktop.230313mzl4w4u92`): 동일 패턴
+    - Slack (`com.tinyspeck.slackmacgap`): `stripPattern: " \\(\\d+\\)$"`
+    - iTerm2 (`com.googlecode.iterm2`): `stripPattern: " — .+$"`
+    - Terminal (`com.apple.Terminal`): `stripPattern: " — .+$"`
+    - Xcode (`com.apple.dt.Xcode`): `stripPattern: " — .+$"`
+* [x] 사용자 편집본 위치: `~/Library/Application Support/fWarrangeCli/title_normalize.yml` (env `fWarrangeCli_normalize_path`로 재정의)
 
-* [ ] `cli/fWarrangeCli/Services/TitleNormalizer.swift` 신설
-* [ ] 룰셋 로드·캐시 (`NSRegularExpression` 캐싱)
-* [ ] `normalize(title:appName:bundleId:) -> String` 메서드
-* [ ] 매칭 우선순위: bundleId 정확 일치 > appName 일치 > 디폴트
-* [ ] 핫리로드 API: 룰셋 변경 시 캐시 무효화
+## Task 3.2: `TitleNormalizer` 서비스 ✅
 
-## Task 3.3: 캡처 시 정규화 적용
+* [x] `cli/fWarrangeCli/Services/TitleNormalizer.swift` 신설
+* [x] `TitleNormalizeRule` 모델 (`Codable, Equatable`)
+* [x] `FileTitleNormalizer` 구현체 (DispatchQueue concurrent + barrier write)
+* [x] `NSRegularExpression` 캐시 (`regexCache: [String: NSRegularExpression]`)
+* [x] `normalize(title:bundleId:app:) -> String` 메서드 (계획서 시그니처와 인자 순서 다름 — bundleId 우선 매칭 일관성)
+* [x] 매칭 우선순위: bundleId 정확 일치 > app 정확 일치
+* [x] `updateRules(_:)` 호출 시 regex 캐시 무효화 + 디스크 영속
 
-* [ ] `WindowCaptureService`에서 원본 title 별도 보존 (`windowRaw` 옵셔널 필드)
-* [ ] 저장 시 정규화된 `window` + 원본 `windowRaw`
-* [ ] 옛 데이터 호환 (윗 필드 없으면 정규화 비활성 또는 lazy 적용)
+## Task 3.3: 캡처 시 정규화 적용 ✅
 
-## Task 3.4: 복구 시 정규화 적용
+* [x] `WindowInfo.windowRaw: String?` 옵셔널 필드 추가
+* [x] `CGWindowCaptureService(titleNormalizer:)` DI 주입
+* [x] 정규화 결과가 원본과 다를 때만 `windowRaw` 보존 (`window: 정규화값`, `windowRaw: 원본`)
+* [x] LayoutStorageService에 windowRaw serialize/parse 추가 (구 yml 호환)
 
-* [ ] `WindowRestoreService.computeMatchScore`에서 axTitle을 `TitleNormalizer.normalize()` 통과시킨 후 target.window와 비교
-* [ ] target.window는 이미 정규화 상태 (Task 3.3)
+## Task 3.4: 복구 시 정규화 적용 ✅
 
-## Task 3.5: REST CRUD
+* [x] `AXWindowRestoreService(titleNormalizer:)` DI 주입
+* [x] `computeMatchScore`에서 axTitle을 정규화 후 target.window와 비교
+* [x] target.window는 캡처 시점에 정규화된 상태 (Task 3.3)
+* [x] normalizer 미주입 시 원본 비교 (Phase 1·2 호환)
 
-* [ ] `GET /api/v2/normalize-rules` — 현재 룰셋 조회
-* [ ] `PUT /api/v2/normalize-rules` — 룰셋 갱신
-* [ ] 갱신 시 `TitleNormalizer` 핫리로드
-* [ ] `openapi_v2.yaml` + `RestAPI_v2.md` 동기화
+## Task 3.5: REST CRUD ✅
 
-## Task 3.6: 테스트·효과 검증
+* [x] `GET /api/v2/normalize-rules` — 룰셋 + 카운트
+* [x] **`PUT /api/v2/normalize-rules`** — 룰셋 전체 교체 (rules: null 시 리셋)
+* [x] **`DELETE /api/v2/normalize-rules`** — 빌트인 리셋 (계획에 없던 추가)
+* [x] `updateRules` 호출 시 regex 캐시 자동 무효화 (핫리로드)
+* [x] `openapi_v2.yaml`: NormalizeRules 태그 + paths 3종 + NormalizeRule 스키마
+* [x] `RestAPI_v2.md` §4.9 신설
 
-* [ ] Safari 페이지 이동 시나리오에서 exactTitle(90점) 매칭 회복
-* [ ] Slack 알림 카운트 변경 시나리오 매칭 유지
-* [ ] Phase 1 통계와 before/after 비교 (`exactTitle` 비율 +20% 목표)
+## Task 3.6: 테스트·효과 검증 ✅
+
+* [x] `apiTest/v2/35.v2-normalize-rules.sh` (GET) 신규
+* [x] `apiTest/v2/36.v2-normalize-rules-reset.sh` (DELETE) 신규
+* [x] **VSCode 13창 정규화 실측 확인**:
+    - 예: `⚓ fWarrange — Issue.md` → `⚓ fWarrange` (워크스페이스 부분만 유지)
+    - 효과: 같은 워크스페이스 내 다른 파일 열어도 exactTitle(90점) 매칭 가능
+* [x] PUT 1개 룰 → 사용자 편집본 디스크 작성 (42 bytes) → DELETE → 파일 삭제·빌트인 10개 복원
+* [x] xcodebuild Debug 통과
+* [ ] **Phase 1 통계 before/after 비교** — 베이스라인 1주일 수집 후 검증 (Task 1.6 의존)
+
+## Phase 3 설계 변경 사항
+
+| 항목 | 계획 | 실제 | 사유 |
+| :--- | :--- | :--- | :--- |
+| 빌트인 룰셋 위치 | `Resources/title_normalize.yml` | 코드 내장 (`FileTitleNormalizer.builtInRules`) | XcodeGen 리소스 번들링 복잡도. 사용자 편집본 경로는 외부 유지 |
+| 정규화 진입점 시그니처 | `normalize(title:appName:bundleId:)` | `normalize(title:bundleId:app:)` | bundleId 매칭 우선이므로 인자 순서도 우선순위 반영 |
+| REST 메서드 | GET + PUT | GET + PUT + **DELETE** | DELETE = 빌트인 리셋 — UX 단순화 |
+| Concurrency | 명시 안 함 | DispatchQueue concurrent + barrier write | nonisolated computeMatchScore에서 호출 필요 → actor 대신 큐 |
+| stripPattern 형태 | suffix/prefix 별도 | regex 통합 `" — Safari$"` 등 | 더 유연. 빌트인은 거의 모두 정규식으로 통일 |
 
 # Phase 4 — 점수 함수 개선 (Track B)
 

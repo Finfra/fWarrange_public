@@ -5,7 +5,9 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 72
-* Save Point: 2026-05-15 (Issue72_2 Phase 2 완료 — windowOrder + displayUUID 수집)
+* Save Point: 2026-05-15 (Issue72_3 Phase 3 완료 — 타이틀 정규화 룰셋)
+  - a776be1 (2026-05-15) - Feat(Issue72_3)(Phase 3): 타이틀 정규화 룰셋 (TitleNormalizer + REST CRUD)
+  - 4b67e9d (2026-05-15) - Docs(Issue72_2): Phase 2 완료 마킹 + task 진행현황 갱신
   - 1899014 (2026-05-15) - Feat(Issue72_2)(Phase 2): 데이터 수집 확장 — windowOrder + displayUUID
   - ff8811d (2026-05-15) - Docs(Issue72_1): task 진행현황 + 베이스라인 검토일 결정사항 추가
   - 8f09955 (2026-05-15) - Docs(Issue72_1): Phase 1 코드 완료 마킹 + Save Point 갱신
@@ -61,7 +63,7 @@ date: 2026-04-07
     - Task 2.1~2.4
     - 검증: 신규 캡처에 두 필드 존재, 옛 YAML 회귀 없음, 멀티 디스플레이 UUID 일관성
 
-## Issue72_3: [Feat] Phase 3 — 타이틀 정규화 룰셋 (C-2) (등록: 2026-05-15)
+## Issue72_3: [Feat] Phase 3 — 타이틀 정규화 룰셋 (C-2) (등록: 2026-05-15) (✅ 완료, a776be1)
 * 목적: 동적 타이틀(브라우저·에디터·터미널·채팅)로 인한 exactTitle(90점) 매칭 실패 회복.
 * 상세:
     - `title_normalize.yml` 빌트인 룰셋 (Top 10 앱: Safari, Chrome, Code, Slack 등)
