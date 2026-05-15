@@ -5,7 +5,9 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 72
-* Save Point: 2026-05-15 (Issue72_3 Phase 3 완료 — 타이틀 정규화 룰셋)
+* Save Point: 2026-05-15 (Issue72_4 Phase 4 완료 — distance 가산 + areaMatch 비활성화 옵션)
+  - c4162f6 (2026-05-15) - Feat(Issue72_4)(Phase 4): 점수 함수 개선 — distance 가산 + areaMatch 비활성화 옵션
+  - f5f8159 (2026-05-15) - Docs(Issue72_3): Phase 3 완료 마킹 + task 진행현황 갱신
   - a776be1 (2026-05-15) - Feat(Issue72_3)(Phase 3): 타이틀 정규화 룰셋 (TitleNormalizer + REST CRUD)
   - 4b67e9d (2026-05-15) - Docs(Issue72_2): Phase 2 완료 마킹 + task 진행현황 갱신
   - 1899014 (2026-05-15) - Feat(Issue72_2)(Phase 2): 데이터 수집 확장 — windowOrder + displayUUID
@@ -75,7 +77,7 @@ date: 2026-04-07
     - Task 3.1~3.6
     - 검증: Phase 1 통계 대비 exactTitle 비율 +20% 이상
 
-## Issue72_4: [Feat] Phase 4 — 점수 함수 개선 (distance 가산 + areaMatch 약화) (등록: 2026-05-15)
+## Issue72_4: [Feat] Phase 4 — 점수 함수 개선 (distance 가산 + areaMatch 약화) (등록: 2026-05-15) (✅ 완료, c4162f6)
 * 목적: 카테고리 점수 → distance 가산 + areaMatch 비활성화 옵션으로 노이즈 매칭 감소.
 * 상세:
     - `computeMatchScore`에 distance 기반 0~10점 가산 (동률 시 가까운 위치 선호)

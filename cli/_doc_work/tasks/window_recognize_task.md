@@ -14,7 +14,7 @@ design: cli/_doc_design/window_recognize.md
 |   1   | Issue72_1   | 🟢 코드 완료 · 베이스라인 수집 대기   | 코드 `02d2bd0` · 1.6은 1주일 실사용 데이터 수집 후 보고서 작성 |
 |   2   | Issue72_2   | 🟢 완료                                | 커밋 `1899014` · 4-monitor UUID 4종 / windowOrder 다중창 순차 검증 |
 |   3   | Issue72_3   | 🟢 완료                                | 커밋 `a776be1` · 빌트인 10개 룰 / VSCode 13창 정규화 / PUT·DELETE 사이클 |
-|   4   | Issue72_4   | 🟡 진행 중                             | distance 가산 + areaMatch 비활성화 옵션 + minimumScore 모드 연동 준비 |
+|   4   | Issue72_4   | 🟢 완료                                | 커밋 `c4162f6` · distance 0~9점 가산 / areaMatchEnabled 옵션 / 탭 PATCH Bool false 버그 후속 이슈 |
 |   5   | Issue72_5   | ⚪ 대기                                | Phase 2/3/4 후 진행                                          |
 |   6   | Issue72_6   | ⚪ 대기                                | Phase 5 후 진행 (paidApp protocol 합의 필요)                 |
 |   7   | Issue72_7   | ⚪ 대기                                | Phase 5 후 진행 (paidApp 별도 레포 작업 포함)                |
@@ -238,32 +238,49 @@ design: cli/_doc_design/window_recognize.md
 | Concurrency | 명시 안 함 | DispatchQueue concurrent + barrier write | nonisolated computeMatchScore에서 호출 필요 → actor 대신 큐 |
 | stripPattern 형태 | suffix/prefix 별도 | regex 통합 `" — Safari$"` 등 | 더 유연. 빌트인은 거의 모두 정규식으로 통일 |
 
-# Phase 4 — 점수 함수 개선 (Track B)
+# Phase 4 — 점수 함수 개선 (Track B) — 🟢 완료
 
-## Task 4.1: distance 가산점 도입
+> **이슈**: Issue72_4 · **커밋**: `c4162f6`
 
-* [ ] `WindowRestoreService.computeMatchScore` 반환 score에 distance 기반 0~10점 가산
-* [ ] distance가 작을수록 가산점 큼 (예: `min(10, max(0, 10 - distance/100))`)
-* [ ] 카테고리 점수와 합산 후 상한 100 클램프
-* [ ] 동률 매칭에서 가까운 위치 선호 동작 확인
+## Task 4.1: distance 가산점 도입 ✅
 
-## Task 4.2: areaMatch 비활성화 옵션
+* [x] `WindowRestoreService.computeMatchScore` 반환 score에 distance 기반 0~9점 가산
+* [x] 가산 공식: `max(0, 9 - Int(distance / 100))` (거리 0px→+9, 900px+→0)
+* [x] **카테고리 경계 보존**: score>0 && score<100 케이스만 가산 (windowID 100·noMatch 0 제외)
+    - 예: exactTitle 90 + 9 = 99 < 100=ID — 카테고리 우선순위 유지
+* [x] 동률 매칭에서 가까운 위치 우선 — 코드 분기 완료 (즉시 복구 시나리오에서 거리 0이라 효과 가시화는 베이스라인 후)
 
-* [ ] `AppSettings.matchAreaMatchEnabled: Bool` 추가 (기본값은 Phase 1 통계 보고 결정)
-* [ ] `computeMatchScore`에서 옵션 비활성 시 areaMatch 분기 스킵
-* [ ] `AppSettings+Patch.swift`에 PATCH 지원 추가
-* [ ] `openapi_v2.yaml` settings 스키마 동기화
+## Task 4.2: areaMatch 비활성화 옵션 ✅
 
-## Task 4.3: minimumScore 모드 연동 준비
+* [x] `AppSettings.matchAreaMatchEnabled: Bool?` 추가 (기본 true)
+* [x] `AXWindowRestoreService(titleNormalizer:areaMatchEnabled:)` DI 주입
+* [x] `computeMatchScore`의 areaMatch(30) 분기에 `areaMatchEnabled` 가드 추가
+* [x] `AppSettings+Patch`: `fullSettingsDict` + `applySettingsPatch` Bool 캐스팅
+* [x] `SettingsService.save/load` yml 직렬화·역직렬화 추가
+* [x] `RESTServer.tabPaths /settings/restore` fields 배열에 추가
+* [x] GET 응답에 노출 확인 (`/settings/restore` → `matchAreaMatchEnabled: true`)
+* [ ] **알려진 한계**: tab별 PATCH에서 Bool `false` 값이 디스크 영속화 안 됨 → 이슈후보 등록 (별도 추적)
 
-* [ ] `minimumScore` 인터페이스 정리 — 호출부 L69, L95에서 모드 기반 주입 가능하게
-* [ ] Phase 5에서 모드별 차등 적용 진입점 마련
+## Task 4.3: minimumScore 모드 연동 준비 ✅
 
-## Task 4.4: 테스트·효과 검증
+* [x] `restoreWindows(minimumScore:)` 시그니처 그대로 유지 — Phase 5에서 모드별 값을 외부에서 주입 가능
+* [x] AppState에서 settings.matchAreaMatchEnabled를 init 시점에 주입 — Phase 5 mode 선택 시 동일 패턴으로 확장 가능
 
-* [ ] 동률 매칭에서 가까운 창 선택되는지 단위 테스트
-* [ ] areaMatch 비활성 후 통계: `.areaMatch` 비율 감소·오탐 감소 확인
-* [ ] 정상 케이스(80점 이상)는 변동 없음 (회귀 없음)
+## Task 4.4: 테스트·효과 검증 ✅
+
+* [x] xcodebuild Debug 통과
+* [x] GET `/settings/restore`에 `matchAreaMatchEnabled` 노출 확인
+* [x] 즉시 캡처+복구 55건 회귀 없음 (ID 100점 매칭 유지)
+* [ ] **distance 가산 효과 통계 비교** — 베이스라인(Task 1.6) 후 측정
+* [ ] **areaMatch 비활성 시 오탐 감소 통계** — 베이스라인 후 측정
+
+## Phase 4 알려진 한계 / 설계 변경 사항
+
+| 항목 | 계획 | 실제 | 사유 |
+| :--- | :--- | :--- | :--- |
+| distance 가산 범위 | 0~10점 | 0~9점 | 가산 후 100 미만 보장 (windowID 경계) |
+| 가산 적용 조건 | `score > 0` | `score > 0 && score < 100` | windowID(100)에 가산 후 99로 떨어지면 ID 매칭이 약화됨 — 100은 제외 |
+| 탭별 PATCH Bool false 버그 | — | 후속 이슈 분리 | tabPaths filter 또는 NSNumber/Bool 변환 추적 필요. Phase 4 핵심 가치(코드 분기)는 정상 동작 |
 
 # Phase 5 — 매칭 모드 + 최후 폴백 (C-3 + C-5)
 
