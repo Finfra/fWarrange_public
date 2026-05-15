@@ -62,12 +62,16 @@ private enum RestoreFailureReason: Sendable {
 // MARK: - 프로토콜
 
 nonisolated protocol WindowRestoreService {
+    /// `mode`(Issue72_5, Phase 5): MatchMode (strict/normal/loose). 호출별 정책 결정.
+    /// 본 인자는 호출 단위 기본 모드. 개별 `WindowInfo.matchMode`가 지정되면 그 창 한정으로 override.
+    /// `minimumScore`는 normal 모드 한정으로 사용자 설정값을 반영. strict/loose는 mode 정책의 고정값 사용.
     func restoreWindows(
         _ windows: [WindowInfo],
         maxRetries: Int,
         retryInterval: Double,
         minimumScore: Int,
         enableParallel: Bool,
+        mode: MatchMode,
         onProgress: @MainActor @Sendable (Double, String) -> Void
     ) async -> [WindowMatchResult]
 }
@@ -107,10 +111,17 @@ final class AXWindowRestoreService: WindowRestoreService {
         retryInterval: Double,
         minimumScore: Int,
         enableParallel: Bool,
+        mode: MatchMode,
         onProgress: @MainActor @Sendable (Double, String) -> Void
     ) async -> [WindowMatchResult] {
         let totalStartTime = CFAbsoluteTimeGetCurrent()
-        logI("[복구 시작] 창 \(windows.count)개, maxRetries=\(maxRetries), interval=\(retryInterval)초, 병렬=\(enableParallel)")
+        // Issue72_5 (Phase 5): mode → RuntimeMatchPolicy 변환. minimumScore는 normal에서만 반영.
+        let basePolicy = RuntimeMatchPolicy.from(
+            mode: mode,
+            settingsMinimumScore: minimumScore,
+            areaMatchSettingEnabled: self.areaMatchEnabled
+        )
+        logI("[복구 시작] 창 \(windows.count)개, mode=\(mode.rawValue), minimumScore=\(basePolicy.minimumScore), 기하폴백=\(basePolicy.geometricFallbackEnabled), area=\(basePolicy.areaMatchEnabled), 1:N=\(basePolicy.allowMultipleAssignments), moom=\(basePolicy.moomFallbackEnabled), maxRetries=\(maxRetries), interval=\(retryInterval)초, 병렬=\(enableParallel)")
 
         var pendingWindows = windows
         var allResults: [WindowMatchResult] = []
@@ -186,7 +197,8 @@ final class AXWindowRestoreService: WindowRestoreService {
                                     // 전역 최적 매칭 (Issue167: 복수 창 위치 뒤바뀜 방지)
                                     let matches = self.findOptimalMatches(
                                         targets: appWindows, axWindows: filteredWindows,
-                                        usedWindows: [], minimumScore: minimumScore
+                                        usedWindows: [], minimumScore: basePolicy.minimumScore,
+                                        policy: basePolicy
                                     )
 
                                     for (i, target) in appWindows.enumerated() {
@@ -262,7 +274,8 @@ final class AXWindowRestoreService: WindowRestoreService {
                     // 전역 최적 매칭 (Issue167)
                     let matches = findOptimalMatches(
                         targets: appTargets, axWindows: axWindows,
-                        usedWindows: usedWindows, minimumScore: minimumScore
+                        usedWindows: usedWindows, minimumScore: basePolicy.minimumScore,
+                        policy: basePolicy
                     )
 
                     for (i, target) in appTargets.enumerated() {
@@ -319,6 +332,50 @@ final class AXWindowRestoreService: WindowRestoreService {
             currentAttempt += 1
         }
 
+        // Issue72_5 (Phase 5): Moom 스타일 최후 폴백 (loose 모드 전용)
+        // 매칭 실패한 target 들을 앱별로 그룹핑하고, 같은 앱의 살아있는 창 개수가 같으면
+        // windowOrder 순으로 위치 배분. "내용은 모르겠지만 자리는 맞춰주기" 시나리오.
+        if basePolicy.moomFallbackEnabled && !pendingWindows.isEmpty {
+            let runningApps = await MainActor.run { NSWorkspace.shared.runningApplications }
+            let pendingByApp = Dictionary(grouping: pendingWindows, by: { $0.app })
+            for (appName, appTargets) in pendingByApp {
+                let bundleId = appTargets.first?.bundleId
+                let matchedApps = runningApps.filter {
+                    appMatches($0, targetApp: appName, targetBundleId: bundleId)
+                }
+                guard !matchedApps.isEmpty else { continue }
+                var axWindows: [AXUIElement] = []
+                for app in matchedApps {
+                    axWindows.append(contentsOf: getAXWindows(for: app))
+                }
+                // 앱별 창 개수 일치 검증
+                guard axWindows.count == appTargets.count else {
+                    logD("[Moom 폴백] '\(appName)' 창 개수 불일치 (target=\(appTargets.count), ax=\(axWindows.count)) — 스킵")
+                    continue
+                }
+                // target은 windowOrder 오름차순, ax는 현재 onscreen 순서(getAXWindows 반환 순)로 배분
+                let sortedTargets = appTargets.sorted { (lhs, rhs) in
+                    (lhs.windowOrder ?? Int.max) < (rhs.windowOrder ?? Int.max)
+                }
+                for (idx, target) in sortedTargets.enumerated() {
+                    let axWindow = axWindows[idx]
+                    let (success, _) = applyAndVerify(target: target, axWindow: axWindow)
+                    if success {
+                        logI("[Moom 폴백] '\(appName)' #\(idx) (windowOrder=\(target.windowOrder ?? -1)) 배분 성공")
+                        allResults.append(WindowMatchResult(
+                            targetWindow: target,
+                            matchedTitle: "(moom-fallback)",
+                            matchType: .noMatch,
+                            score: 0,
+                            success: true
+                        ))
+                        // pendingWindows에서 제거
+                        pendingWindows.removeAll { CFEqual($0 as AnyObject, target as AnyObject) || ($0.id == target.id && $0.app == target.app && $0.window == target.window) }
+                    }
+                }
+            }
+        }
+
         // 실패한 창도 결과에 추가
         for remaining in pendingWindows {
             allResults.append(WindowMatchResult(
@@ -370,7 +427,8 @@ final class AXWindowRestoreService: WindowRestoreService {
 
     private nonisolated func computeMatchScore(
         target: WindowInfo,
-        axWindow: AXUIElement
+        axWindow: AXUIElement,
+        policy: RuntimeMatchPolicy
     ) -> (score: Int, matchType: MatchType, title: String, distance: Double, cgWindowId: CGWindowID) {
         var titleValue: CFTypeRef?
         AXUIElementCopyAttributeValue(axWindow, kAXTitleAttribute as CFString, &titleValue)
@@ -418,16 +476,20 @@ final class AXWindowRestoreService: WindowRestoreService {
             score = 80; mType = .regexTitle
         } else if !target.window.isEmpty && axTitle.contains(target.window) {
             score = 70; mType = .containsTitle
-        } else if abs(currentSize.width - target.size.width) < 5 {
+        }
+        // Issue72_5 (Phase 5): 기하 폴백(60~30점)은 policy.geometricFallbackEnabled 가드.
+        // strict 모드(false)에서는 60~30 분기를 모두 .noMatch로 처리.
+        else if policy.geometricFallbackEnabled && abs(currentSize.width - target.size.width) < 5 {
             score = 60; mType = .widthMatch
-        } else if abs(currentSize.height - target.size.height) < 5 {
+        } else if policy.geometricFallbackEnabled && abs(currentSize.height - target.size.height) < 5 {
             score = 50; mType = .heightMatch
-        } else if target.size.height > 0 && currentSize.height > 0 &&
+        } else if policy.geometricFallbackEnabled && target.size.height > 0 && currentSize.height > 0 &&
                   abs((currentSize.width / currentSize.height) - (target.size.width / target.size.height)) < 0.05 {
             score = 40; mType = .ratioMatch
-        } else if areaMatchEnabled && currentArea > 0 && targetArea > 0 &&
+        } else if policy.areaMatchEnabled && currentArea > 0 && targetArea > 0 &&
                   abs(currentArea - targetArea) / max(currentArea, targetArea) < 0.05 {
             // Issue72_4 (Phase 4): areaMatchEnabled=false 시 30점 매칭 비활성 → noMatch
+            // Issue72_5 (Phase 5): policy.areaMatchEnabled로 통합 (strict=false, loose=true, normal=설정값)
             score = 30; mType = .areaMatch
         }
 
@@ -454,7 +516,8 @@ final class AXWindowRestoreService: WindowRestoreService {
         targets: [WindowInfo],
         axWindows: [AXUIElement],
         usedWindows: [AXUIElement],
-        minimumScore: Int
+        minimumScore: Int,
+        policy: RuntimeMatchPolicy
     ) -> [MatchAssignment?] {
         struct Candidate {
             let targetIdx: Int
@@ -471,7 +534,18 @@ final class AXWindowRestoreService: WindowRestoreService {
         for (ti, target) in targets.enumerated() {
             for (wi, axWindow) in axWindows.enumerated() {
                 if usedWindows.contains(where: { CFEqual($0, axWindow) }) { continue }
-                let (score, matchType, title, distance, cgWinId) = computeMatchScore(target: target, axWindow: axWindow)
+                // Issue72_5 (Phase 5): WindowInfo.matchMode가 명시되면 그 창 한정으로 정책 override
+                let effectivePolicy: RuntimeMatchPolicy
+                if let perTargetMode = target.matchMode, perTargetMode != .normal {
+                    effectivePolicy = RuntimeMatchPolicy.from(
+                        mode: perTargetMode,
+                        settingsMinimumScore: policy.minimumScore,
+                        areaMatchSettingEnabled: policy.areaMatchEnabled
+                    )
+                } else {
+                    effectivePolicy = policy
+                }
+                let (score, matchType, title, distance, cgWinId) = computeMatchScore(target: target, axWindow: axWindow, policy: effectivePolicy)
                 if score > 0 {
                     candidates.append(Candidate(
                         targetIdx: ti, windowIdx: wi,
@@ -490,12 +564,14 @@ final class AXWindowRestoreService: WindowRestoreService {
         }
 
         // 전역 탐욕 할당 — 각 target과 window를 최대 1회만 매칭
+        // Issue72_5 (Phase 5): loose 모드(allowMultipleAssignments)는 window 1:N 허용
         var assignedTargets = Set<Int>()
         var assignedWindows = Set<Int>()
         var results: [MatchAssignment?] = Array(repeating: nil, count: targets.count)
 
         for c in candidates {
-            guard !assignedTargets.contains(c.targetIdx) && !assignedWindows.contains(c.windowIdx) else { continue }
+            guard !assignedTargets.contains(c.targetIdx) else { continue }
+            if !policy.allowMultipleAssignments && assignedWindows.contains(c.windowIdx) { continue }
             guard c.score >= minimumScore else { continue }
             assignedTargets.insert(c.targetIdx)
             assignedWindows.insert(c.windowIdx)

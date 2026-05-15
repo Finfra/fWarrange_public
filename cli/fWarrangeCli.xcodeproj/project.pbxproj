@@ -19,6 +19,7 @@
 		440182E77EAB89FAECDACE27 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0D0D47C31F3DB1D08190C0C /* Logger.swift */; };
 		463D7F8F385E5DA1F5E40501 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3048E8064D2360477D20FE4D /* AppState.swift */; };
 		46824F98577EE2884AB9A7FF /* AXPrivateAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F264201EE001BF2B3032FC78 /* AXPrivateAPI.swift */; };
+		48290FE6331444EF76AD065F /* MatchMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD71E1630D989C535D4A42CB /* MatchMode.swift */; };
 		4926C654E290CAB561309435 /* Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5448F7DE624FDC82BC3D385C /* Layout.swift */; };
 		512CBD8F021306364745E1FD /* AppSettings+Patch.swift in Sources */ = {isa = PBXBuildFile; fileRef = A804ACAAB31972F56325FA7F /* AppSettings+Patch.swift */; };
 		5550D4E9E811C42F638DA161 /* HotKeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25E958C235A2113119D12901 /* HotKeyService.swift */; };
@@ -122,6 +123,7 @@
 		D31B8437208F5CA7719348B1 /* fWarrangeCli.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = fWarrangeCli.entitlements; sourceTree = "<group>"; };
 		DA432610AC9B58EA3638AEBA /* PaidAppAPIModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppAPIModelsTests.swift; sourceTree = "<group>"; };
 		DCF65497BEF50CBB7CED8F81 /* RESTServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RESTServer.swift; sourceTree = "<group>"; };
+		DD71E1630D989C535D4A42CB /* MatchMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchMode.swift; sourceTree = "<group>"; };
 		E0CF6DAFCE546CC46A0E92C7 /* PaidAppStateLoggerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppStateLoggerTests.swift; sourceTree = "<group>"; };
 		E49C94352030852326F675A4 /* MenuBarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarManager.swift; sourceTree = "<group>"; };
 		E7AA13BAF31243DB7F07719F /* ModeStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModeStorageService.swift; sourceTree = "<group>"; };
@@ -228,6 +230,7 @@
 				B103338C6EF3DA1021783071 /* AppSettings.swift */,
 				A804ACAAB31972F56325FA7F /* AppSettings+Patch.swift */,
 				5448F7DE624FDC82BC3D385C /* Layout.swift */,
+				DD71E1630D989C535D4A42CB /* MatchMode.swift */,
 				881D6E417915BBA037DF45F8 /* MatchType.swift */,
 				2E0460B68C5CE5C8544611FF /* Mode.swift */,
 				F40B1E8D2101B5ED1FD42A60 /* PaidAppAPIModels.swift */,
@@ -375,6 +378,7 @@
 				BC6742D69CE2F82E90B7422F /* LocalizedStringManager.swift in Sources */,
 				440182E77EAB89FAECDACE27 /* Logger.swift in Sources */,
 				16A8E35E9A56AE10852C452E /* LoginItemService.swift in Sources */,
+				48290FE6331444EF76AD065F /* MatchMode.swift in Sources */,
 				223AD549DFBFB55E28282C17 /* MatchType.swift in Sources */,
 				0D3C2415DC6373F09EA80795 /* MenuBarIconService.swift in Sources */,
 				F7461E5468F29CF86164D2DB /* MenuBarManager.swift in Sources */,

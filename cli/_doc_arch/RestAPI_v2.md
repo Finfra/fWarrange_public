@@ -183,6 +183,27 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 * **빌트인**: Safari, Chrome, Edge, Firefox, Code(VSCode), Cursor, Slack, iTerm2, Terminal, Xcode (Top 10)
 * **WindowInfo 필드**: 정규화 결과는 `window`에 저장. 원본은 `windowRaw`에 보존 (정규화 결과가 원본과 다를 때만)
 
+## 4.10 MatchMode (Issue72_5 Phase 5)
+
+`POST /api/v2/layouts/{name}/restore`의 `mode` 파라미터로 매칭 정책 선택. 호출 단위·창 단위(`WindowInfo.matchMode`) 두 레벨.
+
+| 모드     | minimumScore | 기하 폴백 (60~30점) | 1:N 매칭 (Stay) | Moom 폴백 |
+| :------- | -----------: | :-----------------: | :-------------: | :-------: |
+| strict   | 70           | ❌                  | ❌              | ❌        |
+| normal   | 사용자 설정  | ✅                  | ❌              | ❌        |
+| loose    | 30           | ✅                  | ✅              | ✅        |
+
+* **strict**: containsTitle(70점) 이상만 허용. 위치·크기 매칭 모두 차단. 식별자가 확실해야 매칭됨
+* **normal**: 현행 + Phase 4 distance 가산. AppSettings.matchAreaMatchEnabled 반영
+* **loose**: 한 저장된 창이 여러 열린 창에 매칭(Stay), 모든 매칭 실패 시 **Moom 폴백** — 앱별 살아있는 창 개수가 target 개수와 같으면 `windowOrder` 정렬로 자리 배분 ("내용은 모르겠지만 자리는 맞춰주기")
+* `WindowInfo.matchMode` 옵셔널 필드로 yml에 창 단위 override 저장 가능 (예: 정확히 맞춰야 할 창만 strict)
+
+요청 예시:
+```bash
+curl -X POST http://localhost:3016/api/v2/layouts/work/restore \
+  -H "Content-Type: application/json" -d '{"mode": "loose"}'
+```
+
 ---
 
 # 5. 이벤트 모델

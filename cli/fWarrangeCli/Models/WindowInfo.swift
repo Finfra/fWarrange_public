@@ -31,6 +31,10 @@ struct WindowInfo: Identifiable, Codable, Equatable {
     /// Issue72_3 (Phase 3): 정규화 적용 전 원본 axTitle. `window`는 TitleNormalizer 적용 후 값.
     /// 정규화 룰셋이 변경되어도 원본 추적 가능하도록 보존. 구 yml 호환을 위해 옵셔널.
     var windowRaw: String?
+    /// Issue72_5 (Phase 5): 본 창에 적용할 매칭 모드 (strict/normal/loose).
+    /// 옵셔널 — nil 시 복구 호출 시점의 기본 모드(REST 파라미터 또는 normal)를 사용.
+    /// 사용자가 특정 창만 strict로 잠그거나 loose로 풀고 싶을 때 yml에 직접 명시.
+    var matchMode: MatchMode?
 
     init(
         id: Int,
@@ -42,7 +46,8 @@ struct WindowInfo: Identifiable, Codable, Equatable {
         size: WindowSize,
         windowOrder: Int? = nil,
         displayUUID: String? = nil,
-        windowRaw: String? = nil
+        windowRaw: String? = nil,
+        matchMode: MatchMode? = nil
     ) {
         self.id = id
         self.app = app
@@ -54,5 +59,6 @@ struct WindowInfo: Identifiable, Codable, Equatable {
         self.windowOrder = windowOrder
         self.displayUUID = displayUUID
         self.windowRaw = windowRaw
+        self.matchMode = matchMode
     }
 }

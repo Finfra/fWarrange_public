@@ -188,6 +188,10 @@ final class YAMLLayoutStorageService: LayoutStorageService {
                 let safeUUID = uuid.replacingOccurrences(of: "\"", with: "\\\"")
                 yaml += "  displayUUID: \"\(safeUUID)\"\n"
             }
+            // Issue72_5 (Phase 5): matchMode가 명시된 창만 출력 (기본 normal은 생략)
+            if let mode = w.matchMode {
+                yaml += "  matchMode: \"\(mode.rawValue)\"\n"
+            }
             yaml += "  pos:\n"
             yaml += "    x: \(w.pos.x)\n"
             yaml += "    y: \(w.pos.y)\n"
@@ -216,6 +220,7 @@ final class YAMLLayoutStorageService: LayoutStorageService {
             var windowOrder: Int? = nil
             var displayUUID: String? = nil
             var windowRaw: String? = nil
+            var matchMode: MatchMode? = nil
         }
 
         var results: [WindowInfo] = []
@@ -229,7 +234,8 @@ final class YAMLLayoutStorageService: LayoutStorageService {
                 size: WindowSize(width: c.width, height: c.height),
                 windowOrder: c.windowOrder,
                 displayUUID: c.displayUUID,
-                windowRaw: c.windowRaw
+                windowRaw: c.windowRaw,
+                matchMode: c.matchMode
             )
         }
 
@@ -255,6 +261,9 @@ final class YAMLLayoutStorageService: LayoutStorageService {
                 current?.windowOrder = Int(trimmed.dropFirst(12).trimmingCharacters(in: .whitespaces))
             } else if trimmed.hasPrefix("displayUUID:") {
                 current?.displayUUID = parseStringValue(String(trimmed.dropFirst(12)))
+            } else if trimmed.hasPrefix("matchMode:") {
+                let raw = parseStringValue(String(trimmed.dropFirst(10)))
+                current?.matchMode = MatchMode(rawValue: raw.lowercased())
             } else if trimmed.hasPrefix("x:") {
                 current?.x = CGFloat(Double(trimmed.dropFirst(2).trimmingCharacters(in: .whitespaces)) ?? 0)
             } else if trimmed.hasPrefix("y:") {

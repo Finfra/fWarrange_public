@@ -20,7 +20,7 @@ protocol RESTServerProtocol: AnyObject {
 struct RESTServerHandlers {
     // WindowManager 관련
     var captureCurrentWindows: (_ filterApps: [String]?) -> [WindowInfo]
-    var restoreWindows: (_ windows: [WindowInfo], _ maxRetries: Int, _ retryInterval: Double, _ minimumScore: Int, _ enableParallel: Bool) async -> [WindowMatchResult]
+    var restoreWindows: (_ windows: [WindowInfo], _ maxRetries: Int, _ retryInterval: Double, _ minimumScore: Int, _ enableParallel: Bool, _ mode: MatchMode) async -> [WindowMatchResult]
     var runningAppNames: () -> [String]
     var isAccessibilityGranted: () -> Bool
 
@@ -1342,6 +1342,8 @@ final class RESTServer: RESTServerProtocol {
         // Issue245: 선택 복구 윈도우 ID 필터 (선택 필드)
         let windowIdsRaw = json?["windowIds"] as? [Int] ?? []
         let windowIdsFilter: Set<Int> = Set(windowIdsRaw)
+        // Issue72_5 (Phase 5): mode 파라미터 — "strict"/"normal"/"loose"/생략(=normal)
+        let mode = MatchMode.parse(json?["mode"] as? String)
 
         Task { @MainActor [weak self] in
             guard let self else {
@@ -1372,7 +1374,8 @@ final class RESTServer: RESTServerProtocol {
                     maxRetries,
                     retryInterval,
                     minimumScore,
-                    enableParallel
+                    enableParallel,
+                    mode
                 )
 
                 NotificationCenter.default.post(name: .restRestoreCompleted, object: nil)
