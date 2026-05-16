@@ -6,7 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 72
 * Save Point: 2026-05-16 (Issue72 종결 — 창 인식률 개선 7-Phase cliApp 측 완료)
-  - (예정) - Docs(Issue72): 종결 보고서 + 부모·서브 7개 ✅ 완료 섹션 이동
+  - 4be2c7a (2026-05-16) - Docs(Issue72): 창 인식률 개선 7-Phase 통합 종결 + 보고서 작성
   - 376647a (2026-05-16) - Docs(Issue72_7): Phase 7-1 cliApp PoC 완료 마킹 + task 진행현황 갱신
   - 1d4246d (2026-05-16) - Feat(Issue72_7)(Phase 7-1): interactive dry-run 매칭 시뮬레이션 (cliApp 측)
   - 1eab541 (2026-05-16) - Docs(Issue72_6): Phase 6 완료 마킹 + task 진행현황 갱신
