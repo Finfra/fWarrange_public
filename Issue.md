@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 72
+* Issue HWM: 73
 * Save Point: 2026-05-16 (Issue72 종결 — 창 인식률 개선 7-Phase cliApp 측 완료)
+  - 0580ad8 (2026-05-16) - Fix(Issue73): ChangeTracker 발행 누락 + LayoutManager SSOT 이관
   - 4be2c7a (2026-05-16) - Docs(Issue72): 창 인식률 개선 7-Phase 통합 종결 + 보고서 작성
   - 376647a (2026-05-16) - Docs(Issue72_7): Phase 7-1 cliApp PoC 완료 마킹 + task 진행현황 갱신
   - 1d4246d (2026-05-16) - Feat(Issue72_7)(Phase 7-1): interactive dry-run 매칭 시뮬레이션 (cliApp 측)
@@ -47,6 +48,50 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue73: [Bug] ChangeTracker 발행 누락 + LayoutManager SSOT 누수 — paidApp 적응형 폴링 변경 알림 결손 (등록: 2026-05-16) (✅ 완료, 0580ad8) ✅
+* 목적: cliApp `ChangeTracker.record(...)` 발행 지점 누락으로 paidApp `/changes` 폴링이 일부 변경을 인지하지 못함. 또한 `LayoutManager` CRUD 메서드 자체에 `record(...)` 호출이 없어 외부 호출 경로(RESTServer 핸들러·`AppState.handleHotKeyAction`)에서만 발행 → 향후 직접 호출 추가 시 누락 위험 상시. 상위 `_doc_arch/paid_cli_protocol.md` §6 SSOT 정합화.
+* 선행 관계: 상위 paidApp 레포 Issue248의 **선수 이슈** (cliApp 측 발행이 보장되어야 paidApp 측 폴링·suspend 보수화의 효과 검증 가능)
+* 상세:
+    - 누락된 발행 지점 (RESTServer.swift):
+        - `handleRemoveWindows` (1483) — `layout.updated` 누락 → 창 일부 제거 시 paidApp 미반영
+        - `handleSetDefaultLayout` (1567) — `settings.changed`(target=`defaultLayout`) 누락
+        - `handleSetUIState` (1590) — 정책 결정 후 추가 검토 (선택)
+    - LayoutManager SSOT 누수 — 메서드 내부에 `record` 없음:
+        - `saveLayout` (79)
+        - `deleteLayout` (86)
+        - `deleteLayouts` (153)
+        - `deleteAllLayouts` (100)
+        - `renameLayout` (169)
+        - `removeWindows` (107)
+        - `updateWindowPositions` (117)
+    - DisplaySwitchService / ScreenMoveService 일괄 좌표 갱신 시 `layout.updated` 발행 여부 미확인 (확인 후 누락 시 추가)
+* 구현 명세:
+    - Phase A — 누락 발행 추가 (RESTServer):
+        - `handleRemoveWindows` 성공 분기 끝에 `ChangeTracker.shared.record(type: "layout.updated", target: name)`
+        - `handleSetDefaultLayout` 성공 분기 끝에 `ChangeTracker.shared.record(type: "settings.changed", target: "defaultLayout")`
+    - Phase B — SSOT 이관 (LayoutManager 내부 발행):
+        - 각 CRUD 메서드 마지막 줄에 `ChangeTracker.shared.record(...)` 추가
+        - `saveLayout` → `layout.created`/`layout.updated`(덮어쓰기 시) 판단 후 발행
+        - `deleteLayouts` → 루프 내 각 name마다 `layout.deleted`
+        - `renameLayout` → `layout.deleted`(oldName) + `layout.created`(newName) (SSOT §6.4 매핑 준수)
+        - `removeWindows` / `updateWindowPositions` → `layout.updated`
+        - RESTServer/AppState 측 중복 호출 제거 (이중 발행 방지)
+    - Phase C — 폭주 방지:
+        - `ChangeTracker`에 동일 (type, target) 100ms throttle 옵션 도입 (updateWindowPositions 다건 호출 시)
+        - 또는 호출 측에서 단일 트랜잭션 후 1회 발행으로 묶기
+    - Phase D — 디스플레이/스크린 이동:
+        - `DisplaySwitchService` / `ScreenMoveService`가 LayoutManager 경유로 좌표 갱신하도록 정리되어 있는지 확인
+        - 직접 storageService 호출 시 `layout.updated` 발행 추가
+    - 검증:
+        - `curl -X POST /api/v2/layouts/X/windows/remove` 후 `GET /api/v2/changes?since=N` 응답에 `layout.updated` 포함
+        - `POST /api/v2/settings/defaultLayout` 후 `settings.changed`(target=defaultLayout) 포함
+        - cliApp 메뉴바 / Cmd+F7 / REST capture 각각에서 `layout.created` 1회씩만 발행 (이중 발행 없음)
+        - paidApp Issue248 검증 시나리오와 함께 end-to-end 자동 갱신 확인
+* 관련:
+    - 상위: paidApp 레포 Issue248 (`~/_git/__all/fWarrange/Issue.md`)
+    - SSOT: `~/_git/__all/fWarrange/_doc_arch/paid_cli_protocol.md` §6 (변경 알림 프로토콜)
+    - 기반: Issue27(시퀀스 API), Issue220(SSE 제거 → /changes 일원화)
+
 
 ## Issue72: [Feat] 창 인식률 개선 — 7-Phase 통합 작업 (등록: 2026-05-15) (✅ 완료, 2026-05-16) ✅
 * 목적: "정밀 복구 실패의 원인이 ID 방식인지 윈도우명인지 이중 매칭 문제인지" 토의(이슈후보 출신)를 시발점으로, 측정 인프라부터 사용자 개입 UI까지 7개 Phase로 매칭 알고리즘을 체계적으로 개선
