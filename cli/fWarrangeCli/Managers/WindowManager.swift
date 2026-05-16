@@ -37,12 +37,13 @@ final class WindowManager {
         retryInterval: Double = 0.5,
         minimumScore: Int = 30,
         enableParallel: Bool = true,
-        mode: MatchMode = .normal
+        mode: MatchMode = .normal,
+        dryRun: Bool = false
     ) async -> [WindowMatchResult] {
         restoreStatus = .restoring(progress: 0, current: "준비 중...")
 
         let startTime = CFAbsoluteTimeGetCurrent()
-        logD("[WindowManager.restoreWindows] 시작 - 창 수: \(windows.count), mode: \(mode.rawValue), maxRetries: \(maxRetries), retryInterval: \(retryInterval)초, minimumScore: \(minimumScore), 병렬: \(enableParallel)")
+        logD("[WindowManager.restoreWindows] 시작 - 창 수: \(windows.count), mode: \(mode.rawValue), dryRun: \(dryRun), maxRetries: \(maxRetries), retryInterval: \(retryInterval)초, minimumScore: \(minimumScore), 병렬: \(enableParallel)")
 
         let results = await restoreService.restoreWindows(
             windows,
@@ -51,6 +52,7 @@ final class WindowManager {
             minimumScore: minimumScore,
             enableParallel: enableParallel,
             mode: mode,
+            dryRun: dryRun,
             onProgress: { [weak self] progress, message in
                 self?.restoreStatus = .restoring(progress: progress, current: message)
             }

@@ -65,6 +65,9 @@ nonisolated protocol WindowRestoreService {
     /// `mode`(Issue72_5, Phase 5): MatchMode (strict/normal/loose). 호출별 정책 결정.
     /// 본 인자는 호출 단위 기본 모드. 개별 `WindowInfo.matchMode`가 지정되면 그 창 한정으로 override.
     /// `minimumScore`는 normal 모드 한정으로 사용자 설정값을 반영. strict/loose는 mode 정책의 고정값 사용.
+    /// `dryRun`(Issue72_7, Phase 7-1): true 시 매칭만 시뮬레이션하고 실제 적용·검증 스킵.
+    ///   결과는 `success=false` + `matchedTitle="(dry-run)"` 표시.
+    ///   paidApp interactive 다이얼로그가 사용자에게 후보를 보여주기 위한 사전 조회 용도.
     func restoreWindows(
         _ windows: [WindowInfo],
         maxRetries: Int,
@@ -72,6 +75,7 @@ nonisolated protocol WindowRestoreService {
         minimumScore: Int,
         enableParallel: Bool,
         mode: MatchMode,
+        dryRun: Bool,
         onProgress: @MainActor @Sendable (Double, String) -> Void
     ) async -> [WindowMatchResult]
 }
@@ -112,6 +116,7 @@ final class AXWindowRestoreService: WindowRestoreService {
         minimumScore: Int,
         enableParallel: Bool,
         mode: MatchMode,
+        dryRun: Bool,
         onProgress: @MainActor @Sendable (Double, String) -> Void
     ) async -> [WindowMatchResult] {
         let totalStartTime = CFAbsoluteTimeGetCurrent()
@@ -203,6 +208,13 @@ final class AXWindowRestoreService: WindowRestoreService {
 
                                     for (i, target) in appWindows.enumerated() {
                                         if let match = matches[i] {
+                                            // Issue72_7 (Phase 7-1): dryRun 시 적용·검증 스킵 — 매칭만 시뮬레이션
+                                            if dryRun {
+                                                await usedActor.append(match.axWindow)
+                                                logD("[dry-run] '\(target.app)'/'\(match.title)' score=\(match.score) \(match.matchType)")
+                                                appResults.append(WindowMatchResult(targetWindow: target, matchedTitle: "(dry-run) \(match.title)", matchType: match.matchType, score: match.score, success: false))
+                                                continue
+                                            }
                                             let (success, _) = self.applyAndVerify(target: target, axWindow: match.axWindow)
                                             await usedActor.append(match.axWindow)
 
@@ -280,6 +292,13 @@ final class AXWindowRestoreService: WindowRestoreService {
 
                     for (i, target) in appTargets.enumerated() {
                         if let match = matches[i] {
+                            // Issue72_7 (Phase 7-1): dryRun 가드
+                            if dryRun {
+                                usedWindows.append(match.axWindow)
+                                logD("[dry-run] '\(target.app)'/'\(match.title)' score=\(match.score) \(match.matchType)")
+                                allResults.append(WindowMatchResult(targetWindow: target, matchedTitle: "(dry-run) \(match.title)", matchType: match.matchType, score: match.score, success: false))
+                                continue
+                            }
                             let (success, _) = applyAndVerify(target: target, axWindow: match.axWindow)
                             usedWindows.append(match.axWindow)
 
@@ -335,7 +354,8 @@ final class AXWindowRestoreService: WindowRestoreService {
         // Issue72_5 (Phase 5): Moom 스타일 최후 폴백 (loose 모드 전용)
         // 매칭 실패한 target 들을 앱별로 그룹핑하고, 같은 앱의 살아있는 창 개수가 같으면
         // windowOrder 순으로 위치 배분. "내용은 모르겠지만 자리는 맞춰주기" 시나리오.
-        if basePolicy.moomFallbackEnabled && !pendingWindows.isEmpty {
+        // Issue72_7 (Phase 7-1): dryRun 시 Moom 폴백 비활성 (매칭 시뮬만)
+        if basePolicy.moomFallbackEnabled && !pendingWindows.isEmpty && !dryRun {
             let runningApps = await MainActor.run { NSWorkspace.shared.runningApplications }
             let pendingByApp = Dictionary(grouping: pendingWindows, by: { $0.app })
             for (appName, appTargets) in pendingByApp {

@@ -96,8 +96,8 @@ final class AppState {
         weak var weakSelf: AppState? = nil // set after init
         let handlers = RESTServerHandlers(
             captureCurrentWindows: { filterApps in wm.captureCurrentWindows(filterApps: filterApps) },
-            restoreWindows: { windows, maxRetries, retryInterval, minimumScore, enableParallel, mode in
-                await wm.restoreWindows(windows, maxRetries: maxRetries, retryInterval: retryInterval, minimumScore: minimumScore, enableParallel: enableParallel, mode: mode)
+            restoreWindows: { windows, maxRetries, retryInterval, minimumScore, enableParallel, mode, dryRun in
+                await wm.restoreWindows(windows, maxRetries: maxRetries, retryInterval: retryInterval, minimumScore: minimumScore, enableParallel: enableParallel, mode: mode, dryRun: dryRun)
             },
             runningAppNames: { wm.runningAppNames() },
             isAccessibilityGranted: { wm.isAccessibilityGranted() },
@@ -338,7 +338,8 @@ final class AppState {
                     retryInterval: self.settings.retryInterval,
                     minimumScore: self.settings.minimumMatchScore,
                     enableParallel: self.settings.enableParallelRestore ?? true,
-                    mode: .normal
+                    mode: .normal,
+                    dryRun: false
                 )
                 // Phase 2B: requiredApps 자동 실행/숨기기
                 await self.appLauncherService.applyAppConfigs(mode.requiredApps)

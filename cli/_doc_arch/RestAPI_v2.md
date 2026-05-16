@@ -183,6 +183,23 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 * **빌트인**: Safari, Chrome, Edge, Firefox, Code(VSCode), Cursor, Slack, iTerm2, Terminal, Xcode (Top 10)
 * **WindowInfo 필드**: 정규화 결과는 `window`에 저장. 원본은 `windowRaw`에 보존 (정규화 결과가 원본과 다를 때만)
 
+## 4.11 Interactive / Dry-run (Issue72_7 Phase 7-1)
+
+매칭만 시뮬레이션하고 실제 적용·검증 스킵.
+
+```bash
+curl -X POST http://localhost:3016/api/v2/layouts/work/restore \
+  -H "Content-Type: application/json" \
+  -d '{"interactive": true}'
+```
+
+* `interactive: true` 또는 `dryRun: true` — 둘 중 하나만 켜도 활성 (동의어)
+* 결과 `success`: 항상 false (적용 안 됨)
+* 결과 `matchedTitle`: `(dry-run) {원본 타이틀}` 형식
+* Moom 폴백·재시도 비활성 (1회 매칭 시뮬만)
+* 용도: paidApp 후보 선택 다이얼로그 사전 조회 — 사용자가 매칭 후보 확인 후 별도 액션으로 실제 적용
+* 한계 (PoC 단계): 적용 액션은 별도 엔드포인트 미구현. paidApp UI 도입 시 함께 설계
+
 ## 4.10 MatchMode (Issue72_5 Phase 5)
 
 `POST /api/v2/layouts/{name}/restore`의 `mode` 파라미터로 매칭 정책 선택. 호출 단위·창 단위(`WindowInfo.matchMode`) 두 레벨.
