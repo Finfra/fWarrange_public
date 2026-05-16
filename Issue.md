@@ -4,30 +4,10 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 74
+* Issue HWM: 75
 * Save Point: 2026-05-16 (Issue74 종결 — 복구 응답에 failures 배열 노출)
   - fc33e79 (2026-05-16) - Feat(Issue74)(REST): 레이아웃 복구 응답에 실패 윈도우 상세 정보 노출
-  - 0580ad8 (2026-05-16) - Fix(Issue73): ChangeTracker 발행 누락 + LayoutManager SSOT 이관
-  - 4be2c7a (2026-05-16) - Docs(Issue72): 창 인식률 개선 7-Phase 통합 종결 + 보고서 작성
-  - 376647a (2026-05-16) - Docs(Issue72_7): Phase 7-1 cliApp PoC 완료 마킹 + task 진행현황 갱신
-  - 1d4246d (2026-05-16) - Feat(Issue72_7)(Phase 7-1): interactive dry-run 매칭 시뮬레이션 (cliApp 측)
-  - 1eab541 (2026-05-16) - Docs(Issue72_6): Phase 6 완료 마킹 + task 진행현황 갱신
-  - dc0f36f (2026-05-16) - Feat(Issue72_6)(Phase 6): Spaces(spaceId) + PWA(originURL) 식별자 도입
-  - 4650842 (2026-05-16) - Docs(Issue72_5): Phase 5 완료 마킹 + task 진행현황 갱신
-  - 48df335 (2026-05-16) - Feat(Issue72_5)(Phase 5): 매칭 모드 (strict/normal/loose) + Moom 스타일 폴백
-  - 83cdadf (2026-05-15) - Docs(Issue72_4): Phase 4 완료 마킹 + task 진행현황 갱신 + 후속 이슈후보 등록
-  - c4162f6 (2026-05-15) - Feat(Issue72_4)(Phase 4): 점수 함수 개선 — distance 가산 + areaMatch 비활성화 옵션
-  - f5f8159 (2026-05-15) - Docs(Issue72_3): Phase 3 완료 마킹 + task 진행현황 갱신
-  - a776be1 (2026-05-15) - Feat(Issue72_3)(Phase 3): 타이틀 정규화 룰셋 (TitleNormalizer + REST CRUD)
-  - 4b67e9d (2026-05-15) - Docs(Issue72_2): Phase 2 완료 마킹 + task 진행현황 갱신
-  - 1899014 (2026-05-15) - Feat(Issue72_2)(Phase 2): 데이터 수집 확장 — windowOrder + displayUUID
-  - ff8811d (2026-05-15) - Docs(Issue72_1): task 진행현황 + 베이스라인 검토일 결정사항 추가
-  - 8f09955 (2026-05-15) - Docs(Issue72_1): Phase 1 코드 완료 마킹 + Save Point 갱신
-  - 02d2bd0 (2026-05-15) - Feat(Issue72_1)(Phase 1): 창 복구 매칭 누적 통계 인프라
-  - 917f2a1 (2026-05-15) - Docs(Issue72): 창 인식률 개선 — 7-Phase 통합 작업 등록
-  - 7b41337 (2026-05-08) - Fix(Restore): Issue71 — bundleId 우선 매칭으로 ownerName↔localizedName 불일치 앱 복구
-  - c47bbcd (2026-05-05) - Docs: Close Issue70
-  - 1a375a1 (2026-05-04) - Feat(MenuBar): Issue69 — paidApp 동작 시 About/Open Main Window 분기
+
 
 
 # 🤔 결정사항
@@ -45,6 +25,17 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+## Issue75: PaidAppMonitor terminate 핸들러 — 잔존 인스턴스 무시하여 .cliOnly 오전환 (등록: 2026.05.17)
+* 목적: paidApp 다중/단명 인스턴스 발생 시 한 인스턴스 종료만으로 메뉴바가 cliApp 아이콘으로 잘못 복원되는 문제 해결
+* 상세: 
+- 현상: paidApp 활성 상태인데 메뉴바 아이콘이 cliApp 아이콘으로 표시됨
+- 재현 로그: ~/Documents/finfra/fWarrangeData/logs/wlog.log 23:43:26~27 구간 — pid 61357 launch→terminate 직후 잔존 pid 60997 무시하고 .cliOnly 전환
+- 위치: cli/fWarrangeCli/Managers/PaidAppMonitor.swift:53-67 didTerminateApplicationNotification 핸들러
+- 구현: terminate 핸들러에서 NSRunningApplication.runningApplications(withBundleIdentifier: paidAppBundleId) 잔존 체크 추가
+- 잔존 인스턴스 존재 시 state 유지 + onTerminateCallback 호출 금지
+- 잔존 없을 때만 .cliOnly 전환 + cleanup callback 실행
+- 검증: cliApp 재기동 후 paidApp 살아있는 상태에서 paidApp 단명 인스턴스 발생 시 메뉴바 아이콘 paidApp 활성 유지 확인
+
 
 # 📗 선택
 
