@@ -1314,11 +1314,12 @@ final class RESTServer: RESTServerProtocol {
 
             do {
                 try self.handlers.saveLayout(name, windows)
+                // Issue73: 발행은 LayoutManager.saveLayout이 SSOT로 처리 (layout.created/updated)
                 if self.handlers.getDefaultLayoutName() == nil {
                     self.handlers.setDefaultLayoutName(name)
+                    ChangeTracker.shared.record(type: "settings.changed", target: "defaultLayout")
                 }
                 NotificationCenter.default.post(name: .restCaptureCompleted, object: nil)
-                ChangeTracker.shared.record(type: "layout.created", target: name)
                 let data: [String: Any] = [
                     "name": name,
                     "windowCount": windows.count,
@@ -1423,8 +1424,7 @@ final class RESTServer: RESTServerProtocol {
             do {
                 try self.handlers.renameLayout(name, newName)
                 NotificationCenter.default.post(name: .restLayoutRenamed, object: nil)
-                ChangeTracker.shared.record(type: "layout.deleted", target: name)
-                ChangeTracker.shared.record(type: "layout.created", target: newName)
+                // Issue73: 발행은 LayoutManager.renameLayout이 SSOT로 처리
                 completion(.ok(json: [
                     "status": "ok",
                     "data": ["oldName": name, "newName": newName]
@@ -1450,7 +1450,7 @@ final class RESTServer: RESTServerProtocol {
             do {
                 try self.handlers.deleteLayout(name)
                 NotificationCenter.default.post(name: .restLayoutDeleted, object: nil)
-                ChangeTracker.shared.record(type: "layout.deleted", target: name)
+                // Issue73: 발행은 LayoutManager.deleteLayout이 SSOT로 처리
                 completion(.ok(json: ["status": "ok", "data": ["deleted": name]]))
             } catch {
                 completion(.internalError(message: "레이아웃 '\(name)' 삭제 중 오류가 발생했습니다"))
@@ -1471,7 +1471,7 @@ final class RESTServer: RESTServerProtocol {
                 let count = self.handlers.getLayouts().count
                 try self.handlers.deleteAllLayouts()
                 NotificationCenter.default.post(name: .restLayoutDeleted, object: nil)
-                ChangeTracker.shared.record(type: "layout.deleted", target: "*")
+                // Issue73: 발행은 LayoutManager.deleteAllLayouts이 SSOT로 처리 (target="*")
                 completion(.ok(json: ["status": "ok", "data": ["deletedCount": count]]))
             } catch {
                 completion(.internalError(message: "레이아웃 전체 삭제에 실패했습니다"))
@@ -1570,6 +1570,8 @@ final class RESTServer: RESTServerProtocol {
             return
         }
         handlers.setDefaultLayoutName(name)
+        // Issue73 Phase A: 누락 발행 보강 — paidApp 적응형 폴링이 기본 레이아웃 변경 인지
+        ChangeTracker.shared.record(type: "settings.changed", target: "defaultLayout")
         completion(.ok(json: ["status": "ok", "data": ["defaultLayoutName": name]]))
     }
 

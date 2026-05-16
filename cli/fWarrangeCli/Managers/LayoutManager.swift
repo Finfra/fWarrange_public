@@ -77,10 +77,13 @@ final class LayoutManager {
     // MARK: - CRUD
 
     func saveLayout(name: String, windows: [WindowInfo]) throws {
+        // Issue73 Phase B: SSOT 이관 — 덮어쓰기 여부 판정 후 발행
+        let existed = layouts.contains { $0.name == name }
         try storageService.save(name: name, windows: windows)
         loadMetadataList()
         selectedMetadata = layouts.first(where: { $0.name == name })
         loadDetail(name: name)
+        ChangeTracker.shared.record(type: existed ? "layout.updated" : "layout.created", target: name)
     }
 
     func deleteLayout(name: String) throws {
@@ -95,6 +98,8 @@ final class LayoutManager {
                 selectedLayoutDetail = nil
             }
         }
+        // Issue73 Phase B: SSOT 이관
+        ChangeTracker.shared.record(type: "layout.deleted", target: name)
     }
 
     func deleteAllLayouts() throws {
@@ -102,6 +107,8 @@ final class LayoutManager {
         layouts = []
         selectedMetadata = nil
         selectedLayoutDetail = nil
+        // Issue73 Phase B: SSOT 이관 — 전체 삭제는 target="*"
+        ChangeTracker.shared.record(type: "layout.deleted", target: "*")
     }
 
     func removeWindows(layoutName: String, windowIds: Set<Int>) throws {
@@ -112,6 +119,8 @@ final class LayoutManager {
         loadMetadataList()
         selectedMetadata = layouts.first(where: { $0.name == layoutName })
         loadDetail(name: layoutName)
+        // Issue73 Phase B: SSOT 이관 — Phase A 누락 발행 보강
+        ChangeTracker.shared.record(type: "layout.updated", target: layoutName)
     }
 
     func updateWindowPositions(layoutName: String, screenRect: CGRect, delta: CGSize) throws {
@@ -145,6 +154,8 @@ final class LayoutManager {
         loadMetadataList()
         selectedMetadata = layouts.first(where: { $0.name == layoutName })
         loadDetail(name: layoutName)
+        // Issue73 Phase B+C: SSOT 이관 + 미니맵 드래그 등 연속 호출 폭주 방지 throttle
+        ChangeTracker.shared.record(type: "layout.updated", target: layoutName, throttle: true)
     }
 
     // MARK: - 일괄 삭제
@@ -164,6 +175,10 @@ final class LayoutManager {
                 selectedLayoutDetail = nil
             }
         }
+        // Issue73 Phase B: SSOT 이관 — 각 name마다 layout.deleted
+        for name in names {
+            ChangeTracker.shared.record(type: "layout.deleted", target: name)
+        }
     }
 
     func renameLayout(oldName: String, newName: String) throws {
@@ -171,5 +186,8 @@ final class LayoutManager {
         loadMetadataList()
         selectedMetadata = layouts.first(where: { $0.name == newName })
         loadDetail(name: newName)
+        // Issue73 Phase B: SSOT 이관 — SSOT §6.4 매핑 (deleted oldName + created newName)
+        ChangeTracker.shared.record(type: "layout.deleted", target: oldName)
+        ChangeTracker.shared.record(type: "layout.created", target: newName)
     }
 }

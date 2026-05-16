@@ -27,14 +27,31 @@ final class ChangeTracker {
     private var history: [ChangeEvent] = []
     private let maxHistory = 100
     private let lock = NSLock()
+    /// Issue73 Phase C: throttle 옵션 적용 시 동일 (type, target) 이벤트가 이 간격 이내면 무시
+    private let throttleInterval: TimeInterval = 0.1
 
     private init() {}
 
     /// 변경 이벤트 기록. seq를 자동 증가시키고 링버퍼에 추가.
+    /// Issue73 Phase C: throttle=true 시 동일 (type, target) 이벤트가 throttleInterval 이내면
+    /// 새 seq를 발급하지 않고 직전 seq를 반환 (폭주 방지).
     @discardableResult
-    func record(type: String, target: String) -> Int {
+    func record(type: String, target: String, throttle: Bool = false) -> Int {
         lock.lock()
         defer { lock.unlock() }
+
+        if throttle {
+            // 뒤에서부터 동일 (type, target) 이벤트 탐색
+            for event in history.reversed() {
+                if event.type == type && event.target == target {
+                    if Date().timeIntervalSince(event.timestamp) < throttleInterval {
+                        logD("[ChangeTracker] throttle skip type=\(type) target=\(target) (seq=\(event.seq) 재사용)")
+                        return event.seq
+                    }
+                    break
+                }
+            }
+        }
 
         currentSeq += 1
         let event = ChangeEvent(seq: currentSeq, type: type, target: target, timestamp: Date())

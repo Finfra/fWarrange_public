@@ -544,13 +544,14 @@ final class AppState {
             let name = layoutManager.nextDailySequenceName()
             let windows = windowManager.captureCurrentWindows(filterApps: nil)
             try? layoutManager.saveLayout(name: name, windows: windows)
-            ChangeTracker.shared.record(type: "layout.created", target: name)
+            // Issue73: 발행은 LayoutManager.saveLayout이 SSOT로 처리 (layout.created/updated)
             logI("⌨️ 단축키 저장: '\(name)'")
             if settings.defaultLayoutName == nil {
                 var s = settingsService.load()
                 s.defaultLayoutName = name
                 settingsService.save(s)
                 settings.defaultLayoutName = name
+                ChangeTracker.shared.record(type: "settings.changed", target: "defaultLayout")
                 logI("⭐ 첫 레이아웃을 기본으로 자동 설정: '\(name)'")
             }
         case .restoreDefault:
