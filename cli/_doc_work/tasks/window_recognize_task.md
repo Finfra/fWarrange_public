@@ -11,13 +11,15 @@ design: cli/_doc_arch/window_recognize.md
 
 | Phase | 이슈        | 상태                                  | 커밋·메모                                                    |
 | :---: | :---------- | :------------------------------------ | :----------------------------------------------------------- |
-|   1   | Issue72_1   | 🟢 코드 완료 · 베이스라인 수집 대기   | 코드 `02d2bd0` · 1.6은 1주일 실사용 데이터 수집 후 보고서 작성 |
+|   1   | Issue72_1   | 🟢 완료 (코드)                         | 코드 `02d2bd0` · Task 1.6 베이스라인 보고서는 2026-05-22 후속 별도 작업 |
 |   2   | Issue72_2   | 🟢 완료                                | 커밋 `1899014` · 4-monitor UUID 4종 / windowOrder 다중창 순차 검증 |
 |   3   | Issue72_3   | 🟢 완료                                | 커밋 `a776be1` · 빌트인 10개 룰 / VSCode 13창 정규화 / PUT·DELETE 사이클 |
 |   4   | Issue72_4   | 🟢 완료                                | 커밋 `c4162f6` · distance 0~9점 가산 / areaMatchEnabled 옵션 / 탭 PATCH Bool false 버그 후속 이슈 |
 |   5   | Issue72_5   | 🟢 완료                                | 커밋 `48df335` · 3 모드 e2e 57/57 / Moom 폴백 구현 / WindowInfo.matchMode override |
 |   6   | Issue72_6   | 🟢 완료                                | 커밋 `dc0f36f` · CGSCopySpacesForWindows PoC · spaceId 56창 일관 · originURL Chromium 어댑터 |
-|   7   | Issue72_7   | 🟡 cliApp PoC 완료                     | 커밋 `1d4246d` · dry-run REST 동작 (interactive=true) · paidApp UI는 별도 레포 후속 |
+|   7   | Issue72_7   | 🟢 완료 (cliApp PoC)                   | 커밋 `1d4246d` · dry-run REST · paidApp UI는 별도 레포 후속 |
+
+**부모 Issue72**: 🟢 종결 (2026-05-16) — 보고서 [`report/window_recognize_issue72_report.md`](../report/window_recognize_issue72_report.md)
 
 * 🟢 진행 완료 · 🟡 진행 중 · ⚪ 대기
 
