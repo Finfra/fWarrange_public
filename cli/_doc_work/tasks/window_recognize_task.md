@@ -17,7 +17,7 @@ design: cli/_doc_arch/window_recognize.md
 |   4   | Issue72_4   | 🟢 완료                                | 커밋 `c4162f6` · distance 0~9점 가산 / areaMatchEnabled 옵션 / 탭 PATCH Bool false 버그 후속 이슈 |
 |   5   | Issue72_5   | 🟢 완료                                | 커밋 `48df335` · 3 모드 e2e 57/57 / Moom 폴백 구현 / WindowInfo.matchMode override |
 |   6   | Issue72_6   | 🟢 완료                                | 커밋 `dc0f36f` · CGSCopySpacesForWindows PoC · spaceId 56창 일관 · originURL Chromium 어댑터 |
-|   7   | Issue72_7   | ⚪ 대기                                | Phase 5 후 진행 (paidApp 별도 레포 작업 포함)                |
+|   7   | Issue72_7   | 🟡 cliApp PoC 완료                     | 커밋 `1d4246d` · dry-run REST 동작 (interactive=true) · paidApp UI는 별도 레포 후속 |
 
 * 🟢 진행 완료 · 🟡 진행 중 · ⚪ 대기
 
@@ -432,27 +432,58 @@ design: cli/_doc_arch/window_recognize.md
 | OriginURLExtractor 프로토콜 | 인터페이스 분리 | 단일 `extractOriginURL` 함수 | 어댑터 1개라 과설계. 향후 Safari PWA 추가 시 분리 검토 |
 | appMatches 다중 식별자 매칭 | 본 Phase 포함 | **후속 이슈로 분리** | 매칭 거부 로직은 회귀 위험. 베이스라인 후 결정 |
 
-# Phase 7 — 사용자 개입 UI (C-4)
+# Phase 7 — 사용자 개입 UI (C-4) — 🟡 cliApp PoC 완료 / paidApp UI 후속
 
-## Phase 7-1: cliApp 측
+> **이슈**: Issue72_7 · **커밋**: `1d4246d`
 
-### Task 7-1.1: 애매 매칭 검출
+## Phase 7-1: cliApp 측 — 🟡 PoC (dry-run 단순화)
 
-* [ ] 매칭 score < 50 또는 동률 다중 매치 케이스 검출 로직
-* [ ] 후보 리스트 데이터 구조: `MatchCandidate { axElement, title, score, matchType }`
+### Task 7-1.1: 애매 매칭 검출 — ⏳ 단순화
 
-### Task 7-1.2: interactive REST API
+* [ ] **본 Phase는 dry-run 전체 매칭 시뮬레이션으로 단순화** (애매 케이스 별도 검출 로직 미구현)
+* [ ] MatchCandidate·InteractiveSession 세션 토큰 관리 — paidApp UI 설계 후 함께 도입
+* 사유: 애매 케이스 별도 검출은 paidApp UI 없이 단독 가치 낮음. dry-run 전체 시뮬이 PoC로 충분
 
-* [ ] `POST /api/v2/layouts/{name}/restore`에 `interactive: true` 옵션
-* [ ] interactive 모드에서 애매 케이스를 즉시 적용하지 않고 응답에 후보 포함
-* [ ] `POST /api/v2/layouts/{name}/restore/resolve` — 사용자 선택 결과 수신·적용
-* [ ] non-interactive (기본): 자동 매칭 (자동화 안정성)
-* [ ] paidApp 미실행 시 normal 모드 fallback
+### Task 7-1.2: interactive REST API ✅ (dry-run 한정)
 
-### Task 7-1.3: openapi·문서 동기화
+* [x] `POST /api/v2/layouts/{name}/restore` body에 `interactive: true` 또는 `dryRun: true` (동의어)
+* [x] interactive=true 시 매칭만 시뮬레이션, applyAndVerify·Moom 폴백·재시도 모두 스킵
+* [x] 결과: `success=false`, `matchedTitle="(dry-run) {원본}"`, `score`·`matchType`은 정상
+* [x] non-interactive (기본): 자동 매칭 (회귀 없음 — 56/56 정상 적용)
+* [ ] **`POST /api/v2/layouts/{name}/restore/resolve` — paidApp UI 도입 시 설계**
+* [ ] paidApp 미실행 fallback — paidApp UI 도입 시
 
-* [ ] `openapi_v2.yaml` interactive 옵션·resolve 엔드포인트 추가
-* [ ] `RestAPI_v2.md` 5.x 섹션 갱신
+### Task 7-1.3: openapi·문서 동기화 ✅
+
+* [x] `openapi_v2.yaml` `RestoreRequest.interactive`/`dryRun` 필드 추가
+* [x] `RestAPI_v2.md` §4.11 신설
+
+## Phase 7-2: paidApp 측 (별도 레포 작업) — ⚪ 대기
+
+* paidApp 레포에서 진행
+* `RESTCLIClient`에 dry-run 응답 파싱·렌더링
+* 후보 카드 다이얼로그 + 썸네일·다국어
+* resolve 엔드포인트 함께 설계
+
+## Phase 7-3: 학습 (선택) — ⚪ 보류
+
+* 베이스라인(Task 1.6) 결과 후 결정. 자동 매칭이 충분하면 불필요
+
+## Phase 7 검증
+
+* [x] dry-run vs 실제 적용 비교 e2e:
+    - dry-run: total=56, succeeded=0, failed=56, `matchedTitle="(dry-run) ..."`, score=100 정상
+    - 실제 적용: 56/56 succeeded=56 (회귀 없음)
+* [x] xcodebuild Debug 통과
+
+## Phase 7 설계 변경 사항
+
+| 항목 | 계획 | 실제 | 사유 |
+| :--- | :--- | :--- | :--- |
+| 애매 매칭 검출 | score<50 또는 동률 다중 매치 검출 | **전체 dry-run으로 단순화** | paidApp UI 없이 단독 가치 낮음. PoC로 dry-run이 충분 |
+| MatchCandidate 모델 | 별도 구조체 + InteractiveSession actor | **미구현 (후속)** | 세션 토큰 관리는 paidApp UI 설계와 함께 |
+| resolve 엔드포인트 | 본 Phase 포함 | **paidApp UI 도입 시** | 적용 액션 설계는 UI와 결합 |
+| interactive 키워드 | `interactive` 단일 | `interactive` OR `dryRun` (동의어) | 의미 명확성 + 클라이언트 친화 |
 
 ## Phase 7-2: paidApp 측 (별도 레포 작업)
 

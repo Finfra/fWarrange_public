@@ -5,7 +5,9 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 72
-* Save Point: 2026-05-16 (Issue72_6 Phase 6 완료 — Spaces(spaceId) + PWA(originURL))
+* Save Point: 2026-05-16 (Issue72_7 Phase 7-1 완료 — interactive dry-run PoC)
+  - 1d4246d (2026-05-16) - Feat(Issue72_7)(Phase 7-1): interactive dry-run 매칭 시뮬레이션 (cliApp 측)
+  - 1eab541 (2026-05-16) - Docs(Issue72_6): Phase 6 완료 마킹 + task 진행현황 갱신
   - dc0f36f (2026-05-16) - Feat(Issue72_6)(Phase 6): Spaces(spaceId) + PWA(originURL) 식별자 도입
   - 4650842 (2026-05-16) - Docs(Issue72_5): Phase 5 완료 마킹 + task 진행현황 갱신
   - 48df335 (2026-05-16) - Feat(Issue72_5)(Phase 5): 매칭 모드 (strict/normal/loose) + Moom 스타일 폴백
@@ -113,7 +115,7 @@ date: 2026-04-07
     - Task 6-1.1~6-1.4, Task 6-2.1~6-2.4
     - 검증: Space 분산 e2e, Chrome PWA vs 일반 Chrome 구분, Issue71 회귀 없음
 
-## Issue72_7: [Feat] Phase 7 — 사용자 개입 UI (interactive REST + paidApp 다이얼로그) (등록: 2026-05-15)
+## Issue72_7: [Feat] Phase 7 — 사용자 개입 UI (interactive REST + paidApp 다이얼로그) (등록: 2026-05-15) (🟡 cliApp PoC 완료, 1d4246d — paidApp UI는 별도 레포 후속)
 * 목적: 자동 매칭이 애매할 때 paidApp 후보 선택 다이얼로그로 사용자 개입 경로 제공.
 * 상세:
     - cliApp: 애매 케이스(<50점 또는 동률 다중매치) 검출, `interactive: true` 옵션, `resolve` 엔드포인트
