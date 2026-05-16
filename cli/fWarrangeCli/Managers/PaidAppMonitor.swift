@@ -57,12 +57,21 @@ final class PaidAppMonitor {
         ) { [weak self] notification in
             guard let self,
                   let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                  app.bundleIdentifier == "kr.finfra.fWarrange" else { return }
+                  app.bundleIdentifier == self.paidAppBundleId else { return }
             Task { @MainActor [weak self] in
-                self?.state = .cliOnly
+                guard let self else { return }
+                // Issue75: paidApp 다중/단명 인스턴스 보호 — 잔존 인스턴스가 있으면 .cliOnly 전환 금지
+                let stillRunning = !NSRunningApplication.runningApplications(
+                    withBundleIdentifier: self.paidAppBundleId
+                ).isEmpty
+                if stillRunning {
+                    logI("🎯 PaidAppMonitor: paidApp 인스턴스 종료(pid=\(app.processIdentifier))이나 다른 인스턴스 잔존 → 상태 유지")
+                    return
+                }
+                self.state = .cliOnly
                 logI("🎯 PaidAppMonitor: paidApp 종료 감지 → .cliOnly (pid=\(app.processIdentifier))")
                 // onTerminate 콜백 실행 (AppState의 cleanup 로직)
-                self?.onTerminateCallback?(app)
+                self.onTerminateCallback?(app)
             }
         }
     }

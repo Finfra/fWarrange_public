@@ -27,14 +27,19 @@ date: 2026-04-07
 # 📙 일반
 ## Issue75: PaidAppMonitor terminate 핸들러 — 잔존 인스턴스 무시하여 .cliOnly 오전환 (등록: 2026.05.17)
 * 목적: paidApp 다중/단명 인스턴스 발생 시 한 인스턴스 종료만으로 메뉴바가 cliApp 아이콘으로 잘못 복원되는 문제 해결
-* 상세: 
-- 현상: paidApp 활성 상태인데 메뉴바 아이콘이 cliApp 아이콘으로 표시됨
-- 재현 로그: ~/Documents/finfra/fWarrangeData/logs/wlog.log 23:43:26~27 구간 — pid 61357 launch→terminate 직후 잔존 pid 60997 무시하고 .cliOnly 전환
-- 위치: cli/fWarrangeCli/Managers/PaidAppMonitor.swift:53-67 didTerminateApplicationNotification 핸들러
-- 구현: terminate 핸들러에서 NSRunningApplication.runningApplications(withBundleIdentifier: paidAppBundleId) 잔존 체크 추가
-- 잔존 인스턴스 존재 시 state 유지 + onTerminateCallback 호출 금지
-- 잔존 없을 때만 .cliOnly 전환 + cleanup callback 실행
-- 검증: cliApp 재기동 후 paidApp 살아있는 상태에서 paidApp 단명 인스턴스 발생 시 메뉴바 아이콘 paidApp 활성 유지 확인
+* 상세:
+    - 현상: paidApp 활성 상태인데 메뉴바 아이콘이 cliApp 아이콘으로 표시됨
+    - 재현 로그: `~/Documents/finfra/fWarrangeData/logs/wlog.log` 23:43:26~27 구간 — pid 61357 launch→terminate 직후 잔존 pid 60997 무시하고 `.cliOnly` 전환
+    - 위치: `cli/fWarrangeCli/Managers/PaidAppMonitor.swift:53-67` `didTerminateApplicationNotification` 핸들러
+* 구현 명세:
+    - **파일**: `cli/fWarrangeCli/Managers/PaidAppMonitor.swift`
+    - **변경 함수**: `startObserving(onTerminate:)` 내부 `didTerminateApplicationNotification` 클로저
+    - **변경 로직**:
+        - terminate 알림 수신 후 `Task { @MainActor }` 본문에서 `NSRunningApplication.runningApplications(withBundleIdentifier: self.paidAppBundleId).isEmpty` 잔존 체크 추가
+        - 잔존 인스턴스 존재 시: state 유지 + `onTerminateCallback` 호출 금지 + 정보 로그만 기록 후 early return
+        - 잔존 없을 때만: `state = .cliOnly` + 기존 로그 + `onTerminateCallback?(app)` 실행
+    - **부가 정리**: `app.bundleIdentifier == "kr.finfra.fWarrange"` 하드코딩을 `self.paidAppBundleId` 상수 참조로 통일
+    - **검증**: Release 빌드 `BUILD SUCCEEDED` 확인. cliApp 재기동 후 paidApp 살아있는 상태에서 paidApp 단명 인스턴스(launchPaidApp self-terminate 등) 발생 시 메뉴바 아이콘이 paidApp 활성 유지되어야 함
 
 
 # 📗 선택
