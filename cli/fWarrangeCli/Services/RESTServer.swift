@@ -1389,6 +1389,29 @@ final class RESTServer: RESTServerProtocol {
 
                 logI("[REST] restore 완료 - 성공: \(succeeded)/\(total)")
 
+                // Issue74: paidApp Issue246 선수 — 실패 윈도우 식별 정보 + 사유 분류
+                let runningBundleIDs = Set(NSWorkspace.shared.runningApplications.compactMap { $0.bundleIdentifier })
+                let runningAppNames = Set(NSWorkspace.shared.runningApplications.compactMap { $0.localizedName })
+
+                let failures: [[String: Any]] = results.filter { !$0.success }.map { result in
+                    let w = result.targetWindow
+                    let reason = Self.classifyRestoreFailure(
+                        result: result,
+                        minimumScore: minimumScore,
+                        runningAppNames: runningAppNames,
+                        runningBundleIDs: runningBundleIDs
+                    )
+                    return [
+                        "app": w.app,
+                        "title": w.window,
+                        "layer": w.layer,
+                        "id": w.id,
+                        "pos": ["x": w.pos.x, "y": w.pos.y],
+                        "size": ["width": w.size.width, "height": w.size.height],
+                        "reason": reason
+                    ]
+                }
+
                 let data: [String: Any] = [
                     "total": total,
                     "succeeded": succeeded,
@@ -1402,7 +1425,8 @@ final class RESTServer: RESTServerProtocol {
                             "score": result.score,
                             "success": result.success
                         ]
-                    }
+                    },
+                    "failures": failures
                 ]
 
                 completion(.ok(json: ["status": "ok", "data": data]))
@@ -1625,6 +1649,30 @@ final class RESTServer: RESTServerProtocol {
             }
         }
         return nil
+    }
+
+    /// Issue74 (paidApp Issue246 선수): 복구 실패 1건의 사유를 분류.
+    /// 실패한 `WindowMatchResult`만 호출 대상. 단순 휴리스틱 기반.
+    static func classifyRestoreFailure(
+        result: WindowMatchResult,
+        minimumScore: Int,
+        runningAppNames: Set<String>,
+        runningBundleIDs: Set<String>
+    ) -> String {
+        let app = result.targetWindow.app
+        let appRunning = runningAppNames.contains(app) || runningBundleIDs.contains(app)
+
+        if !appRunning && result.matchType == .noMatch && result.score == 0 {
+            return "appNotRunning"
+        }
+        if result.matchType == .noMatch || result.score == 0 {
+            return "windowNotFound"
+        }
+        if result.score < minimumScore {
+            return "belowMinimumScore"
+        }
+        // 점수 충분하지만 success=false → AX 조작 실패 추정
+        return "axOperationFailed"
     }
 }
 

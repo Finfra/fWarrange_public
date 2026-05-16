@@ -926,6 +926,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RestoreResponse'
+              examples:
+                allSuccess:
+                  summary: All windows restored successfully
+                  value:
+                    status: ok
+                    data:
+                      total: 55
+                      succeeded: 55
+                      failed: 0
+                      results: []
+                      failures: []
+                partialFailure:
+                  summary: Partial failure (Issue74 — failures array populated)
+                  value:
+                    status: ok
+                    data:
+                      total: 55
+                      succeeded: 54
+                      failed: 1
+                      results: []
+                      failures:
+                        - app: "Visual Studio Code"
+                          title: "Issue.md"
+                          layer: 0
+                          id: 12345
+                          pos: { x: 100, y: 200 }
+                          size: { width: 1200, height: 800 }
+                          reason: "windowNotFound"
         '403':
           description: Accessibility permission not granted
           content:
@@ -1742,8 +1770,49 @@ components:
             results:
               type: array
               items: { $ref: '#/components/schemas/WindowMatchResult' }
+            failures:
+              type: array
+              items: { $ref: '#/components/schemas/RestoreFailureItem' }
+              description: |
+                Issue74 (paidApp Issue246 선수): 복구 실패 윈도우의 상세 정보 (식별 데이터 + 사유).
+                `WindowMatchResult.results` 중 `success == false` 항목과 동일 윈도우를 표현하되
+                paidApp UI 표시용 추가 필드(layer/id/pos/size/reason)를 포함함.
+                전체 성공 시 빈 배열. `failures.length == failed` 보장.
           required: [total, succeeded, failed, results]
       required: [status, data]
+
+    RestoreFailureItem:
+      type: object
+      description: |
+        Issue74: 복구 실패 윈도우 1건의 상세 정보. paidApp 좌하단 경고 메시지 클릭 시
+        팝오버에 표시되며 [내역 복사] 버튼으로 클립보드에 YAML 형태로 복사됨.
+      properties:
+        app: { type: string, description: 앱 프로세스 이름 }
+        title: { type: string, description: 저장 시점 윈도우 타이틀 }
+        layer: { type: integer, description: 윈도우 레이어 (일반 0) }
+        id: { type: integer, description: macOS Window ID (저장 시점) }
+        pos:
+          type: object
+          properties:
+            x: { type: number }
+            y: { type: number }
+          required: [x, y]
+        size:
+          type: object
+          properties:
+            width: { type: number }
+            height: { type: number }
+          required: [width, height]
+        reason:
+          type: string
+          enum: [appNotRunning, windowNotFound, belowMinimumScore, axOperationFailed, other]
+          description: |
+            - appNotRunning: 매칭 시점 해당 앱 프로세스 부재
+            - windowNotFound: 앱은 실행 중이나 매칭 윈도우 부재
+            - belowMinimumScore: 매칭 후보의 best score < threshold (기본 30)
+            - axOperationFailed: AXUIElement 위치·크기 설정 실패
+            - other: 분류 불가
+      required: [app, title, layer, id, pos, size, reason]
 
     RenameRequest:
       type: object
