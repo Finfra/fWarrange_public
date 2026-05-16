@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 73
-* Save Point: 2026-05-16 (Issue72 종결 — 창 인식률 개선 7-Phase cliApp 측 완료)
+* Issue HWM: 74
+* Save Point: 2026-05-16 (Issue74 종결 — 복구 응답에 failures 배열 노출)
+  - fc33e79 (2026-05-16) - Feat(Issue74)(REST): 레이아웃 복구 응답에 실패 윈도우 상세 정보 노출
   - 0580ad8 (2026-05-16) - Fix(Issue73): ChangeTracker 발행 누락 + LayoutManager SSOT 이관
   - 4be2c7a (2026-05-16) - Docs(Issue72): 창 인식률 개선 7-Phase 통합 종결 + 보고서 작성
   - 376647a (2026-05-16) - Docs(Issue72_7): Phase 7-1 cliApp PoC 완료 마킹 + task 진행현황 갱신
@@ -48,6 +49,33 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue74: [REST] 레이아웃 복구 응답에 실패 윈도우 상세 정보 노출 (등록: 2026-05-16, 완료: 2026-05-16, commit: fc33e79) ✅
+* 목적: paidApp Issue246(복구 실패 상세 보기) 선수 작업. `POST /api/v2/layouts/{name}/restore` 응답 `data`에 `failures` 배열을 추가하여 paidApp이 실패한 윈도우의 식별 정보·실패 사유를 표시할 수 있게 함.
+* 선행 관계: 상위 paidApp Issue246의 **선수 이슈**
+* plan: `cli/_doc_work/plan/restore_failures_response_plan.md`
+* 구현 명세:
+    - **Phase 1 — OpenAPI v2 스펙 확장 (`api/openapi_v2.yaml`)**:
+        - `RestoreFailureItem` 스키마 신설 (app/title/layer/id/pos/size/reason)
+        - `reason` enum: appNotRunning, windowNotFound, belowMinimumScore, axOperationFailed, other
+        - `RestoreResponse.data.failures` 필드 추가
+        - 예시 응답 2종 (allSuccess, partialFailure)
+    - **Phase 2 — RESTServer 구현 (`cli/fWarrangeCli/Services/RESTServer.swift handleRestore`)**:
+        - `results.filter { !$0.success }`로 실패 항목 추출
+        - 각 항목에 `targetWindow`의 WindowInfo(app/title/layer/id/pos/size) 매핑
+        - `classifyRestoreFailure` 정적 헬퍼: `NSWorkspace.shared.runningApplications` 기반으로 4 사유 분류
+            - app 미실행 + `matchType==.noMatch` + `score==0` → `appNotRunning`
+            - `matchType==.noMatch` 또는 `score==0` → `windowNotFound`
+            - `score < minimumScore` → `belowMinimumScore`
+            - 그 외 (점수 충분하지만 success=false) → `axOperationFailed`
+        - 응답 `data.failures` 배열 직렬화하여 반환
+* 검증:
+    - `curl -X POST /api/v2/layouts/2026-05-16-6/restore | jq '.data.failures'`로 실패 윈도우 정보 확인 (`{app:"Finder", title:"animationTest", reason:"windowNotFound", ...}`)
+    - `failures.count == failed` 카운트 일치 (27 total, 26 succeeded, 1 failed)
+* 알려진 운영 메모:
+    - Debug 빌드 직접 실행 시 `BrewServiceSync.onAppStart`가 `brew services start`로 위임 후 self-terminate → brew 구버전이 다시 띄워짐
+    - 해결: `brew services stop fwarrange-cli` + `defaults write kr.finfra.fWarrangeCli fwc.autoStartBrewService -bool false` + DerivedData 직접 실행
+
 ## Issue73: [Bug] ChangeTracker 발행 누락 + LayoutManager SSOT 누수 — paidApp 적응형 폴링 변경 알림 결손 (등록: 2026-05-16) (✅ 완료, 0580ad8) ✅
 * 목적: cliApp `ChangeTracker.record(...)` 발행 지점 누락으로 paidApp `/changes` 폴링이 일부 변경을 인지하지 못함. 또한 `LayoutManager` CRUD 메서드 자체에 `record(...)` 호출이 없어 외부 호출 경로(RESTServer 핸들러·`AppState.handleHotKeyAction`)에서만 발행 → 향후 직접 호출 추가 시 누락 위험 상시. 상위 `_doc_arch/paid_cli_protocol.md` §6 SSOT 정합화.
 * 선행 관계: 상위 paidApp 레포 Issue248의 **선수 이슈** (cliApp 측 발행이 보장되어야 paidApp 측 폴링·suspend 보수화의 효과 검증 가능)
