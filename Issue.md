@@ -6,6 +6,7 @@ date: 2026-04-07
 # Issue Management
 * Issue HWM: 75
 * Save Point: 2026-05-16 (Issue74 종결 — 복구 응답에 failures 배열 노출)
+  - 7b2e44b (2026-05-17) - Docs: Close Issue75
   - fc33e79 (2026-05-16) - Feat(Issue74)(REST): 레이아웃 복구 응답에 실패 윈도우 상세 정보 노출
 
 
@@ -25,7 +26,10 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
-## Issue75: PaidAppMonitor terminate 핸들러 — 잔존 인스턴스 무시하여 .cliOnly 오전환 (등록: 2026.05.17)
+# 📗 선택
+
+# ✅ 완료
+## Issue75: PaidAppMonitor terminate 핸들러 — 잔존 인스턴스 무시하여 .cliOnly 오전환 (등록: 2026.05.17) (✅ 완료, 7b2e44b) ✅
 * 목적: paidApp 다중/단명 인스턴스 발생 시 한 인스턴스 종료만으로 메뉴바가 cliApp 아이콘으로 잘못 복원되는 문제 해결
 * 상세:
     - 현상: paidApp 활성 상태인데 메뉴바 아이콘이 cliApp 아이콘으로 표시됨
@@ -42,9 +46,6 @@ date: 2026-04-07
     - **검증**: Release 빌드 `BUILD SUCCEEDED` 확인. cliApp 재기동 후 paidApp 살아있는 상태에서 paidApp 단명 인스턴스(launchPaidApp self-terminate 등) 발생 시 메뉴바 아이콘이 paidApp 활성 유지되어야 함
 
 
-# 📗 선택
-
-# ✅ 완료
 
 ## Issue74: [REST] 레이아웃 복구 응답에 실패 윈도우 상세 정보 노출 (등록: 2026-05-16, 완료: 2026-05-16, commit: fc33e79) ✅
 * 목적: paidApp Issue246(복구 실패 상세 보기) 선수 작업. `POST /api/v2/layouts/{name}/restore` 응답 `data`에 `failures` 배열을 추가하여 paidApp이 실패한 윈도우의 식별 정보·실패 사유를 표시할 수 있게 함.
