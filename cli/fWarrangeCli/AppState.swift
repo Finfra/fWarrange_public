@@ -542,17 +542,33 @@ final class AppState {
         switch action {
         case .save:
             let name = layoutManager.nextDailySequenceName()
-            let windows = windowManager.captureCurrentWindows(filterApps: nil)
-            try? layoutManager.saveLayout(name: name, windows: windows)
-            // Issue73: 발행은 LayoutManager.saveLayout이 SSOT로 처리 (layout.created/updated)
-            logI("⌨️ 단축키 저장: '\(name)'")
-            if settings.defaultLayoutName == nil {
-                var s = settingsService.load()
-                s.defaultLayoutName = name
-                settingsService.save(s)
-                settings.defaultLayoutName = name
-                ChangeTracker.shared.record(type: "settings.changed", target: "defaultLayout")
-                logI("⭐ 첫 레이아웃을 기본으로 자동 설정: '\(name)'")
+            // Issue78: HotKey 트리거 capture도 OperationRegistry 경로 사용 (직렬화 + op.* 이벤트)
+            Task { [weak self] in
+                guard let self = self else { return }
+                guard let opId = await OperationRegistry.shared.register(type: .capture, target: name) else {
+                    logI("⌨️ 단축키 저장 거절 — capture 진행 중")
+                    return
+                }
+                await MainActor.run {
+                    let windows = self.windowManager.captureCurrentWindows(filterApps: nil)
+                    do {
+                        try self.layoutManager.saveLayout(name: name, windows: windows)
+                        // Issue73: 발행은 LayoutManager.saveLayout이 SSOT로 처리 (layout.created/updated)
+                        logI("⌨️ 단축키 저장: '\(name)'")
+                        if self.settings.defaultLayoutName == nil {
+                            var s = self.settingsService.load()
+                            s.defaultLayoutName = name
+                            self.settingsService.save(s)
+                            self.settings.defaultLayoutName = name
+                            ChangeTracker.shared.record(type: "settings.changed", target: "defaultLayout")
+                            logI("⭐ 첫 레이아웃을 기본으로 자동 설정: '\(name)'")
+                        }
+                        Task { await OperationRegistry.shared.complete(opId: opId, success: true) }
+                    } catch {
+                        Task { await OperationRegistry.shared.complete(opId: opId, success: false, reason: "saveFailed") }
+                        logW("⚠️ 단축키 저장 실패: '\(name)' — \(error)")
+                    }
+                }
             }
         case .restoreDefault:
             // defaultLayoutName SSOT 우선 → 미지정 시 fileDate 가장 최근

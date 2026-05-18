@@ -1031,6 +1031,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Capture already in progress (concurrent call rejected)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /operations:
+    get:
+      summary: List currently in-progress long-running operations
+      description: |
+        Returns the list of all in-flight operations (capture, restore, layout.delete,
+        layout.rename, settings.patch, shortcuts.set, factoryReset, etc.).
+        Used by paidApp `OperationProgressTracker` for 1Hz polling while any
+        op is in progress. Empty `operations` array == idle.
+        See paid_cli_protocol.md §6.7.
+      operationId: listOperationsV2
+      tags: [Operations]
+      responses:
+        '200':
+          description: Operations snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationsResponse'
 
   # ---------- Windows ----------
   /windows/current:
@@ -1403,7 +1428,10 @@ components:
         seq: { type: integer, description: 단조 증가 시퀀스 번호 }
         type:
           type: string
-          enum: [layout.created, layout.updated, layout.deleted, settings.changed, shortcuts.changed]
+          enum: [layout.created, layout.updated, layout.deleted, settings.changed, shortcuts.changed, op.started, op.finished, op.failed]
+        opId:
+          type: string
+          description: "Operation ID (UUID v4). Present on op.* events; absent on data-change events. See paid_cli_protocol.md §6.7.3."
         target: { type: string, description: "변경 대상 (레이아웃 이름, 설정 섹션 등)" }
         timestamp: { type: string, format: date-time }
       required: [seq, type, target, timestamp]
@@ -1706,6 +1734,29 @@ components:
               items: { $ref: '#/components/schemas/WindowInfo' }
           required: [name, windowCount, windows]
       required: [status, data]
+
+    Operation:
+      type: object
+      description: |
+        Long-running operation in progress. See paid_cli_protocol.md §6.7.4.
+      properties:
+        opId: { type: string, description: "UUID v4 issued by cliApp OperationRegistry" }
+        type:
+          type: string
+          enum: [capture, restore, layout.delete, layout.rename, settings.patch, shortcuts.set, factoryReset]
+          description: Operation type
+        target: { type: string, description: "Target identifier (layout name, settings section, etc.). May be empty string." }
+        startedAt: { type: string, format: date-time }
+        elapsedMs: { type: integer }
+      required: [opId, type, target, startedAt, elapsedMs]
+
+    OperationsResponse:
+      type: object
+      properties:
+        operations:
+          type: array
+          items: { $ref: '#/components/schemas/Operation' }
+      required: [operations]
 
     RestoreRequest:
       type: object

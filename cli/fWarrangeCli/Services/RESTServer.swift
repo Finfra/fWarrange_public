@@ -597,6 +597,17 @@ final class RESTServer: RESTServerProtocol {
             return true
         }
 
+        // Issue78: 진행 중 operations 스냅샷
+        if method == "GET" && path == "\(base)/operations" {
+            Task {
+                let ops = await OperationRegistry.shared.list()
+                let now = Date()
+                let payload: [[String: Any]] = ops.map { $0.toDict(now: now) }
+                completion(.ok(json: ["operations": payload]))
+            }
+            return true
+        }
+
         // 전체 설정
         if path == "\(base)/settings" {
             if method == "GET" {
@@ -609,9 +620,18 @@ final class RESTServer: RESTServerProtocol {
             }
             if method == "PATCH" {
                 let body = request.jsonBody() ?? [:]
-                let updated = handlers.patchSettings(body)
-                ChangeTracker.shared.record(type: "settings.changed", target: "all")
-                completion(.ok(json: ["status": "ok", "data": updated]))
+                // Issue78: settingsPatch register (동시 허용)
+                Task { [weak self] in
+                    guard let self = self else { return }
+                    guard let opId = await OperationRegistry.shared.register(type: .settingsPatch, target: "all") else {
+                        completion(.conflict(message: "settings PATCH가 이미 진행 중입니다"))
+                        return
+                    }
+                    let updated = self.handlers.patchSettings(body)
+                    ChangeTracker.shared.record(type: "settings.changed", target: "all")
+                    await OperationRegistry.shared.complete(opId: opId, success: true)
+                    completion(.ok(json: ["status": "ok", "data": updated]))
+                }
                 return true
             }
         }
@@ -646,22 +666,31 @@ final class RESTServer: RESTServerProtocol {
                 // 허용된 필드만 통과
                 var filtered: [String: Any] = [:]
                 for k in fields { if let v = body[k] { filtered[k] = v } }
-                _ = handlers.patchSettings(filtered)
                 // 탭 이름 추출 (ex: /settings/general → general)
                 let section = path.split(separator: "/").last.map(String.init) ?? "unknown"
-                ChangeTracker.shared.record(type: "settings.changed", target: section)
-                let full = handlers.getFullSettings()
-                var data: [String: Any] = [:]
-                for k in fields { if let v = full[k] { data[k] = v } }
-                if path.hasSuffix("/restore") { data["excludedApps"] = handlers.getExcludedApps() }
-                if path.hasSuffix("/advanced") {
-                    data["logFilePath"] = handlers.getLogFilePath()
-                    data["effectiveLogLevel"] = Logger.shared.currentLogLevel.description.lowercased()
+                // Issue78: settingsPatch register (동시 허용)
+                Task { [weak self] in
+                    guard let self = self else { return }
+                    guard let opId = await OperationRegistry.shared.register(type: .settingsPatch, target: section) else {
+                        completion(.conflict(message: "동일 settings PATCH가 이미 진행 중입니다"))
+                        return
+                    }
+                    _ = self.handlers.patchSettings(filtered)
+                    ChangeTracker.shared.record(type: "settings.changed", target: section)
+                    let full = self.handlers.getFullSettings()
+                    var data: [String: Any] = [:]
+                    for k in fields { if let v = full[k] { data[k] = v } }
+                    if path.hasSuffix("/restore") { data["excludedApps"] = self.handlers.getExcludedApps() }
+                    if path.hasSuffix("/advanced") {
+                        data["logFilePath"] = self.handlers.getLogFilePath()
+                        data["effectiveLogLevel"] = Logger.shared.currentLogLevel.description.lowercased()
+                    }
+                    if path.hasSuffix("/general") {
+                        data["effectiveHotkeysEnabled"] = !Env.hotkeysDisabled
+                    }
+                    await OperationRegistry.shared.complete(opId: opId, success: true)
+                    completion(.ok(json: ["status": "ok", "data": data]))
                 }
-                if path.hasSuffix("/general") {
-                    data["effectiveHotkeysEnabled"] = !Env.hotkeysDisabled
-                }
-                completion(.ok(json: ["status": "ok", "data": data]))
                 return true
             }
         }
@@ -753,9 +782,18 @@ final class RESTServer: RESTServerProtocol {
                 completion(.badRequest(message: "X-Confirm: true 헤더가 필요합니다"))
                 return true
             }
-            let data = handlers.factoryResetSettings()
-            ChangeTracker.shared.record(type: "settings.changed", target: "all")
-            completion(.ok(json: ["status": "ok", "data": data]))
+            // Issue78: factoryReset register (직렬화 — 동시 호출 시 409)
+            Task { [weak self] in
+                guard let self = self else { return }
+                guard let opId = await OperationRegistry.shared.register(type: .factoryReset, target: "all") else {
+                    completion(.conflict(message: "factoryReset이 이미 진행 중입니다"))
+                    return
+                }
+                let data = self.handlers.factoryResetSettings()
+                ChangeTracker.shared.record(type: "settings.changed", target: "all")
+                await OperationRegistry.shared.complete(opId: opId, success: true)
+                completion(.ok(json: ["status": "ok", "data": data]))
+            }
             return true
         }
 
@@ -1308,26 +1346,36 @@ final class RESTServer: RESTServerProtocol {
         let name = (rawName?.isEmpty ?? true) ? handlers.nextDailySequenceName() : rawName!
         let filterApps = json?["filterApps"] as? [String]
 
-        DispatchQueue.main.async { [weak self] in
+        // Issue78: capture register (직렬화 — 동시 호출 시 409)
+        Task { [weak self] in
             guard let self = self else { return }
-            let windows = self.handlers.captureCurrentWindows(filterApps)
+            guard let opId = await OperationRegistry.shared.register(type: .capture, target: name) else {
+                completion(.conflict(message: "capture가 이미 진행 중입니다"))
+                return
+            }
 
-            do {
-                try self.handlers.saveLayout(name, windows)
-                // Issue73: 발행은 LayoutManager.saveLayout이 SSOT로 처리 (layout.created/updated)
-                if self.handlers.getDefaultLayoutName() == nil {
-                    self.handlers.setDefaultLayoutName(name)
-                    ChangeTracker.shared.record(type: "settings.changed", target: "defaultLayout")
+            DispatchQueue.main.async {
+                let windows = self.handlers.captureCurrentWindows(filterApps)
+
+                do {
+                    try self.handlers.saveLayout(name, windows)
+                    // Issue73: 발행은 LayoutManager.saveLayout이 SSOT로 처리 (layout.created/updated)
+                    if self.handlers.getDefaultLayoutName() == nil {
+                        self.handlers.setDefaultLayoutName(name)
+                        ChangeTracker.shared.record(type: "settings.changed", target: "defaultLayout")
+                    }
+                    NotificationCenter.default.post(name: .restCaptureCompleted, object: nil)
+                    let data: [String: Any] = [
+                        "name": name,
+                        "windowCount": windows.count,
+                        "windows": windows.map { self.windowInfoToDict($0) }
+                    ]
+                    Task { await OperationRegistry.shared.complete(opId: opId, success: true) }
+                    completion(.ok(json: ["status": "ok", "data": data]))
+                } catch {
+                    Task { await OperationRegistry.shared.complete(opId: opId, success: false, reason: "saveFailed") }
+                    completion(.internalError(message: "레이아웃 저장에 실패했습니다: '\(name)'"))
                 }
-                NotificationCenter.default.post(name: .restCaptureCompleted, object: nil)
-                let data: [String: Any] = [
-                    "name": name,
-                    "windowCount": windows.count,
-                    "windows": windows.map { self.windowInfoToDict($0) }
-                ]
-                completion(.ok(json: ["status": "ok", "data": data]))
-            } catch {
-                completion(.internalError(message: "레이아웃 저장에 실패했습니다: '\(name)'"))
             }
         }
     }
@@ -1353,9 +1401,15 @@ final class RESTServer: RESTServerProtocol {
                 completion(.internalError(message: "서버가 해제되었습니다"))
                 return
             }
+            // Issue78: restore register (직렬화 — 동시 호출 시 409)
+            guard let opId = await OperationRegistry.shared.register(type: .restore, target: name) else {
+                completion(.conflict(message: "restore가 이미 진행 중입니다"))
+                return
+            }
             do {
                 // 접근성 권한 확인
                 guard self.handlers.isAccessibilityGranted() else {
+                    await OperationRegistry.shared.complete(opId: opId, success: false, reason: "noAccessibility")
                     completion(.forbidden(message: "Accessibility 권한이 필요합니다. 시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용에서 fWarrangeCli를 추가하세요."))
                     return
                 }
@@ -1429,8 +1483,10 @@ final class RESTServer: RESTServerProtocol {
                     "failures": failures
                 ]
 
+                await OperationRegistry.shared.complete(opId: opId, success: true)
                 completion(.ok(json: ["status": "ok", "data": data]))
             } catch {
+                await OperationRegistry.shared.complete(opId: opId, success: false, reason: "loadFailed")
                 completion(.notFound(message: "레이아웃을 찾을 수 없습니다: \(name)"))
             }
         }
@@ -1443,41 +1499,59 @@ final class RESTServer: RESTServerProtocol {
             return
         }
 
-        DispatchQueue.main.async { [weak self] in
+        Task { [weak self] in
             guard let self = self else { return }
-            do {
-                try self.handlers.renameLayout(name, newName)
-                NotificationCenter.default.post(name: .restLayoutRenamed, object: nil)
-                // Issue73: 발행은 LayoutManager.renameLayout이 SSOT로 처리
-                completion(.ok(json: [
-                    "status": "ok",
-                    "data": ["oldName": name, "newName": newName]
-                ]))
-            } catch {
-                completion(.notFound(message: "레이아웃 이름 변경 실패: '\(name)'을 찾을 수 없습니다"))
+            // Issue78: layoutRename register (동시 허용)
+            guard let opId = await OperationRegistry.shared.register(type: .layoutRename, target: name) else {
+                completion(.conflict(message: "동일 이름 변경이 이미 진행 중입니다"))
+                return
+            }
+            await MainActor.run {
+                do {
+                    try self.handlers.renameLayout(name, newName)
+                    NotificationCenter.default.post(name: .restLayoutRenamed, object: nil)
+                    // Issue73: 발행은 LayoutManager.renameLayout이 SSOT로 처리
+                    Task { await OperationRegistry.shared.complete(opId: opId, success: true) }
+                    completion(.ok(json: [
+                        "status": "ok",
+                        "data": ["oldName": name, "newName": newName]
+                    ]))
+                } catch {
+                    Task { await OperationRegistry.shared.complete(opId: opId, success: false, reason: "renameFailed") }
+                    completion(.notFound(message: "레이아웃 이름 변경 실패: '\(name)'을 찾을 수 없습니다"))
+                }
             }
         }
     }
 
     /// DELETE /api/v2/layouts/{name} - 레이아웃 삭제
     private func handleDeleteLayout(name: String, completion: @escaping (HTTPResponse) -> Void) {
-        DispatchQueue.main.async { [weak self] in
+        Task { [weak self] in
             guard let self = self else { return }
-
-            // 존재 여부 사전 확인
-            let exists = self.handlers.getLayouts().contains { $0.name == name }
-            guard exists else {
-                completion(.notFound(message: "레이아웃을 찾을 수 없습니다: '\(name)'"))
+            // Issue78: layoutDelete register (동시 허용)
+            guard let opId = await OperationRegistry.shared.register(type: .layoutDelete, target: name) else {
+                completion(.conflict(message: "동일 삭제가 이미 진행 중입니다"))
                 return
             }
+            await MainActor.run {
+                // 존재 여부 사전 확인
+                let exists = self.handlers.getLayouts().contains { $0.name == name }
+                guard exists else {
+                    Task { await OperationRegistry.shared.complete(opId: opId, success: false, reason: "notFound") }
+                    completion(.notFound(message: "레이아웃을 찾을 수 없습니다: '\(name)'"))
+                    return
+                }
 
-            do {
-                try self.handlers.deleteLayout(name)
-                NotificationCenter.default.post(name: .restLayoutDeleted, object: nil)
-                // Issue73: 발행은 LayoutManager.deleteLayout이 SSOT로 처리
-                completion(.ok(json: ["status": "ok", "data": ["deleted": name]]))
-            } catch {
-                completion(.internalError(message: "레이아웃 '\(name)' 삭제 중 오류가 발생했습니다"))
+                do {
+                    try self.handlers.deleteLayout(name)
+                    NotificationCenter.default.post(name: .restLayoutDeleted, object: nil)
+                    // Issue73: 발행은 LayoutManager.deleteLayout이 SSOT로 처리
+                    Task { await OperationRegistry.shared.complete(opId: opId, success: true) }
+                    completion(.ok(json: ["status": "ok", "data": ["deleted": name]]))
+                } catch {
+                    Task { await OperationRegistry.shared.complete(opId: opId, success: false, reason: "deleteFailed") }
+                    completion(.internalError(message: "레이아웃 '\(name)' 삭제 중 오류가 발생했습니다"))
+                }
             }
         }
     }
@@ -1605,9 +1679,18 @@ final class RESTServer: RESTServerProtocol {
             completion(.badRequest(message: "JSON body가 필요합니다"))
             return
         }
-        let applied = handlers.updateShortcuts(json)
-        ChangeTracker.shared.record(type: "shortcuts.changed", target: "shortcuts")
-        completion(.ok(json: ["status": "ok", "data": applied]))
+        // Issue78: shortcutsSet register (동시 허용 — 다만 conflict 처리 위해 빈 target 사용)
+        Task { [weak self] in
+            guard let self = self else { return }
+            guard let opId = await OperationRegistry.shared.register(type: .shortcutsSet, target: "") else {
+                completion(.conflict(message: "shortcuts 설정이 이미 진행 중입니다"))
+                return
+            }
+            let applied = self.handlers.updateShortcuts(json)
+            ChangeTracker.shared.record(type: "shortcuts.changed", target: "shortcuts")
+            await OperationRegistry.shared.complete(opId: opId, success: true)
+            completion(.ok(json: ["status": "ok", "data": applied]))
+        }
     }
 
     // MARK: - UI 상태

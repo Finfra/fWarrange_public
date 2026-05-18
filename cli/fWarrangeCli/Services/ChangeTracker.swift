@@ -6,14 +6,20 @@ struct ChangeEvent {
     let type: String
     let target: String
     let timestamp: Date
+    /// Issue78: op.* 이벤트에 발급된 operation UUID. data-change 이벤트는 nil.
+    let opId: String?
 
     func toDict() -> [String: Any] {
-        [
+        var dict: [String: Any] = [
             "seq": seq,
             "type": type,
             "target": target,
             "timestamp": ISO8601DateFormatter().string(from: timestamp)
         ]
+        if let opId = opId {
+            dict["opId"] = opId
+        }
+        return dict
     }
 }
 
@@ -36,7 +42,7 @@ final class ChangeTracker {
     /// Issue73 Phase C: throttle=true 시 동일 (type, target) 이벤트가 throttleInterval 이내면
     /// 새 seq를 발급하지 않고 직전 seq를 반환 (폭주 방지).
     @discardableResult
-    func record(type: String, target: String, throttle: Bool = false) -> Int {
+    func record(type: String, target: String, throttle: Bool = false, opId: String? = nil) -> Int {
         lock.lock()
         defer { lock.unlock() }
 
@@ -54,7 +60,7 @@ final class ChangeTracker {
         }
 
         currentSeq += 1
-        let event = ChangeEvent(seq: currentSeq, type: type, target: target, timestamp: Date())
+        let event = ChangeEvent(seq: currentSeq, type: type, target: target, timestamp: Date(), opId: opId)
         history.append(event)
 
         // 링버퍼: 최대 100건 유지
@@ -62,7 +68,7 @@ final class ChangeTracker {
             history.removeFirst(history.count - maxHistory)
         }
 
-        logD("[ChangeTracker] seq=\(currentSeq) type=\(type) target=\(target)")
+        logD("[ChangeTracker] seq=\(currentSeq) type=\(type) target=\(target)\(opId.map { " opId=\($0)" } ?? "")")
         return currentSeq
     }
 
