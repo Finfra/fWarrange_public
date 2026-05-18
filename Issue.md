@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 77
-* Save Point: 2026-05-16 (Issue74 종결 — 복구 응답에 failures 배열 노출)
+* Issue HWM: 78
+* Save Point: 2026-05-18 (Issue78 종결 — /operations + op.* 이벤트 + 직렬화 enforce)
+  - 53f2dfe (2026-05-18) - Feat(Issue78)(REST): /operations + op.* 이벤트 + 직렬화 enforce
   - 39004f7 (2026-05-18) - Docs: Close Issue77
   - 7b2e44b (2026-05-17) - Docs: Close Issue75
   - fc33e79 (2026-05-16) - Feat(Issue74)(REST): 레이아웃 복구 응답에 실패 윈도우 상세 정보 노출
@@ -31,6 +32,23 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue78: [REST] 장기 동작 진행 상태 노출 (일반화) — `/operations` + `op.*` 이벤트 발행 (등록: 2026-05-18, 완료: 2026-05-18, commit: 53f2dfe) ✅
+* 목적: capture 한정이 아니라 cliApp 모든 long-running 핸들러(capture, restore, layout.delete/rename, settings.patch, shortcuts.set, factoryReset)에 진행 상태 노출 채널을 제공. paidApp이 op type별 진행 메시지·완료 감지·행 대응을 통합 관리할 수 있게 함. 상위 SSOT(`~/_git/__all/fWarrange/_doc_arch/paid_cli_protocol.md` §6.7 일반화) 반영.
+* depends: paidApp 측 `Issue254`가 본 이슈에 의존 (paidApp이 사용하려면 cliApp endpoint·이벤트가 먼저 가용해야 함)
+* 구현 결과:
+    - 신규 actor `OperationRegistry` (`cli/fWarrangeCli/Services/OperationRegistry.swift`): UUID 발급, 직렬화 enforce(capture/restore/factoryReset), op.started/finished/failed 발행
+    - 신규 enum `OpType`, struct `Operation` (`cli/fWarrangeCli/Models/`)
+    - `ChangeTracker.record(...)`에 `opId: String?` 옵셔널 인자 추가, ChangeEvent 직렬화에 포함
+    - `GET /api/v2/operations` 라우팅 추가 (idle 시 `{"operations":[]}`, 진행 중 시 스냅샷)
+    - 대상 핸들러 모두 register/complete 경로 적용 + 직렬화 위반 시 `409 Conflict`:
+        * REST: handleCapture / handleRestore / handleRenameLayout / handleDeleteLayout / handleSetShortcuts / handleFactoryReset / settings PATCH(전체+탭별)
+        * HotKey: AppState.handleHotKeyAction(.save) Cmd+F7 경로도 OperationRegistry 경유
+* 검증 결과 (Debug 빌드 + 로컬 실행):
+    - `GET /operations` idle → `{"operations":[]}`
+    - 동시 두 번 `POST /capture` → 첫 200, 둘째 `409 Conflict` (`capture가 이미 진행 중입니다`)
+    - `GET /changes` 응답에 `op.started(opId) → layout.created → op.finished(opId)` 순서 확인
+    - 동시 `PATCH /settings/general` + `PATCH /settings/restore` → 둘 다 200 (동시 허용 OK)
+
 ## Issue77: [Logging] cliApp 로그 파일명을 `wlog_cliApp.log`로 변경 — paidApp과 명명 대칭 (등록: 2026-05-18) (✅ 완료, 39004f7) ✅
 * 목적: 현재 cliApp(fWarrangeCli) 로그가 `~/Documents/finfra/fWarrangeData/logs/wlog.log`로 출력됨. paidApp(fWarrange)도 동일 데이터 폴더 공유 시 식별 어려움 → cliApp을 `wlog_cliApp.log`로 명명 분리. fSnippet Issue132와 동일 패턴(`flog_cliApp.log`) 미러링.
 * 상세:
