@@ -241,7 +241,7 @@ final class AppState {
             },
             getLogFilePath: {
                 let home = FileManager.default.homeDirectoryForCurrentUser.path
-                return "\(home)/Documents/finfra/fWarrangeData/logs/wlog.log"
+                return "\(home)/Documents/finfra/fWarrangeData/logs/wlog_cliApp.log"
             },
             applyApiSettings: { [weak settingsService] enabled, newPort, external, cidr in
                 let prev = settingsService?.load() ?? AppSettings.defaults

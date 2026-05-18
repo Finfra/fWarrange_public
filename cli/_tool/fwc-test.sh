@@ -22,7 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 RUN_XCODE="$SCRIPT_DIR/fwc-run-xcode.sh"
 DATA_DIR="$HOME/Documents/finfra/fWarrangeData"
 CONFIG_FILE="$DATA_DIR/_config.yml"
-LOG_FILE="$DATA_DIR/logs/wlog.log"
+LOG_FILE="$DATA_DIR/logs/wlog_cliApp.log"
 
 TOTAL_PASS=0
 TOTAL_FAIL=0

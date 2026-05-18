@@ -65,7 +65,7 @@ nonisolated final class Logger: Sendable {
         #endif
 
         self.logDirectoryURL = logDir
-        self.logFileURL = logDir.appendingPathComponent("wlog.log")
+        self.logFileURL = logDir.appendingPathComponent("wlog_cliApp.log")
 
         // config.yml에서 logLevel 읽기
         let configPath = URL(fileURLWithPath: appRootPath).appendingPathComponent("_config.yml")
@@ -115,7 +115,7 @@ nonisolated final class Logger: Sendable {
             let endMessage = "=== fWarrangeCli 로그 종료 [\(formatTimestamp(Date()))] ===\n"
             guard let data = endMessage.data(using: .utf8) else { return }
             appendToFile(url: logFileURL, data: data)
-            let archivedLogURL = logDirectoryURL.appendingPathComponent("wlog_\(sessionDateString).log")
+            let archivedLogURL = logDirectoryURL.appendingPathComponent("wlog_cliApp_\(sessionDateString).log")
             appendToFile(url: archivedLogURL, data: data)
         }
     }
@@ -138,7 +138,7 @@ nonisolated final class Logger: Sendable {
 
             appendToFile(url: logFileURL, data: data)
 
-            let archivedLogURL = logDirectoryURL.appendingPathComponent("wlog_\(sessionDateString).log")
+            let archivedLogURL = logDirectoryURL.appendingPathComponent("wlog_cliApp_\(sessionDateString).log")
             appendToFile(url: archivedLogURL, data: data)
         }
     }
