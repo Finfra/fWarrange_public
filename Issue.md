@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 75
+* Issue HWM: 77
 * Save Point: 2026-05-16 (Issue74 종결 — 복구 응답에 failures 배열 노출)
+  - 39004f7 (2026-05-18) - Docs: Close Issue77
   - 7b2e44b (2026-05-17) - Docs: Close Issue75
   - fc33e79 (2026-05-16) - Feat(Issue74)(REST): 레이아웃 복구 응답에 실패 윈도우 상세 정보 노출
 
@@ -26,9 +27,28 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+
 # 📗 선택
 
 # ✅ 완료
+## Issue77: [Logging] cliApp 로그 파일명을 `wlog_cliApp.log`로 변경 — paidApp과 명명 대칭 (등록: 2026-05-18) (✅ 완료, 39004f7) ✅
+* 목적: 현재 cliApp(fWarrangeCli) 로그가 `~/Documents/finfra/fWarrangeData/logs/wlog.log`로 출력됨. paidApp(fWarrange)도 동일 데이터 폴더 공유 시 식별 어려움 → cliApp을 `wlog_cliApp.log`로 명명 분리. fSnippet Issue132와 동일 패턴(`flog_cliApp.log`) 미러링.
+* 상세:
+    - 현재 경로: `~/Documents/finfra/fWarrangeData/logs/wlog.log` (실시간), `wlog_YYYY-MM-DD_HH-mm-ss.log` (세션 아카이브)
+    - 변경 후: `wlog_cliApp.log` (실시간), `wlog_cliApp_YYYY-MM-DD_HH-mm-ss.log` (세션 아카이브)
+    - 코드 위치:
+        - `cli/fWarrangeCli/Utils/Logger.swift` L68 (logFileURL), L118 + L142 (archivedLogURL)
+        - `cli/fWarrangeCli/AppState.swift` L244 (REST 응답용 경로)
+        - `cli/_tool/fwc-test.sh` L25, `cli/_tool/apiTestDo.sh` L26, `cli/_tool/cmdTestDo.sh` L24 (테스트 LOG_FILE)
+* 구현 명세:
+    - Logger.swift L68: `"wlog.log"` → `"wlog_cliApp.log"`
+    - Logger.swift L118, L142: `"wlog_\(sessionDateString).log"` → `"wlog_cliApp_\(sessionDateString).log"`
+    - AppState.swift L244 + 테스트 스크립트 LOG_FILE 동기화
+    - 기존 `wlog.log` grep으로 `.claude/`, `cli/`, README 전 영역 정리 (로컬 룰·스킬 문서 포함)
+    - 검증: 재배포 후 `wlog_cliApp.log` 생성 + 기존 `wlog.log` 미갱신 확인
+    - 옛 `wlog.log` 자동 마이그레이션 미적용 (사용자 수동 삭제)
+* 관련: fSnippet Issue132 (대응 패턴), 향후 paidApp(fWarrange) 로그 폴더 Library/Logs 이관 이슈와 별개
+
 ## Issue75: PaidAppMonitor terminate 핸들러 — 잔존 인스턴스 무시하여 .cliOnly 오전환 (등록: 2026.05.17) (✅ 완료, 7b2e44b) ✅
 * 목적: paidApp 다중/단명 인스턴스 발생 시 한 인스턴스 종료만으로 메뉴바가 cliApp 아이콘으로 잘못 복원되는 문제 해결
 * 상세:
@@ -309,6 +329,15 @@ date: 2026-04-07
 > 종결된 이슈는 [`z_old/old_issue.md`](z_old/old_issue.md)로 이관됨.
 
 # ⏸️ 보류
+## Issue76: paidApp 실행 감지 시 메뉴바 아이콘 즉시 전환 (등록: 2026-05-17, 보류: 2026-05-17) ⏸️
+* 보류 사유: 실측 결과 기존 메커니즘(PaidAppMonitor launch 핸들러 → AppState `startObservingMenuBarIcon` → MenuBarManager `observeIcon`)이 정상 동작 확인. 지연/누락 없음. 진행 불필요.
+* 재개 조건: 추후 launch 감지 지연 또는 아이콘 미전환 사례 재현 시 본 이슈 재활성화
+* depends: Issue75 (terminate 측 잔존 보호와 동일 모니터 경로)
+* 원 목적: paidApp launch 시 메뉴바 아이콘 즉시 전환 보장
+* 참조:
+    - `cli/fWarrangeCli/Managers/PaidAppMonitor.swift:39-51`
+    - `cli/fWarrangeCli/AppState.swift:504-526`
+    - `cli/fWarrangeCli/Managers/MenuBarManager.swift:29-67`
 
 # 🚫 취소
 
