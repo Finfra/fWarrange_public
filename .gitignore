@@ -49,3 +49,6 @@ xcuserdata/
 
 # Issue31: run-xcode.sh 빌드 경로 캐시
 cli/_tool/.last_build_path
+
+# LLVM coverage profile artifacts
+*.profraw
