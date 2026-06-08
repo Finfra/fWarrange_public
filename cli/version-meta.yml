@@ -1,0 +1,14 @@
+# fWarrangeCli version metadata
+# VERSION SSOT = git root /VERSION (single-line SemVer, do not move here).
+# This file holds auxiliary release/brew status only. Read with yq, never with
+# the version parsers (vm-core.sh / fwc-deploy-brew.sh) which expect plain SemVer.
+
+version: "1.0.1"            # mirror of /VERSION (informational; /VERSION stays SSOT)
+
+brew:
+  status: up-to-date
+  formula: fwarrange-cli
+  formula_version: "1.0.1"
+  installed_version: "1.0.1"
+  tap: finfra/homebrew-tap   # local-only, no remote origin
+  checked: "2026-06-04"
