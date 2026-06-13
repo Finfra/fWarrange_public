@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 78
+* Issue HWM: 79
 * Save Point: 2026-05-18 (Issue78 종결 — /operations + op.* 이벤트 + 직렬화 enforce)
   - 53f2dfe (2026-05-18) - Feat(Issue78)(REST): /operations + op.* 이벤트 + 직렬화 enforce
   - 39004f7 (2026-05-18) - Docs: Close Issue77
@@ -32,6 +32,13 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue79: [Docs/Plugin] API 문서 + LLM plugin(prj20) 최신화 — cliApp/brew 전환 반영 (등록: 2026-06-13, 완료: 2026-06-13) (Hash: 0b2536e, prj20 8ec2ade) ✅ (fSnippet #25 Issue166 미러)
+* 목적: fWarrange 공개 문서·prj20 LLM plugin 이 paidApp GUI 기준으로 stale. cliApp(fWarrangeCli)/brew 운영 모델로 동기화
+* 구현:
+    - prj20 `f-claude-plugins/fWarrange/skills/fwarrange/SKILL.md` (8ec2ade): prereq `open -a fWarrange`+"Settings > API tab Enable" → `brew install/services start finfra/tap/fwarrange-cli`. date bump
+    - `_public/api/README.md`·`README_kr.md` (0b2536e): Server "macOS Native App" → fWarrangeCli helper(Homebrew), 기본 상태 비활성→활성(localhost), OpenAPI 스펙 포인터에 v2(현행 전체 API) 추가·v1 레거시 표기
+* 검증: prereq GUI런치(`open -a fWarrange`) 0건, brew명 하이픈(`fwarrange-cli`) 정확
+* 참고: README 본문 엔드포인트 일부 `/api/v1/*` 표기 — 전면 v1→v2 재작성은 본 이슈 범위 밖(별도 후보). 본 이슈는 운영 모델(cliApp/brew) + 스펙 포인터까지
 ## Issue78: [REST] 장기 동작 진행 상태 노출 (일반화) — `/operations` + `op.*` 이벤트 발행 (등록: 2026-05-18, 완료: 2026-05-18, commit: 53f2dfe) ✅
 * 목적: capture 한정이 아니라 cliApp 모든 long-running 핸들러(capture, restore, layout.delete/rename, settings.patch, shortcuts.set, factoryReset)에 진행 상태 노출 채널을 제공. paidApp이 op type별 진행 메시지·완료 감지·행 대응을 통합 관리할 수 있게 함. 상위 SSOT(`~/_git/__all/fWarrange/_doc_arch/paid_cli_protocol.md` §6.7 일반화) 반영.
 * depends: paidApp 측 `Issue254`가 본 이슈에 의존 (paidApp이 사용하려면 cliApp endpoint·이벤트가 먼저 가용해야 함)
