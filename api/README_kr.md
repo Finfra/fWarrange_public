@@ -8,13 +8,13 @@ date: 2026-03-26
 
 fWarrange는 macOS 윈도우 창 위치/크기를 저장하고 복구하는 REST API를 제공합니다.
 
-| 서버 구현         | 기술 스택                              | 기본 포트 |
-| ----------------- | -------------------------------------- | --------- |
-| macOS 네이티브 앱 | Swift / Network.framework (NWListener) | 3016      |
+| 서버 구현                        | 기술 스택                              | 기본 포트 |
+| -------------------------------- | -------------------------------------- | --------- |
+| `fWarrangeCli` 헬퍼 (Homebrew)   | Swift / Network.framework (NWListener) | 3016      |
 
-모든 응답은 `{"status": "ok", "data": ...}` 래퍼 형식을 따릅니다. API는 기본적으로 **비활성화** 상태이며, 앱 설정에서 활성화해야 합니다.
+REST API는 **fWarrangeCli** 헬퍼 — Homebrew로 배포되는 비샌드박스 macOS 에이전트(`brew install finfra/tap/fwarrange-cli`), GUI 앱 아님 — 가 제공하며, localhost에서 기본 활성화 상태입니다. 모든 응답은 `{"status": "ok", "data": ...}` 래퍼 형식을 따릅니다.
 
-> OpenAPI 3.0 스펙: [openapi_v1.yaml](./openapi_v1.yaml)
+> OpenAPI 3.0 스펙: [openapi_v2.yaml](./openapi_v2.yaml) — 현행 전체 API. [openapi_v1.yaml](./openapi_v1.yaml) 은 레거시 스펙.
 
 ---
 
@@ -566,7 +566,7 @@ print(f"복구: {result['data']['succeeded']}/{result['data']['total']}")
 | 항목        | 설명                                                                   |
 | ----------- | ---------------------------------------------------------------------- |
 | 기본 바인딩 | `127.0.0.1` (localhost only)                                           |
-| 기본 상태   | **비활성화** (앱 설정에서 활성화 필요)                                 |
+| 기본 상태   | **활성화** (localhost — fWarrangeCli가 기본 제공)                      |
 | 외부 접근   | 설정에서 명시적 활성화 필요, `0.0.0.0` 바인딩 + CIDR 화이트리스트 적용 |
 | CIDR 기본값 | `192.168.0.0/16` (쉼표로 복수 지정 가능)                               |
 | localhost   | CIDR 설정과 무관하게 항상 허용                                         |

@@ -8,13 +8,13 @@ date: 2026-03-26
 
 fWarrange provides a REST API for saving and restoring macOS window positions and sizes.
 
-| Server           | Tech Stack                             | Default Port |
-| ---------------- | -------------------------------------- | ------------ |
-| macOS Native App | Swift / Network.framework (NWListener) | 3016         |
+| Server                            | Tech Stack                             | Default Port |
+| --------------------------------- | -------------------------------------- | ------------ |
+| `fWarrangeCli` helper (Homebrew)  | Swift / Network.framework (NWListener) | 3016         |
 
-All responses follow the `{"status": "ok", "data": ...}` wrapper format. The API is **disabled** by default and must be enabled in the app settings.
+The REST API is served by the **fWarrangeCli** helper — a non-sandboxed macOS agent distributed via Homebrew (`brew install finfra/tap/fwarrange-cli`), not the GUI app — and is enabled by default on localhost. All responses follow the `{"status": "ok", "data": ...}` wrapper format.
 
-> OpenAPI 3.0 Spec: [openapi_v1.yaml](./openapi_v1.yaml)
+> OpenAPI 3.0 Spec: [openapi_v2.yaml](./openapi_v2.yaml) — current full API. [openapi_v1.yaml](./openapi_v1.yaml) is the legacy spec.
 
 ---
 
@@ -566,7 +566,7 @@ print(f"Restored: {result['data']['succeeded']}/{result['data']['total']}")
 | Item            | Description                                                        |
 | --------------- | ------------------------------------------------------------------ |
 | Default binding | `127.0.0.1` (localhost only)                                       |
-| Default state   | **Disabled** (must be enabled in app settings)                     |
+| Default state   | **Enabled** on localhost (fWarrangeCli serves by default)          |
 | External access | Must be explicitly enabled; binds to `0.0.0.0` with CIDR whitelist |
 | CIDR default    | `192.168.0.0/16` (multiple ranges supported, comma-separated)      |
 | Localhost       | Always allowed regardless of CIDR settings                         |
