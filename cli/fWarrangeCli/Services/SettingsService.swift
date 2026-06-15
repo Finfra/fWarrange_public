@@ -7,6 +7,29 @@ protocol SettingsService {
     func save(_ settings: AppSettings)
     func resetToDefaults()
     var configFilePath: String { get }
+
+    /// load → transform → save 를 원자적으로 수행하고 갱신된 설정을 반환.
+    /// 동시 요청의 read-modify-write 인터리빙으로 인한 lost update 를 차단함 (Issue80).
+    @discardableResult
+    func mutate(_ transform: (inout AppSettings) -> Void) -> AppSettings
+}
+
+/// 설정 mutation 직렬화용 프로세스 전역 lock.
+/// 설정 저장소는 프로세스당 단일 파일/키 이므로 전역 lock 으로 충분함.
+enum SettingsMutationLock {
+    static let shared = NSLock()
+}
+
+extension SettingsService {
+    @discardableResult
+    func mutate(_ transform: (inout AppSettings) -> Void) -> AppSettings {
+        SettingsMutationLock.shared.lock()
+        defer { SettingsMutationLock.shared.unlock() }
+        var s = load()
+        transform(&s)
+        save(s)
+        return s
+    }
 }
 
 // MARK: - YAML 파일 기반 구현체

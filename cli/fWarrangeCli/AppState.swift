@@ -139,32 +139,30 @@ final class AppState {
             },
             setDefaultLayoutName: { [weak settingsService] name in
                 guard let svc = settingsService else { return }
-                var s = svc.load()
-                s.defaultLayoutName = name
-                svc.save(s)
+                svc.mutate { $0.defaultLayoutName = name }
             },
             updateShortcuts: { [weak settingsService] body -> [String: String] in
                 guard let svc = settingsService else { return [:] }
-                var s = svc.load()
-                func apply(_ key: String, set: (KeyboardShortcutConfig?) -> Void) {
-                    guard let value = body[key] else { return }
-                    if value is NSNull {
-                        set(nil)
-                    } else if let str = value as? String {
-                        let trimmed = str.trimmingCharacters(in: .whitespaces)
-                        if trimmed.isEmpty {
+                let s = svc.mutate { s in
+                    func apply(_ key: String, set: (KeyboardShortcutConfig?) -> Void) {
+                        guard let value = body[key] else { return }
+                        if value is NSNull {
                             set(nil)
-                        } else if let cfg = KeyboardShortcutConfig.from(displayString: trimmed) {
-                            set(cfg)
+                        } else if let str = value as? String {
+                            let trimmed = str.trimmingCharacters(in: .whitespaces)
+                            if trimmed.isEmpty {
+                                set(nil)
+                            } else if let cfg = KeyboardShortcutConfig.from(displayString: trimmed) {
+                                set(cfg)
+                            }
                         }
                     }
+                    apply("saveShortcut") { s.saveShortcut = $0 }
+                    apply("restoreDefaultShortcut") { s.restoreDefaultShortcut = $0 }
+                    apply("restoreLastShortcut") { s.restoreLastShortcut = $0 }
+                    apply("showMainWindowShortcut") { s.showMainWindowShortcut = $0 }
+                    apply("showSettingsShortcut") { s.showSettingsShortcut = $0 }
                 }
-                apply("saveShortcut") { s.saveShortcut = $0 }
-                apply("restoreDefaultShortcut") { s.restoreDefaultShortcut = $0 }
-                apply("restoreLastShortcut") { s.restoreLastShortcut = $0 }
-                apply("showMainWindowShortcut") { s.showMainWindowShortcut = $0 }
-                apply("showSettingsShortcut") { s.showSettingsShortcut = $0 }
-                svc.save(s)
                 NotificationCenter.default.post(name: .fWarrangeCliShortcutsUpdated, object: nil)
                 return [
                     "saveShortcut": s.saveShortcut?.displayString ?? "",
@@ -180,14 +178,18 @@ final class AppState {
             },
             patchSettings: { [weak settingsService] body in
                 guard let svc = settingsService else { return [:] }
-                var s = svc.load()
-                // appLanguage 변경 감지
-                let oldLanguage = s.appLanguage
-                AppSettings.applySettingsPatch(&s, body: body)
-                if let newLanguage = body["appLanguage"] as? String, newLanguage != oldLanguage {
+                var languageChanged: String? = nil
+                let s = svc.mutate { s in
+                    // appLanguage 변경 감지
+                    let oldLanguage = s.appLanguage
+                    AppSettings.applySettingsPatch(&s, body: body)
+                    if let newLanguage = body["appLanguage"] as? String, newLanguage != oldLanguage {
+                        languageChanged = newLanguage
+                    }
+                }
+                if let newLanguage = languageChanged {
                     AppState.applyLanguageSetting(newLanguage)
                 }
-                svc.save(s)
                 return AppSettings.fullSettingsDict(s)
             },
             getExcludedApps: { [weak settingsService] in
@@ -195,33 +197,25 @@ final class AppState {
             },
             setExcludedApps: { [weak settingsService] apps in
                 guard let svc = settingsService else { return apps }
-                var s = svc.load()
-                s.excludedApps = apps
-                svc.save(s)
-                return s.excludedApps
+                return svc.mutate { $0.excludedApps = apps }.excludedApps
             },
             addExcludedApps: { [weak settingsService] apps in
                 guard let svc = settingsService else { return apps }
-                var s = svc.load()
-                var set = Array(s.excludedApps)
-                for a in apps where !set.contains(a) { set.append(a) }
-                s.excludedApps = set
-                svc.save(s)
-                return s.excludedApps
+                return svc.mutate { s in
+                    var set = Array(s.excludedApps)
+                    for a in apps where !set.contains(a) { set.append(a) }
+                    s.excludedApps = set
+                }.excludedApps
             },
             removeExcludedApps: { [weak settingsService] apps in
                 guard let svc = settingsService else { return [] }
-                var s = svc.load()
-                s.excludedApps = s.excludedApps.filter { !apps.contains($0) }
-                svc.save(s)
-                return s.excludedApps
+                return svc.mutate { s in
+                    s.excludedApps = s.excludedApps.filter { !apps.contains($0) }
+                }.excludedApps
             },
             resetExcludedApps: { [weak settingsService] in
                 guard let svc = settingsService else { return AppSettings.defaultExcludedApps }
-                var s = svc.load()
-                s.excludedApps = AppSettings.defaultExcludedApps
-                svc.save(s)
-                return s.excludedApps
+                return svc.mutate { $0.excludedApps = AppSettings.defaultExcludedApps }.excludedApps
             },
             factoryResetSettings: { [weak settingsService] in
                 guard let svc = settingsService else { return [:] }
@@ -244,13 +238,14 @@ final class AppState {
                 return "\(home)/Documents/finfra/fWarrangeData/logs/wlog_cliApp.log"
             },
             applyApiSettings: { [weak settingsService] enabled, newPort, external, cidr in
-                let prev = settingsService?.load() ?? AppSettings.defaults
-                var s = prev
-                if let v = enabled { s.restServerEnabled = v }
-                if let v = newPort { s.restServerPort = v }
-                if let v = external { s.allowExternalAccess = v }
-                if let v = cidr, !v.isEmpty { s.allowedCIDR = v }
-                settingsService?.save(s)
+                var prev = AppSettings.defaults
+                let s = settingsService?.mutate { st in
+                    prev = st
+                    if let v = enabled { st.restServerEnabled = v }
+                    if let v = newPort { st.restServerPort = v }
+                    if let v = external { st.allowExternalAccess = v }
+                    if let v = cidr, !v.isEmpty { st.allowedCIDR = v }
+                } ?? AppSettings.defaults
                 let targetPort = UInt16(s.restServerPort ?? 3016)
                 let targetExternal = s.allowExternalAccess ?? false
                 let targetCidr = s.allowedCIDR ?? "192.168.0.0/16"
@@ -556,9 +551,7 @@ final class AppState {
                         // Issue73: 발행은 LayoutManager.saveLayout이 SSOT로 처리 (layout.created/updated)
                         logI("⌨️ 단축키 저장: '\(name)'")
                         if self.settings.defaultLayoutName == nil {
-                            var s = self.settingsService.load()
-                            s.defaultLayoutName = name
-                            self.settingsService.save(s)
+                            self.settingsService.mutate { $0.defaultLayoutName = name }
                             self.settings.defaultLayoutName = name
                             ChangeTracker.shared.record(type: "settings.changed", target: "defaultLayout")
                             logI("⭐ 첫 레이아웃을 기본으로 자동 설정: '\(name)'")
