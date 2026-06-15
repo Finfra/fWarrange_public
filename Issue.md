@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 79
+* Issue HWM: 80
 * Save Point: 2026-05-18 (Issue78 종결 — /operations + op.* 이벤트 + 직렬화 enforce)
+  - 609c51d (2026-06-15) - cli/_doc_arch 7문서 정합성 감사 완료 (리포트 cli/_doc_work/report/cli-doc-arch-audit_report.md, 미커밋 산출물)
   - 53f2dfe (2026-05-18) - Feat(Issue78)(REST): /operations + op.* 이벤트 + 직렬화 enforce
   - 39004f7 (2026-05-18) - Docs: Close Issue77
   - 7b2e44b (2026-05-17) - Docs: Close Issue75
@@ -20,8 +21,8 @@ date: 2026-04-07
 * **Issue72_6 비공개 API 도입 합의 (2026-05-16)** — cliApp(non-sandbox)에서 CGSGetActiveSpace·CGSCopySpacesForWindows·CGSMainConnectionID 사용. App Store 영향 無 (cliApp은 brew 배포). macOS 업데이트 시 폐기 가능성 대비 nil 반환 안전망 보유. 상위 `_doc_arch/paid_cli_protocol.md` 차기 갱신 시 반영 권장.
 
 # 🌱 이슈후보
-1. `/api/v2/settings/{tab}` 탭별 PATCH가 Bool `false` 값을 디스크에 영속화하지 않는 버그 (Phase 4 발견 — `/settings` 전체 PATCH는 정상). tabPaths filter 또는 NSNumber/Bool 변환 로직 추적 필요.
-
+1. brew remote등록
+2. 앱이 비활성화될때 자동으로 레이아웃을 캡쳐하는 기능(이렇게 캡쳐된 레이아웃은 저장 기간 옵션에 따라 자동 삭제되어야 하고 paidApp에서 레이아웃 리스트에 별도의 표식이 있어야함. )
 
 # 🚧 진행중
 
@@ -32,6 +33,19 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue80: [REST] `/api/v2/settings/{tab}` 탭별 PATCH Bool `false` 미영속화 — 동시성 lost update 재현·수정 (등록: 2026-06-15, 완료: 2026-06-15, Hash: e62208b) ✅
+* 목적: Phase 4(Issue72_4) 당시 발견된 "탭별 PATCH가 Bool false를 디스크에 영속화하지 않음(전체 `/settings` PATCH는 정상)" 후보를 검증·종결
+* 조사 1차 (순차 단일 PATCH — 재현 안 됨):
+    - Bool 7개 필드 전부 탭별 단일 PATCH `false` → 디스크 영속화 정상 라이브 확인 (`enableParallelRestore`·`matchAreaMatchEnabled`·`autoSaveOnSleep`·`confirmBeforeDelete`·`showInCmdTab`·`clickSwitchToMain`·`launchAtLogin`)
+    - `applySettingsPatch`는 `as? Bool`로 false 정상 처리, YAML round-trip(`Bool("false")` 파싱)도 정상
+* 조사 2차 (동시 PATCH — **재현됨**): 서로 다른 6개 bool 필드를 **동시(concurrent) burst**로 `false` PATCH → 3개만 persist, 나머지는 default(true)로 잔존하는 **lost update** 확정. 순차 테스트만으로는 놓치는 race
+* 근본 원인: **Issue78(`53f2dfe`)** 이 settingsPatch를 OperationRegistry "동시 허용"으로 풀었으나, 핸들러는 비원자적 `load()→mutate→save()`(전체 `_config.yml` 통째 쓰기)를 수행. 동시 요청이 stale state를 로드 후 마지막에 save하면 다른 요청의 `false` write가 default(true)로 clobber됨. baseline-default가 true인 필드의 false 만 손실 → "Bool false 미영속화"로 관측됨. 전체 `/settings` PATCH가 정상이던 이유 = 단일 원자 요청이라 무경합
+* 수정:
+    - `SettingsService` 프로토콜에 원자적 `mutate(_:)` 추가 + 프로세스 전역 `SettingsMutationLock`(NSLock)으로 `load→transform→save` 직렬화 (`SettingsService.swift`)
+    - `AppState`의 설정 read-modify-write closure 전수 라우팅 — patchSettings/updateShortcuts/excludedApps 4종/defaultLayoutName/applyApiSettings/hotkey-save (`AppState.swift`)
+* 검증: Debug 빌드·배포 후 6개 필드 동시 false burst x3 라운드 → 전부 false persist (lost update 0건, PASS)
+* 비고: 선행 조사가 순차 단일 PATCH만 보고 "재현 불가"로 1차 판정했으나, Issue78이 도입한 동시 허용 경로를 concurrent burst로 검증하니 race 재현. 본 종결은 그 정정
+
 ## Issue79: [Docs/Plugin] API 문서 + LLM plugin(prj20) 최신화 — cliApp/brew 전환 반영 (등록: 2026-06-13, 완료: 2026-06-13) (Hash: 0b2536e, prj20 8ec2ade·4cfed60) ✅ (fSnippet #25 Issue166 미러)
 * 목적: fWarrange 공개 문서·prj20 LLM plugin 이 paidApp GUI 기준으로 stale. cliApp(fWarrangeCli)/brew 운영 모델로 동기화
 * 구현:
