@@ -640,7 +640,7 @@ final class RESTServer: RESTServerProtocol {
         let tabPaths: [String: [String]] = [
             "\(base)/settings/general": ["appLanguage", "dataStorageMode", "dataDirectoryPath", "launchAtLogin", "theme"],
             "\(base)/settings/restore": ["maxRetries", "retryInterval", "minimumMatchScore", "enableParallelRestore", "matchAreaMatchEnabled"],
-            "\(base)/settings/advanced": ["logLevel", "autoSaveOnSleep", "maxAutoSaves", "restoreButtonStyle", "confirmBeforeDelete", "showInCmdTab", "clickSwitchToMain"]
+            "\(base)/settings/advanced": ["logLevel", "autoSaveOnSleep", "maxAutoSaves", "retentionDays", "restoreButtonStyle", "confirmBeforeDelete", "showInCmdTab", "clickSwitchToMain"]
         ]
         if let fields = tabPaths[path] {
             if method == "GET" {
@@ -1312,7 +1312,8 @@ final class RESTServer: RESTServerProtocol {
                 [
                     "name": meta.name,
                     "windowCount": meta.windowCount,
-                    "fileDate": ISO8601Formatter.string(from: meta.fileDate)
+                    "fileDate": ISO8601Formatter.string(from: meta.fileDate),
+                    "isAuto": meta.isAuto
                 ]
             }
             completion(.ok(json: ["status": "ok", "data": list]))
@@ -1330,6 +1331,7 @@ final class RESTServer: RESTServerProtocol {
                     "name": layout.name,
                     "windowCount": layout.windowCount,
                     "fileDate": ISO8601Formatter.string(from: layout.fileDate),
+                    "isAuto": layout.isAuto,
                     "windows": windowsJSON
                 ]
                 completion(.ok(json: ["status": "ok", "data": data]))
@@ -1368,6 +1370,7 @@ final class RESTServer: RESTServerProtocol {
                     let data: [String: Any] = [
                         "name": name,
                         "windowCount": windows.count,
+                        "isAuto": LayoutNaming.isAuto(name),
                         "windows": windows.map { self.windowInfoToDict($0) }
                     ]
                     Task { await OperationRegistry.shared.complete(opId: opId, success: true) }

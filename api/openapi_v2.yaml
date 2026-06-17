@@ -1493,6 +1493,7 @@ components:
         logLevel: { type: integer, minimum: 0, maximum: 5 }
         autoSaveOnSleep: { type: boolean }
         maxAutoSaves: { type: integer, minimum: 0 }
+        retentionDays: { type: integer, minimum: 0, description: "자동 캡처(auto-) 보관 일수, 0 = 무제한" }
         restoreButtonStyle:
           type: string
           enum: [iconOnly, nameIcon, nameOnly]
@@ -1599,6 +1600,7 @@ components:
         logLevel: { type: integer }
         autoSaveOnSleep: { type: boolean }
         maxAutoSaves: { type: integer }
+        retentionDays: { type: integer, minimum: 0, description: "자동 캡처(auto-) 보관 일수, 0 = 무제한" }
         restoreButtonStyle:
           type: string
           enum: [iconOnly, nameIcon, nameOnly]
@@ -1685,7 +1687,8 @@ components:
         name: { type: string }
         windowCount: { type: integer }
         fileDate: { type: string, format: date-time }
-      required: [name, windowCount, fileDate]
+        isAuto: { type: boolean, description: "자동 캡처(슬립/잠금) 레이아웃 여부 — 이름 prefix auto-" }
+      required: [name, windowCount, fileDate, isAuto]
 
     LayoutListResponse:
       type: object
@@ -1706,10 +1709,11 @@ components:
             name: { type: string }
             windowCount: { type: integer }
             fileDate: { type: string, format: date-time }
+            isAuto: { type: boolean, description: "자동 캡처(슬립/잠금) 레이아웃 여부" }
             windows:
               type: array
               items: { $ref: '#/components/schemas/WindowInfo' }
-          required: [name, windowCount, fileDate, windows]
+          required: [name, windowCount, fileDate, isAuto, windows]
       required: [status, data]
 
     CaptureRequest:
@@ -1729,6 +1733,7 @@ components:
           properties:
             name: { type: string }
             windowCount: { type: integer }
+            isAuto: { type: boolean, description: "자동 캡처(슬립/잠금) 레이아웃 여부" }
             windows:
               type: array
               items: { $ref: '#/components/schemas/WindowInfo' }

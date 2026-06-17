@@ -121,6 +121,7 @@ final class YAMLSettingsService: SettingsService {
         lines.append("# Auto save")
         lines.append("autoSaveOnSleep: \(s.autoSaveOnSleep ?? true)")
         lines.append("maxAutoSaves: \(s.maxAutoSaves ?? 5)")
+        lines.append("retentionDays: \(s.retentionDays ?? 7)")
         lines.append("")
         lines.append("# UI options")
         lines.append("restoreButtonStyle: \(s.restoreButtonStyle ?? "nameIcon")")
@@ -213,6 +214,7 @@ final class YAMLSettingsService: SettingsService {
         if let v = dict["dataDirectoryPath"].map(parseStringValue), !v.isEmpty { s.dataDirectoryPath = v }
         if let v = dict["autoSaveOnSleep"], let b = Bool(v) { s.autoSaveOnSleep = b }
         if let v = dict["maxAutoSaves"], let i = Int(v) { s.maxAutoSaves = i }
+        if let v = dict["retentionDays"], let i = Int(v) { s.retentionDays = i }
         if let v = dict["restoreButtonStyle"].map(parseStringValue) { s.restoreButtonStyle = v }
         if let v = dict["confirmBeforeDelete"], let b = Bool(v) { s.confirmBeforeDelete = b }
         if let v = dict["showInCmdTab"], let b = Bool(v) { s.showInCmdTab = b }

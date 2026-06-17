@@ -52,3 +52,7 @@ cli/_tool/.last_build_path
 
 # LLVM coverage profile artifacts
 *.profraw
+
+# Python
+__pycache__/
+*.pyc

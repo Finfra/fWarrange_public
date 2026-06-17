@@ -1,12 +1,12 @@
 ---
 title: paidApp REST API v2 설계 문서
-description: cliApp REST API v2 서버 설계 및 엔드포인트 명세 (v1 슈퍼셋)
+description: cliApp REST API v2 서버 설계 및 엔드포인트 명세 (v2 단일 활성, v1 410 Gone)
 date: 2026-04-18
 ---
 
 # 1. 개요
 
-cliApp의 REST API v2는 v1의 완전한 슈퍼셋이다. GUI(paidApp)가 `/changes` 폴링으로 상태를 동기화하고, 설정을 탭 단위로 세분화하여 CRUD 할 수 있도록 확장했다. 모든 v1 엔드포인트는 `/api/v2/*`에서 동일하게 동작한다.
+cliApp의 REST API v2는 현행 유일 활성 버전이다. GUI(paidApp)가 `/changes` 폴링으로 상태를 동기화하고, 설정을 탭 단위로 세분화하여 CRUD 할 수 있도록 확장했다. **v1은 deprecated** — `/api/v1/*` 요청은 `410 Gone`으로 차단되며 모든 엔드포인트는 `/api/v2/*`에서만 동작한다 (Issue213 Phase 1, 2026-04-27).
 
 * **프레임워크**: `Network.framework` (`NWListener` + `NWConnection`) — 외부 의존성 없음
 * **서비스 루트**: `http://localhost:3016/api/v2`
@@ -17,7 +17,7 @@ cliApp의 REST API v2는 v1의 완전한 슈퍼셋이다. GUI(paidApp)가 `/chan
 
 | 원칙                       | 설명                                                   |
 | -------------------------- | ------------------------------------------------------ |
-| v1 슈퍼셋                  | v2는 v1의 모든 엔드포인트를 포함하며 추가 기능 제공    |
+| v2 단일 활성               | v1은 410 Gone으로 동결, 모든 기능은 v2 전용으로 제공   |
 | 탭 단위 세분화 Settings    | General/Restore/API/Advanced 별 GET/PATCH 분리          |
 | 명시적 변경 알림           | `/changes` (adaptive polling) 단일 채널 제공           |
 | Manager 계층 직접 호출     | REST 핸들러 → Manager → Service 흐름 유지              |
@@ -31,7 +31,7 @@ cliApp의 REST API v2는 v1의 완전한 슈퍼셋이다. GUI(paidApp)가 `/chan
 paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
     RESTCLIClient ──── HTTP/JSON ─────►  RESTServer (NWListener)
     CLIHealthMonitor                      ├─ HTTP 파싱
-    LayoutListView / SettingsSheet        ├─ 라우팅 (/api/v1 + /api/v2)
+    LayoutListView / SettingsSheet        ├─ 라우팅 (/api/v2 only, /api/v1→410)
                                           └─ ChangeTracker (seq 링버퍼)
                                                  │ 직접 호출
                                      ┌───────────┼───────────┐
@@ -76,10 +76,11 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 
 ## 4.1 Health / Changes
 
-| Method | Path        | 설명                                      |
-| ------ | ----------- | ----------------------------------------- |
-| GET    | `/health`   | Health Check                              |
-| GET    | `/changes`  | 변경 시퀀스 조회 (adaptive polling)       |
+| Method | Path          | 설명                                                       |
+| ------ | ------------- | ---------------------------------------------------------- |
+| GET    | `/health`     | Health Check (`/`와 동일 핸들러)                           |
+| GET    | `/changes`    | 변경 시퀀스 조회 (adaptive polling)                        |
+| GET    | `/operations` | 진행 중 long-running 작업 스냅샷 (Issue78, paidApp 1Hz 폴링) |
 
 ## 4.2 Settings (전체)
 
@@ -129,6 +130,10 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 | POST   | `/layouts/{name}/windows/remove`        | 특정 창 제거                               |
 | POST   | `/capture`                              | 현재 창 캡처 후 저장                       |
 
+> **자동 캡처 (Issue81)**: `autoSaveOnSleep=true`(기본)이면 시스템 슬립·화면 잠금 시 현재 레이아웃을 `auto-yyyy-MM-dd-N` 이름으로 자동 저장한다. 자동 캡처본은 응답의 `isAuto=true`로 구분되며, `retentionDays`(기본 7, 0=무제한) 초과분은 자동 삭제된다. 수동 레이아웃은 삭제 대상이 아니다.
+>
+> `GET /layouts`, `GET /layouts/{name}`, `POST /capture` 응답 데이터에 `isAuto` (boolean) 필드가 포함된다 — 이름 prefix `auto-` 기준 파생값.
+
 ## 4.6 Windows / UI / System / CLI
 
 | Method | Path                         | 설명                                                   |
@@ -141,6 +146,9 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 | GET    | `/cli/status`                | CLI 헬퍼 상태                                          |
 | GET    | `/cli/version`               | CLI 헬퍼 버전                                          |
 | POST   | `/cli/quit`                  | CLI 종료 (`X-Confirm: true`)                           |
+| POST   | `/cli/restart`               | CLI 재시작 — launchd KeepAlive 의존 (`X-Confirm: true`) (Issue229_4) |
+| POST   | `/cli/pause`                 | REST API 일시정지 — `/`·`/cli/*` 외 503 (Issue229_4)   |
+| POST   | `/cli/resume`                | REST API 재개 (Issue229_4)                             |
 
 ## 4.7 Modes (Phase 2 — 컨텍스트 스위칭)
 
@@ -221,6 +229,36 @@ curl -X POST http://localhost:3016/api/v2/layouts/work/restore \
   -H "Content-Type: application/json" -d '{"mode": "loose"}'
 ```
 
+## 4.12 PaidApp 라이프사이클 (Issue192 Phase A)
+
+paidApp이 자신의 실행 상태를 cliApp에 등록·해제하는 핸드셰이크. cliApp은 발신자 bundleId(`kr.finfra.fWarrange`)를 검증한 뒤 세션을 발급함.
+
+| Method | Path                  | 설명                                                          |
+| ------ | --------------------- | ------------------------------------------------------------- |
+| POST   | `/paidapp/register`   | paidApp 세션 등록 (launch 시점). 검증 실패 시 403             |
+| POST   | `/paidapp/unregister` | paidApp 세션 해제 (terminate 시점). sessionId 불일치 시 403   |
+| GET    | `/paidapp/status`     | paidApp 라이프사이클 상태 스냅샷 (인증 불필요)                |
+
+* **register 요청**: `{pid, version, bundlePath, startTime(ISO8601), sessionId(uuid)}` (모두 필수)
+* **register 응답**: `{sessionId, registeredAt, ok, cliVersion, compatible, minPaidAppVersion?}`
+* **unregister 요청**: `{pid, sessionId}` 필수 (`startTime?` 보조 검증). 응답: `{unregisteredAt}`
+* **status 응답**: `state(running|not_running)` 필수. running 시 `pid, version, bundlePath, sessionId, registeredAt` 추가
+
+## 4.13 Shutdown (Issue42 Phase 1)
+
+| Method | Path        | 설명                                                  |
+| ------ | ----------- | ----------------------------------------------------- |
+| POST   | `/shutdown` | cliApp 프로세스 종료 (paidApp 종료 연동용)            |
+
+* **요청**: `{reason?, delayMs?}` (본문 선택). `reason` 미지정 시 `"unspecified"`, `delayMs` 기본 0
+* **응답**: `{accepted, message}` — `delayMs + 100ms` 후 `NSApplication.terminate` 비동기 실행
+
+```bash
+curl -X POST http://localhost:3016/api/v2/shutdown \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"paidApp terminated","delayMs":0}'
+```
+
 ---
 
 # 5. 이벤트 모델
@@ -258,12 +296,25 @@ GUI 권장 주기: **활성 3초 / 비활성 30초**. `currentSeq < lastKnownSeq
 
 ## Health Check
 
+`/` 와 `/api/v2/health` 는 동일 핸들러(`handleCLIStatus`)를 사용하며 다음을 반환함 (`version`은 런타임 `CFBundleShortVersionString`, 리터럴 `"2.0"` 아님):
+
 ```bash
 curl http://localhost:3016/api/v2/health
 ```
 ```json
-{"status":"ok","app":"fWarrangeCli","version":"2.0","port":3016}
+{
+  "status": "ok",
+  "app": "fWarrangeCli",
+  "version": "1.0.0",
+  "port": 3016,
+  "uptime": "00:12:34",
+  "uptimeSeconds": 754,
+  "isRunning": true,
+  "isApiPaused": false
+}
 ```
+
+> ⚠️ **스펙/구현 불일치 (known gap)**: `openapi_v2.yaml`의 `HealthResponse`는 `layout_count` + `uptime_seconds`(snake_case)를 `required`로 정의하나, 실제 코드(`RESTServer.swift handleCLIStatus`)는 이 둘을 **반환하지 않음**. 대신 `uptimeSeconds`(camelCase) + `uptime`(문자열) + `isRunning` + `isApiPaused`를 반환함. 위 예시는 **실제 코드 응답** 기준임. yaml 스펙 정합화는 별도 이슈로 처리 필요.
 
 ## 전체 설정 조회 / 부분 갱신
 
@@ -386,7 +437,7 @@ appLanguage, dataStorageMode (host|share), dataDirectoryPath,
 launchAtLogin, theme (system|light|dark),
 maxRetries, retryInterval, minimumMatchScore, enableParallelRestore, excludedApps[],
 restServerEnabled, restServerPort, allowExternalAccess, allowedCIDR,
-logLevel, autoSaveOnSleep, maxAutoSaves,
+logLevel, autoSaveOnSleep, maxAutoSaves, retentionDays,
 restoreButtonStyle (iconOnly|nameIcon|nameOnly),
 confirmBeforeDelete, showInCmdTab, clickSwitchToMain, defaultLayoutName
 ```
@@ -429,7 +480,7 @@ score (0-100), success
 
 | 파일                                                  | 역할                          |
 | ----------------------------------------------------- | ----------------------------- |
-| `cli/fWarrangeCli/Services/RESTServer.swift`          | NWListener, 라우팅 (v1 + v2)  |
+| `cli/fWarrangeCli/Services/RESTServer.swift`          | NWListener, 라우팅 (v2 only; v1→410 Gone) |
 | `cli/fWarrangeCli/Services/ChangeTracker.swift`       | 변경 seq 링버퍼               |
 | `cli/fWarrangeCli/Managers/ModeManager.swift`         | 모드 CRUD + 활성화            |
 | `cli/fWarrangeCli/Models/Mode.swift`, `AppConfig.swift` | 모드 도메인 모델              |
@@ -447,7 +498,6 @@ score (0-100), success
 
 # 10. 버전 전환 정책
 
-* v1과 v2는 병행 제공. 동일 요청이 `/api/v1/*` 또는 `/api/v2/*` 양쪽에서 동작
-* 신규 기능(Settings 세분화, Changes, Modes)은 v2 전용
-* v1은 **deprecated**. 제거 시점은 GUI 마이그레이션 완료 후 별도 공지
-* 외부 자동화/통합은 가급적 v2를 사용할 것
+* **v2 단일 활성**. `/api/v2/*` 만 동작함
+* **v1은 deprecated** — `/api/v1/*` 요청은 `410 Gone`("API v1 is deprecated. Use /api/v2/ instead.")으로 차단됨 (`RESTServer.swift` 라우팅, Issue213 Phase 1 / 2026-04-27). v1 스펙은 z_old로 동결 아카이브됨
+* 신규·기존 모든 기능은 v2 전용. 외부 자동화/통합은 v2를 사용할 것

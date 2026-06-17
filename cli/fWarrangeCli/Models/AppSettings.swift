@@ -160,6 +160,7 @@ struct AppSettings: Codable {
     // 자동 저장 (Advanced 탭)
     var autoSaveOnSleep: Bool?         // 슬립/종료 시 자동 저장
     var maxAutoSaves: Int?             // 최대 보관 개수
+    var retentionDays: Int?            // 자동 캡처(auto-) 보관 일수, 0 = 무제한 보관
 
     // UI 옵션 (Advanced 탭, GUI 앱이 읽어가는 설정)
     var restoreButtonStyle: String?    // "iconOnly" | "nameIcon" | "nameOnly"
@@ -207,6 +208,7 @@ struct AppSettings: Codable {
         dataDirectoryPath: nil,
         autoSaveOnSleep: true,
         maxAutoSaves: 5,
+        retentionDays: 7,
         restoreButtonStyle: "nameIcon",
         confirmBeforeDelete: true,
         showInCmdTab: true,

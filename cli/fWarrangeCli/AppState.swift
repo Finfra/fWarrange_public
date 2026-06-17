@@ -17,6 +17,8 @@ final class AppState {
     private let screenMoveService: ScreenMoveService
     private let modeStorageService: ModeStorageService
     private let appLauncherService: AppLauncherService
+    /// Issue81: 슬립/잠금 시 자동 캡처 코디네이터
+    private var autoCaptureCoordinator: AutoCaptureCoordinator?
 
     var isRunning = false
     var connectionCount = 0
@@ -441,6 +443,18 @@ final class AppState {
         startObservingMenuBarIcon()
 
         layoutManager.loadMetadataList()
+
+        // Issue81: 기동 시 보관 기간 초과 자동 캡처 정리 + 슬립/잠금 자동 캡처 구독 시작
+        layoutManager.cleanupExpiredAutoCaptures(retentionDays: settings.retentionDays ?? 7)
+        let coordinator = AutoCaptureCoordinator(
+            windowManager: windowManager,
+            layoutManager: layoutManager,
+            settingsProvider: { [weak self] in
+                self?.settingsService.load() ?? AppSettings.defaults
+            }
+        )
+        coordinator.start()
+        self.autoCaptureCoordinator = coordinator
 
         // REST 서버 시작 (항상 활성화, FWARRANGE_PORT env 우선)
         restServer.start(port: Env.port ?? UInt16(settings.restServerPort ?? 3016))

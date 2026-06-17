@@ -30,6 +30,52 @@ final class LayoutManager {
         return "\(datePrefix)-\(existingMax + 1)"
     }
 
+    /// 자동 캡처용 이름 생성 — `auto-yyyy-MM-dd-N` (Issue81)
+    /// `nextDailySequenceName` 미러. prefix `auto-` 기준으로 당일 시퀀스를 계산함.
+    func nextAutoCaptureName(date: Date = Date()) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let datePrefix = "\(LayoutNaming.autoPrefix)\(formatter.string(from: date))"  // ex: "auto-2026-06-15"
+        let existingMax = layouts.compactMap { meta -> Int? in
+            guard meta.name.hasPrefix("\(datePrefix)-") else { return nil }
+            return Int(meta.name.dropFirst(datePrefix.count + 1))
+        }.max() ?? 0
+        return "\(datePrefix)-\(existingMax + 1)"
+    }
+
+    // MARK: - 자동 캡처 보관 정책 (Issue81)
+
+    /// 보관 기간(retentionDays)을 초과한 자동 캡처(auto-) 레이아웃을 삭제함.
+    /// - 수동 레이아웃·구 yml(prefix 없음)은 절대 삭제하지 않음
+    /// - `retentionDays <= 0` 이면 무제한 보관으로 간주하여 no-op
+    /// - 이름 `auto-yyyy-MM-dd-N`에서 날짜를 파싱해 비교. 파싱 실패 시 해당 항목 skip
+    func cleanupExpiredAutoCaptures(retentionDays: Int, now: Date = Date()) {
+        guard retentionDays > 0 else { return }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        let cutoff = now.addingTimeInterval(-Double(retentionDays) * 86_400)
+        let expired: [String] = layouts.compactMap { meta in
+            guard meta.isAuto else { return nil }
+            // "auto-2026-06-15-1" → "2026-06-15"
+            let body = meta.name.dropFirst(LayoutNaming.autoPrefix.count)  // "2026-06-15-1"
+            let parts = body.split(separator: "-")
+            guard parts.count >= 3 else { return nil }
+            let datePart = parts.prefix(3).joined(separator: "-")  // "2026-06-15"
+            guard let captureDate = formatter.date(from: datePart) else { return nil }
+            return captureDate < cutoff ? meta.name : nil
+        }
+        guard !expired.isEmpty else { return }
+        for name in expired {
+            do {
+                try deleteLayout(name: name)
+                logI("🧹 자동 캡처 보관 만료 삭제: \(name) (retentionDays=\(retentionDays))")
+            } catch {
+                logW("자동 캡처 만료 삭제 실패: \(name) — \(error)")
+            }
+        }
+    }
+
     // MARK: - 메타데이터 로드 (경량)
 
     func loadMetadataList() {

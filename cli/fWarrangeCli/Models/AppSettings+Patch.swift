@@ -22,6 +22,7 @@ extension AppSettings {
             "allowedCIDR": s.allowedCIDR ?? "192.168.0.0/16",
             "autoSaveOnSleep": s.autoSaveOnSleep ?? true,
             "maxAutoSaves": s.maxAutoSaves ?? 5,
+            "retentionDays": s.retentionDays ?? 7,
             "restoreButtonStyle": s.restoreButtonStyle ?? "nameIcon",
             "confirmBeforeDelete": s.confirmBeforeDelete ?? true,
             "showInCmdTab": s.showInCmdTab ?? true,
@@ -58,6 +59,7 @@ extension AppSettings {
         if let v = body["logLevel"] as? Int { s.logLevel = v }
         if let v = body["autoSaveOnSleep"] as? Bool { s.autoSaveOnSleep = v }
         if let v = body["maxAutoSaves"] as? Int { s.maxAutoSaves = v }
+        if let v = body["retentionDays"] as? Int { s.retentionDays = v }
         if let v = body["restoreButtonStyle"] as? String { s.restoreButtonStyle = v }
         if let v = body["confirmBeforeDelete"] as? Bool { s.confirmBeforeDelete = v }
         if let v = body["showInCmdTab"] as? Bool { s.showInCmdTab = v }

@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 80
+* Issue HWM: 81
 * Save Point: 2026-05-18 (Issue78 종결 — /operations + op.* 이벤트 + 직렬화 enforce)
   - 609c51d (2026-06-15) - cli/_doc_arch 7문서 정합성 감사 완료 (리포트 cli/_doc_work/report/cli-doc-arch-audit_report.md, 미커밋 산출물)
   - 53f2dfe (2026-05-18) - Feat(Issue78)(REST): /operations + op.* 이벤트 + 직렬화 enforce
@@ -22,9 +22,26 @@ date: 2026-04-07
 
 # 🌱 이슈후보
 1. brew remote등록
-2. 앱이 비활성화될때 자동으로 레이아웃을 캡쳐하는 기능(이렇게 캡쳐된 레이아웃은 저장 기간 옵션에 따라 자동 삭제되어야 하고 paidApp에서 레이아웃 리스트에 별도의 표식이 있어야함. )
 
 # 🚧 진행중
+## Issue81: [Feat] 시스템 슬립/잠금 시 자동 레이아웃 캡처 + retentionDays 자동 삭제 + isAuto 표식 (등록: 2026-06-15) 🚧
+* 목적: 시스템 슬립/화면 잠금 시 자동으로 레이아웃을 캡처하고, 저장 기간(retentionDays) 초과분을 자동 삭제하며, paidApp 레이아웃 리스트에서 자동 캡처본을 구분할 수 있게 isAuto 표식을 노출. 기존 dead setting(`autoSaveOnSleep`)을 실제 배선.
+* plan: `cli/_doc_work/plan/auto_capture_on_sleep_plan.md`
+* task: `cli/_doc_work/tasks/auto_capture_on_sleep_task.md`
+* 설계 결정 (2026-06-15 브레인스토밍 폼):
+    - 트리거: 시스템 슬립(`willSleepNotification`) + 화면 잠금(`com.apple.screenIsLocked`), `autoSaveOnSleep` 게이트, 5초 디바운스
+    - 보관: `retentionDays` 신규 설정(기본 7, 0=무제한). auto- 레이아웃만 삭제, 수동 절대 보존
+    - 표식: 이름 prefix `auto-` → `isAuto` 파생. 스키마 무변경·하위호환
+    - paidApp 표식 UI는 상위 #16에 별도 이슈 등록(직접 수정 금지)
+* 구현 명세:
+    - 신규 `Managers/AutoCaptureCoordinator.swift` (슬립/잠금 관측 + 캡처 + 디바운스)
+    - `LayoutManager`: `nextAutoCaptureName`, `cleanupExpiredAutoCaptures`
+    - `AppSettings`(+Patch)·`SettingsService`·`_config.yml`: `retentionDays`
+    - `Layout`/`LayoutMetadata`: `isAuto`
+    - `RESTServer`: advanced 탭 `retentionDays` + 목록/캡처 응답 `isAuto`
+    - `AppState`: Coordinator 기동 + 기동 시 cleanup
+    - `api/openapi_v2.yaml` + `cli/_doc_arch/RestAPI_v2.md` 동기화
+* 검증: Debug 빌드, 잠금 캡처, autoSaveOnSleep=false 미캡처, /layouts isAuto, retention 삭제(수동 보존)
 
 # 📕 중요
 

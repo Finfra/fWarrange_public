@@ -1,7 +1,7 @@
 #!/bin/bash
 # apiTestDo.sh - API 테스트 스크립트 실행기 (v1/v2 분리)
 # Usage:
-#   bash cli/_tool/apiTestDo.sh                          # v1 정상 전체 (기본)
+#   bash cli/_tool/apiTestDo.sh                          # v2 정상 전체 (기본 — v1은 410 Gone)
 #   bash cli/_tool/apiTestDo.sh v1                       # v1 정상 전체
 #   bash cli/_tool/apiTestDo.sh v2                       # v2 정상 전체
 #   bash cli/_tool/apiTestDo.sh v1 0                     # v1 00번
@@ -159,8 +159,8 @@ save_report() {
 # --run: 사전 빌드·배포·실행
 [ "$OPT_RUN" -eq 1 ] && pre_flight
 
-# 버전 디렉토리 선택 (기본: v1)
-VERSION="v1"
+# 버전 디렉토리 선택 (기본: v2 — v1은 410 Gone deprecated)
+VERSION="v2"
 case "${1:-}" in
     v1|v2)
         VERSION="$1"
