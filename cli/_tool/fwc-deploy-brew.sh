@@ -225,7 +225,7 @@ class FwarrangeCli < Formula
   end
 
   test do
-    assert_predicate prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli", :exist?
+    assert_path_exists prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli"
   end
 end
 FORMULA
@@ -506,8 +506,8 @@ cmd_publish() {
 class FwarrangeCli < Formula
   desc "Window layout management daemon for fWarrange"
   homepage "https://github.com/Finfra/fWarrange_public"
+  # version is scanned from the URL basename (fWarrangeCli-${LOCAL_VERSION}.tar.gz)
   url "$DL_URL"
-  version "$LOCAL_VERSION"
   sha256 "$SHA"
   license "MIT"
 
@@ -540,7 +540,7 @@ class FwarrangeCli < Formula
   end
 
   test do
-    assert_predicate prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli", :exist?
+    assert_path_exists prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli"
   end
 end
 FORMULA
