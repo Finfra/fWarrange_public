@@ -32,15 +32,46 @@ This repository serves as:
 * **Detailed Restoration** - Fine-grained control over app placement
 * **Lightning-Fast Switching** - Keyboard-only workflow switching
 
-# CLI Quick Start
+# Installation (fWarrangeCli)
+
+The free, open-source CLI engine is distributed via Homebrew.
 
 ```bash
-# Install via Homebrew
+# 1. Add the tap and install
+brew tap finfra/tap
 brew install finfra/tap/fwarrange-cli
 
-# Or build from source
-cd cli && xcodebuild -scheme fWarrangeCli -configuration Release build -quiet
+# 2. Start the background service (auto-starts on login)
+brew services start fwarrange-cli
+
+# 3. Verify the REST API is running
+curl http://localhost:3016/api/v2/status
 ```
+
+## Service Management
+
+```bash
+brew services start fwarrange-cli     # Start (auto-start on login)
+brew services stop fwarrange-cli      # Stop
+brew services restart fwarrange-cli   # Restart
+brew upgrade fwarrange-cli            # Update to the latest version
+```
+
+## Uninstall
+
+```bash
+brew services stop fwarrange-cli      # Stop the service first
+brew uninstall fwarrange-cli          # Remove the app
+brew untap finfra/tap                 # (optional) Remove the tap
+```
+
+> Layout data in `~/Documents/finfra/fWarrangeData/` is kept after uninstall.
+> Delete that folder manually to remove all data.
+
+> **Accessibility permission required.** On first run, grant access in
+> *System Settings > Privacy & Security > Accessibility* for window control to work.
+
+See [`cli/README.md`](./cli/README.md) for build-from-source and full details.
 
 # Requirements
 
