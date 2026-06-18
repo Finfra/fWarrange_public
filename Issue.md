@@ -23,18 +23,6 @@ date: 2026-04-07
 # 🌱 이슈후보
 
 # 🚧 진행중
-## Issue82: [Deploy] `/deploy brew publish` 자동화 — 원격 finfra/homebrew-tap 배포 (등록: 2026-06-18) 🚧
-* 목적: 그동안 수동으로 수행하던 원격 Homebrew tap 배포(GitHub release + Formula push)를 `cmd_publish`로 자동화. `/deploy brew publish` 단일 커맨드로 일반 사용자가 `brew install finfra/tap/fwarrange-cli` 가능하게 함.
-* 상세:
-    - 현 상태: `cmd_publish`는 stub(`return 1`, "미구현" 안내만). 원격 tap·release(v1.0.1)는 수동으로 1회 배포된 흔적만 존재
-    - 함정: 로컬 tap `/opt/homebrew/Library/Taps/finfra/homebrew-tap`은 `brew tap-new` 로컬 생성분이라 git remote 미설정 → 직접 push 불가. temp clone 경유 필요
-* 구현 명세:
-    - `fwc-config.sh`: `GH_RELEASE_REPO=Finfra/fWarrange_public`, `REMOTE_TAP_SLUG=Finfra/homebrew-tap`, `REMOTE_TAP_URL` 추가
-    - `cmd_publish`: 사전조건(gh auth·태그 중복) → Release 빌드 → version-named tarball(`fWarrangeCli-{ver}.tar.gz`, 서명 .app) → `git tag cli-v{ver}` push → `gh release create` + asset 업로드 → temp clone tap → Formula(release URL+sha256) 갱신·commit·push → 검증
-    - 태그 규약: `cli-v{VERSION}` / asset: `fWarrangeCli-{VERSION}.tar.gz` (기존 수동 배포 end-state와 동일)
-    - `--dry-run` 플래그 지원 (tag/release/push 미실행 검증)
-    - VERSION: paidApp(#16) 정렬 기준. 1.0.1 이미 배포됨 → 신규 변경(Issue80·81) 반영 위해 1.0.2 bump 후 publish
-
 ## Issue81: [Feat] 시스템 슬립/잠금 시 자동 레이아웃 캡처 + retentionDays 자동 삭제 + isAuto 표식 (등록: 2026-06-15) 🚧
 * 목적: 시스템 슬립/화면 잠금 시 자동으로 레이아웃을 캡처하고, 저장 기간(retentionDays) 초과분을 자동 삭제하며, paidApp 레이아웃 리스트에서 자동 캡처본을 구분할 수 있게 isAuto 표식을 노출. 기존 dead setting(`autoSaveOnSleep`)을 실제 배선.
 * plan: `cli/_doc_work/plan/auto_capture_on_sleep_plan.md`
@@ -61,6 +49,21 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue82: [Deploy] `/deploy brew publish` 자동화 — 원격 finfra/homebrew-tap 배포 (등록: 2026-06-18, 완료: 2026-06-18, Hash: 5eecb2c·6c67c1a, tap: 68545a3, release: cli-v1.0.2) ✅
+* 목적: 수동으로 수행하던 원격 Homebrew tap 배포(GitHub release + Formula push)를 `cmd_publish`로 자동화. `/deploy brew publish` 단일 커맨드로 일반 사용자가 `brew install finfra/tap/fwarrange-cli` 가능하게 함.
+* 구현:
+    - `fwc-config.sh`: `GH_RELEASE_REPO`·`REMOTE_TAP_SLUG`·`REMOTE_TAP_URL` 추가
+    - `cmd_publish` (fwc-deploy-brew.sh): 사전조건(gh auth·태그 중복 차단) → Release 빌드 → version-named tarball(`fWarrangeCli-{ver}.tar.gz`, 서명 .app) → `git tag cli-v{ver}` push → `gh release create` + asset 업로드 → **temp clone tap** Formula(release URL+sha256) 갱신·commit·push → `brew audit` 검증
+    - `--dry-run` 플래그: 외부 변경 없이 빌드·tarball·clone·Formula 생성만 검증
+    - 함정 해결: 로컬 tap이 `brew tap-new` 로컬생성분(remote 미설정)이라 직접 push 불가 → 원격 `git@github.com:Finfra/homebrew-tap.git` temp clone 경유 (로컬 brew tap 상태 미오염)
+* 라이브 배포 결과 (1.0.2):
+    - VERSION 1.0.1→1.0.2 (Issue80·81 반영), MARKETING_VERSION(pbxproj·project.yml) 동기화
+    - 태그 `cli-v1.0.2` + release asset `fWarrangeCli-1.0.2.tar.gz` (sha256 `8c3e22e3…`) 업로드
+    - 원격 tap Formula push → asset sha256 ↔ Formula sha256 **byte-identical 검증 통과**
+    - audit clean: `version` 줄 제거(URL 스캔)·`assert_path_exists` 전환 (6c67c1a + tap 68545a3)
+* 검증: 원격 formula url/sha256 일치 + release asset 다운로드 sha256 대조 일치 + Ruby Syntax OK. 외부 사용자 `brew install finfra/tap/fwarrange-cli` end-to-end 정상
+* 후속 메모: pairApp(fSnippetCli #25) `fsc-deploy-brew.sh` cmd_publish 도 동일 stub → 동일 패턴 적용 가능 (별도 이슈)
+
 ## Issue80: [REST] `/api/v2/settings/{tab}` 탭별 PATCH Bool `false` 미영속화 — 동시성 lost update 재현·수정 (등록: 2026-06-15, 완료: 2026-06-15, Hash: e62208b) ✅
 * 목적: Phase 4(Issue72_4) 당시 발견된 "탭별 PATCH가 Bool false를 디스크에 영속화하지 않음(전체 `/settings` PATCH는 정상)" 후보를 검증·종결
 * 조사 1차 (순차 단일 PATCH — 재현 안 됨):
