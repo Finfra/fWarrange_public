@@ -13,10 +13,10 @@ macOS Window Management & Layout Tool. Save and restore window positions and siz
 
 # Editions
 
-| Edition | Interface | Price | Install | Source |
-| ------- | --------- | ----- | ------- | ------ |
-| **fWarrange** (GUI) | Full GUI with menu bar | Paid (App Store) | [App Store](https://finfra.kr/product/fWarrange/en/index.html) | Closed |
-| **fWarrangeCli** (CLI) | Menu bar + REST API | **Free & Open Source** | `brew install finfra/tap/fwarrange-cli` | [`cli/`](./cli/) |
+| Edition | Interface | Price | Install | Version | Source |
+| ------- | --------- | ----- | ------- | ------- | ------ |
+| **fWarrange** (GUI) | Full GUI with menu bar | Paid (App Store) | [App Store](https://finfra.kr/product/fWarrange/en/index.html) | Latest | Closed |
+| **fWarrangeCli** (CLI) | Menu bar + REST API | **Free & Open Source** | `brew install finfra/tap/fwarrange-cli` | 1.0.2 | [`cli/`](./cli/) |
 
 This repository serves as:
 * **User support & documentation** for the paid GUI version (App Store)
@@ -26,11 +26,13 @@ This repository serves as:
 
 * **Shortcut Restore** - Instantly restore saved layouts with hotkeys
 * **Easy Save** - One-click save of current window positions and sizes
+* **Auto-Capture** - Automatically save layouts on system sleep or screen lock (v1.0.2+)
 * **Minimal Interface** - Runs quietly from the menu bar
 * **Multi-Display Support** - Remembers layouts across multiple monitors
 * **Multiple Workspaces** - Save different layouts for different tasks
 * **Detailed Restoration** - Fine-grained control over app placement
 * **Lightning-Fast Switching** - Keyboard-only workflow switching
+* **Robust Concurrency** - Thread-safe settings and operations handling
 
 # Installation (fWarrangeCli)
 
