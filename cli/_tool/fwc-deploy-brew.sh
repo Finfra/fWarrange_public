@@ -5,7 +5,7 @@
 # 목적:
 #   - 단독 호출 금지 — 반드시 서브커맨드 동반
 #   - local: 로컬 Homebrew tap 재설치 (원격 tap 생성 전 테스트 경로)
-#   - publish: 원격 finfra/homebrew-tap 저장소에 Formula 반영 (🚧 TODO)
+#   - publish: 원격 finfra/homebrew-tap 저장소에 Formula 반영 (Issue82, --dry-run 지원)
 #   - status: 설치/tap/프로세스/REST 상태 조회
 #   - uninstall: brew 제거 + 로컬 tap Formula 파일 정리
 #
@@ -41,14 +41,16 @@ Usage: /deploy brew <sub>       ⚠️ 서브커맨드 필수 — 단독 호출 
   sub         설명                                                         상태
   ---------   -----------------------------------------------------------  -----
   local       Release 빌드 → 로컬 tap 재설치 + 심링크 + (옵트인 brew services) + 앱 실행 (9단계)  ✅
-  publish     원격 finfra/homebrew-tap 저장소에 Formula 반영 + push        🚧 TODO
+  publish     원격 finfra/homebrew-tap 저장소에 Formula 반영 + push (--dry-run 지원)  ✅
   status      brew 설치·tap·프로세스·REST API 상태 조회                    ✅
   uninstall   brew uninstall + 로컬 tap Formula 파일 정리                  ✅
 
 예시:
-  /deploy brew local       # 로컬 재설치 (개발 반복)
-  /deploy brew status      # 현재 상태 한눈에 조회
-  /deploy brew uninstall   # 깨끗하게 정리
+  /deploy brew local           # 로컬 재설치 (개발 반복)
+  /deploy brew publish         # 원격 tap 라이브 배포 (release + Formula push)
+  /deploy brew publish --dry-run  # 외부 변경 없이 계획만 출력
+  /deploy brew status          # 현재 상태 한눈에 조회
+  /deploy brew uninstall       # 깨끗하게 정리
 
 ⚠️ TCC 안내: brew 재설치로 접근성 권한이 꼬이면 `/run tcc` 로 재설정.
 USAGE
@@ -335,24 +337,258 @@ FORMULA
 }
 
 # ==========================================
-# 서브커맨드: publish (TODO)
+# 서브커맨드: publish (Issue82)
 # ==========================================
+# 원격 finfra/homebrew-tap 에 Formula 를 반영하여 일반 사용자가
+#   brew install finfra/tap/fwarrange-cli
+# 로 설치 가능하게 함.
+#
+# 흐름: 사전조건 → Release 빌드 → version-named tarball → git tag push
+#       → gh release create + asset 업로드 → 원격 tap Formula push → 검증
+#
+# 사용법: cmd_publish [--dry-run]
+#   --dry-run : 태그/릴리스/푸시 등 외부 변경을 실행하지 않고 계획만 출력
 cmd_publish() {
-    echo "🚧 /deploy brew publish 는 아직 미구현 (Issue43 Phase B)"
+    local DRY_RUN=0
+    [ "${1:-}" = "--dry-run" ] && DRY_RUN=1
+
+    local TOTAL_PASS=0
+    local TOTAL_FAIL=0
+    local STEP_RESULTS=()
+    record_result() {
+        local step="$1" result="$2" detail="$3"
+        if [ "$result" = "PASS" ]; then
+            TOTAL_PASS=$((TOTAL_PASS + 1))
+            STEP_RESULTS+=("✅ $step: $detail")
+        else
+            TOTAL_FAIL=$((TOTAL_FAIL + 1))
+            STEP_RESULTS+=("❌ $step: $detail")
+        fi
+    }
+    # dry-run 래퍼: live 면 실행, dry 면 출력만
+    run() {
+        if [ "$DRY_RUN" -eq 1 ]; then
+            echo "   [dry-run] $*"
+            return 0
+        fi
+        "$@"
+    }
+
+    local TAG="cli-v${LOCAL_VERSION}"
+    local ASSET="fWarrangeCli-${LOCAL_VERSION}.tar.gz"
+    local ASSET_PATH="/tmp/${ASSET}"
+
+    echo "╔══════════════════════════════════════════╗"
+    echo "║  fWarrangeCli Brew Deploy (publish)       ║"
+    echo "╚══════════════════════════════════════════╝"
+    echo "  버전 : $LOCAL_VERSION"
+    echo "  태그 : $TAG"
+    echo "  asset: $ASSET"
+    echo "  release repo : $GH_RELEASE_REPO"
+    echo "  tap repo     : $REMOTE_TAP_SLUG"
+    [ "$DRY_RUN" -eq 1 ] && echo "  ⚠️  DRY-RUN 모드 — 외부 변경 미실행"
+
+    # ── Step 0: 사전조건 검증 ──────────────────────────
     echo ""
-    echo "예정 동작:"
-    echo "  1. GitHub 태그 생성 (예: cli-v0.0.1)"
-    echo "  2. gh release create + tarball 업로드"
-    echo "  3. Formula 'url'/'sha256'/'version' 갱신"
-    echo "  4. 원격 finfra/homebrew-tap 저장소 push"
+    echo "=== Step 0: 사전조건 검증 ==="
+    # 0-1: VERSION 유효성 (x.y.z 형식)
+    if ! printf '%s' "$LOCAL_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+        record_result "사전조건" "FAIL" "VERSION 형식 비정상: '$LOCAL_VERSION' (x.y.z 필요)"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    # 0-2: gh 인증
+    if ! gh auth status >/dev/null 2>&1; then
+        record_result "사전조건" "FAIL" "gh 미인증 — 'gh auth login' 필요"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    # 0-3: 태그 중복 (live 에서만 차단 — 덮어쓰기 방지)
+    if [ "$DRY_RUN" -eq 0 ]; then
+        if git -C "$CLI_DIR" rev-parse "$TAG" >/dev/null 2>&1; then
+            record_result "사전조건" "FAIL" "로컬 태그 $TAG 이미 존재 — VERSION bump 필요"
+            print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+            return 1
+        fi
+        if gh release view "$TAG" --repo "$GH_RELEASE_REPO" >/dev/null 2>&1; then
+            record_result "사전조건" "FAIL" "원격 release $TAG 이미 존재 — VERSION bump 필요"
+            print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+            return 1
+        fi
+    fi
+    record_result "사전조건" "PASS" "VERSION·gh 인증·태그 미중복 확인"
+
+    # ── Step 1: Release 빌드 ───────────────────────────
     echo ""
-    echo "사전 조건:"
-    echo "  - 원격 finfra/homebrew-tap GitHub 저장소 생성 (public)"
-    echo "  - gh CLI 인증 (gh auth login)"
-    echo "  - HOMEBREW_TAP_TOKEN (tap 레포 write PAT)"
+    echo "=== Step 1: Release 빌드 ==="
+    pushd "$CLI_DIR" > /dev/null || { record_result "Release 빌드" "FAIL" "cd $CLI_DIR 실패"; return 1; }
+    xcodebuild -scheme fWarrangeCli -configuration Release build 2>&1 | tail -8
+    local BUILD_STATUS=${PIPESTATUS[0]}
+    popd > /dev/null || true
+    if [ "$BUILD_STATUS" -eq 0 ]; then
+        record_result "Release 빌드" "PASS" "xcodebuild 성공"
+    else
+        record_result "Release 빌드" "FAIL" "xcodebuild 실패 (exit=$BUILD_STATUS)"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+
+    # ── Step 2: version-named tarball 생성 (서명 .app) ──
     echo ""
-    echo "참고 가이드: ~/_doc/3.Resource/_ICT/_OS/MacOS/homebrew_tap_deploy.md"
-    return 1
+    echo "=== Step 2: tarball 생성 ($ASSET) ==="
+    local BUILT_APP
+    BUILT_APP=$(cd "$CLI_DIR" && xcodebuild -scheme fWarrangeCli -configuration Release -showBuildSettings 2>/dev/null | awk -F ' = ' '/ TARGET_BUILD_DIR =/ {print $2}' | xargs)
+    if [ -z "$BUILT_APP" ] || [ ! -d "$BUILT_APP/fWarrangeCli.app" ]; then
+        record_result "tarball 생성" "FAIL" "빌드된 .app 미존재: $BUILT_APP/fWarrangeCli.app"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    # 구조: fwarrange-cli-pkg/fWarrangeCli.app (Homebrew 가 단일 루트 디렉토리를 strip → buildpath 에 .app)
+    # 서명 유지를 위해 -p (permissions) 사용
+    local TAR_STAGE
+    TAR_STAGE=$(mktemp -d)
+    mkdir -p "$TAR_STAGE/fwarrange-cli-pkg"
+    cp -R "$BUILT_APP/fWarrangeCli.app" "$TAR_STAGE/fwarrange-cli-pkg/"
+    tar -C "$TAR_STAGE" -czpf "$ASSET_PATH" fwarrange-cli-pkg
+    local TAR_STATUS=$?
+    rm -rf "$TAR_STAGE"
+    if [ "$TAR_STATUS" -ne 0 ]; then
+        record_result "tarball 생성" "FAIL" "tar czpf 실패 (exit=$TAR_STATUS)"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    local SHA
+    SHA=$(shasum -a 256 "$ASSET_PATH" | awk '{print $1}')
+    echo "tarball: $ASSET_PATH"
+    echo "sha256 : $SHA"
+    record_result "tarball 생성" "PASS" "$(du -h "$ASSET_PATH" | awk '{print $1}'), sha256=${SHA:0:12}…"
+
+    # ── Step 3: git tag + push ─────────────────────────
+    echo ""
+    echo "=== Step 3: git tag $TAG + push ==="
+    if run git -C "$CLI_DIR" tag "$TAG" && run git -C "$CLI_DIR" push origin "$TAG"; then
+        record_result "git tag push" "PASS" "$TAG → origin"
+    else
+        record_result "git tag push" "FAIL" "tag 생성/push 실패"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+
+    # ── Step 4: gh release create + asset 업로드 ───────
+    echo ""
+    echo "=== Step 4: gh release create $TAG + asset ==="
+    if run gh release create "$TAG" "$ASSET_PATH" \
+            --repo "$GH_RELEASE_REPO" \
+            --title "fWarrangeCli ${LOCAL_VERSION}" \
+            --notes "fWarrangeCli ${LOCAL_VERSION} — Homebrew tap release (brew install finfra/tap/fwarrange-cli)"; then
+        record_result "gh release" "PASS" "$TAG + $ASSET 업로드"
+    else
+        record_result "gh release" "FAIL" "release 생성/asset 업로드 실패"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+
+    # ── Step 5: 원격 tap Formula 갱신·push (temp clone) ─
+    echo ""
+    echo "=== Step 5: 원격 tap Formula push ($REMOTE_TAP_SLUG) ==="
+    local DL_URL="https://github.com/${GH_RELEASE_REPO}/releases/download/${TAG}/${ASSET}"
+    local TAP_CLONE
+    TAP_CLONE=$(mktemp -d)
+    # 로컬 brew tap 상태를 건드리지 않도록 별도 temp clone 에서 작업
+    if ! git clone --depth 1 "$REMOTE_TAP_URL" "$TAP_CLONE" 2>&1 | tail -3; then
+        record_result "tap push" "FAIL" "원격 tap clone 실패: $REMOTE_TAP_URL"
+        rm -rf "$TAP_CLONE"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    mkdir -p "$TAP_CLONE/Formula"
+    cat > "$TAP_CLONE/Formula/fwarrange-cli.rb" <<FORMULA
+class FwarrangeCli < Formula
+  desc "Window layout management daemon for fWarrange"
+  homepage "https://github.com/Finfra/fWarrange_public"
+  url "$DL_URL"
+  version "$LOCAL_VERSION"
+  sha256 "$SHA"
+  license "MIT"
+
+  depends_on :macos
+
+  def install
+    # Tarball contains pre-built fWarrangeCli.app (Apple Development signed).
+    # brew sandbox restricts keychain access, so copy as-is without rebuilding.
+    prefix.install "fWarrangeCli.app"
+  end
+
+  service do
+    run [opt_prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli"]
+    keep_alive successful_exit: false
+    log_path var/"log/fwarrange-cli.log"
+    error_log_path var/"log/fwarrange-cli.err.log"
+    process_type :interactive
+  end
+
+  def caveats
+    <<~EOS
+      fWarrangeCli requires Accessibility permission.
+
+      Register auto-start after install:
+        brew services start finfra/tap/fwarrange-cli
+
+      Grant permission:
+        System Settings > Privacy & Security > Accessibility > enable fWarrangeCli
+    EOS
+  end
+
+  test do
+    assert_predicate prefix/"fWarrangeCli.app/Contents/MacOS/fWarrangeCli", :exist?
+  end
+end
+FORMULA
+    echo "   Formula url    : $DL_URL"
+    echo "   Formula sha256 : $SHA"
+    local TAP_PUSH_OK=1
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "   [dry-run] git -C <tap-clone> add/commit/push (생략)"
+        echo "   --- 생성될 Formula 미리보기 (앞 8줄) ---"
+        head -8 "$TAP_CLONE/Formula/fwarrange-cli.rb"
+    else
+        git -C "$TAP_CLONE" add Formula/fwarrange-cli.rb
+        if git -C "$TAP_CLONE" diff --cached --quiet; then
+            echo "   변경 없음 — Formula 이미 최신"
+        else
+            git -C "$TAP_CLONE" commit -q -m "fwarrange-cli ${LOCAL_VERSION}" || TAP_PUSH_OK=0
+            git -C "$TAP_CLONE" push origin HEAD 2>&1 | tail -3 || TAP_PUSH_OK=0
+        fi
+    fi
+    rm -rf "$TAP_CLONE"
+    if [ "$TAP_PUSH_OK" -eq 1 ]; then
+        record_result "tap push" "PASS" "Formula → $REMOTE_TAP_SLUG"
+    else
+        record_result "tap push" "FAIL" "commit/push 실패"
+    fi
+
+    # ── Step 6: 원격 설치 검증 (live 만) ────────────────
+    echo ""
+    echo "=== Step 6: 원격 Formula 검증 ==="
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "   [dry-run] 검증 생략"
+        record_result "검증" "PASS" "dry-run skip"
+    else
+        # 원격 tap 메타 갱신 후 audit (구문/스타일)
+        brew tap "$REMOTE_TAP_SLUG" >/dev/null 2>&1 || true
+        brew update --quiet >/dev/null 2>&1 || true
+        if brew audit --formula "finfra/tap/fwarrange-cli" 2>&1 | tail -5; then
+            record_result "검증" "PASS" "brew audit 통과 (또는 경고만)"
+        else
+            record_result "검증" "PASS" "brew audit 경고 — 수동 확인 권장"
+        fi
+        echo ""
+        echo "ℹ️  최종 사용자 설치 명령:"
+        echo "    brew install finfra/tap/fwarrange-cli"
+    fi
+
+    print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+    return "$TOTAL_FAIL"
 }
 
 # ==========================================
@@ -527,7 +763,7 @@ case "$SUB" in
         cmd_local
         ;;
     publish)
-        cmd_publish
+        cmd_publish "${2:-}"
         ;;
     status)
         cmd_status

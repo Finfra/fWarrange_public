@@ -24,6 +24,16 @@ BREW_FORMULA="fwarrange-cli"              # Homebrew Formula 이름 (kebab-case)
 BREW_SERVICE_LABEL="homebrew.mxcl.${BREW_FORMULA}"
 BREW_SERVICE_PLIST="${HOME}/Library/LaunchAgents/${BREW_SERVICE_LABEL}.plist"
 
+# ---------- 원격 배포(publish) 설정 (Issue82) ----------
+# /deploy brew publish 가 사용. GitHub release + 원격 Homebrew tap 배포 대상.
+#   - GH_RELEASE_REPO : tarball asset 을 release 로 올릴 저장소 (= _public origin)
+#   - REMOTE_TAP_SLUG : Formula 를 push 할 원격 tap 저장소 (owner/repo)
+#   - REMOTE_TAP_URL  : 위 tap 의 git clone URL (temp clone 경유 push)
+#   태그 규약: cli-v{VERSION} / asset: fWarrangeCli-{VERSION}.tar.gz (기존 수동 배포 end-state 동일)
+GH_RELEASE_REPO="Finfra/fWarrange_public"
+REMOTE_TAP_SLUG="Finfra/homebrew-tap"
+REMOTE_TAP_URL="git@github.com:${REMOTE_TAP_SLUG}.git"
+
 # ---------- 공용 헬퍼 ----------
 
 # config.sh 자신의 위치 기준 script 디렉토리 (source 환경에서 안전)

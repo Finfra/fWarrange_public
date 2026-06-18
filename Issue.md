@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 81
+* Issue HWM: 82
 * Save Point: 2026-05-18 (Issue78 종결 — /operations + op.* 이벤트 + 직렬화 enforce)
   - 609c51d (2026-06-15) - cli/_doc_arch 7문서 정합성 감사 완료 (리포트 cli/_doc_work/report/cli-doc-arch-audit_report.md, 미커밋 산출물)
   - 53f2dfe (2026-05-18) - Feat(Issue78)(REST): /operations + op.* 이벤트 + 직렬화 enforce
@@ -21,9 +21,20 @@ date: 2026-04-07
 * **Issue72_6 비공개 API 도입 합의 (2026-05-16)** — cliApp(non-sandbox)에서 CGSGetActiveSpace·CGSCopySpacesForWindows·CGSMainConnectionID 사용. App Store 영향 無 (cliApp은 brew 배포). macOS 업데이트 시 폐기 가능성 대비 nil 반환 안전망 보유. 상위 `_doc_arch/paid_cli_protocol.md` 차기 갱신 시 반영 권장.
 
 # 🌱 이슈후보
-1. brew remote등록
 
 # 🚧 진행중
+## Issue82: [Deploy] `/deploy brew publish` 자동화 — 원격 finfra/homebrew-tap 배포 (등록: 2026-06-18) 🚧
+* 목적: 그동안 수동으로 수행하던 원격 Homebrew tap 배포(GitHub release + Formula push)를 `cmd_publish`로 자동화. `/deploy brew publish` 단일 커맨드로 일반 사용자가 `brew install finfra/tap/fwarrange-cli` 가능하게 함.
+* 상세:
+    - 현 상태: `cmd_publish`는 stub(`return 1`, "미구현" 안내만). 원격 tap·release(v1.0.1)는 수동으로 1회 배포된 흔적만 존재
+    - 함정: 로컬 tap `/opt/homebrew/Library/Taps/finfra/homebrew-tap`은 `brew tap-new` 로컬 생성분이라 git remote 미설정 → 직접 push 불가. temp clone 경유 필요
+* 구현 명세:
+    - `fwc-config.sh`: `GH_RELEASE_REPO=Finfra/fWarrange_public`, `REMOTE_TAP_SLUG=Finfra/homebrew-tap`, `REMOTE_TAP_URL` 추가
+    - `cmd_publish`: 사전조건(gh auth·태그 중복) → Release 빌드 → version-named tarball(`fWarrangeCli-{ver}.tar.gz`, 서명 .app) → `git tag cli-v{ver}` push → `gh release create` + asset 업로드 → temp clone tap → Formula(release URL+sha256) 갱신·commit·push → 검증
+    - 태그 규약: `cli-v{VERSION}` / asset: `fWarrangeCli-{VERSION}.tar.gz` (기존 수동 배포 end-state와 동일)
+    - `--dry-run` 플래그 지원 (tag/release/push 미실행 검증)
+    - VERSION: paidApp(#16) 정렬 기준. 1.0.1 이미 배포됨 → 신규 변경(Issue80·81) 반영 위해 1.0.2 bump 후 publish
+
 ## Issue81: [Feat] 시스템 슬립/잠금 시 자동 레이아웃 캡처 + retentionDays 자동 삭제 + isAuto 표식 (등록: 2026-06-15) 🚧
 * 목적: 시스템 슬립/화면 잠금 시 자동으로 레이아웃을 캡처하고, 저장 기간(retentionDays) 초과분을 자동 삭제하며, paidApp 레이아웃 리스트에서 자동 캡처본을 구분할 수 있게 isAuto 표식을 노출. 기존 dead setting(`autoSaveOnSleep`)을 실제 배선.
 * plan: `cli/_doc_work/plan/auto_capture_on_sleep_plan.md`
