@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 82
-* Save Point: 2026-05-18 (Issue78 종결 — /operations + op.* 이벤트 + 직렬화 enforce)
+* Issue HWM: 84
+* Save Point: 2026-06-21 (Issue84 종결 — cmd+, 글로벌 단축키 제거)
+  - ff36f3d (2026-06-21) - Fix(HotKey): cmd+, 글로벌 단축키 제거 — showSettingsShortcut 설정·REST 필드 삭제
   - 609c51d (2026-06-15) - cli/_doc_arch 7문서 정합성 감사 완료 (리포트 cli/_doc_work/report/cli-doc-arch-audit_report.md, 미커밋 산출물)
   - 53f2dfe (2026-05-18) - Feat(Issue78)(REST): /operations + op.* 이벤트 + 직렬화 enforce
   - 39004f7 (2026-05-18) - Docs: Close Issue77
@@ -45,10 +46,27 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+## Issue83: [MCP] npm 재배포 — fwarrange-mcp v1.0.1 (등록: 2026-06-21)
+* 목적: fwarrange-mcp MCP 서버를 npm 레지스트리에 재배포하여 최신 변경분을 공개 패키지에 반영.
+* 상세:
+    - 패키지: `fwarrange-mcp` v1.0.1 (bump 완료: 1.0.0→1.0.1), 위치: `mcp`
+    - 재배포 사유: 최신 `index.js`·README 변경분이 npm 공개 버전에 미반영 (구체 변경 항목은 작업 시 확정)
+* 구현 명세:
+    - ✅ `package.json`/`package-lock.json` version bump 완료 (1.0.0→1.0.1)
+    - `cd mcp && npm publish --access public`
+    - 배포 후 `npx fwarrange-mcp` 동작 확인 + README 설치 안내 버전 동기화
 
 # 📗 선택
 
 # ✅ 완료
+## Issue84: [Fix] cmd+, 글로벌 단축키 제거 — showSettingsShortcut 설정·REST 필드 삭제 (등록: 2026-06-21, 완료: 2026-06-21, Hash: ff36f3d) ✅
+* 목적: cliApp이 ⌘,를 Carbon 글로벌 핫키로 등록하여 시스템 전역에서 설정 창이 열리던 동작 제거. ⌘,는 macOS 표준 in-app Preferences 키이므로 글로벌 점유는 부적절.
+* 상세:
+    - 원인 cliApp 단독 — HotKeyService가 ⌘,를 글로벌 등록 (로그 `'showSettings' 등록 완료 (⌘,)` + `트리거 id=5` 확정). paidApp은 글로벌 핫키 메커니즘 없음(in-app `⌘,` SwiftUI만 보유) → 원인 아님
+    - HotKeyService: showSettings 등록 제거 + `HotKeyAction.showSettings` enum·핸들러 삭제 → Carbon 핫키 4개(save/restoreDefault/restoreLast/showMainWindow)
+    - `showSettingsShortcut`: AppSettings 필드·defaults·SettingsService 직렬화/파싱·AppState shortcuts dict·`openapi_v2.yaml` shortcuts 필드 제거
+    - 상위 #16 repo 설계문서 `_doc_arch/UI.md`·`ARCHITECTURE.md` 동기화 (별도 `/git` 커밋 필요)
+* 검증: Debug 재빌드(EXIT=0) + 데몬 재기동 로그 `Carbon 핫키 4개`(⌘, 없음). 잔여 `showSettings` 참조 0건
 ## Issue82: [Deploy] `/deploy brew publish` 자동화 — 원격 finfra/homebrew-tap 배포 (등록: 2026-06-18, 완료: 2026-06-18, Hash: 5eecb2c·6c67c1a, tap: 68545a3, release: cli-v1.0.2) ✅
 * 목적: 수동으로 수행하던 원격 Homebrew tap 배포(GitHub release + Formula push)를 `cmd_publish`로 자동화. `/deploy brew publish` 단일 커맨드로 일반 사용자가 `brew install finfra/tap/fwarrange-cli` 가능하게 함.
 * 구현:
