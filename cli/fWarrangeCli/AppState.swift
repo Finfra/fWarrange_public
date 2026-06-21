@@ -163,15 +163,13 @@ final class AppState {
                     apply("restoreDefaultShortcut") { s.restoreDefaultShortcut = $0 }
                     apply("restoreLastShortcut") { s.restoreLastShortcut = $0 }
                     apply("showMainWindowShortcut") { s.showMainWindowShortcut = $0 }
-                    apply("showSettingsShortcut") { s.showSettingsShortcut = $0 }
                 }
                 NotificationCenter.default.post(name: .fWarrangeCliShortcutsUpdated, object: nil)
                 return [
                     "saveShortcut": s.saveShortcut?.displayString ?? "",
                     "restoreDefaultShortcut": s.restoreDefaultShortcut?.displayString ?? "",
                     "restoreLastShortcut": s.restoreLastShortcut?.displayString ?? "",
-                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? "",
-                    "showSettingsShortcut": s.showSettingsShortcut?.displayString ?? ""
+                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? ""
                 ]
             },
             getFullSettings: { [weak settingsService] in
@@ -231,8 +229,7 @@ final class AppState {
                     "saveShortcut": s.saveShortcut?.displayString ?? "",
                     "restoreDefaultShortcut": s.restoreDefaultShortcut?.displayString ?? "",
                     "restoreLastShortcut": s.restoreLastShortcut?.displayString ?? "",
-                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? "",
-                    "showSettingsShortcut": s.showSettingsShortcut?.displayString ?? ""
+                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? ""
                 ]
             },
             getLogFilePath: {
@@ -590,9 +587,6 @@ final class AppState {
         case .showMainWindow:
             // paidApp 메인 창 열기 — 감지 시 URL Scheme, 미감지 시 본 분기는 메뉴 클릭 경로에서 처리
             openPaidApp(action: "main")
-        case .showSettings:
-            // paidApp Settings 위임 — cliApp은 자체 Settings GUI 미보유
-            openPaidApp(action: "settings")
         }
     }
 

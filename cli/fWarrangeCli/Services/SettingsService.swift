@@ -144,9 +144,6 @@ final class YAMLSettingsService: SettingsService {
         if let sc = s.showMainWindowShortcut {
             lines.append("showMainWindowShortcut: \"\(sc.displayString)\"")
         }
-        if let sc = s.showSettingsShortcut {
-            lines.append("showSettingsShortcut: \"\(sc.displayString)\"")
-        }
         lines.append("")
         return lines.joined(separator: "\n")
     }
@@ -204,7 +201,6 @@ final class YAMLSettingsService: SettingsService {
         s.restoreDefaultShortcut = parseShortcut(dict["restoreDefaultShortcut"])
         s.restoreLastShortcut = parseShortcut(dict["restoreLastShortcut"])
         s.showMainWindowShortcut = parseShortcut(dict["showMainWindowShortcut"])
-        s.showSettingsShortcut = parseShortcut(dict["showSettingsShortcut"])
         if let v = dict["launchAtLogin"], let b = Bool(v) { s.launchAtLogin = b }
         if let v = dict["defaultLayoutName"].map(parseStringValue), !v.isEmpty { s.defaultLayoutName = v }
         if let v = dict["appLanguage"] { s.appLanguage = v }

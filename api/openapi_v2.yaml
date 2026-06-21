@@ -1632,7 +1632,6 @@ components:
         restoreDefaultShortcut: { type: string, nullable: true }
         restoreLastShortcut: { type: string, nullable: true }
         showMainWindowShortcut: { type: string, nullable: true }
-        showSettingsShortcut: { type: string, nullable: true }
 
     ShortcutsResponse:
       type: object
@@ -1645,7 +1644,6 @@ components:
             restoreDefaultShortcut: { type: string }
             restoreLastShortcut: { type: string }
             showMainWindowShortcut: { type: string }
-            showSettingsShortcut: { type: string }
       required: [status, data]
 
     # ---- Window / Layout models (ported from v1) ----

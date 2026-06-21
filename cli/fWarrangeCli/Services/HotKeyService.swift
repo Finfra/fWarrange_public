@@ -8,7 +8,6 @@ enum HotKeyAction {
     case restoreDefault
     case restoreLast
     case showMainWindow
-    case showSettings
 }
 
 // MARK: - HotKeyService 프로토콜
@@ -48,8 +47,7 @@ final class CarbonHotKeyService: HotKeyService {
             (settings.saveShortcut, .save),
             (settings.restoreDefaultShortcut, .restoreDefault),
             (settings.restoreLastShortcut, .restoreLast),
-            (settings.showMainWindowShortcut, .showMainWindow),
-            (settings.showSettingsShortcut, .showSettings)
+            (settings.showMainWindowShortcut, .showMainWindow)
         ]
 
         let validShortcuts = shortcuts.compactMap { (config, action) -> (KeyboardShortcutConfig, HotKeyAction)? in
