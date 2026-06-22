@@ -323,48 +323,6 @@ Hide the window list and select only Safari and iTerm2
 
 ---
 
-## 14. `get_locale`
-
-Get the current app language and list of supported languages.
-
-**Parameters**: None
-
-**Response example**:
-```json
-{
-  "status": "ok",
-  "data": {
-    "current": "ko",
-    "supported": ["system", "ko", "en", "ja", "ar", "zh-Hans", "zh-Hant", "fr", "de", "hi", "es"]
-  }
-}
-```
-
----
-
-## 15. `set_locale`
-
-Change the app display language. Requires app restart to take effect.
-
-**Parameters**:
-
-| Name       | Type   | Required | Description                                     |
-| ---------- | ------ | -------- | ----------------------------------------------- |
-| `language` | string | Yes      | Language code (e.g. "ko", "en", "ja", "system") |
-
-**Response example**:
-```json
-{
-  "status": "ok",
-  "data": {
-    "language": "en",
-    "restartRequired": true
-  }
-}
-```
-
----
-
 # Debugging
 
 ## Test with MCP Inspector

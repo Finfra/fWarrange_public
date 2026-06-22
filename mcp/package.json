@@ -1,6 +1,6 @@
 {
   "name": "fwarrange-mcp",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "MCP server for fWarrange macOS window layout management via REST API",
   "main": "index.js",
   "type": "module",

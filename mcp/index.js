@@ -26,9 +26,12 @@ function getServerUrl() {
 
 const SERVER_URL = getServerUrl();
 
+// REST API version base path (v1 is deprecated -> 410 Gone, Issue213 Phase 1)
+const API_BASE = "/api/v2";
+
 const server = new McpServer({
   name: "fwarrange-mcp",
-  version: "1.0.0",
+  version: "1.0.2",
 });
 
 // 공통 헬퍼: API 호출 후 JSON 응답 반환
@@ -121,7 +124,7 @@ server.tool(
   "저장된 레이아웃 목록을 조회합니다",
   {},
   withErrorHandler(async () => {
-    return await apiCall("/api/v1/layouts");
+    return await apiCall(`${API_BASE}/layouts`);
   })
 );
 
@@ -135,7 +138,7 @@ server.tool(
     name: z.string().describe("레이아웃 이름 (확장자 제외)"),
   },
   withErrorHandler(async ({ name }) => {
-    return await apiCall(`/api/v1/layouts/${encodeURIComponent(name)}`);
+    return await apiCall(`${API_BASE}/layouts/${encodeURIComponent(name)}`);
   })
 );
 
@@ -160,7 +163,7 @@ server.tool(
     if (name) body.name = name;
     if (filterApps) body.filterApps = filterApps;
 
-    return await apiCall("/api/v1/capture", {
+    return await apiCall(`${API_BASE}/capture`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -201,7 +204,7 @@ server.tool(
     if (enableParallel !== undefined) body.enableParallel = enableParallel;
 
     return await apiCall(
-      `/api/v1/layouts/${encodeURIComponent(name)}/restore`,
+      `${API_BASE}/layouts/${encodeURIComponent(name)}/restore`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -223,7 +226,7 @@ server.tool(
   },
   withErrorHandler(async ({ name, newName }) => {
     return await apiCall(
-      `/api/v1/layouts/${encodeURIComponent(name)}`,
+      `${API_BASE}/layouts/${encodeURIComponent(name)}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -244,7 +247,7 @@ server.tool(
   },
   withErrorHandler(async ({ name }) => {
     return await apiCall(
-      `/api/v1/layouts/${encodeURIComponent(name)}`,
+      `${API_BASE}/layouts/${encodeURIComponent(name)}`,
       { method: "DELETE" }
     );
   })
@@ -258,7 +261,7 @@ server.tool(
   "저장된 모든 레이아웃을 삭제합니다 (확인 헤더 필요)",
   {},
   withErrorHandler(async () => {
-    return await apiCall("/api/v1/layouts", {
+    return await apiCall(`${API_BASE}/layouts`, {
       method: "DELETE",
       headers: { "X-Confirm-Delete-All": "true" },
     });
@@ -279,7 +282,7 @@ server.tool(
   },
   withErrorHandler(async ({ name, windowIds }) => {
     return await apiCall(
-      `/api/v1/layouts/${encodeURIComponent(name)}/windows/remove`,
+      `${API_BASE}/layouts/${encodeURIComponent(name)}/windows/remove`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -302,7 +305,7 @@ server.tool(
       .describe("필터링할 앱 이름 목록 (미지정 시 전체)"),
   },
   withErrorHandler(async ({ filterApps }) => {
-    let path = "/api/v1/windows/current";
+    let path = `${API_BASE}/windows/current`;
     if (filterApps && filterApps.length > 0) {
       path += `?filterApps=${encodeURIComponent(filterApps.join(","))}`;
     }
@@ -318,7 +321,7 @@ server.tool(
   "현재 실행 중인 애플리케이션 목록을 조회합니다",
   {},
   withErrorHandler(async () => {
-    return await apiCall("/api/v1/windows/apps");
+    return await apiCall(`${API_BASE}/windows/apps`);
   })
 );
 
@@ -330,24 +333,12 @@ server.tool(
   "macOS 손쉬운 사용(Accessibility) 권한 상태를 확인합니다",
   {},
   withErrorHandler(async () => {
-    return await apiCall("/api/v1/status/accessibility");
+    return await apiCall(`${API_BASE}/status/accessibility`);
   })
 );
 
 // ─────────────────────────────────────────────
-// Tool 13: get_locale
-// ─────────────────────────────────────────────
-server.tool(
-  "get_locale",
-  "현재 앱 언어 설정과 지원 언어 목록을 조회합니다",
-  {},
-  withErrorHandler(async () => {
-    return await apiCall("/api/v1/locale");
-  })
-);
-
-// ─────────────────────────────────────────────
-// Tool 14: set_ui_state
+// Tool 13: set_ui_state
 // ─────────────────────────────────────────────
 server.tool(
   "set_ui_state",
@@ -374,32 +365,10 @@ server.tool(
     if (selectApps !== undefined) body.selectApps = selectApps;
     if (excludeApps !== undefined) body.excludeApps = excludeApps;
 
-    return await apiCall("/api/v1/ui/state", {
+    return await apiCall(`${API_BASE}/ui/state`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-  })
-);
-
-// ─────────────────────────────────────────────
-// Tool 15: set_locale
-// ─────────────────────────────────────────────
-server.tool(
-  "set_locale",
-  "앱 표시 언어를 변경합니다 (적용을 위해 앱 재시작 필요)",
-  {
-    language: z
-      .string()
-      .describe(
-        '언어 코드 (예: "ko", "en", "ja", "system" 등)'
-      ),
-  },
-  withErrorHandler(async ({ language }) => {
-    return await apiCall("/api/v1/locale", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ language }),
     });
   })
 );

@@ -323,48 +323,6 @@ macOS 손쉬운 사용(Accessibility) 권한 상태를 확인합니다.
 
 ---
 
-## 14. `get_locale`
-
-현재 앱 언어 설정과 지원 언어 목록을 조회합니다.
-
-**파라미터**: 없음
-
-**응답 예시**:
-```json
-{
-  "status": "ok",
-  "data": {
-    "current": "ko",
-    "supported": ["system", "ko", "en", "ja", "ar", "zh-Hans", "zh-Hant", "fr", "de", "hi", "es"]
-  }
-}
-```
-
----
-
-## 15. `set_locale`
-
-앱 표시 언어를 변경합니다. 적용을 위해 앱 재시작이 필요합니다.
-
-**파라미터**:
-
-| 이름       | 타입   | 필수 | 설명                                       |
-| ---------- | ------ | ---- | ------------------------------------------ |
-| `language` | string | 예   | 언어 코드 (예: "ko", "en", "ja", "system") |
-
-**응답 예시**:
-```json
-{
-  "status": "ok",
-  "data": {
-    "language": "en",
-    "restartRequired": true
-  }
-}
-```
-
----
-
 # 디버깅
 
 ## MCP Inspector로 테스트
