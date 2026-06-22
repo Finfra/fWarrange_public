@@ -5,7 +5,8 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 85
-* Save Point: 2026-06-21 (Issue81 종결 — 슬립/잠금 자동 캡처 + retentionDays + isAuto, Hash a980016)
+* Save Point: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
+  - b587581 (2026-06-22) - Fix(MCP): fwarrange-mcp index.js를 REST API v2로 마이그레이션 (Issue85) + npm 1.0.2 배포(Issue83)
   - ff36f3d (2026-06-21) - Fix(HotKey): cmd+, 글로벌 단축키 제거 — showSettingsShortcut 설정·REST 필드 삭제
   - 609c51d (2026-06-15) - cli/_doc_arch 7문서 정합성 감사 완료 (리포트 cli/_doc_work/report/cli-doc-arch-audit_report.md, 미커밋 산출물)
   - 53f2dfe (2026-05-18) - Feat(Issue78)(REST): /operations + op.* 이벤트 + 직렬화 enforce
@@ -24,38 +25,33 @@ date: 2026-04-07
 # 🌱 이슈후보
 
 # 🚧 진행중
-## Issue85: [MCP] fwarrange-mcp index.js를 REST API v2로 마이그레이션 — v1 410 Gone 회귀 수정 (등록: 2026-06-22)
-* 목적: `mcp/index.js`의 모든 REST 호출이 `/api/v1/*` 사용 중. v1은 deprecated → `410 Gone`(Issue213 Phase 1). v2 cliApp 상대로 MCP 전체 미동작. v2 마이그레이션 + v2에 없는 `/locale` tool 제거.
-* task: `cli/_doc_work/tasks/mcp-v2-migration_task.md`
-* 상세:
-    - `index.js` 내 `/api/v1/` 하드코딩 12곳 (실측 grep) → v1 410 Gone
-    - `/locale` GET/PUT(`index.js:345,399`) — v2·cliApp 미제공(메뉴바 daemon), tool 2개 삭제
-    - `version: "1.0.0"`(`index.js:31`) ≠ `package.json` `1.0.1` — 메타 불일치
-* 구현 명세:
-    - `const API_BASE = "/api/v2";` 상수 추출, 전체 `/api/v1/` → `${API_BASE}/`
-    - get_locale·set_locale tool 삭제 (15→13개)
-    - version 메타 `1.0.1` 동기화
-    - `README.md`·`README_kr.md` v2 반영, locale tool 언급 제거
-    - 검증: `grep "/api/v1/" index.js` 0건, `node --check index.js` 통과
-    - npm 재배포는 Issue83 범위
 
 # 📕 중요
 
 # 📙 일반
-## Issue83: [MCP] npm 재배포 — fwarrange-mcp v1.0.1 (등록: 2026-06-21)
-* 목적: fwarrange-mcp MCP 서버를 npm 레지스트리에 재배포하여 최신 변경분을 공개 패키지에 반영.
-* depends: Issue85
-* 상세:
-    - 패키지: `fwarrange-mcp` v1.0.1 (bump 완료: 1.0.0→1.0.1), 위치: `mcp`
-    - 재배포 사유: 최신 `index.js`·README 변경분이 npm 공개 버전에 미반영 (구체 변경 항목은 작업 시 확정)
-* 구현 명세:
-    - ✅ `package.json`/`package-lock.json` version bump 완료 (1.0.0→1.0.1)
-    - `cd mcp && npm publish --access public`
-    - 배포 후 `npx fwarrange-mcp` 동작 확인 + README 설치 안내 버전 동기화
 
 # 📗 선택
 
 # ✅ 완료
+## Issue83: [MCP] npm 재배포 — fwarrange-mcp v1.0.2 (등록: 2026-06-21, 완료: 2026-06-22, Hash: b587581) ✅
+* 목적: fwarrange-mcp MCP 서버를 npm 레지스트리에 재배포하여 최신 변경분(v2 마이그레이션)을 공개 패키지에 반영.
+* depends: Issue85
+* 결과:
+    - Issue85 코드 변경분 포함하여 `fwarrange-mcp@1.0.2` npm 배포 완료 (registry `latest`=1.0.2 검증)
+    - 버전 1.0.0→1.0.2 (당초 1.0.1 계획 → VERSION SSOT 정합 위해 1.0.2)
+    - tarball: index.js + README.md + package.json (3파일, 5.5kB)
+    - 검증: `npm view fwarrange-mcp version` → `1.0.2`, dist-tags.latest=1.0.2
+
+## Issue85: [MCP] fwarrange-mcp index.js를 REST API v2로 마이그레이션 — v1 410 Gone 회귀 수정 (등록: 2026-06-22, 완료: 2026-06-22, Hash: b587581) ✅
+* 목적: `mcp/index.js`의 모든 REST 호출이 `/api/v1/*` 사용 중. v1은 deprecated → `410 Gone`(Issue213 Phase 1). v2 cliApp 상대로 MCP 전체 미동작. v2 마이그레이션 + v2에 없는 `/locale` tool 제거.
+* task: `cli/_doc_work/tasks/mcp-v2-migration_task.md`
+* 결과:
+    - `API_BASE="/api/v2"` 상수 추출, `/api/v1/` 12곳 전부 v2 교체 (grep `/api/v1/`=0건)
+    - get_locale·set_locale tool 삭제 (15→13개, locale은 cliApp 메뉴바 daemon 미제공)
+    - version 1.0.0→1.0.2 (VERSION SSOT 정합), `node --check` 통과
+    - `README.md`·`README_kr.md` locale tool 섹션 제거, v1 잔존 0건
+    - public 코드 주석 영어 규칙 준수 (API_BASE 주석 영문화)
+
 ## Issue81: [Feat] 시스템 슬립/잠금 시 자동 레이아웃 캡처 + retentionDays 자동 삭제 + isAuto 표식 (등록: 2026-06-15, 완료: 2026-06-21, Hash: a980016) ✅
 * 목적: 시스템 슬립/화면 잠금 시 자동으로 레이아웃을 캡처하고, 저장 기간(retentionDays) 초과분을 자동 삭제하며, paidApp 레이아웃 리스트에서 자동 캡처본을 구분할 수 있게 isAuto 표식을 노출. 기존 dead setting(`autoSaveOnSleep`)을 실제 배선.
 * plan: `cli/_doc_work/plan/auto_capture_on_sleep_plan.md`
