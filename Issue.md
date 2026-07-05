@@ -29,20 +29,26 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
-## Issue86: fwarrange-cli brew services 미등록 실행 — 서비스 등록 조치 (등록: 2026.07.05)
-* 목적: fwarrange-cli 데몬이 brew services 미등록 상태(launchctl 라벨 application.*)로 직접 실행 중이라 재부팅 시 자동 시작이 안 됨. brew services 정식 등록으로 라이프사이클 정상화
-* 상세: 
-- 진단: brew services list → fwarrange-cli "none", 실제로는 PID 1048로 /opt/homebrew/Cellar/fwarrange-cli/1.0.1/fWarrangeCli.app 실행 중
-- 근거: launchctl 라벨이 homebrew.mxcl.* 이 아닌 application.kr.finfra.fWarrangeCli.* — 앱 직접 open 경로로 기동된 상태
-- ~/Library/LaunchAgents/에 homebrew.mxcl.fwarrange-cli.plist 부재
-- 리스크: 재부팅 시 자동 시작 안 됨 (배포 형태 SSOT: brew services start fwarrange-cli 가 정상 기동 경로)
-- 조치: 기존 프로세스 종료(중복 기동 방지) → brew services start fwarrange-cli → plist 로드·프로세스·REST(:3016) 검증
-- 출처: ___common 세션 진단 문서 hub_htm_20260705_152219_a_brew-services-mismatch.htm
-
 
 # 📗 선택
 
 # ✅ 완료
+## Issue86: fwarrange-cli brew services 미등록 실행 — 서비스 등록 조치 (등록: 2026-07-05, 완료: 2026-07-05, Hash: 026fdee) ✅
+* 목적: fwarrange-cli 데몬이 brew services 미등록 상태(launchctl 라벨 application.*)로 직접 실행 중이라 재부팅 시 자동 시작이 안 됨. brew services 정식 등록으로 라이프사이클 정상화
+* 상세:
+    - 진단: brew services list → fwarrange-cli "none", 실제로는 PID 1048로 /opt/homebrew/Cellar/fwarrange-cli/1.0.1/fWarrangeCli.app 실행 중
+    - 근거: launchctl 라벨이 homebrew.mxcl.* 이 아닌 application.kr.finfra.fWarrangeCli.* — 앱 직접 open 경로로 기동된 상태
+    - ~/Library/LaunchAgents/에 homebrew.mxcl.fwarrange-cli.plist 부재
+    - 리스크: 재부팅 시 자동 시작 안 됨 (배포 형태 SSOT: brew services start fwarrange-cli 가 정상 기동 경로)
+    - 출처: ___common 세션 진단 문서 hub_htm_20260705_152219_a_brew-services-mismatch.htm
+* 구현 명세 (운영 조치 — 코드 변경 없음):
+    1. `pkill -f 'MacOS/fWarrangeCli'` — 기존 직접 실행 프로세스(PID 1048) 종료 (중복 기동 방지)
+    2. `brew services start fwarrange-cli` — LaunchAgent 등록·기동 (`homebrew.mxcl.fwarrange-cli.plist` 생성)
+* 검증:
+    - `brew services list` → fwarrange-cli **started**
+    - `launchctl list` → 라벨 `homebrew.mxcl.fwarrange-cli` (PID 60467, exit 0) — application.* 라벨 소멸
+    - `curl :3016/` → `status: ok`, version 1.0.1
+    - `POST /api/v2/capture` 실동작 27개 창 캡처 성공 (접근성 권한 유지 확인) 후 테스트 레이아웃 삭제
 ## Issue83: [MCP] npm 재배포 — fwarrange-mcp v1.0.2 (등록: 2026-06-21, 완료: 2026-06-22, Hash: b587581) ✅
 * 목적: fwarrange-mcp MCP 서버를 npm 레지스트리에 재배포하여 최신 변경분(v2 마이그레이션)을 공개 패키지에 반영.
 * depends: Issue85
