@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 85
+* Issue HWM: 86
 * Save Point: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - b587581 (2026-06-22) - Fix(MCP): fwarrange-mcp index.js를 REST API v2로 마이그레이션 (Issue85) + npm 1.0.2 배포(Issue83)
   - ff36f3d (2026-06-21) - Fix(HotKey): cmd+, 글로벌 단축키 제거 — showSettingsShortcut 설정·REST 필드 삭제
@@ -29,6 +29,16 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+## Issue86: fwarrange-cli brew services 미등록 실행 — 서비스 등록 조치 (등록: 2026.07.05)
+* 목적: fwarrange-cli 데몬이 brew services 미등록 상태(launchctl 라벨 application.*)로 직접 실행 중이라 재부팅 시 자동 시작이 안 됨. brew services 정식 등록으로 라이프사이클 정상화
+* 상세: 
+- 진단: brew services list → fwarrange-cli "none", 실제로는 PID 1048로 /opt/homebrew/Cellar/fwarrange-cli/1.0.1/fWarrangeCli.app 실행 중
+- 근거: launchctl 라벨이 homebrew.mxcl.* 이 아닌 application.kr.finfra.fWarrangeCli.* — 앱 직접 open 경로로 기동된 상태
+- ~/Library/LaunchAgents/에 homebrew.mxcl.fwarrange-cli.plist 부재
+- 리스크: 재부팅 시 자동 시작 안 됨 (배포 형태 SSOT: brew services start fwarrange-cli 가 정상 기동 경로)
+- 조치: 기존 프로세스 종료(중복 기동 방지) → brew services start fwarrange-cli → plist 로드·프로세스·REST(:3016) 검증
+- 출처: ___common 세션 진단 문서 hub_htm_20260705_152219_a_brew-services-mismatch.htm
+
 
 # 📗 선택
 
