@@ -6,8 +6,10 @@ CLAUDE.md
 # 본 레포는 cli/_doc_arch/, cli/_doc_work/만 사용 — 루트 _doc_arch/, _doc_work/ 사용 금지
 # 상세: .claude/rules/path-rules.md "cli 하위 _doc 운영 규칙" 섹션
 _doc_arch/
+_doc_base/
 _doc_work/
 cli/_doc_arch/
+cli/_doc_base/
 cli/_doc_work/
 
 # claudeCode_xcode_Skel
