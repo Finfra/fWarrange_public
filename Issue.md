@@ -5,7 +5,7 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 86
-* Update checkpoint: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
+* Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - b587581 (2026-06-22) - Fix(MCP): fwarrange-mcp index.js를 REST API v2로 마이그레이션 (Issue85) + npm 1.0.2 배포(Issue83)
   - ff36f3d (2026-06-21) - Fix(HotKey): cmd+, 글로벌 단축키 제거 — showSettingsShortcut 설정·REST 필드 삭제
   - 609c51d (2026-06-15) - cli/_doc_arch 7문서 정합성 감사 완료 (리포트 cli/_doc_work/report/cli-doc-arch-audit_report.md, 미커밋 산출물)
