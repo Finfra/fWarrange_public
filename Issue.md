@@ -5,7 +5,7 @@ date: 2026-04-07
 ---
 # Issue Management
 * Issue HWM: 86
-* Save Point: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
+* Update checkpoint: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - b587581 (2026-06-22) - Fix(MCP): fwarrange-mcp index.js를 REST API v2로 마이그레이션 (Issue85) + npm 1.0.2 배포(Issue83)
   - ff36f3d (2026-06-21) - Fix(HotKey): cmd+, 글로벌 단축키 제거 — showSettingsShortcut 설정·REST 필드 삭제
   - 609c51d (2026-06-15) - cli/_doc_arch 7문서 정합성 감사 완료 (리포트 cli/_doc_work/report/cli-doc-arch-audit_report.md, 미커밋 산출물)
@@ -262,7 +262,7 @@ date: 2026-04-07
 * report: `cli/_doc_work/report/window_recognize_issue72_report.md`
 * 구현 명세:
     - 7개 서브 이슈 Issue72_1~Issue72_7 모두 처리 (cliApp 측 코드 완료)
-    - 18개 커밋 (Issue72 직접 16 + Save Point 1 + 리팩토링 1)
+    - 18개 커밋 (Issue72 직접 16 + checkpoint 1 + 리팩토링 1)
     - 신규 Swift 파일 4종 (RestoreStats, RestoreStatsCollector, TitleNormalizer, MatchMode)
     - 신규 REST 엔드포인트 5개 (`/restore-stats` GET·DELETE, `/normalize-rules` GET·PUT·DELETE)
     - 확장 파라미터: `POST /layouts/{name}/restore`에 `mode`, `interactive`/`dryRun`
