@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 86
+* Issue HWM: 87
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
+  - ffa4df9 (2026-07-13) - Chore: checkpoint — 이중 라이선스 전환(CC BY-NC 4.0 + 상업) 파일 변경 (Issue87)
   - b587581 (2026-06-22) - Fix(MCP): fwarrange-mcp index.js를 REST API v2로 마이그레이션 (Issue85) + npm 1.0.2 배포(Issue83)
   - ff36f3d (2026-06-21) - Fix(HotKey): cmd+, 글로벌 단축키 제거 — showSettingsShortcut 설정·REST 필드 삭제
   - 609c51d (2026-06-15) - cli/_doc_arch 7문서 정합성 감사 완료 (리포트 cli/_doc_work/report/cli-doc-arch-audit_report.md, 미커밋 산출물)
@@ -25,6 +26,16 @@ date: 2026-04-07
 # 🌱 이슈후보
 
 # 🚧 진행중
+## Issue87: 라이선스 정책 변경 — 이중 라이선스(CC BY-NC 4.0 무료 + 상업 라이선스 유료) (등록: 2026-07-13)
+* 목적: 기존 "All rights reserved" 단일 저작권 고지를 이중 라이선스 체계로 전환 — 비상업 이용은 CC BY-NC 4.0 무료, 상업 이용은 유료 상업 라이선스
+* 상세:
+    - 사용자 결정 (hub 폼 회수): 무료 축 = CC BY-NC 4.0 (요청 원문 CC BY 4.0은 상업 이용도 무료 허용이라 이중 라이선스 모델과 상충 → BY-NC 채택), 기존 MIT 컴포넌트(mcp·Formula)도 이중 라이선스로 통일
+    - 신규: 루트 `LICENSE` (이중 라이선스 전문, 영문)
+    - 갱신: `README.md`·`README_kr.md`·`cli/README.md`·`cli/README_kr.md`·`mcp/README.md`·`mcp/README_kr.md` License 섹션
+    - 갱신: `mcp/package.json` license 필드 `MIT` → `(CC-BY-NC-4.0 OR LicenseRef-Commercial)`, `cli/Formula/fwarrange-cli.rb` `license "MIT"` → `license any_of: ["CC-BY-NC-4.0", :cannot_represent]`
+* 구현 명세:
+    - npm 기배포 버전(≤1.0.2)은 MIT로 배포된 사실 불변 — LICENSE·mcp README에 명시. 신규 배포분부터 이중 라이선스 적용
+    - 상업 라이선스 문의 채널: https://finfra.kr
 
 # 📕 중요
 
