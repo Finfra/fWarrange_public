@@ -370,4 +370,11 @@ fWarrange Server (localhost:3016)
 
 # 라이선스
 
-MIT
+이중 라이선스로 제공됩니다:
+
+* **비상업적 이용** — [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.ko) 조건으로 무료 (출처 표기 필수)
+* **상업적 이용** — 유료 상업 라이선스 필요: [finfra.kr](https://finfra.kr) 문의
+
+상세는 [LICENSE](../LICENSE) 참조.
+
+> 참고: npm 레지스트리에 기배포된 1.0.2 이하 버전은 MIT 라이선스로 배포되었으며 그대로 MIT가 유지됩니다. 이후 버전부터 위 이중 라이선스가 적용됩니다.

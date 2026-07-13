@@ -4,7 +4,8 @@ class FwarrangeCli < Formula
   url "file:///tmp/fWarrangeCli-local.tar.gz"
   version "1.0.0"
   sha256 "43a3b749463af2696394220ffa1886167a94b31eda919a81fd493e0b523cf122"
-  license "MIT"
+  # Dual license: CC BY-NC 4.0 (non-commercial) or paid commercial license (see repository LICENSE)
+  license any_of: ["CC-BY-NC-4.0", :cannot_represent]
 
   depends_on :macos
 

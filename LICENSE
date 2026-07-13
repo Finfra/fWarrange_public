@@ -1,0 +1,43 @@
+fWarrange_public — Dual License
+
+Copyright (c) Finfra (https://finfra.kr)
+
+This repository is dual-licensed. You may use, copy, and redistribute it
+under EITHER of the following licenses, at your option:
+
+--------------------------------------------------------------------------
+1. Creative Commons Attribution-NonCommercial 4.0 International
+   (CC BY-NC 4.0) — free of charge
+--------------------------------------------------------------------------
+
+You may copy, redistribute, and adapt this work for NON-COMMERCIAL
+purposes only, provided that you:
+
+  * give appropriate credit to "Finfra (finfra.kr)",
+  * provide a link to the license, and
+  * indicate if changes were made.
+
+Full license text: https://creativecommons.org/licenses/by-nc/4.0/legalcode
+Human-readable summary: https://creativecommons.org/licenses/by-nc/4.0/
+
+--------------------------------------------------------------------------
+2. Commercial License — paid
+--------------------------------------------------------------------------
+
+Any commercial use — including but not limited to use within a for-profit
+organization, bundling with a paid product or service, or redistribution
+for a fee — requires a separate paid commercial license from Finfra.
+
+Commercial licensing inquiries: https://finfra.kr
+
+--------------------------------------------------------------------------
+Notes
+--------------------------------------------------------------------------
+
+* Releases of the MCP package (mcp/) published to the npm registry up to
+  and including version 1.0.2 were released under the MIT license and
+  remain MIT. Versions published after this policy change are
+  dual-licensed as described above.
+* This license applies to all contents of this repository (source code,
+  localization resources, and documentation) unless a file explicitly
+  states otherwise.

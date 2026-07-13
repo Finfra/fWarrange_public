@@ -136,4 +136,11 @@ brew untap finfra/tap                 # (선택) tap 제거
 
 # 라이선스
 
-Copyright (c) finfra.kr. All rights reserved.
+이 프로젝트는 이중 라이선스로 제공됩니다:
+
+* **비상업적 이용** — [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.ko) 조건으로 무료 (출처 표기 필수)
+* **상업적 이용** — 유료 상업 라이선스 필요: [finfra.kr](https://finfra.kr) 문의
+
+상세는 [LICENSE](LICENSE) 참조.
+
+Copyright (c) Finfra (finfra.kr)

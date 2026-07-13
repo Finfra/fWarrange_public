@@ -165,4 +165,11 @@ fWarrangeCli requires Accessibility permission to control window positions:
 
 # License
 
-Copyright (c) Finfra. All rights reserved.
+Dual-licensed:
+
+* **Non-commercial use** — free under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution required)
+* **Commercial use** — requires a paid commercial license: contact [finfra.kr](https://finfra.kr)
+
+See [LICENSE](../LICENSE) for details.
+
+Copyright (c) Finfra (finfra.kr)

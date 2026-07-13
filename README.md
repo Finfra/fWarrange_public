@@ -136,4 +136,11 @@ See [`cli/README.md`](./cli/README.md) for build-from-source and full details.
 
 # License
 
-Copyright (c) finfra.kr. All rights reserved.
+This project is dual-licensed:
+
+* **Non-commercial use** — free under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution required)
+* **Commercial use** — requires a paid commercial license: contact [finfra.kr](https://finfra.kr)
+
+See [LICENSE](LICENSE) for details.
+
+Copyright (c) Finfra (finfra.kr)

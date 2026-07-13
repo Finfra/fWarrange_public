@@ -370,4 +370,11 @@ fWarrange Server (localhost:3016)
 
 # License
 
-MIT
+Dual-licensed:
+
+* **Non-commercial use** — free under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution required)
+* **Commercial use** — requires a paid commercial license: contact [finfra.kr](https://finfra.kr)
+
+See [LICENSE](../LICENSE) for details.
+
+> Note: versions up to and including 1.0.2 published to the npm registry were released under the MIT license and remain MIT. Later versions are dual-licensed as described above.
