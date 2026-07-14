@@ -21,7 +21,8 @@ info:
   contact:
     name: fWarrange
   license:
-    name: MIT
+    name: "Dual license: CC BY-NC 4.0 (non-commercial) / Commercial license (paid)"
+    url: https://github.com/Finfra/fWarrange_public/blob/main/LICENSE
 
 servers:
   - url: http://localhost:3016/api/v1

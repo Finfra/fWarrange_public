@@ -8,7 +8,7 @@ date: 2026-03-26
 ## 일반
 
 ### Q: fWarrange는 무료인가요?
-A: 네, fWarrange는 MIT 라이선스로 제공되는 오픈소스 프로젝트입니다.
+A: fWarrange는 이중 라이선스로 제공됩니다. 비상업적 이용은 CC BY-NC 4.0 조건으로 무료(출처 표기 필수)이며, 상업적 이용은 유료 상업 라이선스가 필요합니다 — [finfra.kr](https://finfra.kr) 문의.
 
 ### Q: 어떤 macOS 버전에서 동작하나요?
 A: macOS 15.0 (Sequoia) 이상에서 동작합니다.

@@ -192,7 +192,8 @@ class FwarrangeCli < Formula
   url "file://$TARBALL"
   version "$LOCAL_VERSION"
   sha256 "$SHA"
-  license "MIT"
+  # Dual license: CC BY-NC 4.0 (non-commercial) or paid commercial license (see repository LICENSE)
+  license any_of: ["CC-BY-NC-4.0", :cannot_represent]
 
   depends_on :macos
 
@@ -509,7 +510,8 @@ class FwarrangeCli < Formula
   # version is scanned from the URL basename (fWarrangeCli-${LOCAL_VERSION}.tar.gz)
   url "$DL_URL"
   sha256 "$SHA"
-  license "MIT"
+  # Dual license: CC BY-NC 4.0 (non-commercial) or paid commercial license (see repository LICENSE)
+  license any_of: ["CC-BY-NC-4.0", :cannot_represent]
 
   depends_on :macos
 
