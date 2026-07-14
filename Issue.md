@@ -26,16 +26,6 @@ date: 2026-04-07
 # 🌱 이슈후보
 
 # 🚧 진행중
-## Issue87: 라이선스 정책 변경 — 이중 라이선스(CC BY-NC 4.0 무료 + 상업 라이선스 유료) (등록: 2026-07-13)
-* 목적: 기존 "All rights reserved" 단일 저작권 고지를 이중 라이선스 체계로 전환 — 비상업 이용은 CC BY-NC 4.0 무료, 상업 이용은 유료 상업 라이선스
-* 상세:
-    - 사용자 결정 (hub 폼 회수): 무료 축 = CC BY-NC 4.0 (요청 원문 CC BY 4.0은 상업 이용도 무료 허용이라 이중 라이선스 모델과 상충 → BY-NC 채택), 기존 MIT 컴포넌트(mcp·Formula)도 이중 라이선스로 통일
-    - 신규: 루트 `LICENSE` (이중 라이선스 전문, 영문)
-    - 갱신: `README.md`·`README_kr.md`·`cli/README.md`·`cli/README_kr.md`·`mcp/README.md`·`mcp/README_kr.md` License 섹션
-    - 갱신: `mcp/package.json` license 필드 `MIT` → `(CC-BY-NC-4.0 OR LicenseRef-Commercial)`, `cli/Formula/fwarrange-cli.rb` `license "MIT"` → `license any_of: ["CC-BY-NC-4.0", :cannot_represent]`
-* 구현 명세:
-    - npm 기배포 버전(≤1.0.2)은 MIT로 배포된 사실 불변 — LICENSE·mcp README에 명시. 신규 배포분부터 이중 라이선스 적용
-    - 상업 라이선스 문의 채널: https://finfra.kr
 
 # 📕 중요
 
@@ -44,6 +34,20 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue87: 라이선스 정책 변경 — 이중 라이선스(CC BY-NC 4.0 무료 + 상업 라이선스 유료) (등록: 2026-07-13, 완료: 2026-07-15, Hash: ffa4df9, c4e39f5, b4a874b) ✅
+* 목적: 기존 "All rights reserved" 단일 저작권 고지를 이중 라이선스 체계로 전환 — 비상업 이용은 CC BY-NC 4.0 무료, 상업 이용은 유료 상업 라이선스
+* 상세:
+    - 사용자 결정 (hub 폼 회수): 무료 축 = CC BY-NC 4.0 (요청 원문 CC BY 4.0은 상업 이용도 무료 허용이라 이중 라이선스 모델과 상충 → BY-NC 채택), 기존 MIT 컴포넌트(mcp·Formula)도 이중 라이선스로 통일
+    - 신규: 루트 `LICENSE` (이중 라이선스 전문, 영문)
+    - 갱신: `README.md`·`README_kr.md`·`cli/README.md`·`cli/README_kr.md`·`mcp/README.md`·`mcp/README_kr.md` License 섹션
+    - 갱신: `mcp/package.json` license 필드 `MIT` → `(CC-BY-NC-4.0 OR LicenseRef-Commercial)`, `cli/Formula/fwarrange-cli.rb` `license "MIT"` → `license any_of: ["CC-BY-NC-4.0", :cannot_represent]`
+    - 2차 잔존 정리 (2026-07-15, GitHub 원격 전수 감사): `cli/_tool/fwc-deploy-brew.sh` Formula 재생성 heredoc 2곳(L195·L512) `license "MIT"` → dual DSL (brew 배포 시 MIT 회귀 차단), `api/openapi_v1.yaml`·`api/openapi_v2.yaml` info.license MIT → dual + LICENSE URL, `manual/en/08_FAQ.md`·`manual/kr/08_FAQ.md` "MIT 오픈소스" 답변 → 이중 라이선스 안내 (Hash: b4a874b)
+* 구현 명세:
+    - npm 기배포 버전(≤1.0.2)은 MIT로 배포된 사실 불변 — LICENSE·mcp README에 명시. 신규 배포분부터 이중 라이선스 적용
+    - 상업 라이선스 문의 채널: https://finfra.kr
+    - 운영 후속(별도): npm 1.0.3+ 재배포 시 레지스트리 표기 갱신, brew tap 재배포 시 신규 Formula 라이선스 반영
+* 검증: 원격(origin/main) + 작업 트리 grep 전수 — "All rights reserved"·MIT license 필드 잔존 0건 (기배포 MIT 유지 고지 문구는 의도된 예외). bash -n·yaml 파싱 정상
+
 ## Issue86: fwarrange-cli brew services 미등록 실행 — 서비스 등록 조치 (등록: 2026-07-05, 완료: 2026-07-05, Hash: 026fdee) ✅
 * 목적: fwarrange-cli 데몬이 brew services 미등록 상태(launchctl 라벨 application.*)로 직접 실행 중이라 재부팅 시 자동 시작이 안 됨. brew services 정식 등록으로 라이프사이클 정상화
 * 상세:
