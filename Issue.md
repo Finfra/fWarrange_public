@@ -32,7 +32,10 @@ date: 2026-04-07
 
 # 📙 일반
 
-## Issue88: [Bug] MenuBarManager "Open Main Window" 항목이 미등록 fallback 단축키를 실제 등록된 것처럼 표시 (등록: 2026-07-16)
+# 📗 선택
+
+# ✅ 완료
+## Issue88: [Bug] MenuBarManager "Open Main Window" 항목이 미등록 fallback 단축키를 실제 등록된 것처럼 표시 (등록: 2026-07-16, 완료: 2026-07-16, Hash: a4292c1) ✅
 * 목적: 메뉴바 "Open Main Window" 항목이 실제로는 등록되지 않은 fallback 단축키(`⌃⇧⌘F7`)를 라벨로 표시해, 사용자가 실제 동작하는 글로벌 단축키로 오인함. paidApp(fWarrange) Settings 패널은 실제 상태("Not Set")를 정확히 표시 중이었고, 그 과정에서 이 불일치가 발견됨 (paidApp #Issue266).
 * 상세:
     - `Managers/MenuBarManager.swift:12` — `fallbackShowMain = KeyboardShortcutConfig.from(displayString: "⌃⇧⌘F7")` 정의.
@@ -41,11 +44,8 @@ date: 2026-04-07
     - `Models/AppSettings.swift:200` — `showMainWindowShortcut` 기본값 `nil` (Issue61 의도: `_config.yml`에 명시된 항목만 글로벌 등록되도록 보장).
     - `Services/RESTServer.swift:801-804` / `AppState.swift:225-234` `getShortcutsDisplay()` — `s.showMainWindowShortcut?.displayString ?? ""`로 실제 값만 반환(fallback 미적용). paidApp은 이 값을 그대로 표시하므로 "Not Set"이 **정확한 표시**임 — paidApp 측 버그 아님.
     - 참고: `saveShortcut`/`restoreDefaultShortcut`/`restoreLastShortcut`는 `MenuBarManager`에서도 동일하게 fallback 상수(`fallbackSave` 등)를 쓰지만, 이들은 실사용자 환경에서 `_config.yml`에 이미 명시적으로 설정되어 있어 fallback이 노출된 적이 없었던 것으로 추정. `showMainWindowShortcut`만 미설정 상태로 남아 fallback 표시가 그대로 드러난 것으로 보임.
-* 구현 명세: 🚧 [TODO] 수정 방향 미착수 — 후보: (1) `state.settings.showMainWindowShortcut`이 `nil`일 때 메뉴 항목에 단축키 라벨 자체를 표시하지 않음(다른 3개 항목도 동일 원칙 적용 검토), 또는 (2) fallback 표시를 유지하되 시각적으로 "미등록" 임을 구분(예: 회색 처리·툴팁). Save/RestoreDefault/RestoreLast 3개 항목도 같은 fallback 패턴이므로 동일 정책으로 일괄 정리 검토.
-
-# 📗 선택
-
-# ✅ 완료
+* 구현 명세: `MenuBarManager.swift`에서 fallback 상수 4개(`fallbackSave`/`fallbackRestoreLast`/`fallbackRestoreDefault`/`fallbackShowMain`) 및 관련 주석 삭제. 4개 메뉴 항목 모두 `state.settings.X ?? fallback` → `state.settings.X` 로 변경 — `makeShortcutItem`이 `nil`을 이미 처리(keyEquivalent 빈 문자열)하므로 실제 등록된 단축키만 라벨에 표시됨. Save/RestoreDefault/RestoreLast 3개도 동일 정책 일괄 적용(옵션 1 채택).
+* 검증: `xcodebuild -scheme fWarrangeCli -configuration Release build -quiet` 성공(exit 0) + `_tool/fwc-deploy-debug.sh` 배포·기동 + `curl localhost:3016/` 정상 응답(`isRunning: true`) 확인. UI 상 메뉴 항목 직접 클릭 검증은 미실시(REST/기동 레벨 검증만) — 후속 육안 확인 권장.
 ## Issue87: 라이선스 정책 변경 — 이중 라이선스(CC BY-NC 4.0 무료 + 상업 라이선스 유료) (등록: 2026-07-13, 완료: 2026-07-15, Hash: ffa4df9, c4e39f5, b4a874b) ✅
 * 목적: 기존 "All rights reserved" 단일 저작권 고지를 이중 라이선스 체계로 전환 — 비상업 이용은 CC BY-NC 4.0 무료, 상업 이용은 유료 상업 라이선스
 * 상세:
