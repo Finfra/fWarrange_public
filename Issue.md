@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 87
+* Issue HWM: 88
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
+  - faf4d55 (2026-07-15) - Docs: Close Issue87 — 이중 라이선스 잔존 정리(b4a874b) + 이슈 종결
   - ffa4df9 (2026-07-13) - Chore: checkpoint — 이중 라이선스 전환(CC BY-NC 4.0 + 상업) 파일 변경 (Issue87)
   - b587581 (2026-06-22) - Fix(MCP): fwarrange-mcp index.js를 REST API v2로 마이그레이션 (Issue85) + npm 1.0.2 배포(Issue83)
   - ff36f3d (2026-06-21) - Fix(HotKey): cmd+, 글로벌 단축키 제거 — showSettingsShortcut 설정·REST 필드 삭제
@@ -30,6 +31,17 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+
+## Issue88: [Bug] MenuBarManager "Open Main Window" 항목이 미등록 fallback 단축키를 실제 등록된 것처럼 표시 (등록: 2026-07-16)
+* 목적: 메뉴바 "Open Main Window" 항목이 실제로는 등록되지 않은 fallback 단축키(`⌃⇧⌘F7`)를 라벨로 표시해, 사용자가 실제 동작하는 글로벌 단축키로 오인함. paidApp(fWarrange) Settings 패널은 실제 상태("Not Set")를 정확히 표시 중이었고, 그 과정에서 이 불일치가 발견됨 (paidApp #Issue266).
+* 상세:
+    - `Managers/MenuBarManager.swift:12` — `fallbackShowMain = KeyboardShortcutConfig.from(displayString: "⌃⇧⌘F7")` 정의.
+    - `Managers/MenuBarManager.swift:119` — 메뉴 항목 라벨에 `state.settings.showMainWindowShortcut ?? MenuBarManager.fallbackShowMain` 사용 → 실제 설정이 `nil`이어도 메뉴에는 항상 `⌃⇧⌘F7`가 표시됨.
+    - `Services/HotKeyService.swift` `register(settings:handler:)` — `showMainWindowShortcut`이 `nil`이면 `validShortcuts`에서 제외되어 Carbon 핫키로 **등록되지 않음**. 즉 메뉴에 보이는 `⌃⇧⌘F7`는 실제로 눌러도 동작하지 않는 "가짜" 표시.
+    - `Models/AppSettings.swift:200` — `showMainWindowShortcut` 기본값 `nil` (Issue61 의도: `_config.yml`에 명시된 항목만 글로벌 등록되도록 보장).
+    - `Services/RESTServer.swift:801-804` / `AppState.swift:225-234` `getShortcutsDisplay()` — `s.showMainWindowShortcut?.displayString ?? ""`로 실제 값만 반환(fallback 미적용). paidApp은 이 값을 그대로 표시하므로 "Not Set"이 **정확한 표시**임 — paidApp 측 버그 아님.
+    - 참고: `saveShortcut`/`restoreDefaultShortcut`/`restoreLastShortcut`는 `MenuBarManager`에서도 동일하게 fallback 상수(`fallbackSave` 등)를 쓰지만, 이들은 실사용자 환경에서 `_config.yml`에 이미 명시적으로 설정되어 있어 fallback이 노출된 적이 없었던 것으로 추정. `showMainWindowShortcut`만 미설정 상태로 남아 fallback 표시가 그대로 드러난 것으로 보임.
+* 구현 명세: 🚧 [TODO] 수정 방향 미착수 — 후보: (1) `state.settings.showMainWindowShortcut`이 `nil`일 때 메뉴 항목에 단축키 라벨 자체를 표시하지 않음(다른 3개 항목도 동일 원칙 적용 검토), 또는 (2) fallback 표시를 유지하되 시각적으로 "미등록" 임을 구분(예: 회색 처리·툴팁). Save/RestoreDefault/RestoreLast 3개 항목도 같은 fallback 패턴이므로 동일 정책으로 일괄 정리 검토.
 
 # 📗 선택
 
