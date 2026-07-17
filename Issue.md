@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 88
+* Issue HWM: 89
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - faf4d55 (2026-07-15) - Docs: Close Issue87 — 이중 라이선스 잔존 정리(b4a874b) + 이슈 종결
   - ffa4df9 (2026-07-13) - Chore: checkpoint — 이중 라이선스 전환(CC BY-NC 4.0 + 상업) 파일 변경 (Issue87)
@@ -29,6 +29,34 @@ date: 2026-04-07
 # 🚧 진행중
 
 # 📕 중요
+
+## Issue89: [Bug] 배포 사고 — brew 패키지 라벨(1.1.0)과 앱 번들 실제 버전(1.0.2) 불일치 (등록: 2026-07-17)
+* 목적: `brew install fwarrange-cli`로 **1.1.0을 설치해도 실제로 깔리는 앱은 1.0.2**임. 패키지 라벨과 번들 실체가 어긋난 채 이미 배포됨. `VERSION` 파일만 bump되고 xcodeproj `MARKETING_VERSION`이 따라가지 않아 발생. paidApp(prj16) Issue267 버전 SSOT 작성 중 실측 발견.
+* 실측 근거 (2026-07-17):
+    ```
+    /opt/homebrew/Cellar/fwarrange-cli/1.1.0/fWarrangeCli.app/Contents/Info.plist
+      → CFBundleShortVersionString = 1.0.2
+    ```
+    | 위치                                   | 값        |
+    | :------------------------------------- | :-------- |
+    | `_public/VERSION`                      | **1.1.0** |
+    | `cli/fWarrangeCli.xcodeproj` `MARKETING_VERSION` (2곳: 514·636행) | **1.0.2** |
+    | `cli/Formula/fwarrange-cli.rb` `version` | **1.0.0** |
+    | brew 설치 패키지 라벨                  | **1.1.0** |
+    | **brew 설치본 앱 번들 실측**           | **1.0.2** 🔴 |
+    | 실행 중 데몬 REST 응답                 | 1.0.2 (구 프로세스, uptime 26h) |
+* 원인 (메커니즘 확정):
+    - `cli/_tool/fwc-deploy-brew.sh`가 `VERSION` 파일만 읽어(`LOCAL_VERSION`, 27-29행) tarball명 `fWarrangeCli-${LOCAL_VERSION}.tar.gz`(379행)·Formula `version "$LOCAL_VERSION"`(193행)을 생성함. **xcodeproj는 전혀 건드리지 않음.**
+    - 앱 번들의 실제 버전은 xcodeproj `MARKETING_VERSION` → `Info.plist`로 흐름. 즉 **두 경로가 독립**이고 교차 검증 지점이 없음.
+    - `VERSION`만 1.1.0으로 올린 상태에서 배포 → 라벨은 1.1.0, 내용물은 1.0.2. **빌드·설치 모두 성공하므로 아무도 인지 못 함.**
+    - `Formula.rb`의 `version "1.0.0"`은 tap이 URL basename에서 버전을 스캔하므로 실제 미사용 화석 — 값이 또 달라 혼란 가중.
+* 구현 명세:
+    - **T1**: `cli/fWarrangeCli.xcodeproj/project.pbxproj` `MARKETING_VERSION` 1.0.2 → **1.1.0** (2곳). `CURRENT_PROJECT_VERSION`도 동일 정책 적용 여부 확인 후 정렬.
+    - **T2**: 재빌드 → 재배포 → **번들 실측 검증**: `PlistBuddy -c "Print :CFBundleShortVersionString" $(brew --cellar fwarrange-cli)/1.1.0/fWarrangeCli.app/Contents/Info.plist` = `1.1.0` 확인. 데몬 재시작 후 `curl :3016/` version=1.1.0 확인(구 프로세스 잔존 주의 — uptime 확인).
+    - **T3 (재발 방지, 핵심)**: `fwc-deploy-brew.sh`에 **배포 전 게이트** 추가 — `VERSION` ≠ xcodeproj `MARKETING_VERSION` 이면 배포 중단(fail-loud). 라벨만 맞고 내용물이 틀리는 사고를 구조적으로 차단. 선택적으로 `VERSION` 기준 xcodeproj 자동 동기화까지 스크립트가 수행.
+    - **T4**: `Formula.rb` `version` 화석 필드 — 제거 vs `LOCAL_VERSION` 동기화 유지 판정.
+    - **T5**: 사용자 영향 판정 — 이미 1.1.0 라벨로 배포된 1.0.2 번들의 회수/재배포 필요 여부. 기능 차이 유무 확인 후 결정.
+* 참조: paidApp 버전 관리 SSOT `~/_git/__all/fWarrange/_doc_arch/version_manage_with_cliApp.md` (전파 경로 다이어그램·2단 검증 절차). paidApp 측 이슈: prj16#Issue267.
 
 # 📙 일반
 
