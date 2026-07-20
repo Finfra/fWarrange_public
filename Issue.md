@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 89
+* Issue HWM: 90
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - faf4d55 (2026-07-15) - Docs: Close Issue87 — 이중 라이선스 잔존 정리(b4a874b) + 이슈 종결
   - ffa4df9 (2026-07-13) - Chore: checkpoint — 이중 라이선스 전환(CC BY-NC 4.0 + 상업) 파일 변경 (Issue87)
@@ -37,14 +37,14 @@ date: 2026-04-07
     /opt/homebrew/Cellar/fwarrange-cli/1.1.0/fWarrangeCli.app/Contents/Info.plist
       → CFBundleShortVersionString = 1.0.2
     ```
-    | 위치                                   | 값        |
-    | :------------------------------------- | :-------- |
-    | `_public/VERSION`                      | **1.1.0** |
-    | `cli/fWarrangeCli.xcodeproj` `MARKETING_VERSION` (2곳: 514·636행) | **1.0.2** |
-    | `cli/Formula/fwarrange-cli.rb` `version` | **1.0.0** |
-    | brew 설치 패키지 라벨                  | **1.1.0** |
-    | **brew 설치본 앱 번들 실측**           | **1.0.2** 🔴 |
-    | 실행 중 데몬 REST 응답                 | 1.0.2 (구 프로세스, uptime 26h) |
+    | 위치                                                              | 값                              |
+    | :---------------------------------------------------------------- | :------------------------------ |
+    | `_public/VERSION`                                                 | **1.1.0**                       |
+    | `cli/fWarrangeCli.xcodeproj` `MARKETING_VERSION` (2곳: 514·636행) | **1.0.2**                       |
+    | `cli/Formula/fwarrange-cli.rb` `version`                          | **1.0.0**                       |
+    | brew 설치 패키지 라벨                                             | **1.1.0**                       |
+    | **brew 설치본 앱 번들 실측**                                      | **1.0.2** 🔴                     |
+    | 실행 중 데몬 REST 응답                                            | 1.0.2 (구 프로세스, uptime 26h) |
 * 원인 (메커니즘 확정):
     - `cli/_tool/fwc-deploy-brew.sh`가 `VERSION` 파일만 읽어(`LOCAL_VERSION`, 27-29행) tarball명 `fWarrangeCli-${LOCAL_VERSION}.tar.gz`(379행)·Formula `version "$LOCAL_VERSION"`(193행)을 생성함. **xcodeproj는 전혀 건드리지 않음.**
     - 앱 번들의 실제 버전은 xcodeproj `MARKETING_VERSION` → `Info.plist`로 흐름. 즉 **두 경로가 독립**이고 교차 검증 지점이 없음.
@@ -63,6 +63,17 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue90: cli/_doc_arch 문서 ↔ 소스코드 정합성 감사 2차 및 갱신 (등록: 2026-07-20, 완료: 2026-07-20, Hash: 306a5cc) ✅
+* 목적: 1차 감사(2026-06-15, 체크포인트 609c51d) 이후 소스 변경분(Issue80 settings 원자화, Issue81 AutoCapture 신설, Issue82 brew publish, ff36f3d showSettingsShortcut 제거, Issue85 MCP v2, Issue87 이중 라이선스, Issue88 MenuBar fallback 제거)이 `cli/_doc_arch/` 문서에 미반영 — 문서·소스 대조 후 불일치를 문서에 직접 갱신.
+* 상세:
+    - 대상 8문서 감사 → **총 32건 수정** (문서 30건 + `api/openapi_v2.yaml` 스키마 2건). 병렬 subagent 5기 + 메인 직접(README.md·yaml)
+    - 주요 교정: 라인 참조 드리프트 15건(Issue88 -5줄 시프트 등), `containsTitle` 단방향 정정, 캡처 이름 생략 기본값 `"default"` 폐기 반영(실제 `nextDailySequenceName()`), Formula 실배포 방식(사전 빌드 tarball), 깨진 링크 3건, `--help` 출력 예시 현행화, 다국어 리소스 실체(`LocalizedStringManager.swift` 하드코딩) 정정
+    - 부수 발견·해소: 소스 `matchAreaMatchEnabled`(RESTServer.swift:642)가 `openapi_v2.yaml` `FullSettings`/`RestoreSettings` 스키마에 미정의 (api-rules 위반) → 스키마 추가
+* 구현 명세:
+    - 리포트: `cli/_doc_work/report/cli-doc-arch-audit2_report.md` (문서별 수정 내역 + 소스 근거 file:line)
+    - 검증: `python3 yaml.safe_load` 파싱 통과. Swift 코드 무변경 — 빌드 불필요
+    - git 추적 변경분만 커밋(306a5cc): openapi_v2.yaml + RestAPI_v2.md + window_recognize.md. 나머지 문서·리포트는 gitignored 로컬 전용
+
 ## Issue88: [Bug] MenuBarManager "Open Main Window" 항목이 미등록 fallback 단축키를 실제 등록된 것처럼 표시 (등록: 2026-07-16, 완료: 2026-07-16, Hash: a4292c1) ✅
 * 목적: 메뉴바 "Open Main Window" 항목이 실제로는 등록되지 않은 fallback 단축키(`⌃⇧⌘F7`)를 라벨로 표시해, 사용자가 실제 동작하는 글로벌 단축키로 오인함. paidApp(fWarrange) Settings 패널은 실제 상태("Not Set")를 정확히 표시 중이었고, 그 과정에서 이 불일치가 발견됨 (paidApp #Issue266).
 * 상세:
