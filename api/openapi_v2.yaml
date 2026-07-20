@@ -1484,6 +1484,7 @@ components:
         retryInterval: { type: number, format: double, minimum: 0 }
         minimumMatchScore: { type: integer, minimum: 0, maximum: 100 }
         enableParallelRestore: { type: boolean }
+        matchAreaMatchEnabled: { type: boolean, description: "Enable area-similarity window matching (default true)" }
         excludedApps:
           type: array
           items: { type: string }
@@ -1544,6 +1545,7 @@ components:
         retryInterval: { type: number, format: double }
         minimumMatchScore: { type: integer }
         enableParallelRestore: { type: boolean }
+        matchAreaMatchEnabled: { type: boolean }
 
     RestoreSettingsResponse:
       type: object

@@ -435,7 +435,7 @@ curl -X POST http://localhost:3016/api/v2/modes/Work/activate
 ```
 appLanguage, dataStorageMode (host|share), dataDirectoryPath,
 launchAtLogin, theme (system|light|dark),
-maxRetries, retryInterval, minimumMatchScore, enableParallelRestore, excludedApps[],
+maxRetries, retryInterval, minimumMatchScore, enableParallelRestore, matchAreaMatchEnabled, excludedApps[],
 restServerEnabled, restServerPort, allowExternalAccess, allowedCIDR,
 logLevel, autoSaveOnSleep, maxAutoSaves, retentionDays,
 restoreButtonStyle (iconOnly|nameIcon|nameOnly),
