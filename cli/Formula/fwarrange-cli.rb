@@ -16,7 +16,7 @@ class FwarrangeCli < Formula
   # version is scanned from the URL basename (fWarrangeCli-1.1.1.tar.gz)
   url "https://github.com/Finfra/fWarrange_public/releases/download/cli-v1.1.1/fWarrangeCli-1.1.1.tar.gz"
   # sha256 is regenerated per release by fwc-deploy-brew.sh publish
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  sha256 "af8dca788fc7275c45405c159fcd76fb83bcf86f75b5c2d89281536701bb0c3c"
   # Dual license: CC BY-NC 4.0 (non-commercial) or paid commercial license (see repository LICENSE)
   license any_of: ["CC-BY-NC-4.0", :cannot_represent]
 
