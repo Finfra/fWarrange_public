@@ -70,6 +70,79 @@ tcc_notice() {
 }
 
 # ==========================================
+# Version consistency gates (Issue89)
+#
+# Two independent paths decide the shipped version:
+#   A) VERSION file  -> tarball name + Formula version  = package LABEL
+#   B) xcodeproj MARKETING_VERSION -> Info.plist        = app BUNDLE
+# Nothing used to cross-check them, so a VERSION-only bump shipped a
+# 1.1.0-labelled package containing a 1.0.2 bundle. Both builds and installs
+# succeeded, so the drift stayed invisible. These gates make it fail loudly.
+# ==========================================
+
+# Pre-flight: VERSION (SSOT) must equal every MARKETING_VERSION in the pbxproj.
+version_gate() {
+    local PBX="$CLI_DIR/fWarrangeCli.xcodeproj/project.pbxproj"
+
+    echo ""
+    echo "=== Gate: 버전 정합 검사 (VERSION ↔ xcodeproj) ==="
+
+    if [ ! -f "$PBX" ]; then
+        echo "❌ pbxproj 미존재: $PBX"
+        return 1
+    fi
+
+    local MK_TOTAL MK_MATCH
+    MK_TOTAL=$(grep -c "MARKETING_VERSION = " "$PBX")
+    MK_MATCH=$(grep -c "MARKETING_VERSION = ${LOCAL_VERSION};" "$PBX")
+
+    if [ "$MK_TOTAL" -eq 0 ] || [ "$MK_TOTAL" -ne "$MK_MATCH" ]; then
+        echo "❌ 버전 드리프트 — 배포 중단"
+        echo "   VERSION (SSOT)              : $LOCAL_VERSION"
+        echo "   MARKETING_VERSION 일치      : ${MK_MATCH}/${MK_TOTAL} 곳"
+        grep -n "MARKETING_VERSION" "$PBX" | sed 's/^/     /'
+        echo ""
+        echo "   → 조치: xcodeproj 를 VERSION 에 맞춘 뒤 재실행"
+        echo "     sed -i '' -e \"s/MARKETING_VERSION = [0-9]*\\.[0-9]*\\.[0-9]*;/MARKETING_VERSION = ${LOCAL_VERSION};/\" \\"
+        echo "       \"$PBX\""
+        return 1
+    fi
+
+    echo "✅ 정합: VERSION=$LOCAL_VERSION == MARKETING_VERSION (${MK_MATCH}/${MK_TOTAL} 곳)"
+    return 0
+}
+
+# Post-build: the built .app must actually report LOCAL_VERSION.
+# Catches stale DerivedData or an incremental build that skipped Info.plist.
+# $1 = path to the .app bundle
+bundle_version_gate() {
+    local APP="$1"
+    local PLIST="$APP/Contents/Info.plist"
+
+    if [ ! -f "$PLIST" ]; then
+        echo "❌ Info.plist 미존재: $PLIST"
+        return 1
+    fi
+
+    local BUNDLE_VERSION
+    BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST" 2>/dev/null)
+
+    if [ "$BUNDLE_VERSION" != "$LOCAL_VERSION" ]; then
+        echo "❌ 번들 실체 불일치 — 배포 중단 (라벨 ≠ 내용물)"
+        echo "   VERSION (패키지 라벨)  : $LOCAL_VERSION"
+        echo "   앱 번들 실측           : ${BUNDLE_VERSION:-(읽기 실패)}"
+        echo "   대상                   : $APP"
+        echo ""
+        echo "   → 조치: DerivedData 정리 후 클린 재빌드"
+        echo "     xcodebuild -scheme fWarrangeCli -configuration Release clean build"
+        return 1
+    fi
+
+    echo "✅ 번들 실측: CFBundleShortVersionString = $BUNDLE_VERSION"
+    return 0
+}
+
+# ==========================================
 # 서브커맨드: local (기존 8단계)
 # ==========================================
 cmd_local() {
@@ -91,6 +164,14 @@ cmd_local() {
     echo "╔══════════════════════════════════════════╗"
     echo "║  fWarrangeCli Brew Deploy (local)         ║"
     echo "╚══════════════════════════════════════════╝"
+
+    # Step 0: 버전 정합 게이트 (Issue89) — 드리프트 시 빌드 전 중단
+    if ! version_gate; then
+        record_result "버전 정합 게이트" "FAIL" "VERSION($LOCAL_VERSION) ≠ xcodeproj MARKETING_VERSION"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    record_result "버전 정합 게이트" "PASS" "VERSION=$LOCAL_VERSION"
 
     # Step 1: Release 빌드
     echo ""
@@ -159,6 +240,14 @@ cmd_local() {
         print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
         return 1
     fi
+    # 번들 실체 검증 (Issue89) — 라벨만 맞고 내용물이 구버전인 채로 패키징되는 것을 차단
+    if ! bundle_version_gate "$BUILT_APP/fWarrangeCli.app"; then
+        record_result "번들 실측 게이트" "FAIL" "라벨 $LOCAL_VERSION ≠ 번들 실체"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    record_result "번들 실측 게이트" "PASS" "CFBundleShortVersionString=$LOCAL_VERSION"
+
     # 서명 유지를 위해 -p (permissions) 옵션 사용
     # Homebrew가 단일 루트 디렉토리를 buildpath로 인식하므로
     # .app를 감싸는 디렉토리(fwarrange-cli-pkg)를 추가하여 정상 unpack 유도
@@ -417,7 +506,13 @@ cmd_publish() {
             return 1
         fi
     fi
-    record_result "사전조건" "PASS" "VERSION·gh 인증·태그 미중복 확인"
+    # 0-4: 버전 정합 게이트 (Issue89) — VERSION ↔ xcodeproj MARKETING_VERSION
+    if ! version_gate; then
+        record_result "사전조건" "FAIL" "VERSION($LOCAL_VERSION) ≠ xcodeproj MARKETING_VERSION"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    record_result "사전조건" "PASS" "VERSION·gh 인증·태그 미중복·버전 정합 확인"
 
     # ── Step 1: Release 빌드 ───────────────────────────
     echo ""
@@ -444,6 +539,14 @@ cmd_publish() {
         print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
         return 1
     fi
+    # 번들 실체 검증 (Issue89) — release asset 업로드 전 마지막 차단선
+    if ! bundle_version_gate "$BUILT_APP/fWarrangeCli.app"; then
+        record_result "번들 실측 게이트" "FAIL" "라벨 $LOCAL_VERSION ≠ 번들 실체"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    record_result "번들 실측 게이트" "PASS" "CFBundleShortVersionString=$LOCAL_VERSION"
+
     # 구조: fwarrange-cli-pkg/fWarrangeCli.app (Homebrew 가 단일 루트 디렉토리를 strip → buildpath 에 .app)
     # 서명 유지를 위해 -p (permissions) 사용
     local TAR_STAGE
