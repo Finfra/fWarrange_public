@@ -692,6 +692,18 @@ FORMULA
         echo "    brew install finfra/tap/fwarrange-cli"
     fi
 
+    # ── 배포 인벤토리 기록 (F5-5 / prj1#Issue346) ──────
+    # 태그(Step 3)만으로는 어느 **채널**로 나갔는지 남지 않는다. 기록 지점은
+    # prj1 scripts/fpm-deploy-record.sh 하나 — 4개 배포 스크립트가 공유한다.
+    local _DEPLOY_RECORD="$HOME/_git/___pm/scripts/fpm-deploy-record.sh"
+    if [ -f "$_DEPLOY_RECORD" ]; then
+        local _REC_ARGS=(--prj 26 --name fWarrangeCli --version "$LOCAL_VERSION"
+                         --channel homebrew --tag "$TAG"
+                         --commit "$(git -C "$CLI_DIR" rev-parse --short HEAD 2>/dev/null || echo -)")
+        [ "$DRY_RUN" -eq 1 ] && _REC_ARGS+=(--dry-run)
+        bash "$_DEPLOY_RECORD" "${_REC_ARGS[@]}" || echo "⚠️ 배포 기록 실패 (배포 자체는 완료됨)"
+    fi
+
     print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
     return "$TOTAL_FAIL"
 }
