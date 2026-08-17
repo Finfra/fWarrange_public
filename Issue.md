@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 90
+* Issue HWM: 91
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - faf4d55 (2026-07-15) - Docs: Close Issue87 — 이중 라이선스 잔존 정리(b4a874b) + 이슈 종결
   - ffa4df9 (2026-07-13) - Chore: checkpoint — 이중 라이선스 전환(CC BY-NC 4.0 + 상업) 파일 변경 (Issue87)
@@ -22,7 +22,7 @@ date: 2026-04-07
 * `~/_git/__all/fWarrange/_doc_arch/paid_cli_protocol.md` 기준 진행(상위 메인 레포, paidApp앱과 연동)
 * `cli/_doc_arch/menuBar_enhance.md` 기준 진행(메뉴바, 로컬 SSOT — gitignored)
 * **Issue72_1 베이스라인 검토일: 2026-05-22** — 통계 인프라 가동 후 1주일(2026-05-15~22) 실사용 데이터 수집 → `cli/_doc_work/report/window_recognize_baseline.md` 보고서 작성 → Issue72_1 ✅ 완료 처리 → Phase 2~7 우선순위 데이터 기반 재조정
-* **Issue72_6 비공개 API 도입 합의 (2026-05-16)** — cliApp(non-sandbox)에서 CGSGetActiveSpace·CGSCopySpacesForWindows·CGSMainConnectionID 사용. App Store 영향 無 (cliApp은 brew 배포). macOS 업데이트 시 폐기 가능성 대비 nil 반환 안전망 보유. 상위 `_doc_arch/paid_cli_protocol.md` 차기 갱신 시 반영 권장.
+* **Issue72_6 비공개 API 도입 합의 (2026-05-16)** — cliApp(non-sandbox)에서 CGS 계열 비공개 API 사용 합의. 근거·안전망 상세는 Issue72_6 본문 참조.
 
 # 🌱 이슈후보
 
@@ -35,6 +35,16 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue91: [Chore] brew 원격 배포(publish) 사전 준비 점검 — 버전 정합·Release 빌드 확인 (등록: 2026-08-18, 완료: 2026-08-18, Hash: f3609d7) ✅
+* 목적: GitHub API major outage 로 `/deploy brew publish` 실행이 불가한 상황에서, 원격 배포 전 사전 점검(버전 정합·빌드 통과)만 선행 수행 (pm-do 위임, 원격 배포 자체는 금지 범위)
+* 상세:
+    - VERSION(1.1.1) 기준 정합 점검: `cli/Formula/fwarrange-cli.rb` 는 URL basename `fWarrangeCli-1.1.1.tar.gz` 로 정합 (Issue89 설계 — version 필드 없음, URL 스캔이 SSOT)
+    - `cli/version-meta.yml` mirror 값 3곳(version·formula_version·installed_version)이 1.0.1 로 낡아 있음 → 1.1.1 로 동기화, checked 일자 갱신 (brew list 실측: fwarrange-cli 1.1.1)
+    - Release 빌드 통과 확인: `xcodebuild -scheme fWarrangeCli -configuration Release build` exit 0 (Sendable 경고만, 에러 0). 배포 없음
+* 구현 명세:
+    - 검증: Formula URL·sha256 은 cli-v1.1.1 릴리스 기준 유지, publish 시 `fwc-deploy-brew.sh` 게이트 2종(version_gate·bundle_version_gate)이 재검증
+    - 후속: GitHub API 복구 후 `/deploy brew publish` 실행 가능 (준비 완료 상태)
+
 ## Issue89: [Bug] 배포 사고 — brew 패키지 라벨(1.1.0)과 앱 번들 실제 버전(1.0.2) 불일치 (등록: 2026-07-17, 완료: 2026-07-21, Hash: da9c41a, release: cli-v1.1.1) ✅
 * 목적: `brew install fwarrange-cli`로 **1.1.0을 설치해도 실제로 깔리는 앱은 1.0.2**임. 패키지 라벨과 번들 실체가 어긋난 채 이미 배포됨. `VERSION` 파일만 bump되고 xcodeproj `MARKETING_VERSION`이 따라가지 않아 발생. paidApp(prj16) Issue267 버전 SSOT 작성 중 실측 발견.
 * 실측 근거 (2026-07-17, 사고 상태):
@@ -190,7 +200,7 @@ date: 2026-04-07
 * 참고: README 본문 엔드포인트 일부 `/api/v1/*` 표기 — 전면 v1→v2 재작성은 본 이슈 범위 밖(별도 후보). 본 이슈는 운영 모델(cliApp/brew) + 스펙 포인터까지
 ## Issue78: [REST] 장기 동작 진행 상태 노출 (일반화) — `/operations` + `op.*` 이벤트 발행 (등록: 2026-05-18, 완료: 2026-05-18, commit: 53f2dfe) ✅
 * 목적: capture 한정이 아니라 cliApp 모든 long-running 핸들러(capture, restore, layout.delete/rename, settings.patch, shortcuts.set, factoryReset)에 진행 상태 노출 채널을 제공. paidApp이 op type별 진행 메시지·완료 감지·행 대응을 통합 관리할 수 있게 함. 상위 SSOT(`~/_git/__all/fWarrange/_doc_arch/paid_cli_protocol.md` §6.7 일반화) 반영.
-* depends: paidApp 측 `Issue254`가 본 이슈에 의존 (paidApp이 사용하려면 cliApp endpoint·이벤트가 먼저 가용해야 함)
+* 역의존 메모: prj16#Issue254 가 본 이슈에 의존 (paidApp이 사용하려면 cliApp endpoint·이벤트가 먼저 가용해야 함)
 * 구현 결과:
     - 신규 actor `OperationRegistry` (`cli/fWarrangeCli/Services/OperationRegistry.swift`): UUID 발급, 직렬화 enforce(capture/restore/factoryReset), op.started/finished/failed 발행
     - 신규 enum `OpType`, struct `Operation` (`cli/fWarrangeCli/Models/`)
@@ -387,6 +397,7 @@ date: 2026-04-07
 
 ## Issue72_6: [Feat] Phase 6 — Spaces(spaceId) + PWA(originURL) (등록: 2026-05-15) (✅ 완료, dc0f36f) ✅
 * 목적: OSS 미개척 시나리오 — Spaces 분산 창·Chrome PWA 구분 매칭 토대
+* 비공개 API 도입 합의 상세 (2026-05-16, 결정사항에서 이관): CGSGetActiveSpace·CGSCopySpacesForWindows·CGSMainConnectionID 사용. App Store 영향 無 (cliApp은 brew 배포). macOS 업데이트 시 폐기 가능성 대비 nil 반환 안전망 보유. 상위 `_doc_arch/paid_cli_protocol.md` 차기 갱신 시 반영 권장.
 * 구현 명세:
     - 6-1: 비공개 CGSCopySpacesForWindows + WindowInfo.spaceId + 매칭 +3점 가산
     - 6-2: Chromium 5종 화이트리스트 + ps -p {pid} -o command= → --app=URL 파싱 + WindowInfo.originURL
