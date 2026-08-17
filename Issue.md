@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 91
+* Issue HWM: 93
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - faf4d55 (2026-07-15) - Docs: Close Issue87 — 이중 라이선스 잔존 정리(b4a874b) + 이슈 종결
   - ffa4df9 (2026-07-13) - Chore: checkpoint — 이중 라이선스 전환(CC BY-NC 4.0 + 상업) 파일 변경 (Issue87)
@@ -35,6 +35,32 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue93: [Docs] CLAUDE.md 커맨드·에이전트 테이블이 실제 `.claude/` 구성과 불일치 (등록: 2026-08-18, 완료: 2026-08-18, Hash: 문서 미추적 — 아래 명세 참조) ✅
+* 목적: `CLAUDE.md` 의 SCAR 목록 표가 실제 `.claude/commands/`·`.claude/agents/` 구성보다 낡아, 신규 커맨드·에이전트를 세션이 인지하지 못함. consultant-m 검토 발견(2026-08-18).
+* 상세:
+    - 커맨드 표(138~152행): 11개만 나열(build·deploy·dev·run·verify·git·issue·issue-reg·issue-fix·issue-closer·refactor). 실제 `.claude/commands/` 는 **14개** — `api-test.md`·`brew-apply.md`·`doc-work-archive.md` 누락
+    - 에이전트 표(154~164행): 7개만 나열(build·build-doctor·deployment·git·refactor·rule-manager·verify). 실제 `.claude/agents/` 는 **8개** — `doc-work-archive.md` 누락
+    - 원인: 신규 SCAR 도입 시 `CLAUDE.md` 표 갱신이 절차에 없어 누락 누적
+    - 앱 런타임 무관 — 문서 전용. 릴리스 안전(releaseSafe)
+* 구현 명세:
+    - 누락 3커맨드·1에이전트를 각 파일 frontmatter `description` 원문 기준으로 표에 추가. 기능 그룹 순서 유지(`brew-apply` 는 `deploy` 뒤, `api-test` 는 `verify` 뒤, `doc-work-archive` 는 말미)
+    - 컬럼 폭을 최장 항목(`doc-work-archive`)에 맞춰 양 표 재정렬
+    - 검증: `ls .claude/commands/` 14건·`ls .claude/agents/` 8건과 표 행 수 1:1 대조 완료
+    - ⚠️ **커밋 해시 없음**: `CLAUDE.md` 는 [.gitignore](.gitignore) 3행으로 **untracked** — 본 repo(공개 배포용)에서 추적하지 않는 로컬 전용 문서임. 수정은 워킹트리에 반영 완료했으나 커밋 대상이 아니며, `git add -f` 는 로컬 문서를 공개 repo 에 유출시키므로 수행하지 않음
+    - 후속(선택): 신규 SCAR 추가 시 `CLAUDE.md` 표 갱신을 `rule-manager` 에이전트 체크리스트에 편입 🚧
+
+## Issue92: [Docs] noteForHuman.md 배포 버전 표기가 실제(1.1.1)보다 낡음(1.0.2) (등록: 2026-08-18, 완료: 2026-08-18, Hash: 문서 미추적 — 아래 명세 참조) ✅
+* 목적: 개발자 참고문서 `noteForHuman.md` 의 배포 버전 주석이 1.0.2 로 남아, 실제 배포본(1.1.1)과 어긋난 채 안내됨. consultant-m 검토 발견(2026-08-18).
+* 상세:
+    - `noteForHuman.md:26` — `# 현재 배포 버전: 1.0.2 (cli-v1.0.2)` (빠른 시작 curl 예시 블록의 헤더 주석)
+    - 실측 SSOT 는 모두 1.1.1 로 정합: [VERSION](VERSION)(1.1.1) · `cli/version-meta.yml`(1.1.1, Issue91 동기화) · `cli/Formula/fwarrange-cli.rb` URL basename(`cli-v1.1.1`) · Issue89·91 종결 기록
+    - 2026-07-21 Issue89(1.1.1 신규 릴리스) 종결 시 본 문서만 갱신 누락
+    - 주석 문자열이라 앱 런타임·빌드 산출물 무관. 릴리스 안전(releaseSafe)
+* 구현 명세:
+    - 26행을 `# 현재 배포 버전: 1.1.1 (cli-v1.1.1)` 로 수정 (VERSION 파일 실측값 기준)
+    - 검증: [VERSION](VERSION) 내용과 문자열 일치 확인. 다른 버전 표기 잔존 없음
+    - ⚠️ **커밋 해시 없음**: `noteForHuman.md` 는 [.gitignore](.gitignore) 17행으로 **untracked** — 로컬 전용 문서. 워킹트리 수정만 완료, `git add -f` 미수행(Issue93 과 동일 사유)
+
 ## Issue91: [Chore] brew 원격 배포(publish) 사전 준비 점검 — 버전 정합·Release 빌드 확인 (등록: 2026-08-18, 완료: 2026-08-18, Hash: f3609d7) ✅
 * 목적: GitHub API major outage 로 `/deploy brew publish` 실행이 불가한 상황에서, 원격 배포 전 사전 점검(버전 정합·빌드 통과)만 선행 수행 (pm-do 위임, 원격 배포 자체는 금지 범위)
 * 상세:
