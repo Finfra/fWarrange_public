@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 93
+* Issue HWM: 94
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - faf4d55 (2026-07-15) - Docs: Close Issue87 — 이중 라이선스 잔존 정리(b4a874b) + 이슈 종결
   - ffa4df9 (2026-07-13) - Chore: checkpoint — 이중 라이선스 전환(CC BY-NC 4.0 + 상업) 파일 변경 (Issue87)
@@ -19,10 +19,15 @@ date: 2026-04-07
 
 
 # 🤔 결정사항
-* `~/_git/__all/fWarrange/_doc_arch/paid_cli_protocol.md` 기준 진행(상위 메인 레포, paidApp앱과 연동)
-* `cli/_doc_arch/menuBar_enhance.md` 기준 진행(메뉴바, 로컬 SSOT — gitignored)
-* **Issue72_1 베이스라인 검토일: 2026-05-22** — 통계 인프라 가동 후 1주일(2026-05-15~22) 실사용 데이터 수집 → `cli/_doc_work/report/window_recognize_baseline.md` 보고서 작성 → Issue72_1 ✅ 완료 처리 → Phase 2~7 우선순위 데이터 기반 재조정
-* **Issue72_6 비공개 API 도입 합의 (2026-05-16)** — cliApp(non-sandbox)에서 CGS 계열 비공개 API 사용 합의. 근거·안전망 상세는 Issue72_6 본문 참조.
+
+결정은 **각 정본 문서**에 산다 — 여기 사본을 두지 않는다(2026.09.02 정리).
+
+| 결정 | 정본 |
+| :--- | :--- |
+| paidApp↔cliApp 연동은 상위 레포 프로토콜 문서 기준 | [paid_cli_protocol.md](../_doc_arch/paid_cli_protocol.md) — 상위 메인 레포 |
+| 메뉴바는 `cli/_doc_arch/menuBar_enhance.md` 기준 (로컬 SSOT · gitignored) | [menuBar_enhance.md](cli/_doc_arch/menuBar_enhance.md) |
+| Issue72_1 베이스라인 검토일 2026-05-22 — 1주 실사용 수집 후 Phase 2~7 우선순위 재조정 | Issue72_1 본문 |
+| Issue72_6 — cliApp(non-sandbox)에서 CGS 계열 비공개 API 사용 합의 (2026-05-16) | Issue72_6 본문 |
 
 # 🌱 이슈후보
 
@@ -31,6 +36,24 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+
+## Issue94: [Cleanup] `showInCmdTab` 죽은 키 제거 — paidApp 소유 이전으로 소비처 소멸 (등록: 2026-09-04)
+* 목적: paidApp 이 ⌘+Tab 앱 전환기 표시 설정의 소유를 자신의 UserDefaults 로 가져가면서(prj16#Issue276), cliApp 의 `showInCmdTab` 키는 **읽는 쪽도 쓰는 쪽도 없는 죽은 키**가 되었다. 남겨두면 소비처 없는 설정이 REST 응답·`_config.yml` 에 계속 노출되어, 다음에 이 키를 보는 사람이 "어딘가 쓰이겠거니" 하고 되살릴 여지를 남긴다
+* depends: prj16#Issue276
+* 상세:
+    - **왜 paidApp 이 가져갔나**: `NSApp.setActivationPolicy` 는 paidApp **프로세스 자신의 상태**다. cliApp 설정 파일이 소유할 성질이 아니며, 실제로 저장(cliApp `showInCmdTab`)과 복원(paidApp `showInAppSwitcher`)이 갈라져 있어 토글이 재시작에 반영되지 않는 고장이 있었다. prj16#Issue276 에서 소유를 paidApp 으로 일원화하여 해소함
+    - **현재 상태 실측**: paidApp 소스에 `showInCmdTab` 참조 0건(설명 주석 1건 제외). cliApp 은 여전히 키를 보유·응답하지만 그 값을 쓰는 클라이언트가 없다
+    - 제거 대상 4곳:
+        - `fWarrangeCli/_config.yml:30` — `showInCmdTab: true`
+        - `fWarrangeCli/Models/AppSettings.swift:168,213` — 필드 선언·기본값
+        - `fWarrangeCli/Models/AppSettings+Patch.swift:28,65` — 직렬화·패치 매핑
+        - `fWarrangeCli/Services/RESTServer.swift:643` — `/settings/advanced` 허용 키 화이트리스트
+* 구현 명세:
+    - 위 4곳에서 키를 제거한다. `confirmBeforeDelete`·`clickSwitchToMain` 은 **그대로 둔다** — 두 키는 paidApp 고급 탭이 계속 사용 중이다
+    - **API 스펙 동시 갱신 필수**(api-rules): `api/openapi_v2.yaml` 의 `/settings/advanced` 스키마에서 `showInCmdTab` 제거. 소스만 고치고 스펙을 두면 규칙 위반
+    - 기존 사용자의 `_config.yml` 에 남은 `showInCmdTab` 행은 파싱 시 무시되므로 마이그레이션 불필요. 다만 설정 저장이 한 번 일어나면 자연히 사라진다
+    - ⚠️ 제거 전 paidApp 최신 소스에서 `showInCmdTab` 참조가 여전히 0건인지 재확인할 것 — 확인 없이 제거하면 소유 이전이 되돌려진 경우를 놓친다
+
 
 # 📗 선택
 
