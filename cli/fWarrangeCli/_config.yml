@@ -27,7 +27,6 @@ retentionDays: 7
 # UI options
 restoreButtonStyle: nameIcon
 confirmBeforeDelete: true
-showInCmdTab: true
 clickSwitchToMain: false
 theme: system
 

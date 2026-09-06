@@ -130,7 +130,6 @@ if [ -f "$CONFIG_FILE" ]; then
     check_default "maxAutoSaves" "5"
     check_default "restoreButtonStyle" "nameIcon"
     check_default "confirmBeforeDelete" "true"
-    check_default "showInCmdTab" "true"
     check_default "clickSwitchToMain" "false"
     check_default "theme" "system"
     check_default "appLanguage" "system"

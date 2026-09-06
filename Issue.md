@@ -4,8 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 94
+* Issue HWM: 96
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
+  - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
   - faf4d55 (2026-07-15) - Docs: Close Issue87 — 이중 라이선스 잔존 정리(b4a874b) + 이슈 종결
   - ffa4df9 (2026-07-13) - Chore: checkpoint — 이중 라이선스 전환(CC BY-NC 4.0 + 상업) 파일 변경 (Issue87)
   - b587581 (2026-06-22) - Fix(MCP): fwarrange-mcp index.js를 REST API v2로 마이그레이션 (Issue85) + npm 1.0.2 배포(Issue83)
@@ -22,18 +23,65 @@ date: 2026-04-07
 
 결정은 **각 정본 문서**에 산다 — 여기 사본을 두지 않는다(2026.09.02 정리).
 
-| 결정 | 정본 |
-| :--- | :--- |
-| paidApp↔cliApp 연동은 상위 레포 프로토콜 문서 기준 | [paid_cli_protocol.md](../_doc_arch/paid_cli_protocol.md) — 상위 메인 레포 |
-| 메뉴바는 `cli/_doc_arch/menuBar_enhance.md` 기준 (로컬 SSOT · gitignored) | [menuBar_enhance.md](cli/_doc_arch/menuBar_enhance.md) |
-| Issue72_1 베이스라인 검토일 2026-05-22 — 1주 실사용 수집 후 Phase 2~7 우선순위 재조정 | Issue72_1 본문 |
-| Issue72_6 — cliApp(non-sandbox)에서 CGS 계열 비공개 API 사용 합의 (2026-05-16) | Issue72_6 본문 |
+| 결정                                                                                  | 정본                                                                       |
+| :------------------------------------------------------------------------------------ | :------------------------------------------------------------------------- |
+| paidApp↔cliApp 연동은 상위 레포 프로토콜 문서 기준                                    | [paid_cli_protocol.md](../_doc_arch/paid_cli_protocol.md) — 상위 메인 레포 |
+| 메뉴바는 `cli/_doc_arch/menuBar_enhance.md` 기준 (로컬 SSOT · gitignored)             | [menuBar_enhance.md](cli/_doc_arch/menuBar_enhance.md)                     |
+| Issue72_1 베이스라인 검토일 2026-05-22 — 1주 실사용 수집 후 Phase 2~7 우선순위 재조정 | Issue72_1 본문                                                             |
+| Issue72_6 — cliApp(non-sandbox)에서 CGS 계열 비공개 API 사용 합의 (2026-05-16)        | Issue72_6 본문                                                             |
 
 # 🌱 이슈후보
 
 # 🚧 진행중
 
 # 📕 중요
+
+## Issue96: [Permission] 운영 중 접근성 권한이 제거되면 단축키가 조용히 죽는다 — 감지·안내 부재 (등록: 2026-09-06)
+* 목적: 권한을 **앱 시작 시에만** 확인하므로(`AppState.swift:467`), 운영 중 사용자가 접근성 권한을 제거하면 단축키가 **아무 안내 없이 안 먹기 시작**한다. 사용자는 앱이 고장난 줄로만 안다.
+* 상세:
+    - **prj25(fSnippetCli) Issue211~227 조사에서 파생.** 그쪽은 같은 상황에서 **키보드 전체가 잠기는** 심각한 증상이었고, 원인·해법이 모두 규명됐다
+    - ⚠️ **본 프로젝트는 그 심각도가 아니다** — 아래 구조 차이로 **락이 구조적으로 불가능**하다. 심각도는 "기능이 조용히 죽는다" 수준
+    | 항목             | fSnippetCli (prj25)                       | fWarrangeCli (본 프로젝트)            |
+    | :--------------- | :---------------------------------------- | :------------------------------------ |
+    | 키 수신          | `CGEvent.tapCreate` — 전 입력이 통과      | **Carbon `RegisterEventHotKey`**      |
+    | 보조             | NSEvent 글로벌 모니터                     | NSEvent **로컬** 모니터(앱 활성 시만) |
+    | 입력 스트림 개입 | 전면                                      | 등록된 단축키만                       |
+    | 권한 상실 시     | 전 입력이 tap 반환을 대기 → **시스템 락** | 단축키만 무효 → **락 없음**           |
+    - `cli/` 소스에 `CGEvent.tapCreate` **0건** (grep 히트는 전부 `agents/gemini/skills/` 하위 유틸 스크립트)
+    - `HotKeyService.swift:23` 이 선택 이유를 기록 — *"NSEvent.addGlobalMonitorForEvents는 이벤트 소비 불가 → 비프음 발생"*
+    - 아울러 `AppState.swift:466` 주석이 이미 `prompt:false` 를 지키고 있다. prj25 가 Issue222~227 에서 네 라운드에 걸쳐 배운 *"`prompt: true` 는 실행 중 프로세스에 무효"* 를 **본 프로젝트는 이미 알고 회피 중**이다
+* 구현 명세:
+    - **감지 — 본 프로젝트에 맞는 비대칭을 쓴다.** prj25 의 Issue220(CGEventTap ↔ NSEvent 모니터 비대칭)은 CGEventTap 이 없어 그대로 옮길 수 없다. 대신:
+        - `RegisterEventHotKey` 로 등록한 핫키는 **권한과 무관하게 눌린다**
+        - 반면 창 조작 API(`AXUIElement*`)는 권한이 없으면 **실패한다**
+        - 즉 **"핫키는 들어왔는데 창 조작이 실패"** 가 권한 상실의 관측 증거다
+    - **안내 — `Restart Now` 단일 버튼** (prj25 Issue225 결론 재사용). 실행 중인 프로세스는 접근성 목록에 스스로를 되돌릴 수 없으므로 재시작이 유일한 복구 경로다. 설정 창을 열어도 목록에 항목이 없어 켤 대상이 없다
+    - **중복 방지 필수** (prj25 Issue221) — `NSAlert.runModal()` 은 블로킹이라 가드가 없으면 호출이 큐에 쌓여 닫는 즉시 또 뜬다. `isPresenting` 플래그로 억제
+    - ⚠️ **`prompt: true` 를 쓰지 않는다** (prj25 Issue227) — 실행 중 프로세스에는 효과가 없고 창만 반복 표시된다
+    - **부수 정리**: `AccessibilityService.requestAccessibility()`(내부 `prompt: true`)와 `WindowManager` 의 래퍼는 **호출부 0건인 죽은 코드**다. 남겨두면 나중에 누군가 이것을 쓰다가 prj25 가 겪은 함정에 그대로 빠진다
+* 참고: prj25 `_public/Issue.md` Issue211~227 (완료) · `cli/_doc_work/debug_TECH.md` "반증된 가설 3건과 진단 플로우"
+
+
+## Issue95: [Bug] Homebrew 서비스 label 규약 변경(`homebrew.mxcl.*` → `sh.brew.*`)으로 cliApp 무한 self-handoff — brew 최신 머신에서 기동 불가 (등록: 2026-09-05)
+* 목적: Homebrew 가 서비스 label 규약을 `homebrew.mxcl.{formula}` 에서 `sh.brew.{formula}` 로 바꿨다. cliApp 은 구 label 을 **소스 3곳에 하드코딩**하고 있어, 최신 brew 가 깔린 머신에서 `brew services start` 든 `open` 이든 앱이 `exit(0)` 으로 즉시 종료하며 **전혀 기동하지 못한다**. 크래시도 로그도 남지 않아 원인 파악이 어렵다. brew 를 업데이트하는 모든 사용자에게 순차적으로 도달하는 회귀이므로 조기 수정이 필요하다
+* 상세:
+    - **실발생**: 2026-09-05 jma(macOS 26.6.2) 에 cliApp 1.1.1 배포 중 발생. `brew update` 로 Homebrew 가 6.0.21-126 이 되면서 label 이 바뀜. jm4 는 6.0.21-83 이라 아직 구 label 을 써서 정상 동작 중 — **jm4 도 `brew update` 하는 순간 같은 장애가 재현된다**
+    - **무한 루프 경로**: `BrewServiceSync.onAppStart()` 의 skip 조건 두 개가 모두 구 label 에 의존한다
+        - `isLaunchedByLaunchd()` — `XPC_SERVICE_NAME == "homebrew.mxcl.fwarrange-cli"` 비교. 신규 label 은 `sh.brew.fwarrange-cli` 라 **launchd 가 띄운 프로세스조차 false** 로 판정
+        - `isServiceLoaded()` — `launchctl list` 출력에서 구 label 을 찾음. 신규 label 로 등록돼 있어도 **false**
+        - 두 skip 이 모두 빗나가 `performHandoffStart()` → `brew services start` → `Foundation.exit(0)` → launchd 가 새 프로세스 spawn → 같은 판정 반복. 프로세스가 하나도 남지 않고 brew state 는 `stopped` 로 수렴
+    - **하드코딩 위치 3곳**:
+        - `cli/fWarrangeCli/Services/BrewServiceSync.swift:16` — `static let serviceLabel`
+        - `cli/fWarrangeCli/Services/SingleInstanceGuard.swift:19` — `launchdServiceLabel` (중복 인스턴스 판정 오작동)
+        - `cli/fWarrangeCli/Services/LoginItemService.swift:29` — LaunchAgents plist 경로 (로그인 항목 연동 오작동)
+    - **현재 우회 상태(jma)**: `defaults write kr.finfra.fWarrangeCli fwc.autoStartBrewService -bool false` 로 `onAppStart()` 첫 skip 조건을 태워 label 판정 자체를 건너뛰게 한 뒤 `open` 으로 수동 기동함. 앱·REST(3016) 는 정상이나 **재부팅 시 자동 시작되지 않는다**
+* 구현 명세:
+    - label 을 단일 상수로 고정하지 말고 **두 규약을 모두 인식**한다. `["sh.brew.fwarrange-cli", "homebrew.mxcl.fwarrange-cli"]` 후보 배열로 두고 `isLaunchedByLaunchd()` 는 `XPC_SERVICE_NAME` 이 그중 하나와 일치하면 true, `isServiceLoaded()` 는 `launchctl list` 에 하나라도 있으면 true 로 판정
+    - 더 견고한 대안은 label 문자열 비교를 버리고 **`~/Library/LaunchAgents/` 에서 formula 명을 포함하는 plist 를 탐색**해 그 `Label` 키를 읽는 동적 조회다. brew 가 규약을 또 바꿔도 따라간다. 어느 쪽을 택하든 세 파일이 **같은 판정 함수 하나를 공유**하도록 단일 지점으로 모을 것 — 지금처럼 3곳에 흩어져 있으면 다음 변경 때 또 반쪽만 고쳐진다
+    - `LoginItemService` 의 plist 경로도 같은 조회 결과를 쓰도록 바꾼다
+    - **회귀 검증**: 구 brew(jm4, 6.0.21-83)와 신 brew(jma, 6.0.21-126) 양쪽에서 ① `brew services start` 후 프로세스 생존 ② `open` 기동 후 프로세스 생존 ③ `/api/v2/status` 200 응답 ④ `brew services list` 가 `started` 로 표시 — 4항을 모두 확인한다
+    - 수정 후 jma 의 우회 스위치를 되돌린다: `defaults delete kr.finfra.fWarrangeCli fwc.autoStartBrewService`
+    - 관련 선례: Issue86(brew services 미등록 실행), Issue39 Phase4(SingleInstanceGuard 도입)
 
 # 📙 일반
 
@@ -97,14 +145,14 @@ date: 2026-04-07
 ## Issue89: [Bug] 배포 사고 — brew 패키지 라벨(1.1.0)과 앱 번들 실제 버전(1.0.2) 불일치 (등록: 2026-07-17, 완료: 2026-07-21, Hash: da9c41a, release: cli-v1.1.1) ✅
 * 목적: `brew install fwarrange-cli`로 **1.1.0을 설치해도 실제로 깔리는 앱은 1.0.2**임. 패키지 라벨과 번들 실체가 어긋난 채 이미 배포됨. `VERSION` 파일만 bump되고 xcodeproj `MARKETING_VERSION`이 따라가지 않아 발생. paidApp(prj16) Issue267 버전 SSOT 작성 중 실측 발견.
 * 실측 근거 (2026-07-17, 사고 상태):
-    | 위치                                                              | 값                              |
-    | :---------------------------------------------------------------- | :------------------------------ |
-    | `_public/VERSION`                                                 | **1.1.0**                       |
-    | `cli/fWarrangeCli.xcodeproj` `MARKETING_VERSION` (2곳: 514·636행) | **1.0.2**                       |
-    | `cli/Formula/fwarrange-cli.rb` `version`                          | **1.0.0**                       |
-    | brew 설치 패키지 라벨                                             | **1.1.0**                       |
-    | **brew 설치본 앱 번들 실측**                                      | **1.0.2** 🔴                     |
-    | 실행 중 데몬 REST 응답                                            | 1.0.2 (구 프로세스)             |
+    | 위치                                                              | 값                  |
+    | :---------------------------------------------------------------- | :------------------ |
+    | `_public/VERSION`                                                 | **1.1.0**           |
+    | `cli/fWarrangeCli.xcodeproj` `MARKETING_VERSION` (2곳: 514·636행) | **1.0.2**           |
+    | `cli/Formula/fwarrange-cli.rb` `version`                          | **1.0.0**           |
+    | brew 설치 패키지 라벨                                             | **1.1.0**           |
+    | **brew 설치본 앱 번들 실측**                                      | **1.0.2** 🔴         |
+    | 실행 중 데몬 REST 응답                                            | 1.0.2 (구 프로세스) |
 * 원인 (메커니즘 확정): `fwc-deploy-brew.sh`가 `VERSION`만 읽어 tarball명·Formula version(=패키지 라벨)을 생성하는데, 앱 번들 실체 버전은 xcodeproj `MARKETING_VERSION` → `Info.plist`로 흐름. **두 경로가 독립**이고 교차 검증 지점이 없어 `VERSION`만 올리면 라벨=1.1.0·내용물=1.0.2. 빌드·설치 모두 성공하여 무인지.
 * 해결 (2026-07-21):
     - **T1** ✅: xcodeproj `MARKETING_VERSION` → 1.1.1 (2곳, VERSION과 강제 동일). `CURRENT_PROJECT_VERSION`은 `= 1` 빌드번호 트랙으로 별도 유지(정책 확인).

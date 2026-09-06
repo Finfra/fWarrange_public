@@ -126,7 +126,6 @@ final class YAMLSettingsService: SettingsService {
         lines.append("# UI options")
         lines.append("restoreButtonStyle: \(s.restoreButtonStyle ?? "nameIcon")")
         lines.append("confirmBeforeDelete: \(s.confirmBeforeDelete ?? true)")
-        lines.append("showInCmdTab: \(s.showInCmdTab ?? true)")
         lines.append("clickSwitchToMain: \(s.clickSwitchToMain ?? false)")
         lines.append("theme: \(s.theme ?? "system")")
         // 단축키 설정 (ex: ⌘F7, ⇧⌘F7, ⌃⌥S)
@@ -213,7 +212,6 @@ final class YAMLSettingsService: SettingsService {
         if let v = dict["retentionDays"], let i = Int(v) { s.retentionDays = i }
         if let v = dict["restoreButtonStyle"].map(parseStringValue) { s.restoreButtonStyle = v }
         if let v = dict["confirmBeforeDelete"], let b = Bool(v) { s.confirmBeforeDelete = b }
-        if let v = dict["showInCmdTab"], let b = Bool(v) { s.showInCmdTab = b }
         if let v = dict["clickSwitchToMain"], let b = Bool(v) { s.clickSwitchToMain = b }
         if let v = dict["theme"].map(parseStringValue) { s.theme = v }
         return s

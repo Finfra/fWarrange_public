@@ -640,7 +640,7 @@ final class RESTServer: RESTServerProtocol {
         let tabPaths: [String: [String]] = [
             "\(base)/settings/general": ["appLanguage", "dataStorageMode", "dataDirectoryPath", "launchAtLogin", "theme"],
             "\(base)/settings/restore": ["maxRetries", "retryInterval", "minimumMatchScore", "enableParallelRestore", "matchAreaMatchEnabled"],
-            "\(base)/settings/advanced": ["logLevel", "autoSaveOnSleep", "maxAutoSaves", "retentionDays", "restoreButtonStyle", "confirmBeforeDelete", "showInCmdTab", "clickSwitchToMain"]
+            "\(base)/settings/advanced": ["logLevel", "autoSaveOnSleep", "maxAutoSaves", "retentionDays", "restoreButtonStyle", "confirmBeforeDelete", "clickSwitchToMain"]
         ]
         if let fields = tabPaths[path] {
             if method == "GET" {

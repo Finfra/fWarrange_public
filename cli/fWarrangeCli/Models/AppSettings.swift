@@ -165,7 +165,6 @@ struct AppSettings: Codable {
     // UI 옵션 (Advanced 탭, GUI 앱이 읽어가는 설정)
     var restoreButtonStyle: String?    // "iconOnly" | "nameIcon" | "nameOnly"
     var confirmBeforeDelete: Bool?
-    var showInCmdTab: Bool?
     var clickSwitchToMain: Bool?
     var theme: String?                 // "system" | "light" | "dark"
 
@@ -210,7 +209,6 @@ struct AppSettings: Codable {
         retentionDays: 7,
         restoreButtonStyle: "nameIcon",
         confirmBeforeDelete: true,
-        showInCmdTab: true,
         clickSwitchToMain: false,
         theme: "system"
     )

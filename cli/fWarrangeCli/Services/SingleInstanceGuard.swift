@@ -9,14 +9,13 @@ import Foundation
 /// `brew services list` 가 `stopped` 로 남는 문제 발생 → launchd-bootstrap 프로세스가
 /// 승자가 되도록 규칙 변경.
 ///
-/// 판정 규칙 (`XPC_SERVICE_NAME == "homebrew.mxcl.fwarrange-cli"` 로 launchd-spawned 여부 구분):
+/// 판정 규칙 (`XPC_SERVICE_NAME` 이 서비스 label 인지로 launchd-spawned 여부 구분.
+/// label 규약은 brew 버전마다 다르므로 `BrewServiceSync.isServiceLabel(_:)` 이 단일 판정 지점 — Issue95):
 /// 1. 내가 launchd-spawned 이고 다른 인스턴스가 있으면 → **다른 인스턴스 terminate + 자신 계속 실행**
 ///    → brew state `started` 로 수렴
 /// 2. 내가 launchd-spawned 가 아니고 다른 인스턴스가 있으면 → **자신 exit(0)**
 ///    → 기존 open 기동분 보존 (brew 측에서 수동 start 한 경우 등)
 enum SingleInstanceGuard {
-
-    private static let launchdServiceLabel = "homebrew.mxcl.fwarrange-cli"
 
     /// `true` 반환 시 호출부는 즉시 `exit(0)` 수행.
     /// 내가 승자(launchd-spawned) 인 경우 false 반환 + 다른 인스턴스 비동기 종료.
@@ -56,8 +55,10 @@ enum SingleInstanceGuard {
         }
     }
 
+    /// Issue95: label 규약(`homebrew.mxcl.*` / `sh.brew.*`)을 여기서 다시 판정하지 않는다.
+    /// 규약이 바뀌면 이 판정만 빗나가 중복 인스턴스 승패가 뒤집히므로 단일 지점에 위임한다.
     private static func isLaunchedByLaunchd() -> Bool {
-        return ProcessInfo.processInfo.environment["XPC_SERVICE_NAME"] == launchdServiceLabel
+        return BrewServiceSync.isLaunchedByLaunchd()
     }
 
     /// 기존 인스턴스들이 실제 사라질 때까지 폴링. 100ms 간격, 최대 `timeout` 초.

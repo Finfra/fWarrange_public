@@ -8,6 +8,19 @@ enum HotKeyAction {
     case restoreDefault
     case restoreLast
     case showMainWindow
+
+    /// Issue96: 창 조작(`AXUIElement*`)을 수반하는 액션인지.
+    ///
+    /// Carbon `RegisterEventHotKey` 로 등록한 핫키는 **접근성 권한과 무관하게 도달**하지만,
+    /// 창을 읽고 옮기는 AX API 는 권한이 없으면 실패한다. 즉 이 플래그가 참인 액션이
+    /// 들어온 순간이 권한 상실을 관측할 수 있는 지점이다.
+    /// `showMainWindow` 는 paidApp URL Scheme 호출이라 권한이 필요 없다.
+    var requiresAccessibility: Bool {
+        switch self {
+        case .save, .restoreDefault, .restoreLast: return true
+        case .showMainWindow: return false
+        }
+    }
 }
 
 // MARK: - HotKeyService 프로토콜

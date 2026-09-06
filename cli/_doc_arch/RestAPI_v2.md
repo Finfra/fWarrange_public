@@ -439,7 +439,7 @@ maxRetries, retryInterval, minimumMatchScore, enableParallelRestore, matchAreaMa
 restServerEnabled, restServerPort, allowExternalAccess, allowedCIDR,
 logLevel, autoSaveOnSleep, maxAutoSaves, retentionDays,
 restoreButtonStyle (iconOnly|nameIcon|nameOnly),
-confirmBeforeDelete, showInCmdTab, clickSwitchToMain, defaultLayoutName
+confirmBeforeDelete, clickSwitchToMain, defaultLayoutName
 ```
 
 ## 7.2 ModeInfo

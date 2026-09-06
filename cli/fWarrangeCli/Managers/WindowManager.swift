@@ -79,10 +79,6 @@ final class WindowManager {
         accessibilityService.isAccessibilityGranted()
     }
 
-    func requestAccessibility() {
-        accessibilityService.requestAccessibility()
-    }
-
     func openAccessibilitySettings() {
         accessibilityService.openAccessibilitySettings()
     }

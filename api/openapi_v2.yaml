@@ -693,7 +693,6 @@ paths:
               maxAutoSaves: 5
               restoreButtonStyle: nameIcon
               confirmBeforeDelete: true
-              showInCmdTab: true
               clickSwitchToMain: false
       responses:
         '200':
@@ -1500,7 +1499,6 @@ components:
           type: string
           enum: [iconOnly, nameIcon, nameOnly]
         confirmBeforeDelete: { type: boolean }
-        showInCmdTab: { type: boolean }
         clickSwitchToMain: { type: boolean }
         defaultLayoutName: { type: string, nullable: true }
         effectivePort: { type: integer, readOnly: true, description: "FWARRANGE_PORT 환경변수 오버라이드 반영 포트 (GET /settings v2 전용)" }
@@ -1608,7 +1606,6 @@ components:
           type: string
           enum: [iconOnly, nameIcon, nameOnly]
         confirmBeforeDelete: { type: boolean }
-        showInCmdTab: { type: boolean }
         clickSwitchToMain: { type: boolean }
 
     AdvancedSettingsResponse:
