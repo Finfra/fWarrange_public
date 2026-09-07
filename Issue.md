@@ -36,32 +36,6 @@ date: 2026-04-07
 
 # 📕 중요
 
-## Issue96: [Permission] 운영 중 접근성 권한이 제거되면 단축키가 조용히 죽는다 — 감지·안내 부재 (등록: 2026-09-06)
-* 목적: 권한을 **앱 시작 시에만** 확인하므로(`AppState.swift:467`), 운영 중 사용자가 접근성 권한을 제거하면 단축키가 **아무 안내 없이 안 먹기 시작**한다. 사용자는 앱이 고장난 줄로만 안다.
-* 상세:
-    - **prj25(fSnippetCli) Issue211~227 조사에서 파생.** 그쪽은 같은 상황에서 **키보드 전체가 잠기는** 심각한 증상이었고, 원인·해법이 모두 규명됐다
-    - ⚠️ **본 프로젝트는 그 심각도가 아니다** — 아래 구조 차이로 **락이 구조적으로 불가능**하다. 심각도는 "기능이 조용히 죽는다" 수준
-    | 항목             | fSnippetCli (prj25)                       | fWarrangeCli (본 프로젝트)            |
-    | :--------------- | :---------------------------------------- | :------------------------------------ |
-    | 키 수신          | `CGEvent.tapCreate` — 전 입력이 통과      | **Carbon `RegisterEventHotKey`**      |
-    | 보조             | NSEvent 글로벌 모니터                     | NSEvent **로컬** 모니터(앱 활성 시만) |
-    | 입력 스트림 개입 | 전면                                      | 등록된 단축키만                       |
-    | 권한 상실 시     | 전 입력이 tap 반환을 대기 → **시스템 락** | 단축키만 무효 → **락 없음**           |
-    - `cli/` 소스에 `CGEvent.tapCreate` **0건** (grep 히트는 전부 `agents/gemini/skills/` 하위 유틸 스크립트)
-    - `HotKeyService.swift:23` 이 선택 이유를 기록 — *"NSEvent.addGlobalMonitorForEvents는 이벤트 소비 불가 → 비프음 발생"*
-    - 아울러 `AppState.swift:466` 주석이 이미 `prompt:false` 를 지키고 있다. prj25 가 Issue222~227 에서 네 라운드에 걸쳐 배운 *"`prompt: true` 는 실행 중 프로세스에 무효"* 를 **본 프로젝트는 이미 알고 회피 중**이다
-* 구현 명세:
-    - **감지 — 본 프로젝트에 맞는 비대칭을 쓴다.** prj25 의 Issue220(CGEventTap ↔ NSEvent 모니터 비대칭)은 CGEventTap 이 없어 그대로 옮길 수 없다. 대신:
-        - `RegisterEventHotKey` 로 등록한 핫키는 **권한과 무관하게 눌린다**
-        - 반면 창 조작 API(`AXUIElement*`)는 권한이 없으면 **실패한다**
-        - 즉 **"핫키는 들어왔는데 창 조작이 실패"** 가 권한 상실의 관측 증거다
-    - **안내 — `Restart Now` 단일 버튼** (prj25 Issue225 결론 재사용). 실행 중인 프로세스는 접근성 목록에 스스로를 되돌릴 수 없으므로 재시작이 유일한 복구 경로다. 설정 창을 열어도 목록에 항목이 없어 켤 대상이 없다
-    - **중복 방지 필수** (prj25 Issue221) — `NSAlert.runModal()` 은 블로킹이라 가드가 없으면 호출이 큐에 쌓여 닫는 즉시 또 뜬다. `isPresenting` 플래그로 억제
-    - ⚠️ **`prompt: true` 를 쓰지 않는다** (prj25 Issue227) — 실행 중 프로세스에는 효과가 없고 창만 반복 표시된다
-    - **부수 정리**: `AccessibilityService.requestAccessibility()`(내부 `prompt: true`)와 `WindowManager` 의 래퍼는 **호출부 0건인 죽은 코드**다. 남겨두면 나중에 누군가 이것을 쓰다가 prj25 가 겪은 함정에 그대로 빠진다
-* 참고: prj25 `_public/Issue.md` Issue211~227 (완료) · `cli/_doc_work/debug_TECH.md` "반증된 가설 3건과 진단 플로우"
-
-
 ## Issue95: [Bug] Homebrew 서비스 label 규약 변경(`homebrew.mxcl.*` → `sh.brew.*`)으로 cliApp 무한 self-handoff — brew 최신 머신에서 기동 불가 (등록: 2026-09-05)
 * 목적: Homebrew 가 서비스 label 규약을 `homebrew.mxcl.{formula}` 에서 `sh.brew.{formula}` 로 바꿨다. cliApp 은 구 label 을 **소스 3곳에 하드코딩**하고 있어, 최신 brew 가 깔린 머신에서 `brew services start` 든 `open` 이든 앱이 `exit(0)` 으로 즉시 종료하며 **전혀 기동하지 못한다**. 크래시도 로그도 남지 않아 원인 파악이 어렵다. brew 를 업데이트하는 모든 사용자에게 순차적으로 도달하는 회귀이므로 조기 수정이 필요하다
 * 상세:
@@ -106,6 +80,39 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+## Issue96: [Permission] 운영 중 접근성 권한이 제거되면 단축키가 조용히 죽는다 — 감지·안내 부재 (등록: 2026-09-06)
+* 목적: 권한을 **앱 시작 시에만** 확인하므로(`AppState.swift:467`), 운영 중 사용자가 접근성 권한을 제거하면 단축키가 **아무 안내 없이 안 먹기 시작**한다. 사용자는 앱이 고장난 줄로만 안다.
+* 상세:
+    - **prj25(fSnippetCli) Issue211~227 조사에서 파생.** 그쪽은 같은 상황에서 **키보드 전체가 잠기는** 심각한 증상이었고, 원인·해법이 모두 규명됐다
+    - ⚠️ **본 프로젝트는 그 심각도가 아니다** — 아래 구조 차이로 **락이 구조적으로 불가능**하다. 심각도는 "기능이 조용히 죽는다" 수준
+    | 항목             | fSnippetCli (prj25)                       | fWarrangeCli (본 프로젝트)            |
+    | :--------------- | :---------------------------------------- | :------------------------------------ |
+    | 키 수신          | `CGEvent.tapCreate` — 전 입력이 통과      | **Carbon `RegisterEventHotKey`**      |
+    | 보조             | NSEvent 글로벌 모니터                     | NSEvent **로컬** 모니터(앱 활성 시만) |
+    | 입력 스트림 개입 | 전면                                      | 등록된 단축키만                       |
+    | 권한 상실 시     | 전 입력이 tap 반환을 대기 → **시스템 락** | 단축키만 무효 → **락 없음**           |
+    - `cli/` 소스에 `CGEvent.tapCreate` **0건** (grep 히트는 전부 `agents/gemini/skills/` 하위 유틸 스크립트)
+    - `HotKeyService.swift:23` 이 선택 이유를 기록 — *"NSEvent.addGlobalMonitorForEvents는 이벤트 소비 불가 → 비프음 발생"*
+    - 아울러 `AppState.swift:466` 주석이 이미 `prompt:false` 를 지키고 있다. prj25 가 Issue222~227 에서 네 라운드에 걸쳐 배운 *"`prompt: true` 는 실행 중 프로세스에 무효"* 를 **본 프로젝트는 이미 알고 회피 중**이다
+* 구현 명세:
+    - **감지 — 본 프로젝트에 맞는 비대칭을 쓴다.** prj25 의 Issue220(CGEventTap ↔ NSEvent 모니터 비대칭)은 CGEventTap 이 없어 그대로 옮길 수 없다. 대신:
+        - `RegisterEventHotKey` 로 등록한 핫키는 **권한과 무관하게 눌린다**
+        - 반면 창 조작 API(`AXUIElement*`)는 권한이 없으면 **실패한다**
+        - 즉 **"핫키는 들어왔는데 창 조작이 실패"** 가 권한 상실의 관측 증거다
+    - **안내 — `Restart Now` 단일 버튼** (prj25 Issue225 결론 재사용). 실행 중인 프로세스는 접근성 목록에 스스로를 되돌릴 수 없으므로 재시작이 유일한 복구 경로다. 설정 창을 열어도 목록에 항목이 없어 켤 대상이 없다
+    - **중복 방지 필수** (prj25 Issue221) — `NSAlert.runModal()` 은 블로킹이라 가드가 없으면 호출이 큐에 쌓여 닫는 즉시 또 뜬다. `isPresenting` 플래그로 억제
+    - ⚠️ **`prompt: true` 를 쓰지 않는다** (prj25 Issue227) — 실행 중 프로세스에는 효과가 없고 창만 반복 표시된다
+    - **부수 정리**: `AccessibilityService.requestAccessibility()`(내부 `prompt: true`)와 `WindowManager` 의 래퍼는 **호출부 0건인 죽은 코드**다. 남겨두면 나중에 누군가 이것을 쓰다가 prj25 가 겪은 함정에 그대로 빠진다
+* 참고: prj25 `_public/Issue.md` Issue211~227 (완료) · `cli/_doc_work/debug_TECH.md` "반증된 가설 3건과 진단 플로우"
+* ✅ **해결 (2026-09-08, commit: 9376526 — jma 검증 완료)**
+    - 구현은 `9376526` 에 이미 포함돼 있었고 커밋 메시지가 *"아직 미검증 진행 중 코드 — jma 클린 테스트 기준점 확보용"* 이었다. 본 항목은 그 **jma 검증**을 마친 기록이다
+    - **빌드**: jma Release 빌드 성공. ⚠️ ssh 직접 실행은 codesign 에서 `errSecInternalComponent` 로 실패하므로 **tmux 경유**가 필수다(prj25 deploy 스킬과 동일 제약)
+    - **테스트**: `ServiceLabelAndPermissionTests` **11개 전부 통과** — brew label 신구 규약 인식(Issue95), 죽은 설정 키 제거, `showMainWindow` 가 접근성 권한을 요구하지 않음 등
+    - **실환경 확인**: jma brew 서비스가 신규 규약 label `sh.brew.fwarrange-cli` 로 기동됨 — Issue95 대응이 실제로 동작
+    - ⚠️ **남은 것**: 접근성 권한을 실제로 회수한 상태의 **실기 시나리오 검증은 하지 않았다**(권한 회수가 다른 도구에 영향을 주므로). 안내 표시 경로는 단위 테스트 수준까지만 확인됐다
+    - ⚠️ **동반 관찰**: 같은 실행에서 `PaidAppRouterTests`·`PaidAppStateLoggerTests`·`PaidAppStateStoreTests` **7건이 실패**한다. 본 이슈와 무관한 기존 테스트이며 공유 상태(파일·실행 중 인스턴스)에 의존하는 성격으로 보인다 — 별도 확인 대상
+    - ⚠️ **테스트 실행 제약**: `SingleInstanceGuard` 가 테스트 러너를 종료시켜(`Early unexpected exit`) 테스트가 아예 시작되지 않는다. `brew services stop fwarrange-cli` 로 기존 인스턴스를 내린 뒤에야 실행된다
+
 ## Issue93: [Docs] CLAUDE.md 커맨드·에이전트 테이블이 실제 `.claude/` 구성과 불일치 (등록: 2026-08-18, 완료: 2026-08-18, Hash: 문서 미추적 — 아래 명세 참조) ✅
 * 목적: `CLAUDE.md` 의 SCAR 목록 표가 실제 `.claude/commands/`·`.claude/agents/` 구성보다 낡아, 신규 커맨드·에이전트를 세션이 인지하지 못함. consultant-m 검토 발견(2026-08-18).
 * 상세:
