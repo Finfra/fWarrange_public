@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 96
+* Issue HWM: 97
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
   - faf4d55 (2026-07-15) - Docs: Close Issue87 — 이중 라이선스 잔존 정리(b4a874b) + 이슈 종결
@@ -80,6 +80,19 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue97: cliApp AppIcon 전 사이즈 확대 크롭 손상 — 유료 앱 원본으로 재생성 (등록: 2026-09-09, 완료: 2026-09-09) ✅
+* 목적: `cli/fWarrangeCli/Assets.xcassets/AppIcon.appiconset` 의 아이콘이 **7개 사이즈 전부** 확대 크롭돼 있었다. "infra" 의 뒷 글자와 여우 심볼 일부가 프레임 밖으로 잘려 CLI 앱 아이콘이 온전히 표시되지 않는다.
+* 상세:
+    - 증상: 16~1024px 7개 파일이 모두 같은 비율로 확대 크롭 — 원본 하나가 이미 잘린 상태에서 세트가 생성된 것으로 보인다
+    - 대조 실측: 유료 앱 `fWarrange/fWarrange/Assets.xcassets/AppIcon.appiconset/icon_1024.png` 와 `_public/manual/app-icon.png` 는 **평균 픽셀차 0.0 으로 완전히 동일**한 정상 원본이다. cliApp 은 별도 디자인을 가진 적이 없다
+    - 파급: prj10(finfraHome) 제품 페이지의 CLI 아이콘과 실제 앱 아이콘이 어긋나 있었다. prj10 Issue41 로 별도 추적
+* 구현 명세:
+    - 유료 앱 `icon_1024.png` 를 원본으로 `Contents.json` 의 7개 항목(16/32/64/128/256/512/1024px)을 LANCZOS 리사이즈로 재생성
+    - 검증: 재생성본 16·128·1024px 렌더로 크롭 없음 육안 확인 완료
+    - 참고: Issue76 계열의 **메뉴바 아이콘**(paidApp/cliApp 전환)은 AppIcon 과 별개 에셋이므로 본 수정의 영향 범위 밖이다
+    - 남은 결정: cliApp 에 유료 앱과 구별되는 전용 아이콘이 필요한지는 별도 판단 사항
+
 ## Issue96: [Permission] 운영 중 접근성 권한이 제거되면 단축키가 조용히 죽는다 — 감지·안내 부재 (등록: 2026-09-06)
 * 목적: 권한을 **앱 시작 시에만** 확인하므로(`AppState.swift:467`), 운영 중 사용자가 접근성 권한을 제거하면 단축키가 **아무 안내 없이 안 먹기 시작**한다. 사용자는 앱이 고장난 줄로만 안다.
 * 상세:
