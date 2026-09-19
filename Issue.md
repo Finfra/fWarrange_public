@@ -81,6 +81,26 @@ date: 2026-04-07
 
 # ✅ 완료
 
+## Issue76: paidApp 실행 감지 시 메뉴바 아이콘 즉시 전환 (등록: 2026-05-17, 보류: 2026-05-17, 완료: 2026-09-19 — 구현 불필요 확정) ✅
+* 목적: paidApp launch 시 메뉴바 아이콘 즉시 전환 보장
+* depends: Issue75 (완료 `7b2e44b` — 의존 해소됨)
+* 결론: **재개 조건 미충족이 실측으로 재확인되어 구현 불필요로 확정**하고 보류 섹션에서 내보냄. 등록 당일 보류 사유였던 "기존 메커니즘(PaidAppMonitor launch 핸들러 → AppState `startObservingMenuBarIcon` → MenuBarManager `observeIcon`) 정상 동작"이 4개월 뒤 클린 환경에서도 그대로 성립함.
+* 재검증 실측 (2026-09-19, jma 클린 환경 / paidApp·cliApp 모두 1.1.1):
+    - 측정 방법: cliApp 로그 레벨이 critical(5)이라 `logI` 가 파일에 남지 않으므로 로그 대신 **메뉴바 픽셀을 직접 관측**했다. 상태아이콘 구역(X=600~800, 높이 30pt)을 0.12초 간격으로 촬영해 md5 가 바뀌는 시점을 측정하고, `logs/paidapp_state_transitions.log` 로 교차 확인했다.
+    - **paidApp 종료 → cliApp 아이콘 복원: 0.66초**
+    - **paidApp 실행 → paidApp 활성 아이콘 전환: 0.45초**. 같은 사이클에서 앱 기동 완료(`event=register`)까지는 2.2초가 걸렸으므로, 아이콘 전환은 기동 완료를 기다리지 않고 `didLaunchApplicationNotification` 시점에 일어난다.
+    - 왕복 복귀 일치: 전환 전 md5 `9fb157b092` = 재전환 후 md5 `9fb157b092` 로 완전 일치. 누락·잔상 없음.
+    - 상태 전환 로그 교차 확인: `cleanup(didTerminate) 2026-09-19T03:33:00.147Z` → `register 2026-09-19T03:33:02.358Z`.
+    - 증거: `cli/_doc_work/report/issue76_20260919/` (메뉴바 전체 스트립 3종 + `result.json`)
+* 계측 함정 (다음 사람을 위한 기록):
+    - 메뉴바 status item 은 `CGWindowListCopyWindowInfo` 에 **잡히지 않는 경우가 있다**. `fWarrangeCli` 는 layer 25 창이 0건으로 열거돼 창 단위 캡처(`screencapture -l`)가 불가했고, 구역 캡처(`-R`)로 우회해야 했다.
+    - 상태아이콘은 **우측 정렬**이라 아이콘이 하나 사라지면 그 **왼쪽 항목들이 오른쪽으로 밀린다**. 처음 잡은 프로브 구역(X=820~1300)은 변화 지점의 오른쪽이라 전환을 전혀 못 잡았다. 실제 전환 구간은 X=600~800 이었다.
+    - 시계(X≈1327~)와 앱 메뉴(좌측)는 관계없이 바뀌므로 프로브 구역에서 반드시 제외한다.
+* 참조:
+    - `cli/fWarrangeCli/Managers/PaidAppMonitor.swift:39-51`
+    - `cli/fWarrangeCli/AppState.swift:504-526`
+    - `cli/fWarrangeCli/Managers/MenuBarManager.swift:29-67`
+
 ## Issue97: cliApp AppIcon 전 사이즈 확대 크롭 손상 — 유료 앱 원본으로 재생성 (등록: 2026-09-09, 완료: 2026-09-09) (Hash: 0fd89c2) ✅
 * 목적: `cli/fWarrangeCli/Assets.xcassets/AppIcon.appiconset` 의 아이콘이 **7개 사이즈 전부** 확대 크롭돼 있었다. "infra" 의 뒷 글자와 여우 심볼 일부가 프레임 밖으로 잘려 CLI 앱 아이콘이 온전히 표시되지 않는다.
 * 상세:
@@ -631,15 +651,6 @@ date: 2026-04-07
 > 종결된 이슈는 [`z_old/old_issue.md`](z_old/old_issue.md)로 이관됨.
 
 # ⏸️ 보류
-## Issue76: paidApp 실행 감지 시 메뉴바 아이콘 즉시 전환 (등록: 2026-05-17, 보류: 2026-05-17) ⏸️
-* 보류 사유: 실측 결과 기존 메커니즘(PaidAppMonitor launch 핸들러 → AppState `startObservingMenuBarIcon` → MenuBarManager `observeIcon`)이 정상 동작 확인. 지연/누락 없음. 진행 불필요.
-* 재개 조건: 추후 launch 감지 지연 또는 아이콘 미전환 사례 재현 시 본 이슈 재활성화
-* depends: Issue75 (terminate 측 잔존 보호와 동일 모니터 경로)
-* 원 목적: paidApp launch 시 메뉴바 아이콘 즉시 전환 보장
-* 참조:
-    - `cli/fWarrangeCli/Managers/PaidAppMonitor.swift:39-51`
-    - `cli/fWarrangeCli/AppState.swift:504-526`
-    - `cli/fWarrangeCli/Managers/MenuBarManager.swift:29-67`
 
 # 🚫 취소
 
