@@ -439,6 +439,19 @@ final class AppState {
         }
         startObservingMenuBarIcon()
 
+        // Issue99 근본예방: 레이아웃 삭제 시 defaultLayoutName 이 그 이름(또는 전체 삭제)이면 정리한다.
+        // 죽은 참조가 애초에 남지 않게 해, restoreDefault 가 존재하지 않는 이름으로 복구를 시도하는 상황을 예방한다.
+        layoutManager.onLayoutDeleted = { [weak self] name in
+            guard let self else { return }
+            let isDefault = self.settings.defaultLayoutName == name
+            if name == "*" || isDefault {
+                self.settingsService.mutate { $0.defaultLayoutName = nil }
+                self.settings.defaultLayoutName = nil
+                ChangeTracker.shared.record(type: "settings.changed", target: "defaultLayout")
+                logI("Issue99: defaultLayoutName 정리 — 삭제된 레이아웃 참조 제거 (삭제=\(name))")
+            }
+        }
+
         layoutManager.loadMetadataList()
 
         // Issue81: 기동 시 보관 기간 초과 자동 캡처 정리 + 슬립/잠금 자동 캡처 구독 시작
@@ -584,10 +597,17 @@ final class AppState {
                 }
             }
         case .restoreDefault:
-            // defaultLayoutName SSOT 우선 → 미지정 시 fileDate 가장 최근
-            let target = settings.defaultLayoutName
+            // defaultLayoutName SSOT 우선 → 미지정·삭제된 이름이면 fileDate 가장 최근으로 fallback (Issue99)
+            // ⚠️ `??` 만으로는 nil 만 걸러진다 — defaultLayoutName 이 삭제된 레이아웃을 가리키면(값은 있음)
+            //    존재하지 않는 이름으로 복구를 시도해 조용히 실패한다. 실재 여부를 검증한 뒤 fallback 한다.
+            let existingNames = Set(layoutManager.layouts.map { $0.name })
+            let target = settings.defaultLayoutName.flatMap { existingNames.contains($0) ? $0 : nil }
                 ?? layoutManager.layouts.sorted { $0.fileDate > $1.fileDate }.first?.name
-            if let target { restoreLayoutByName(target) }
+            if let target {
+                restoreLayoutByName(target)
+            } else {
+                logW("restoreDefault: 복구할 레이아웃이 없습니다 (defaultLayoutName=\(settings.defaultLayoutName ?? "nil"), 저장된 레이아웃 0개)")
+            }
         case .restoreLast:
             // fileDate 가장 최근
             if let target = layoutManager.layouts.sorted(by: { $0.fileDate > $1.fileDate }).first?.name {
