@@ -21,6 +21,7 @@ date: 2026-04-07
 
 # 🌱 이슈후보
 
+1. `CLAUDE.md` 에 적힌 스킬 `build`·`deploy`·`brew-apply` 가 `.claude/skills/` 에 없음 · `README.md` 버전 1.0.2 표기 낡음(VERSION 1.1.1) (prj3#Issue717 배포용 TDD 적용 중 발견)
 # 🚧 진행중
 
 # 📕 중요
