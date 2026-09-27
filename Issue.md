@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 104
+* Issue HWM: 105
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -22,11 +22,25 @@ date: 2026-04-07
 # 🌱 이슈후보
 
 1. `CLAUDE.md` 에 적힌 스킬 `build`·`deploy`·`brew-apply` 가 `.claude/skills/` 에 없음 · `README.md` 버전 1.0.2 표기 낡음(VERSION 1.1.1) (prj3#Issue717 배포용 TDD 적용 중 발견)
+
 # 🚧 진행중
 
 # 📕 중요
 
 # 📙 일반
+
+## Issue105: 라이선스 훅 문서 v1.1 → v1.2 재동기 + Official Build 구분 표식 (prj6#Issue17 적대적 검토 반영) (등록: 2026-09-27)
+* 목적: Issue103 은 v1.1 템플릿으로 적용됐다. prj6 적대적 검토 29건 중 약관 정의 우회(컨테이너·CI·개인 예외·50% 미만 지배)·수정 금지와 Apache §2 충돌·NOTICE 의 Apache 전체 선언이 v1.1 에 남아 있다. v1.2 로 올린다
+* depends: prj6#Issue17
+* 상세:
+    - 문서 재동기: `DISTRIBUTION-TERMS.md` → v1.2 전문 교체(자리표 `{{EFFECTIVE_DATE}}` 는 이번 커밋일 — v1.x 판 발효일 이후 빌드는 새 판) · `TRADEMARK.md`·`COMMERCIAL.md`·`NOTICE` → v1.2(`{{MARKS}}` 는 NOTICE·TRADEMARK 동일 값) · `LICENSE_ko.md` 는 Apache 참고 번역이라 변경 없음
+    - README(en·ko) **설치 명령 바로 앞**에 약관 2줄(DISTRIBUTION-TERMS §0 요약)을 둔다 — 설치 후 caveats 만으로는 약관규제법상 사전 고지가 약하다(검토 medium)
+    - Official Build 구분 표식(2단계 — 코드 변경이라 tdd red 먼저): 공식 빌드에만 들어가는 `resources/official/`(브랜드 배너·아이콘) + 공식 빌드 스크립트 분기 + `--version` 출력에 `Finfra Official Build` 표기. 소스 빌드에는 넣지 않는다. 없으면 약관 §1(b) 가 빈 집합이라 법무가 적용 대상을 구별 못 한다 — 1단계와 한 이슈로 하되 커밋은 나눈다
+    - 근거: 템플릿 `/Users/nowage/_git/___architect/data/template/license/`(v1.2, prj6 `3195f25`) · 검토 처분표 `/Users/nowage/_git/___architect/_doc_work/report/license-hook-review_issue17_report.md` §반영 결과 · 정본 `/Users/nowage/_git/___architect/_doc_arch/license-profiles.md` §3-2·§5
+* 구현 명세:
+    - 검증: 4개 문서 `Version 1.2` · `grep -c '{{' ` 0 · README 설치 명령 앞 약관 2줄 · `mcp/LICENSE` MIT 불변
+    - 금지: `git push` · npm publish · `Finfra/homebrew-tap` 수정 · 기존 태그 변경 · 템플릿 frontmatter·`📄 템플릿` 블록 복사
+    - `Issue.md` 는 `python3 ~/.claude/sh/issue-tx.py --file Issue.md stage --issues <N>` / `check` 경유 · 커밋 후 ✅ 이동 + hash 기록
 
 # 📗 선택
 

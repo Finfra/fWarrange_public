@@ -48,8 +48,8 @@ class FwarrangeCli < Formula
 
       If TCC permissions are corrupted, reset via Xcode Debug path: /run tcc
 
-      License: source code is Apache-2.0. This official build is free for individuals,
-      education, non-profits, open source and organizations up to 250 concurrent copies.
+      License: source code is Apache-2.0. This official build is free for personal use,
+      education, non-profits, open source and other organizations up to 250 concurrent copies.
       Terms: https://github.com/Finfra/fWarrange_public/blob/main/DISTRIBUTION-TERMS.md
     EOS
   end

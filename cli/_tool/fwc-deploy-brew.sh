@@ -312,8 +312,8 @@ class FwarrangeCli < Formula
 
       TCC 권한이 꼬이면 Xcode Debug 경로로 재설정: /run tcc
 
-      License: source code is Apache-2.0. This official build is free for individuals,
-      education, non-profits, open source and organizations up to 250 concurrent copies.
+      License: source code is Apache-2.0. This official build is free for personal use,
+      education, non-profits, open source and other organizations up to 250 concurrent copies.
       Terms: https://github.com/Finfra/fWarrange_public/blob/main/DISTRIBUTION-TERMS.md
     EOS
   end
@@ -646,8 +646,8 @@ class FwarrangeCli < Formula
       Grant permission:
         System Settings > Privacy & Security > Accessibility > enable fWarrangeCli
 
-      License: source code is Apache-2.0. This official build is free for individuals,
-      education, non-profits, open source and organizations up to 250 concurrent copies.
+      License: source code is Apache-2.0. This official build is free for personal use,
+      education, non-profits, open source and other organizations up to 250 concurrent copies.
       Terms: https://github.com/Finfra/fWarrange_public/blob/main/DISTRIBUTION-TERMS.md
     EOS
   end

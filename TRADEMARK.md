@@ -1,5 +1,7 @@
 # fWarrangeCli Trademark Policy
 
+Version 1.2
+
 The source code of fWarrangeCli is licensed under the Apache License 2.0. That license
 does **not** grant permission to use the trade names, trademarks, service marks, or
 product names of the Licensor (Apache License, Section 6). This policy explains what
@@ -7,27 +9,33 @@ you may do with them without asking.
 
 ## The Marks
 
-The following are trademarks of Finfra Co., Ltd. (https://finfra.kr) (the "Marks"), whether or not registered
-in any jurisdiction:
+The following are trademarks of Finfra Co., Ltd. (https://finfra.kr) (the "Marks"),
+whether or not registered in any jurisdiction:
 
-* "fWarrange", "fWarrangeCli", and the fWarrange icon
+* "fWarrangeCli", "fWarrange", the fWarrange icon and their logos
 * the word mark "Finfra" and the Finfra logo
 * the attribution line "Powered by finfra.kr"
 
 ## You may, without permission
 
-* Use the Marks to **truthfully refer** to the software — for example "built with
-  fWarrangeCli", "compatible with fWarrangeCli", "a fork of fWarrangeCli".
+* Use the Marks to **truthfully describe or refer to** the software, in any medium
+  including commercial material (articles, paid courses, consulting reports,
+  compatibility statements) — for example "built with fWarrangeCli", "compatible with
+  fWarrangeCli", "a fork of fWarrangeCli" — as long as the use does not suggest that
+  the Licensor sponsors or endorses you.
 * Redistribute **unmodified official builds** of fWarrangeCli under their original
   name, provided you keep all notices intact.
-* Use the Marks in **non-commercial** community material — tutorials, talks, blog
-  posts, academic work.
+* Retain the Marks **inside the NOTICE file and copyright notices** of any fork or
+  derivative, as Section 4(d) of the Apache License requires. This does not permit
+  using the Marks for the fork's name, branding or user interface.
 
 ## You may not, without written permission
 
 * Distribute a **modified** version under the name fWarrangeCli or any confusingly
-  similar name. Forks must be renamed. ("fWarrangeCli-fork" or "MyTool (based on
-  fWarrangeCli)" are fine; "fWarrangeCli Pro" or "fWarrangeCli2" are not.)
+  similar name. Forks must be renamed. A name that suggests an official edition or
+  successor — for example "fWarrangeCli Pro", "fWarrangeCli Enterprise",
+  "fWarrangeCli Plus", "fWarrangeCli2", "fWarrangeCli Official" — is confusingly
+  similar; "MyTool (based on fWarrangeCli)" is not.
 * Use the Marks or logo as part of the name or branding of **your own product,
   service, company, or domain name**.
 * Offer **paid products, hosting, support, or training** under the Marks in a way
@@ -37,13 +45,12 @@ in any jurisdiction:
 ## Notes
 
 * This policy covers trademarks only. Copyright in the source code is governed by
-  LICENSE (Apache-2.0); official binaries may additionally be subject to
+  LICENSE (Apache-2.0); official builds may additionally be subject to
   DISTRIBUTION-TERMS.md.
-* Nothing here restricts uses that are permitted by applicable trademark law
-  regardless of this policy (nominative and descriptive fair use).
-* This policy is governed by the laws of the Republic of Korea. Where a Mark is
-  registered, the registration controls; where it is not, the Licensor relies on its
-  rights in unregistered marks and on unfair-competition law.
+* Nothing here restricts uses that applicable trademark law permits regardless of
+  this policy (nominative and descriptive fair use).
+* This policy is governed by the laws of the Republic of Korea. The Licensor reserves
+  and relies on all applicable trademark and unfair-competition rights.
 * Questions and permission requests: finfra@gmail.com
 
 Copyright (c) 2026 Finfra Co., Ltd. (https://finfra.kr)

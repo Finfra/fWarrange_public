@@ -38,6 +38,9 @@ This repository serves as:
 
 The free, open-source CLI engine is distributed via Homebrew.
 
+> * The **source code** is Apache-2.0. Build it yourself and use it without any limit.
+> * **Official Builds** (the Homebrew package below) are free for personal use, education, non-profits, open-source projects, and any other organization on up to **250 concurrent copies**. Beyond that, or for resale / bundling / hosting, you need a commercial license ([COMMERCIAL.md](COMMERCIAL.md)). Installing means you accept [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md).
+
 ```bash
 # 1. Add the tap and install
 brew tap finfra/tap
@@ -144,7 +147,7 @@ See [`cli/README.md`](./cli/README.md) for build-from-source and full details.
 The source code is open under Apache-2.0: build it and use it without limit. Three documents sit outside the code license:
 
 * [TRADEMARK.md](TRADEMARK.md) — the names "fWarrange" / "fWarrangeCli" and the icon (Apache-2.0 §6 grants no trademark rights). Forks must be renamed
-* [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) — **official builds** (Homebrew `finfra/tap`, GitHub Releases) are free for individuals, education, non-profits, open-source projects, and any organization up to **250 concurrent copies**
+* [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) — **official builds** (Homebrew `finfra/tap`, GitHub Releases) are free for personal use, education, non-profits, open-source projects, and any other organization up to **250 concurrent copies** (VMs, containers and CI runners count)
 * [COMMERCIAL.md](COMMERCIAL.md) — more than 250 copies, resale, paid bundling, or hosted services
 
 Korean reference translation: [LICENSE_ko.md](LICENSE_ko.md) (the English text is binding).

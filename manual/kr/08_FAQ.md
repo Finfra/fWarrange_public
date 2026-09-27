@@ -8,7 +8,7 @@ date: 2026-03-26
 ## 일반
 
 ### Q: fWarrange는 무료인가요?
-A: 이 저장소의 소스 코드는 Apache-2.0 오픈소스입니다(`mcp/` 패키지는 MIT). 직접 빌드하면 수량 제한 없이 사용할 수 있습니다. 공식 빌드(Homebrew `finfra/tap`, GitHub Releases)는 개인·교육·비영리·오픈소스 프로젝트, 그리고 법인당 동시 설치 250 카피까지 무료이며, 그 이상이거나 재판매·번들·호스팅 용도라면 [COMMERCIAL.md](../../COMMERCIAL.md) 를 참고하세요. 상세: [DISTRIBUTION-TERMS.md](../../DISTRIBUTION-TERMS.md) · [TRADEMARK.md](../../TRADEMARK.md) · [LICENSE_ko.md](../../LICENSE_ko.md).
+A: 이 저장소의 소스 코드는 Apache-2.0 오픈소스입니다(`mcp/` 패키지는 MIT). 직접 빌드하면 수량 제한 없이 사용할 수 있습니다. 공식 빌드(Homebrew `finfra/tap`, GitHub Releases)는 개인 용도·교육·비영리·오픈소스 프로젝트, 그리고 그 밖의 조직은 법인당 동시 250 카피까지 무료이며, 그 이상이거나 재판매·번들·호스팅 용도라면 [COMMERCIAL.md](../../COMMERCIAL.md) 를 참고하세요. 상세: [DISTRIBUTION-TERMS.md](../../DISTRIBUTION-TERMS.md) · [TRADEMARK.md](../../TRADEMARK.md) · [LICENSE_ko.md](../../LICENSE_ko.md).
 
 ### Q: 어떤 macOS 버전에서 동작하나요?
 A: macOS 15.0 (Sequoia) 이상에서 동작합니다.
