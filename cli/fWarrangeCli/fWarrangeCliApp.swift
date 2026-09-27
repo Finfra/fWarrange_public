@@ -60,15 +60,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+/// 프로세스 단일 AppState 소유자.
+/// `@State var appState = AppState()` 를 App.init 에서 읽으면 SwiftUI(LazyStatePropertyBox)가 설치하는
+/// 인스턴스와 init 이 읽은 인스턴스가 갈라져 AppState 가 2개 생긴다. init 쪽 인스턴스가 REST 서버를 띄운 뒤
+/// 해제되면 3016 에 고아 listener 가 남아 연결을 받고도 응답하지 않는다 (prj5#Issue99 후속, jma 실측).
+@MainActor
+enum AppRuntime {
+    static let appState = AppState()
+}
+
 struct fWarrangeCliApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @State private var appState = AppState()
 
     init() {
         logI("🚀 fWarrangeCli 시작")
-        appDelegate.settingsService = appState.settingsService
+        let state = AppRuntime.appState
+        appDelegate.settingsService = state.settingsService
 
-        let state = appState
         let manager = appDelegate.menuBarManager
         // Issue62: NSStatusItem+NSMenu — initialize after AppState is ready
         DispatchQueue.main.async {

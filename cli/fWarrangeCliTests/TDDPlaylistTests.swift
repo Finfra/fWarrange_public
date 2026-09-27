@@ -263,3 +263,130 @@ final class TDDPlaylistTests: XCTestCase {
         XCTAssertEqual(firstMatch(#"MARKETING_VERSION:\s*"([0-9.]+)""#, in: projectYml), version, "project.yml")
     }
 }
+
+// MARK: - rest-listener-lifecycle (prj5#Issue99 follow-up)
+
+/// jma: cliApp accepted TCP on 3016 but never answered. Root cause — the App struct
+/// created a second AppState (`@State` initial value read in `App.init`); that instance
+/// started the REST listener and was then released, leaving an orphan NWListener whose
+/// `newConnectionHandler` saw `self == nil` and silently dropped every connection.
+final class RESTListenerLifecycleTests: XCTestCase {
+
+    /// The test host is the app itself — it must build exactly one AppState.
+    @MainActor
+    func testAppStateIsCreatedOncePerProcess() {
+        XCTAssertEqual(AppState.instanceCount, 1,
+                       "App must own a single AppState; a second one starts an orphan REST listener")
+    }
+
+    /// Symptom check: the host's own REST server (FWARRANGE_PORT from the test plan) answers.
+    func testTestHostRESTServerAnswersHealth() throws {
+        let port = try XCTUnwrap(Env.port, "FWARRANGE_PORT must be injected by fWarrangeCli.xctestplan")
+        let result = Self.get(port: port, path: "/api/v2/health", timeout: 3)
+        XCTAssertEqual(result.status, 200, "host REST server did not answer: \(String(describing: result.error))")
+    }
+
+    /// A released server must not leave a listener that accepts and never answers.
+    func testReleasedServerDoesNotLeaveBlackHoleListener() throws {
+        let port = Self.freePort()
+        var server: RESTServer? = RESTServer(handlers: Self.stubHandlers())
+        server?.start(port: port)
+        XCTAssertTrue(Self.waitUntil { Self.get(port: port, path: "/api/v2/health", timeout: 1).status == 200 },
+                      "server never became ready")
+        server = nil
+        XCTAssertTrue(Self.waitUntil { Self.get(port: port, path: "/api/v2/health", timeout: 1).refused },
+                      "port still accepts after the server was released (orphan listener)")
+    }
+
+    /// Calling start twice must not orphan the first listener: stop() has to free the port.
+    func testStartTwiceThenStopReleasesPort() throws {
+        let port = Self.freePort()
+        let server = RESTServer(handlers: Self.stubHandlers())
+        server.start(port: port)
+        XCTAssertTrue(Self.waitUntil { Self.get(port: port, path: "/api/v2/health", timeout: 1).status == 200 })
+        server.start(port: port)
+        XCTAssertTrue(Self.waitUntil { Self.get(port: port, path: "/api/v2/health", timeout: 1).status == 200 })
+        server.stop()
+        XCTAssertTrue(Self.waitUntil { Self.get(port: port, path: "/api/v2/health", timeout: 1).refused },
+                      "port still accepts after stop() — the first listener was orphaned")
+    }
+
+    // MARK: helpers
+
+    struct GetResult { var status: Int?; var error: Error?
+        var refused: Bool { (error as? URLError)?.code == .cannotConnectToHost } }
+
+    static func get(port: UInt16, path: String, timeout: TimeInterval) -> GetResult {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = timeout
+        config.timeoutIntervalForResource = timeout
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel() }
+        var result = GetResult()
+        let done = DispatchSemaphore(value: 0)
+        session.dataTask(with: URL(string: "http://127.0.0.1:\(port)\(path)")!) { _, resp, err in
+            result.status = (resp as? HTTPURLResponse)?.statusCode
+            result.error = err
+            done.signal()
+        }.resume()
+        _ = done.wait(timeout: .now() + timeout + 2)
+        return result
+    }
+
+    static func waitUntil(seconds: TimeInterval = 5, _ cond: () -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(seconds)
+        repeat {
+            if cond() { return true }
+            Thread.sleep(forTimeInterval: 0.2)
+        } while Date() < deadline
+        return false
+    }
+
+    static func freePort() -> UInt16 { UInt16.random(in: 40000...49999) }
+
+    static func stubHandlers() -> RESTServerHandlers {
+        RESTServerHandlers(
+            captureCurrentWindows: { _ in [] },
+            restoreWindows: { _, _, _, _, _, _, _ in [] },
+            runningAppNames: { [] },
+            isAccessibilityGranted: { true },
+            getLayouts: { [] },
+            loadMetadataList: {},
+            storageServiceLoad: { _ in throw URLError(.fileDoesNotExist) },
+            saveLayout: { _, _ in },
+            nextDailySequenceName: { "stub" },
+            renameLayout: { _, _ in },
+            deleteLayout: { _ in },
+            deleteAllLayouts: {},
+            removeWindows: { _, _ in },
+            getSettings: { [:] },
+            getDataDirectoryPath: { NSTemporaryDirectory() },
+            getSettingsBasePath: { NSTemporaryDirectory() },
+            getDefaultLayoutName: { nil },
+            setDefaultLayoutName: { _ in },
+            updateShortcuts: { _ in [:] },
+            getFullSettings: { [:] },
+            patchSettings: { _ in [:] },
+            getExcludedApps: { [] },
+            setExcludedApps: { $0 },
+            addExcludedApps: { $0 },
+            removeExcludedApps: { _ in [] },
+            resetExcludedApps: { [] },
+            factoryResetSettings: { [:] },
+            getShortcutsDisplay: { [:] },
+            getLogFilePath: { NSTemporaryDirectory() },
+            applyApiSettings: { _, port, _, _ in (true, port ?? 0, false, "") },
+            listModes: { [] },
+            loadMode: { _ in throw URLError(.fileDoesNotExist) },
+            createMode: { _, _, _, _ in throw URLError(.fileDoesNotExist) },
+            updateMode: { _, _ in throw URLError(.fileDoesNotExist) },
+            deleteMode: { _ in },
+            activateMode: { _ in throw URLError(.fileDoesNotExist) },
+            getActiveModeName: { nil },
+            getRestoreStats: { [:] },
+            resetRestoreStats: {},
+            getNormalizeRules: { [] },
+            updateNormalizeRules: { _ in [] }
+        )
+    }
+}

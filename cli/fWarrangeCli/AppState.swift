@@ -41,7 +41,12 @@ final class AppState {
     var menuBarIcon: NSImage = AppState.makeCLIIcon()
     var menuBarIconIsTemplate: Bool = true
 
+    /// 이 프로세스에서 생성된 AppState 수. 정상은 1 — 2 이상이면 RESTServer·listener 가 두 벌 생긴다.
+    /// (prj5#Issue99 후속: 두 번째 인스턴스가 해제되며 3016 에 고아 listener 가 남아 무응답)
+    @ObservationIgnored static private(set) var instanceCount = 0
+
     init() {
+        AppState.instanceCount += 1
         let baseDir = YAMLLayoutStorageService.resolveDefaultBaseDirectory()
         let settingsService = YAMLSettingsService(baseDirectory: baseDir)
         let settings = settingsService.load()
@@ -409,7 +414,15 @@ final class AppState {
     }
 
 
+    /// SwiftUI 는 App.init 을 여러 번 호출할 수 있다 — initialize 는 프로세스당 1회만 실행한다.
+    @ObservationIgnored private var didInitialize = false
+
     func initialize() {
+        guard !didInitialize else {
+            logW("AppState.initialize 중복 호출 무시 (App.init 재호출)")
+            return
+        }
+        didInitialize = true
         let effectiveLogLevel = Env.logLevel ?? LogLevel(rawValue: settings.logLevel ?? 5) ?? .critical
         Logger.shared.setLogLevel(effectiveLogLevel)
 

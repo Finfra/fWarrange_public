@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 100
+* Issue HWM: 101
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -22,6 +22,19 @@ date: 2026-04-07
 # 🌱 이슈후보
 
 # 🚧 진행중
+
+## Issue101: [Bug] REST 3016 이 연결을 받고도 응답하지 않는다 — AppState 이중 생성 + 고아 listener (등록: 2026-09-27)
+* 목적: prj5#Issue99 라운드 중 jma cliApp(pid 28113)이 3016 LISTEN·프로세스 생존 상태인데 health 가 타임아웃됐다. prj16 TDD 가 cliApp 에 의존하므로 원인을 제거한다
+* 상세:
+    - **실측 (jma, macOS 26.6.2)**: 기동 직후 1~2 요청만 200, 이후 전부 무응답. `netstat` 상 연결은 accept 돼 fd 가 있으나 Recv-Q 가 읽히지 않음. `heap 28113` → AppState 1·RESTServer 1·`NWConcrete_nw_listener` 1, **`NWConnection` 0개** — 연결이 start 없이 버려짐
+    - **대조 (jm4, macOS 26.7)**: `heap` → AppState **2**·RESTServer **2** — 이중 생성은 공통 결함이고, jm4 는 서버를 띄운 쪽이 우연히 살아 있어 증상이 가려졌다
+    - **원인**: `fWarrangeCliApp` 의 `@State private var appState = AppState()` 를 `App.init` 에서 읽음. SwiftUI(`LazyStatePropertyBox`)가 설치하는 인스턴스와 init 이 읽은 인스턴스가 갈라져 AppState 가 여러 개 생기고(XCTest 호스트 실측 3개), init 쪽 인스턴스가 REST listener 를 띄운 뒤 해제된다. `NWListener` 는 시작 후 프레임워크가 붙들고 있어 포트를 계속 점유하고, `newConnectionHandler` 의 `[weak self]` 가 nil 이라 연결을 cancel 도 없이 버린다 → 클라이언트 무한 대기
+    - 보조 결함: `RESTServer` 에 deinit 이 없어 해제돼도 listener 를 닫지 않음 · `start()` 재호출 시 이전 listener 참조만 덮어써 고아가 됨 · 교체된 listener 의 늦은 `.cancelled` 콜백이 새 listener 의 `isRunning` 을 덮을 수 있음
+* 구현 명세:
+    - `AppRuntime.appState`(static let, 프로세스 단일)가 AppState 를 강하게 소유. `@State` 제거
+    - `AppState.initialize()` 1회 가드 (App.init 재호출 대비) · `AppState.instanceCount` 계측
+    - `RESTServer`: `deinit` 에서 `listener.cancel()` · `start()` 가 이전 listener 를 먼저 cancel · self 부재 시 `connection.cancel()` · stateUpdateHandler 는 현재 listener 일 때만 반영
+    - 재현 테스트 `RESTListenerLifecycleTests`(TDDPlaylistTests.swift) — 수정 전 jma 에서 3건 red(AppState 3개, 해제 후 포트 점유, 재시작 후 stop 해도 포트 점유)
 
 # 📕 중요
 

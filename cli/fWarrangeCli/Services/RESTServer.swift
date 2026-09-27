@@ -167,6 +167,20 @@ final class RESTServer: RESTServerProtocol {
         )
     }
 
+    /// 해제된 서버의 listener 가 남으면 포트를 쥔 채 연결을 받고 응답하지 않는다 (prj5#Issue99 후속, Issue101)
+    deinit {
+        listener?.cancel()
+    }
+
+    // MARK: - listener 수명 (Issue101)
+    // NWListener 는 소유 객체가 해제돼도 닫히지 않고, cancel 은 비동기다.
+    // 이전 listener 가 .cancelled 되기 전에 같은 포트로 새 listener 를 띄우면 준비되지 않으므로
+    // 재시작은 "이전 것 은퇴 완료 → 새 것 바인딩" 순서로 직렬화한다.
+
+    private let lifecycleLock = NSLock()
+    private var retiringListener: NWListener?
+    private var startPending = false
+
     // MARK: - 서버 시작/중지
 
     func start(port: UInt16? = nil) {
@@ -174,6 +188,75 @@ final class RESTServer: RESTServerProtocol {
             self.port = port
         }
 
+        lifecycleLock.lock()
+        if let old = listener {
+            listener = nil
+            retireLocked(old)
+        }
+        if retiringListener != nil {
+            startPending = true
+            lifecycleLock.unlock()
+            return
+        }
+        lifecycleLock.unlock()
+        bindListener()
+    }
+
+    func stop() {
+        lifecycleLock.lock()
+        startPending = false
+        if let old = listener {
+            listener = nil
+            retireLocked(old)
+        }
+        lifecycleLock.unlock()
+        isRunning = false
+        logI("[RESTServer] 서버 중지 요청")
+    }
+
+    /// lifecycleLock 보유 상태에서 호출. 이전 listener 를 닫고 .cancelled 를 기다린다.
+    private func retireLocked(_ old: NWListener) {
+        retiringListener = old
+        // old 를 강하게 잡는다 — 은퇴 완료 시 핸들러를 비워 순환을 끊는다
+        old.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .cancelled, .failed:
+                self?.retirementFinished(old)
+            default:
+                break
+            }
+        }
+        old.cancel()
+        // .cancelled 가 오지 않는 경우의 안전장치
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.retirementFinished(old)
+        }
+    }
+
+    private func retirementFinished(_ old: NWListener) {
+        lifecycleLock.lock()
+        guard retiringListener === old else {
+            lifecycleLock.unlock()
+            return
+        }
+        retiringListener = nil
+        old.stateUpdateHandler = nil
+        let shouldStart = startPending
+        startPending = false
+        lifecycleLock.unlock()
+        if shouldStart {
+            bindListener()
+        }
+    }
+
+    private func isCurrent(_ candidate: NWListener) -> Bool {
+        lifecycleLock.lock()
+        defer { lifecycleLock.unlock() }
+        return listener === candidate
+    }
+
+    private func bindListener() {
+        let newListener: NWListener
         do {
             let params = NWParameters.tcp
             params.allowLocalEndpointReuse = true
@@ -181,7 +264,7 @@ final class RESTServer: RESTServerProtocol {
                 logE("[RESTServer] 유효하지 않은 포트: \(self.port)")
                 return
             }
-            listener = try NWListener(using: params, on: nwPort)
+            newListener = try NWListener(using: params, on: nwPort)
         } catch {
             logE("[RESTServer] Listener 생성 실패: \(error)")
             return
@@ -191,41 +274,44 @@ final class RESTServer: RESTServerProtocol {
         if !allowExternal {
             // localhost 전용
             if let localPort = NWEndpoint.Port(rawValue: self.port) {
-                listener?.parameters.requiredLocalEndpoint = NWEndpoint.hostPort(
+                newListener.parameters.requiredLocalEndpoint = NWEndpoint.hostPort(
                     host: NWEndpoint.Host("127.0.0.1"),
                     port: localPort
                 )
             }
         }
 
-        listener?.stateUpdateHandler = { [weak self] state in
+        newListener.stateUpdateHandler = { [weak self, weak newListener] state in
+            // 교체된 listener 의 늦은 콜백이 현재 상태를 덮지 않게 한다
+            guard let self, let newListener, self.isCurrent(newListener) else { return }
             switch state {
             case .ready:
-                self?.isRunning = true
-                logI("[RESTServer] 서버 시작 - 포트: \(self?.port ?? 0), 외부접근: \(self?.allowExternal == true)")
+                self.isRunning = true
+                logI("[RESTServer] 서버 시작 - 포트: \(self.port), 외부접근: \(self.allowExternal)")
             case .failed(let error):
                 logE("[RESTServer] 서버 실패: \(error)")
-                self?.isRunning = false
+                self.isRunning = false
             case .cancelled:
-                self?.isRunning = false
+                self.isRunning = false
                 logI("[RESTServer] 서버 중지됨")
             default:
                 break
             }
         }
 
-        listener?.newConnectionHandler = { [weak self] connection in
-            self?.handleConnection(connection)
+        newListener.newConnectionHandler = { [weak self] connection in
+            guard let self else {
+                // 서버가 이미 해제됨 — 받은 연결을 조용히 버리면 클라이언트가 무한 대기한다
+                connection.cancel()
+                return
+            }
+            self.handleConnection(connection)
         }
 
-        listener?.start(queue: .global(qos: .userInitiated))
-    }
-
-    func stop() {
-        listener?.cancel()
-        listener = nil
-        isRunning = false
-        logI("[RESTServer] 서버 중지 요청")
+        lifecycleLock.lock()
+        listener = newListener
+        lifecycleLock.unlock()
+        newListener.start(queue: .global(qos: .userInitiated))
     }
 
     // MARK: - 연결 처리
