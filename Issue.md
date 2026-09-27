@@ -32,23 +32,6 @@ date: 2026-04-07
 
 # 🚧 진행중
 
-## Issue98: [Feat] Undo 기능 — 단축키로 창 재배치 직전 상태 복원 (등록: 2026-09-26)
-* 목적: 레이아웃 복구(restore) 실행 직후, 단축키 한 번으로 복구 직전의 창 배치로 되돌리는 Undo 기능. 잘못된 복구를 즉시 취소할 수 있게 한다.
-* 상세:
-    - 복구 실행 **직전에 현재 창 배치를 스냅샷**으로 보관 → Undo 단축키로 그 스냅샷 복원
-    - 5번째 글로벌 단축키 신규 지정 필요 (save/restoreDefault/restoreLast/showMainWindow 에 이어)
-    - 스냅샷 보관 범위·수명·다중 Undo 여부 등 정책 결정 필요 → **신기능이라 brainstorming → 설계 선행**
-* 구현 명세:
-    - brainstorming 으로 트리거·스냅샷 보관 정책·단축키 확정 후 구현
-    - 복구 경로(`WindowRestoreService`)와 캡처 경로(`WindowCaptureService`) 재사용 — 복구 직전 캡처를 임시 레이아웃으로 저장하는 방식 검토
-* 진행 (2026-09-27):
-    - 설계 확정(brainstorming): 단일 Undo(직전 1회)·복구 직전 전체 창 배치 스냅샷·메모리 휘발·F7 계열 기본값(⌃⌘F7). spec `cli/_doc_work/plan/undo_design.md`
-    - **cliApp 구현 완료 (Hash: 9c4bfd8)**: `HotKeyAction.undo` + `AppState.undoSnapshot`(복구 직전 `captureCurrentWindows` 저장) + `case .undo` 복원. `UndoShortcutTests` 기본값(⌃⌘F7)·접근성 2건 통과
-    - **paidApp Settings UI (prj16 Issue278, Hash: 590208f)**: Shortcuts 탭에 "되돌리기" 행 + `undoShortcut` 필드 + syncFromSettings/syncToCLI 배선
-    - **XCUITest 재검증 (2026-09-27, jma, Automation Mode on)**: 1차 `has not loaded accessibility` 는 배포 앱(`/Applications/_nowage_app`) 종료로 제거. 2차 — "되돌리기:" 행 미도달로 실패(exit 65). 원인은 UI 회귀가 아니라 **테스트 하네스**: ⌘2 탭 전환이 `NSEvent.addLocalMonitorForEvents`(창 포커스 의존)라 XCUITest typeKey 로 불안정. undoShortcut UI 는 dylib 심볼 3개로 실재 확인(기능 정상)
-    - **잔여(비차단) — prj16#Issue279 로 이관**: 하네스 견고화(탭 버튼 직접 클릭/accessibilityIdentifier)는 prj16#Issue279(등록 a3af612)에서 처리. 거기서 green 확인 후 본 이슈 완료 이동
-* depends: prj16#Issue279
-
 # 📕 중요
 
 ## Issue95: [Bug] Homebrew 서비스 label 규약 변경(`homebrew.mxcl.*` → `sh.brew.*`)으로 cliApp 무한 self-handoff — brew 최신 머신에서 기동 불가 (등록: 2026-09-05)
@@ -99,6 +82,24 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue98: [Feat] Undo 기능 — 단축키로 창 재배치 직전 상태 복원 (등록: 2026-09-26, 완료: 2026-09-27, Hash: 9c4bfd8) ✅
+* 목적: 레이아웃 복구(restore) 실행 직후, 단축키 한 번으로 복구 직전의 창 배치로 되돌리는 Undo 기능. 잘못된 복구를 즉시 취소할 수 있게 한다.
+* 상세:
+    - 복구 실행 **직전에 현재 창 배치를 스냅샷**으로 보관 → Undo 단축키로 그 스냅샷 복원
+    - 5번째 글로벌 단축키 신규 지정 필요 (save/restoreDefault/restoreLast/showMainWindow 에 이어)
+    - 스냅샷 보관 범위·수명·다중 Undo 여부 등 정책 결정 필요 → **신기능이라 brainstorming → 설계 선행**
+* 구현 명세:
+    - brainstorming 으로 트리거·스냅샷 보관 정책·단축키 확정 후 구현
+    - 복구 경로(`WindowRestoreService`)와 캡처 경로(`WindowCaptureService`) 재사용 — 복구 직전 캡처를 임시 레이아웃으로 저장하는 방식 검토
+* 진행 (2026-09-27):
+    - 설계 확정(brainstorming): 단일 Undo(직전 1회)·복구 직전 전체 창 배치 스냅샷·메모리 휘발·F7 계열 기본값(⌃⌘F7). spec `cli/_doc_work/plan/undo_design.md`
+    - **cliApp 구현 완료 (Hash: 9c4bfd8)**: `HotKeyAction.undo` + `AppState.undoSnapshot`(복구 직전 `captureCurrentWindows` 저장) + `case .undo` 복원. `UndoShortcutTests` 기본값(⌃⌘F7)·접근성 2건 통과
+    - **paidApp Settings UI (prj16 Issue278, Hash: 590208f)**: Shortcuts 탭에 "되돌리기" 행 + `undoShortcut` 필드 + syncFromSettings/syncToCLI 배선
+    - **XCUITest 재검증 (2026-09-27, jma, Automation Mode on)**: 1차 `has not loaded accessibility` 는 배포 앱(`/Applications/_nowage_app`) 종료로 제거. 2차 — "되돌리기:" 행 미도달로 실패(exit 65). 원인은 UI 회귀가 아니라 **테스트 하네스**: ⌘2 탭 전환이 `NSEvent.addLocalMonitorForEvents`(창 포커스 의존)라 XCUITest typeKey 로 불안정. undoShortcut UI 는 dylib 심볼 3개로 실재 확인(기능 정상)
+    - **하네스 해소·최종 green (2026-09-27)**: prj16#Issue279 가 테스트 하네스를 견고화(f4966bd) — 실패 원인이 ⌘2 타이밍 한 겹이 아니라 세 겹이었다. ① 배포본(`/Applications/_nowage_app`) 단일 인스턴스 가드가 테스트 인스턴스를 `NSApp.terminate`(XCUITest 는 이를 `has not loaded accessibility` 로만 보고) ② 메인 창 scene `.defaultLaunchBehavior(.suppressed)`(Issue241)로 콜드 스타트 windows=0 → Window 메뉴로 메인 창 선행 오픈 ③ SettingsSheet 식별자가 하위로 전파돼 탭 식별자가 덮임 → 라벨 `(⌘2)`(로케일 무관) NSPredicate 로 특정. 앱 코드 무변경, 테스트 파일만 수정
+    - **독립 재검증 (jma, 배포본 종료 후)**: `testUndoShortcutRowInSettings passed (11.738s), TEST SUCCEEDED` — fwarrange-1c 의 2회 green(12.3s/11.8s)과 합쳐 3회 일관 통과
+* depends: prj16#Issue279 (해소 — f4966bd 수정, a46f171 종결)
 
 ## Issue99: [Bug] "Restore Default" 단축키가 작동하지 않는다 (등록: 2026-09-26, 완료: 2026-09-27, Hash: 962aad4, 9dc89df) ✅
 * 목적: paidApp Settings 에서 지정한 "Restore Default"(기본 레이아웃 복구) 단축키(기본값 ⇧⌘F7)를 눌러도 복구가 실행되지 않는다. 사용자가 설정한 단축키가 무효한 것처럼 보인다. 원인이 코드인지 환경(키 리매핑)인지 jma 에서 재현·확정 후 원인을 제거한다.
