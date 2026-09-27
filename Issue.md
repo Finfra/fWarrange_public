@@ -45,7 +45,9 @@ date: 2026-04-07
     - 설계 확정(brainstorming): 단일 Undo(직전 1회)·복구 직전 전체 창 배치 스냅샷·메모리 휘발·F7 계열 기본값(⌃⌘F7). spec `cli/_doc_work/plan/undo_design.md`
     - **cliApp 구현 완료 (Hash: 9c4bfd8)**: `HotKeyAction.undo` + `AppState.undoSnapshot`(복구 직전 `captureCurrentWindows` 저장) + `case .undo` 복원. `UndoShortcutTests` 기본값(⌃⌘F7)·접근성 2건 통과
     - **paidApp Settings UI (prj16 Issue278, Hash: 590208f)**: Shortcuts 탭에 "되돌리기" 행 + `undoShortcut` 필드 + syncFromSettings/syncToCLI 배선
-    - **잔여(비차단)**: paidApp XCUITest(`testUndoShortcutRowInSettings`) 재검증은 jma Runner 접근성/Automation Mode 승인 후 별도 진행(common-cf 담당). 승인·검증 green 확인 후 완료 이동
+    - **XCUITest 재검증 (2026-09-27, jma, Automation Mode on)**: 1차 `has not loaded accessibility` 는 배포 앱(`/Applications/_nowage_app`) 종료로 제거. 2차 — "되돌리기:" 행 미도달로 실패(exit 65). 원인은 UI 회귀가 아니라 **테스트 하네스**: ⌘2 탭 전환이 `NSEvent.addLocalMonitorForEvents`(창 포커스 의존)라 XCUITest typeKey 로 불안정. undoShortcut UI 는 dylib 심볼 3개로 실재 확인(기능 정상)
+    - **잔여(비차단) — prj16#Issue279 로 이관**: 하네스 견고화(탭 버튼 직접 클릭/accessibilityIdentifier)는 prj16#Issue279(등록 a3af612)에서 처리. 거기서 green 확인 후 본 이슈 완료 이동
+* depends: prj16#Issue279
 
 # 📕 중요
 
