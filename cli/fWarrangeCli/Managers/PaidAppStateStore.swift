@@ -87,19 +87,20 @@ final class PaidAppStateStore {
             guard case let .running(current) = state else {
                 return false
             }
-            let pidMatch = current.pid == pid
-            let sessionMatch = current.sessionId == sessionId
-            let startTimeMatch = startTime.map { Self.startTimesWithinTolerance(current.startTime, $0) } ?? true
-
             // pid 반드시 일치해야 함
-            guard pidMatch else {
+            guard current.pid == pid else {
                 return false
             }
 
-            // sessionId 일치 시 startTime 우회 (sessionId 우선)
-            // sessionId 불일치 시 startTime 검증
-            guard sessionMatch || startTimeMatch else {
-                return false
+            // sessionId 우선: 일치하면 통과.
+            // 불일치 시 startTime fallback — 단, startTime 이 **제공된 경우에만**.
+            // startTime 이 nil 이면 fallback 불가이므로 sessionId 검증만으로 판정한다(위조 차단).
+            // (Issue100: 기존 `?? true` 는 startTime 미제공 시 위조 sessionId 를 통과시켰다)
+            if current.sessionId != sessionId {
+                guard let startTime,
+                      Self.startTimesWithinTolerance(current.startTime, startTime) else {
+                    return false
+                }
             }
 
             state = .notRunning

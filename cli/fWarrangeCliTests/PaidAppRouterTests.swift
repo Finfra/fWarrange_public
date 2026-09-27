@@ -361,7 +361,8 @@ final class PaidAppRouterTests: XCTestCase {
 
     func testStatusReturnsRunningAfterRegister() {
         guard case let .success(reg) = router.register(request: PaidAppRegisterRequest(
-            pid: 12345, version: "1.14.3", bundlePath: "/p", startTime: "2026-04-18T09:00:00Z",
+            pid: 12345, version: "1.14.3", bundlePath: "/Applications/_nowage_app/fWarrange.app",
+            startTime: "2026-04-18T09:00:00Z",
             sessionId: UUID().uuidString
         )) else { return XCTFail("register 실패") }
 
