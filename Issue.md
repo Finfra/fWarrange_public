@@ -32,23 +32,20 @@ date: 2026-04-07
 
 # 🚧 진행중
 
-## Issue99: [Bug] "Restore Default" 단축키가 작동하지 않는다 (등록: 2026-09-26)
-* 목적: paidApp Settings 에서 지정한 "Restore Default"(기본 레이아웃 복구) 단축키(기본값 ⇧⌘F7)를 눌러도 복구가 실행되지 않는다. 사용자가 설정한 단축키가 무효한 것처럼 보인다. 원인이 코드인지 환경(키 리매핑)인지 jma 에서 재현·확정 후 원인을 제거한다.
+## Issue98: [Feat] Undo 기능 — 단축키로 창 재배치 직전 상태 복원 (등록: 2026-09-26)
+* 목적: 레이아웃 복구(restore) 실행 직후, 단축키 한 번으로 복구 직전의 창 배치로 되돌리는 Undo 기능. 잘못된 복구를 즉시 취소할 수 있게 한다.
 * 상세:
-    - `restoreDefaultShortcut` → `HotKeyService` Carbon 등록 → `AppState.handleHotKeyAction(.restoreDefault)` 경로
-    - **다른 단축키(save 등)와의 비교가 진단 핵심** — 이 액션만 안 되면 코드(restoreDefault 분기), 전부 안 되면 등록·환경 문제
-    - 이전 F5~F12/Karabiner 환경 문제(`cli/_doc_work/debug_TECH.md` 2026-09-06)와 구분: ⇧⌘F7 은 Karabiner `12Key2Knob` 가 shift+F7 을 매크로로 가로채는 조합이라 환경 요인이 유력하나 코드 경로도 함께 점검
+    - 복구 실행 **직전에 현재 창 배치를 스냅샷**으로 보관 → Undo 단축키로 그 스냅샷 복원
+    - 5번째 글로벌 단축키 신규 지정 필요 (save/restoreDefault/restoreLast/showMainWindow 에 이어)
+    - 스냅샷 보관 범위·수명·다중 Undo 여부 등 정책 결정 필요 → **신기능이라 brainstorming → 설계 선행**
 * 구현 명세:
-    - jma 에서 재현 → 원인 규명(환경 vs 코드) → 원인 제거 → 검증
-    - 환경 요인이면 기본 단축키를 F7 비의존 조합으로 이전하는 것을 함께 검토
-* 검증 (2026-09-27, prj16 세션 · jma HEAD 9c4bfd8 정식 서명 빌드):
-    - **환경 가설 기각**: Karabiner `12Key2Knob` 의 F7 규칙 4종은 전부 `device_if`(vendor 4489 / product 34960) + 수식어 **exact match** 다(`mandatory: [shift]`, `optional` 없음). ⇧⌘F7 은 command 가 섞여 **어느 규칙과도 매칭되지 않는다** → Karabiner 는 이 조합을 가로채지 않는다. 등록 시 유력하다고 본 환경 요인은 원인이 아니다
-    - **원인 = 코드(죽은 참조) 확정**: jm4 `defaultLayoutName = "2026-07-12-1"` 인데 현존 레이아웃 7개에 그 이름이 **없다**. jm4 설치 바이너리는 9/6 빌드로 수정(962aad4) 이전이라 존재하지 않는 이름으로 복구를 시도해 조용히 실패하는 상태가 지금도 유지되고 있다
-    - **수정 유효 확인 (fallback)**: `defaultLayoutName` 에 존재하지 않는 이름(`ghost-layout-9999`)을 주입하고 restoreDefault 단축키(jma 설정값 ⌃⌥⌘D)를 tmux 경유로 발사 → **최신 레이아웃으로 fallback 복구가 실제 실행됨**(restore-stats `totalAttempts` 32→46, `successes` 31→45 = 창 14개). 조용한 실패가 사라졌다
-    - ⚠️ **미해소 갭 — 근본예방 훅이 REST 경로에서 발동하지 않는다**: `onLayoutDeleted` 가 `AppState.settings`(프로세스 시작 시 로드한 **스냅샷**)와 이름을 비교하는데, `PUT /settings/default-layout` 는 저장소만 갱신하고 그 스냅샷은 갱신하지 않는다. 실측 — REST 로 기본 레이아웃을 바꾼 뒤 그 레이아웃을 삭제하면 `defaultLayoutName` 이 **죽은 이름으로 남는다**. cliApp 재시작 후(메모리=저장값) 같은 시나리오는 정상 정리된다(`default` 복귀)
-    - **실사용 경로가 정확히 이 갭에 해당한다** — paidApp GUI 의 설정 변경은 전부 cliApp REST 를 타므로, 사용자가 GUI 로 기본 레이아웃을 바꾼 세션에서는 근본예방이 한 번도 작동하지 않는다
-    - 수정 방향(제안): 훅에서 `self.settings` 대신 `settingsService.load()` 와 대조하거나, `mutate` 블록 안에서 비교·정리를 함께 수행 — 판정을 **저장소 단일 지점**으로 모은다
-    - 잔여: jm4 는 수정 이전 바이너리를 쓰고 있어 **재배포 전까지 증상이 그대로**다 (jm4 사용 중이라 미실행)
+    - brainstorming 으로 트리거·스냅샷 보관 정책·단축키 확정 후 구현
+    - 복구 경로(`WindowRestoreService`)와 캡처 경로(`WindowCaptureService`) 재사용 — 복구 직전 캡처를 임시 레이아웃으로 저장하는 방식 검토
+* 진행 (2026-09-27):
+    - 설계 확정(brainstorming): 단일 Undo(직전 1회)·복구 직전 전체 창 배치 스냅샷·메모리 휘발·F7 계열 기본값(⌃⌘F7). spec `cli/_doc_work/plan/undo_design.md`
+    - **cliApp 구현 완료 (Hash: 9c4bfd8)**: `HotKeyAction.undo` + `AppState.undoSnapshot`(복구 직전 `captureCurrentWindows` 저장) + `case .undo` 복원. `UndoShortcutTests` 기본값(⌃⌘F7)·접근성 2건 통과
+    - **paidApp Settings UI (prj16 Issue278, Hash: 590208f)**: Shortcuts 탭에 "되돌리기" 행 + `undoShortcut` 필드 + syncFromSettings/syncToCLI 배선
+    - **잔여(비차단)**: paidApp XCUITest(`testUndoShortcutRowInSettings`) 재검증은 jma Runner 접근성/Automation Mode 승인 후 별도 진행(common-cf 담당). 승인·검증 green 확인 후 완료 이동
 
 # 📕 중요
 
@@ -100,6 +97,29 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue99: [Bug] "Restore Default" 단축키가 작동하지 않는다 (등록: 2026-09-26, 완료: 2026-09-27, Hash: 962aad4, 9dc89df) ✅
+* 목적: paidApp Settings 에서 지정한 "Restore Default"(기본 레이아웃 복구) 단축키(기본값 ⇧⌘F7)를 눌러도 복구가 실행되지 않는다. 사용자가 설정한 단축키가 무효한 것처럼 보인다. 원인이 코드인지 환경(키 리매핑)인지 jma 에서 재현·확정 후 원인을 제거한다.
+* 상세:
+    - `restoreDefaultShortcut` → `HotKeyService` Carbon 등록 → `AppState.handleHotKeyAction(.restoreDefault)` 경로
+    - **다른 단축키(save 등)와의 비교가 진단 핵심** — 이 액션만 안 되면 코드(restoreDefault 분기), 전부 안 되면 등록·환경 문제
+    - 이전 F5~F12/Karabiner 환경 문제(`cli/_doc_work/debug_TECH.md` 2026-09-06)와 구분: ⇧⌘F7 은 Karabiner `12Key2Knob` 가 shift+F7 을 매크로로 가로채는 조합이라 환경 요인이 유력하나 코드 경로도 함께 점검
+* 구현 명세:
+    - jma 에서 재현 → 원인 규명(환경 vs 코드) → 원인 제거 → 검증
+    - 환경 요인이면 기본 단축키를 F7 비의존 조합으로 이전하는 것을 함께 검토
+* 검증 (2026-09-27, prj16 세션 · jma HEAD 9c4bfd8 정식 서명 빌드):
+    - **환경 가설 기각**: Karabiner `12Key2Knob` 의 F7 규칙 4종은 전부 `device_if`(vendor 4489 / product 34960) + 수식어 **exact match** 다(`mandatory: [shift]`, `optional` 없음). ⇧⌘F7 은 command 가 섞여 **어느 규칙과도 매칭되지 않는다** → Karabiner 는 이 조합을 가로채지 않는다. 등록 시 유력하다고 본 환경 요인은 원인이 아니다
+    - **원인 = 코드(죽은 참조) 확정**: jm4 `defaultLayoutName = "2026-07-12-1"` 인데 현존 레이아웃 7개에 그 이름이 **없다**. jm4 설치 바이너리는 9/6 빌드로 수정(962aad4) 이전이라 존재하지 않는 이름으로 복구를 시도해 조용히 실패하는 상태가 지금도 유지되고 있다
+    - **수정 유효 확인 (fallback)**: `defaultLayoutName` 에 존재하지 않는 이름(`ghost-layout-9999`)을 주입하고 restoreDefault 단축키(jma 설정값 ⌃⌥⌘D)를 tmux 경유로 발사 → **최신 레이아웃으로 fallback 복구가 실제 실행됨**(restore-stats `totalAttempts` 32→46, `successes` 31→45 = 창 14개). 조용한 실패가 사라졌다
+    - ⚠️ **미해소 갭 — 근본예방 훅이 REST 경로에서 발동하지 않는다**: `onLayoutDeleted` 가 `AppState.settings`(프로세스 시작 시 로드한 **스냅샷**)와 이름을 비교하는데, `PUT /settings/default-layout` 는 저장소만 갱신하고 그 스냅샷은 갱신하지 않는다. 실측 — REST 로 기본 레이아웃을 바꾼 뒤 그 레이아웃을 삭제하면 `defaultLayoutName` 이 **죽은 이름으로 남는다**. cliApp 재시작 후(메모리=저장값) 같은 시나리오는 정상 정리된다(`default` 복귀)
+    - **실사용 경로가 정확히 이 갭에 해당한다** — paidApp GUI 의 설정 변경은 전부 cliApp REST 를 타므로, 사용자가 GUI 로 기본 레이아웃을 바꾼 세션에서는 근본예방이 한 번도 작동하지 않는다
+    - 수정 방향(제안): 훅에서 `self.settings` 대신 `settingsService.load()` 와 대조하거나, `mutate` 블록 안에서 비교·정리를 함께 수행 — 판정을 **저장소 단일 지점**으로 모은다
+    - 잔여: jm4 는 수정 이전 바이너리를 쓰고 있어 **재배포 전까지 증상이 그대로**다 (jm4 사용 중이라 미실행)
+* 해소 (2026-09-27, Hash: 9dc89df):
+    - 위 미해소 갭 제거 — `AppState.clearDeadDefaultLayout(deletedName:svc:)` 신설. `onLayoutDeleted` 가 `self.settings`(프로세스 시작 스냅샷)이 아니라 `settingsService.load()`(최신 저장값)와 대조해 죽은 `defaultLayoutName` 을 정리한다. 판정을 **저장소 단일 지점**으로 통일 — REST 로 기본 레이아웃을 바꾼 세션에서도 근본예방이 발동한다
+    - jma 검증: `UndoShortcutTests` 4건 전부 통과(`TEST SUCCEEDED`) — REST 최신값 기준 정리(`testClearDeadDefaultLayoutViaLatestStore`)·비일치 무시(`testClearDeadDefaultLayoutIgnoresNonMatch`) 포함
+    - 테스트 인프라: XCTest host app 이 `Early unexpected exit`(exited with code 0 before establishing connection)로 죽던 문제도 함께 해결 — `AppEntry.main` 이 XCTest 환경에서 CLI·중복차단만 건너뛰고 `fWarrangeCliApp.main`(GUI RunLoop)은 유지하도록 수정
+    - 잔여(비차단): jm4 재배포 시 수정 반영 — 사용자 사용 중이라 미실행. restoreDefault fallback fix 자체는 962aad4
 
 ## Issue76: paidApp 실행 감지 시 메뉴바 아이콘 즉시 전환 (등록: 2026-05-17, 보류: 2026-05-17, 완료: 2026-09-19 — 구현 불필요 확정) ✅
 * 목적: paidApp launch 시 메뉴바 아이콘 즉시 전환 보장
