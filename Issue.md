@@ -34,31 +34,6 @@ date: 2026-04-07
 
 # 📕 중요
 
-## Issue95: [Bug] Homebrew 서비스 label 규약 변경(`homebrew.mxcl.*` → `sh.brew.*`)으로 cliApp 무한 self-handoff — brew 최신 머신에서 기동 불가 (등록: 2026-09-05)
-* 목적: Homebrew 가 서비스 label 규약을 `homebrew.mxcl.{formula}` 에서 `sh.brew.{formula}` 로 바꿨다. cliApp 은 구 label 을 **소스 3곳에 하드코딩**하고 있어, 최신 brew 가 깔린 머신에서 `brew services start` 든 `open` 이든 앱이 `exit(0)` 으로 즉시 종료하며 **전혀 기동하지 못한다**. 크래시도 로그도 남지 않아 원인 파악이 어렵다. brew 를 업데이트하는 모든 사용자에게 순차적으로 도달하는 회귀이므로 조기 수정이 필요하다
-* 상세:
-    - **실발생**: 2026-09-05 jma(macOS 26.6.2) 에 cliApp 1.1.1 배포 중 발생. `brew update` 로 Homebrew 가 6.0.21-126 이 되면서 label 이 바뀜. jm4 는 6.0.21-83 이라 아직 구 label 을 써서 정상 동작 중 — **jm4 도 `brew update` 하는 순간 같은 장애가 재현된다**
-    - **무한 루프 경로**: `BrewServiceSync.onAppStart()` 의 skip 조건 두 개가 모두 구 label 에 의존한다
-        - `isLaunchedByLaunchd()` — `XPC_SERVICE_NAME == "homebrew.mxcl.fwarrange-cli"` 비교. 신규 label 은 `sh.brew.fwarrange-cli` 라 **launchd 가 띄운 프로세스조차 false** 로 판정
-        - `isServiceLoaded()` — `launchctl list` 출력에서 구 label 을 찾음. 신규 label 로 등록돼 있어도 **false**
-        - 두 skip 이 모두 빗나가 `performHandoffStart()` → `brew services start` → `Foundation.exit(0)` → launchd 가 새 프로세스 spawn → 같은 판정 반복. 프로세스가 하나도 남지 않고 brew state 는 `stopped` 로 수렴
-    - **하드코딩 위치 3곳**:
-        - `cli/fWarrangeCli/Services/BrewServiceSync.swift:16` — `static let serviceLabel`
-        - `cli/fWarrangeCli/Services/SingleInstanceGuard.swift:19` — `launchdServiceLabel` (중복 인스턴스 판정 오작동)
-        - `cli/fWarrangeCli/Services/LoginItemService.swift:29` — LaunchAgents plist 경로 (로그인 항목 연동 오작동)
-    - **현재 우회 상태(jma)**: `defaults write kr.finfra.fWarrangeCli fwc.autoStartBrewService -bool false` 로 `onAppStart()` 첫 skip 조건을 태워 label 판정 자체를 건너뛰게 한 뒤 `open` 으로 수동 기동함. 앱·REST(3016) 는 정상이나 **재부팅 시 자동 시작되지 않는다**
-* 검증 (2026-09-27, prj16 세션 · jma):
-    - jma(Homebrew **7.0.6-64** = 신규 label 규약)에 HEAD `9c4bfd8` 을 tmux 경유 **정식 서명**으로 재빌드·배포 후 실측 — `brew services list` → `fwarrange-cli started` (`~/Library/LaunchAgents/sh.brew.fwarrange-cli.plist`) · `launchctl list` → `sh.brew.fwarrange-cli` exit 0 · cliApp 프로세스 **1개**(무한 self-handoff 흔적 없음) · REST 3016 정상 · 서명 주체 `Apple Development: JungGu Nam (3VGC26E2B8)`
-    - 즉 **신규 label 머신에서 brew services 로 기동·유지됨**을 확인했다. 재시작(`brew services restart`) 2회도 단일 프로세스로 정상 복귀
-    - ⚠️ **jm4 는 아직 미해소**: jm4 도 이미 Homebrew **7.0.6-70**(신규 규약)인데 `brew services list` 가 `fwarrange-cli none` 이고 설치 바이너리는 9/6 빌드(수정 이전)다. 현재 우회(`fwc.autoStartBrewService=false` + `open`)로 떠 있을 뿐이라 **재부팅 시 자동 시작되지 않는다**. jm4 재배포가 종결 조건 — 사용자가 jm4 를 쓰는 중이라 이번 세션에서는 미실행
-* 구현 명세:
-    - label 을 단일 상수로 고정하지 말고 **두 규약을 모두 인식**한다. `["sh.brew.fwarrange-cli", "homebrew.mxcl.fwarrange-cli"]` 후보 배열로 두고 `isLaunchedByLaunchd()` 는 `XPC_SERVICE_NAME` 이 그중 하나와 일치하면 true, `isServiceLoaded()` 는 `launchctl list` 에 하나라도 있으면 true 로 판정
-    - 더 견고한 대안은 label 문자열 비교를 버리고 **`~/Library/LaunchAgents/` 에서 formula 명을 포함하는 plist 를 탐색**해 그 `Label` 키를 읽는 동적 조회다. brew 가 규약을 또 바꿔도 따라간다. 어느 쪽을 택하든 세 파일이 **같은 판정 함수 하나를 공유**하도록 단일 지점으로 모을 것 — 지금처럼 3곳에 흩어져 있으면 다음 변경 때 또 반쪽만 고쳐진다
-    - `LoginItemService` 의 plist 경로도 같은 조회 결과를 쓰도록 바꾼다
-    - **회귀 검증**: 구 brew(jm4, 6.0.21-83)와 신 brew(jma, 6.0.21-126) 양쪽에서 ① `brew services start` 후 프로세스 생존 ② `open` 기동 후 프로세스 생존 ③ `/api/v2/status` 200 응답 ④ `brew services list` 가 `started` 로 표시 — 4항을 모두 확인한다
-    - 수정 후 jma 의 우회 스위치를 되돌린다: `defaults delete kr.finfra.fWarrangeCli fwc.autoStartBrewService`
-    - 관련 선례: Issue86(brew services 미등록 실행), Issue39 Phase4(SingleInstanceGuard 도입)
-
 # 📙 일반
 
 ## Issue94: [Cleanup] `showInCmdTab` 죽은 키 제거 — paidApp 소유 이전으로 소비처 소멸 (등록: 2026-09-04)
@@ -82,6 +57,35 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue95: [Bug] Homebrew 서비스 label 규약 변경(`homebrew.mxcl.*` → `sh.brew.*`)으로 cliApp 무한 self-handoff — brew 최신 머신에서 기동 불가 (등록: 2026-09-05, 완료: 2026-09-27, Hash: 9376526, 203ca4f) ✅
+* 목적: Homebrew 가 서비스 label 규약을 `homebrew.mxcl.{formula}` 에서 `sh.brew.{formula}` 로 바꿨다. cliApp 은 구 label 을 **소스 3곳에 하드코딩**하고 있어, 최신 brew 가 깔린 머신에서 `brew services start` 든 `open` 이든 앱이 `exit(0)` 으로 즉시 종료하며 **전혀 기동하지 못한다**. 크래시도 로그도 남지 않아 원인 파악이 어렵다. brew 를 업데이트하는 모든 사용자에게 순차적으로 도달하는 회귀이므로 조기 수정이 필요하다
+* 상세:
+    - **실발생**: 2026-09-05 jma(macOS 26.6.2) 에 cliApp 1.1.1 배포 중 발생. `brew update` 로 Homebrew 가 6.0.21-126 이 되면서 label 이 바뀜. jm4 는 6.0.21-83 이라 아직 구 label 을 써서 정상 동작 중 — **jm4 도 `brew update` 하는 순간 같은 장애가 재현된다**
+    - **무한 루프 경로**: `BrewServiceSync.onAppStart()` 의 skip 조건 두 개가 모두 구 label 에 의존한다
+        - `isLaunchedByLaunchd()` — `XPC_SERVICE_NAME == "homebrew.mxcl.fwarrange-cli"` 비교. 신규 label 은 `sh.brew.fwarrange-cli` 라 **launchd 가 띄운 프로세스조차 false** 로 판정
+        - `isServiceLoaded()` — `launchctl list` 출력에서 구 label 을 찾음. 신규 label 로 등록돼 있어도 **false**
+        - 두 skip 이 모두 빗나가 `performHandoffStart()` → `brew services start` → `Foundation.exit(0)` → launchd 가 새 프로세스 spawn → 같은 판정 반복. 프로세스가 하나도 남지 않고 brew state 는 `stopped` 로 수렴
+    - **하드코딩 위치 3곳**:
+        - `cli/fWarrangeCli/Services/BrewServiceSync.swift:16` — `static let serviceLabel`
+        - `cli/fWarrangeCli/Services/SingleInstanceGuard.swift:19` — `launchdServiceLabel` (중복 인스턴스 판정 오작동)
+        - `cli/fWarrangeCli/Services/LoginItemService.swift:29` — LaunchAgents plist 경로 (로그인 항목 연동 오작동)
+    - **현재 우회 상태(jma)**: `defaults write kr.finfra.fWarrangeCli fwc.autoStartBrewService -bool false` 로 `onAppStart()` 첫 skip 조건을 태워 label 판정 자체를 건너뛰게 한 뒤 `open` 으로 수동 기동함. 앱·REST(3016) 는 정상이나 **재부팅 시 자동 시작되지 않는다**
+* 검증 (2026-09-27, prj16 세션 · jma):
+    - jma(Homebrew **7.0.6-64** = 신규 label 규약)에 HEAD `9c4bfd8` 을 tmux 경유 **정식 서명**으로 재빌드·배포 후 실측 — `brew services list` → `fwarrange-cli started` (`~/Library/LaunchAgents/sh.brew.fwarrange-cli.plist`) · `launchctl list` → `sh.brew.fwarrange-cli` exit 0 · cliApp 프로세스 **1개**(무한 self-handoff 흔적 없음) · REST 3016 정상 · 서명 주체 `Apple Development: JungGu Nam (3VGC26E2B8)`
+    - 즉 **신규 label 머신에서 brew services 로 기동·유지됨**을 확인했다. 재시작(`brew services restart`) 2회도 단일 프로세스로 정상 복귀
+    - ⚠️ **jm4 는 아직 미해소**: jm4 도 이미 Homebrew **7.0.6-70**(신규 규약)인데 `brew services list` 가 `fwarrange-cli none` 이고 설치 바이너리는 9/6 빌드(수정 이전)다. 현재 우회(`fwc.autoStartBrewService=false` + `open`)로 떠 있을 뿐이라 **재부팅 시 자동 시작되지 않는다**. jm4 재배포가 종결 조건 — 사용자가 jm4 를 쓰는 중이라 이번 세션에서는 미실행
+* jm4 해소 (2026-09-27 14:14 — `prj26-finish-watch` 잡이 jm4 유휴 시 자동 재배포):
+    - `fwc-deploy-brew.sh local` → **ALL CLEAR 11 PASS / 0 FAIL**. 우회 스위치 제거(`defaults delete kr.finfra.fWarrangeCli fwc.autoStartBrewService`) 후 `brew services restart`
+    - 검증 4항 실측(`redeploy_20260927_140851.log`): `Successfully started fwarrange-cli (label: sh.brew.fwarrange-cli)` · REST 3016 = 200 · cliApp 프로세스 **1개**(self-handoff 흔적 없음) · launchd `sh.brew.fwarrange-cli` 1 → 요약 `deploy_rc=0 services=started procs=1 rest=200 launchd=1`
+    - restart(stopped→started)도 단일 프로세스로 정상 복귀. jm4(신규 label Homebrew 7.0.6)에서 **brew services 자동 기동·재부팅 생존을 우회 없이 확보** — 종결 조건 충족. 근본 수정은 9376526(두 label 규약 동시 인식), jma 실측은 203ca4f
+* 구현 명세:
+    - label 을 단일 상수로 고정하지 말고 **두 규약을 모두 인식**한다. `["sh.brew.fwarrange-cli", "homebrew.mxcl.fwarrange-cli"]` 후보 배열로 두고 `isLaunchedByLaunchd()` 는 `XPC_SERVICE_NAME` 이 그중 하나와 일치하면 true, `isServiceLoaded()` 는 `launchctl list` 에 하나라도 있으면 true 로 판정
+    - 더 견고한 대안은 label 문자열 비교를 버리고 **`~/Library/LaunchAgents/` 에서 formula 명을 포함하는 plist 를 탐색**해 그 `Label` 키를 읽는 동적 조회다. brew 가 규약을 또 바꿔도 따라간다. 어느 쪽을 택하든 세 파일이 **같은 판정 함수 하나를 공유**하도록 단일 지점으로 모을 것 — 지금처럼 3곳에 흩어져 있으면 다음 변경 때 또 반쪽만 고쳐진다
+    - `LoginItemService` 의 plist 경로도 같은 조회 결과를 쓰도록 바꾼다
+    - **회귀 검증**: 구 brew(jm4, 6.0.21-83)와 신 brew(jma, 6.0.21-126) 양쪽에서 ① `brew services start` 후 프로세스 생존 ② `open` 기동 후 프로세스 생존 ③ `/api/v2/status` 200 응답 ④ `brew services list` 가 `started` 로 표시 — 4항을 모두 확인한다
+    - 수정 후 jma 의 우회 스위치를 되돌린다: `defaults delete kr.finfra.fWarrangeCli fwc.autoStartBrewService`
+    - 관련 선례: Issue86(brew services 미등록 실행), Issue39 Phase4(SingleInstanceGuard 도입)
 
 ## Issue98: [Feat] Undo 기능 — 단축키로 창 재배치 직전 상태 복원 (등록: 2026-09-26, 완료: 2026-09-27, Hash: 9c4bfd8) ✅
 * 목적: 레이아웃 복구(restore) 실행 직후, 단축키 한 번으로 복구 직전의 창 배치로 되돌리는 Undo 기능. 잘못된 복구를 즉시 취소할 수 있게 한다.
