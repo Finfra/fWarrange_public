@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 97
+* Issue HWM: 99
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
   - faf4d55 (2026-07-15) - Docs: Close Issue87 — 이중 라이선스 잔존 정리(b4a874b) + 이슈 종결
@@ -16,8 +16,6 @@ date: 2026-04-07
   - 39004f7 (2026-05-18) - Docs: Close Issue77
   - 7b2e44b (2026-05-17) - Docs: Close Issue75
   - fc33e79 (2026-05-16) - Feat(Issue74)(REST): 레이아웃 복구 응답에 실패 윈도우 상세 정보 노출
-
-
 
 # 🤔 결정사항
 
@@ -34,6 +32,24 @@ date: 2026-04-07
 
 # 🚧 진행중
 
+## Issue99: [Bug] "Restore Default" 단축키가 작동하지 않는다 (등록: 2026-09-26)
+* 목적: paidApp Settings 에서 지정한 "Restore Default"(기본 레이아웃 복구) 단축키(기본값 ⇧⌘F7)를 눌러도 복구가 실행되지 않는다. 사용자가 설정한 단축키가 무효한 것처럼 보인다. 원인이 코드인지 환경(키 리매핑)인지 jma 에서 재현·확정 후 원인을 제거한다.
+* 상세:
+    - `restoreDefaultShortcut` → `HotKeyService` Carbon 등록 → `AppState.handleHotKeyAction(.restoreDefault)` 경로
+    - **다른 단축키(save 등)와의 비교가 진단 핵심** — 이 액션만 안 되면 코드(restoreDefault 분기), 전부 안 되면 등록·환경 문제
+    - 이전 F5~F12/Karabiner 환경 문제(`cli/_doc_work/debug_TECH.md` 2026-09-06)와 구분: ⇧⌘F7 은 Karabiner `12Key2Knob` 가 shift+F7 을 매크로로 가로채는 조합이라 환경 요인이 유력하나 코드 경로도 함께 점검
+* 구현 명세:
+    - jma 에서 재현 → 원인 규명(환경 vs 코드) → 원인 제거 → 검증
+    - 환경 요인이면 기본 단축키를 F7 비의존 조합으로 이전하는 것을 함께 검토
+* 검증 (2026-09-27, prj16 세션 · jma HEAD 9c4bfd8 정식 서명 빌드):
+    - **환경 가설 기각**: Karabiner `12Key2Knob` 의 F7 규칙 4종은 전부 `device_if`(vendor 4489 / product 34960) + 수식어 **exact match** 다(`mandatory: [shift]`, `optional` 없음). ⇧⌘F7 은 command 가 섞여 **어느 규칙과도 매칭되지 않는다** → Karabiner 는 이 조합을 가로채지 않는다. 등록 시 유력하다고 본 환경 요인은 원인이 아니다
+    - **원인 = 코드(죽은 참조) 확정**: jm4 `defaultLayoutName = "2026-07-12-1"` 인데 현존 레이아웃 7개에 그 이름이 **없다**. jm4 설치 바이너리는 9/6 빌드로 수정(962aad4) 이전이라 존재하지 않는 이름으로 복구를 시도해 조용히 실패하는 상태가 지금도 유지되고 있다
+    - **수정 유효 확인 (fallback)**: `defaultLayoutName` 에 존재하지 않는 이름(`ghost-layout-9999`)을 주입하고 restoreDefault 단축키(jma 설정값 ⌃⌥⌘D)를 tmux 경유로 발사 → **최신 레이아웃으로 fallback 복구가 실제 실행됨**(restore-stats `totalAttempts` 32→46, `successes` 31→45 = 창 14개). 조용한 실패가 사라졌다
+    - ⚠️ **미해소 갭 — 근본예방 훅이 REST 경로에서 발동하지 않는다**: `onLayoutDeleted` 가 `AppState.settings`(프로세스 시작 시 로드한 **스냅샷**)와 이름을 비교하는데, `PUT /settings/default-layout` 는 저장소만 갱신하고 그 스냅샷은 갱신하지 않는다. 실측 — REST 로 기본 레이아웃을 바꾼 뒤 그 레이아웃을 삭제하면 `defaultLayoutName` 이 **죽은 이름으로 남는다**. cliApp 재시작 후(메모리=저장값) 같은 시나리오는 정상 정리된다(`default` 복귀)
+    - **실사용 경로가 정확히 이 갭에 해당한다** — paidApp GUI 의 설정 변경은 전부 cliApp REST 를 타므로, 사용자가 GUI 로 기본 레이아웃을 바꾼 세션에서는 근본예방이 한 번도 작동하지 않는다
+    - 수정 방향(제안): 훅에서 `self.settings` 대신 `settingsService.load()` 와 대조하거나, `mutate` 블록 안에서 비교·정리를 함께 수행 — 판정을 **저장소 단일 지점**으로 모은다
+    - 잔여: jm4 는 수정 이전 바이너리를 쓰고 있어 **재배포 전까지 증상이 그대로**다 (jm4 사용 중이라 미실행)
+
 # 📕 중요
 
 ## Issue95: [Bug] Homebrew 서비스 label 규약 변경(`homebrew.mxcl.*` → `sh.brew.*`)으로 cliApp 무한 self-handoff — brew 최신 머신에서 기동 불가 (등록: 2026-09-05)
@@ -49,6 +65,10 @@ date: 2026-04-07
         - `cli/fWarrangeCli/Services/SingleInstanceGuard.swift:19` — `launchdServiceLabel` (중복 인스턴스 판정 오작동)
         - `cli/fWarrangeCli/Services/LoginItemService.swift:29` — LaunchAgents plist 경로 (로그인 항목 연동 오작동)
     - **현재 우회 상태(jma)**: `defaults write kr.finfra.fWarrangeCli fwc.autoStartBrewService -bool false` 로 `onAppStart()` 첫 skip 조건을 태워 label 판정 자체를 건너뛰게 한 뒤 `open` 으로 수동 기동함. 앱·REST(3016) 는 정상이나 **재부팅 시 자동 시작되지 않는다**
+* 검증 (2026-09-27, prj16 세션 · jma):
+    - jma(Homebrew **7.0.6-64** = 신규 label 규약)에 HEAD `9c4bfd8` 을 tmux 경유 **정식 서명**으로 재빌드·배포 후 실측 — `brew services list` → `fwarrange-cli started` (`~/Library/LaunchAgents/sh.brew.fwarrange-cli.plist`) · `launchctl list` → `sh.brew.fwarrange-cli` exit 0 · cliApp 프로세스 **1개**(무한 self-handoff 흔적 없음) · REST 3016 정상 · 서명 주체 `Apple Development: JungGu Nam (3VGC26E2B8)`
+    - 즉 **신규 label 머신에서 brew services 로 기동·유지됨**을 확인했다. 재시작(`brew services restart`) 2회도 단일 프로세스로 정상 복귀
+    - ⚠️ **jm4 는 아직 미해소**: jm4 도 이미 Homebrew **7.0.6-70**(신규 규약)인데 `brew services list` 가 `fwarrange-cli none` 이고 설치 바이너리는 9/6 빌드(수정 이전)다. 현재 우회(`fwc.autoStartBrewService=false` + `open`)로 떠 있을 뿐이라 **재부팅 시 자동 시작되지 않는다**. jm4 재배포가 종결 조건 — 사용자가 jm4 를 쓰는 중이라 이번 세션에서는 미실행
 * 구현 명세:
     - label 을 단일 상수로 고정하지 말고 **두 규약을 모두 인식**한다. `["sh.brew.fwarrange-cli", "homebrew.mxcl.fwarrange-cli"]` 후보 배열로 두고 `isLaunchedByLaunchd()` 는 `XPC_SERVICE_NAME` 이 그중 하나와 일치하면 true, `isServiceLoaded()` 는 `launchctl list` 에 하나라도 있으면 true 로 판정
     - 더 견고한 대안은 label 문자열 비교를 버리고 **`~/Library/LaunchAgents/` 에서 formula 명을 포함하는 plist 를 탐색**해 그 `Label` 키를 읽는 동적 조회다. brew 가 규약을 또 바꿔도 따라간다. 어느 쪽을 택하든 세 파일이 **같은 판정 함수 하나를 공유**하도록 단일 지점으로 모을 것 — 지금처럼 3곳에 흩어져 있으면 다음 변경 때 또 반쪽만 고쳐진다
