@@ -21,9 +21,19 @@ date: 2026-04-07
 
 # 🌱 이슈후보
 
+1. RESTServer `allowExternal=false` 인데 `*:3016`(tcp46) 전체 인터페이스 바인딩 — `requiredLocalEndpoint` 를 NWListener 생성 후 설정해 무효 (Issue101 검증 중 jma `lsof` 실측)
+
 # 🚧 진행중
 
-## Issue101: [Bug] REST 3016 이 연결을 받고도 응답하지 않는다 — AppState 이중 생성 + 고아 listener (등록: 2026-09-27)
+# 📕 중요
+
+# 📙 일반
+
+# 📗 선택
+
+# ✅ 완료
+
+## Issue101: [Bug] REST 3016 이 연결을 받고도 응답하지 않는다 — AppState 이중 생성 + 고아 listener (등록: 2026-09-27, 완료: 2026-09-27, Hash: 9a710c6) ✅
 * 목적: prj5#Issue99 라운드 중 jma cliApp(pid 28113)이 3016 LISTEN·프로세스 생존 상태인데 health 가 타임아웃됐다. prj16 TDD 가 cliApp 에 의존하므로 원인을 제거한다
 * 상세:
     - **실측 (jma, macOS 26.6.2)**: 기동 직후 1~2 요청만 200, 이후 전부 무응답. `netstat` 상 연결은 accept 돼 fd 가 있으나 Recv-Q 가 읽히지 않음. `heap 28113` → AppState 1·RESTServer 1·`NWConcrete_nw_listener` 1, **`NWConnection` 0개** — 연결이 start 없이 버려짐
@@ -35,14 +45,10 @@ date: 2026-04-07
     - `AppState.initialize()` 1회 가드 (App.init 재호출 대비) · `AppState.instanceCount` 계측
     - `RESTServer`: `deinit` 에서 `listener.cancel()` · `start()` 가 이전 listener 를 먼저 cancel · self 부재 시 `connection.cancel()` · stateUpdateHandler 는 현재 listener 일 때만 반영
     - 재현 테스트 `RESTListenerLifecycleTests`(TDDPlaylistTests.swift) — 수정 전 jma 에서 3건 red(AppState 3개, 해제 후 포트 점유, 재시작 후 stop 해도 포트 점유)
-
-# 📕 중요
-
-# 📙 일반
-
-# 📗 선택
-
-# ✅ 완료
+* 검증 (2026-09-27, jma):
+    - **red → green**: 수정 전 3건 red → 수정 후 `fWarrangeCliTests` **84/84 passed**(EXIT_0). 1차 수정(재시작 시 이전 listener 즉시 cancel)은 새 listener 가 준비되지 않아 1건 red — cancel 이 비동기라 같은 포트 재바인딩이 실패. 기존 `stop()→start()` 재시작 경로(메뉴·설정 PATCH)에도 잠재된 문제였으므로 «은퇴 완료(.cancelled) → 바인딩» 직렬화로 해소
+    - **실환경**: jma `fwc-deploy-brew.sh local`(tmux·정식 서명) 재설치 → `brew services` started · 60초간 health **30/30** · `heap` AppState 1·RESTServer 1·listener 1 (수정 전 jm4 2·2)
+    - 후속 후보: `allowExternal=false` 인데 listener 가 `*:3016`(tcp46)으로 바인딩됨 — `requiredLocalEndpoint` 를 listener 생성 **후** 설정해 반영 안 됨 (이슈후보 등록)
 
 ## Issue100: [Bug] PaidApp 생존추적 유닛테스트 7건 실패 — unregister 위조 회귀 + Logger 디렉토리(선재) (등록: 2026-09-27, 완료: 2026-09-27, Hash: 92fd06a) ✅
 * 목적: `fWarrangeCliTests` 전체 실행 시 PaidApp 생존 추적 도메인 테스트 7건이 실패한다(66개 중). Issue94 검증 중 발견한 **선재 결함**으로 `showInCmdTab` 제거와 인과 없음. register/unregister 인가·세션 구분·로그 디렉토리 자동생성이 기대와 어긋난다
