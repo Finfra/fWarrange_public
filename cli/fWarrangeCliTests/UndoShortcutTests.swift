@@ -16,4 +16,35 @@ final class UndoShortcutTests: XCTestCase {
     func testUndoRequiresAccessibility() {
         XCTAssertTrue(HotKeyAction.undo.requiresAccessibility)
     }
+
+    // MARK: - Issue99 갭 (fwarrange-1c 실측): REST 로 바뀐 defaultLayoutName 정리
+
+    /// REST(PUT /settings/default-layout)로 기본 레이아웃을 바꾼 뒤 그 레이아웃을 삭제하면,
+    /// self.settings 스냅샷이 아니라 **최신 저장값(load)** 기준으로 죽은 참조가 정리돼야 한다.
+    @MainActor
+    func testClearDeadDefaultLayoutViaLatestStore() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let svc = YAMLSettingsService(baseDirectory: dir)
+        // REST 로 기본 레이아웃을 바꾼 상황 — 저장소만 갱신(프로세스 스냅샷과 불일치)
+        _ = svc.mutate { $0.defaultLayoutName = "new-via-rest" }
+        // 그 레이아웃 삭제 → 최신 저장값 기준으로 정리돼야 한다
+        let updated = AppState.clearDeadDefaultLayout(deletedName: "new-via-rest", svc: svc)
+        XCTAssertNotNil(updated, "삭제된 이름이 최신 defaultLayoutName 과 일치하면 정리해야 한다")
+        XCTAssertNil(svc.load().defaultLayoutName, "삭제 후 defaultLayoutName 이 nil 로 정리돼야 한다")
+    }
+
+    /// 일치하지 않는 삭제는 defaultLayoutName 을 건드리지 않는다.
+    @MainActor
+    func testClearDeadDefaultLayoutIgnoresNonMatch() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let svc = YAMLSettingsService(baseDirectory: dir)
+        _ = svc.mutate { $0.defaultLayoutName = "keep" }
+        let updated = AppState.clearDeadDefaultLayout(deletedName: "other", svc: svc)
+        XCTAssertNil(updated, "일치하지 않으면 정리하지 않는다")
+        XCTAssertEqual(svc.load().defaultLayoutName, "keep")
+    }
 }

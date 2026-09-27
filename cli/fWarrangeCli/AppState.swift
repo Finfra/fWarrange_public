@@ -446,10 +446,11 @@ final class AppState {
         // 죽은 참조가 애초에 남지 않게 해, restoreDefault 가 존재하지 않는 이름으로 복구를 시도하는 상황을 예방한다.
         layoutManager.onLayoutDeleted = { [weak self] name in
             guard let self else { return }
-            let isDefault = self.settings.defaultLayoutName == name
-            if name == "*" || isDefault {
-                self.settingsService.mutate { $0.defaultLayoutName = nil }
-                self.settings.defaultLayoutName = nil
+            // ⚠️ self.settings 는 프로세스 시작 시 로드된 스냅샷이라 REST(PUT /settings/default-layout)로
+            //    바뀐 defaultLayoutName 을 반영하지 못한다. paidApp GUI 는 전부 REST 를 타므로,
+            //    최신 저장값(load)과 대조해야 실사용 경로에서도 죽은 참조가 정리된다. (Issue99, fwarrange-1c 실측)
+            if let updated = AppState.clearDeadDefaultLayout(deletedName: name, svc: self.settingsService) {
+                self.settings = updated
                 ChangeTracker.shared.record(type: "settings.changed", target: "defaultLayout")
                 logI("Issue99: defaultLayoutName 정리 — 삭제된 레이아웃 참조 제거 (삭제=\(name))")
             }
@@ -641,6 +642,15 @@ final class AppState {
 
     /// Issue98: 복구 직전 전체 창 배치 스냅샷 (단일 Undo, 메모리 휘발)
     private var undoSnapshot: [WindowInfo]?
+
+    /// Issue99: 삭제된 레이아웃 이름이 **최신 저장된**(load) defaultLayoutName 이면 nil 로 정리한다.
+    /// self.settings 스냅샷 대신 svc.load() 를 대조해 REST 변경(paidApp GUI)도 반영한다. (fwarrange-1c 실측)
+    /// name `"*"` 은 전체 삭제. 정리했으면 갱신된 AppSettings 를, 아니면 nil 을 반환한다.
+    static func clearDeadDefaultLayout(deletedName: String, svc: SettingsService) -> AppSettings? {
+        let current = svc.load().defaultLayoutName
+        guard deletedName == "*" || current == deletedName else { return nil }
+        return svc.mutate { $0.defaultLayoutName = nil }
+    }
 
     /// 이름으로 레이아웃 복구 (메뉴 클릭 / 핫키 공용)
     func restoreLayoutByName(_ name: String) {
