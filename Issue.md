@@ -20,6 +20,7 @@ date: 2026-04-07
 | Issue72_6 — cliApp(non-sandbox)에서 CGS 계열 비공개 API 사용 합의 (2026-05-16)        | Issue72_6 본문                                                             |
 
 # 🌱 이슈후보
+1. `.claude/commands/deploy.md` 가 `brew publish` 를 🚧 TODO 로 표시하나 `cli/_tool/fwc-deploy-brew.sh` 에 `cmd_publish`(gh release + tap push)가 이미 구현됨 (prj3#Issue741 R2 배선 중 발견)
 
 1. `CLAUDE.md` 에 적힌 스킬 `build`·`deploy`·`brew-apply` 가 `.claude/skills/` 에 없음 · `README.md` 버전 1.0.2 표기 낡음(VERSION 1.1.1) (prj3#Issue717 배포용 TDD 적용 중 발견)
 
