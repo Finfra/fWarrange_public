@@ -24,15 +24,6 @@ date: 2026-04-07
 1. `CLAUDE.md` 에 적힌 스킬 `build`·`deploy`·`brew-apply` 가 `.claude/skills/` 에 없음 · `README.md` 버전 1.0.2 표기 낡음(VERSION 1.1.1) (prj3#Issue717 배포용 TDD 적용 중 발견)
 # 🚧 진행중
 
-## Issue104: [Permission] 미승인 부팅 시 손쉬운 사용 목록 자동 등록 — prj25 Issue237 이식 (등록: 2026-09-27)
-* 목적: jma 에서 fWarrangeCli 가 손쉬운 사용 목록에 올라오지 않아 사용자가 수동 추가했다. 권한 요청 API 를 전혀 호출하지 않았고, `AppState` 주석의 *"ad-hoc 서명에서는 시스템 프롬프트 무효"* 는 Apple Development 서명 전환 전의 낡은 전제였다
-* 상세:
-    - Issue96 의 *"프롬프트는 실행 중 프로세스에 무효"* 는 유지 — 이번 요청은 **부팅 직후 새 프로세스 1회**에 한정
-    - 한 번 켠 권한은 재배포 뒤에도 유지(jma 재배포 2회 실측, `status/accessibility` granted=true)
-* 구현 명세:
-    - `AccessibilityBootListing`(`Services/AccessibilityService.swift`) — prj25 와 동일 계약. 호출은 `AppState` 부팅 미승인 분기, `XCTestConfigurationFilePath` 있으면 생략
-    - 검증: `TDDPlaylistTests.swift` 의 `AccessibilityBootListingTests` 2건 jma green · E2E — 목록 `−` 삭제 → 재기동 → 목록 자동 재등록 캡처
-
 # 📕 중요
 
 # 📙 일반
@@ -40,6 +31,16 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue104: [Permission] 미승인 부팅 시 손쉬운 사용 목록 자동 등록 — prj25 Issue237 이식 (등록: 2026-09-27, 완료: 2026-09-27, Hash: 33b878a) ✅
+* 목적: jma 에서 fWarrangeCli 가 손쉬운 사용 목록에 올라오지 않아 사용자가 수동 추가했다. 권한 요청 API 를 전혀 호출하지 않았고, `AppState` 주석의 *"ad-hoc 서명에서는 시스템 프롬프트 무효"* 는 Apple Development 서명 전환 전의 낡은 전제였다
+* 상세:
+    - Issue96 의 *"프롬프트는 실행 중 프로세스에 무효"* 는 유지 — 이번 요청은 **부팅 직후 새 프로세스 1회**에 한정
+    - 한 번 켠 권한은 재배포 뒤에도 유지(jma 재배포 2회 실측, `status/accessibility` granted=true)
+* 구현 명세:
+    - `AccessibilityBootListing`(`Services/AccessibilityService.swift`) — prj25 와 동일 계약. 호출은 `AppState` 부팅 미승인 분기, `XCTestConfigurationFilePath` 있으면 생략
+    - 검증: `TDDPlaylistTests.swift` 의 `AccessibilityBootListingTests` 2건 jma green · E2E — 목록 `−` 삭제 → 재기동 → 목록 자동 재등록 캡처
+* 결과: jma E2E — 목록 `−` 삭제 → `brew services restart` → 두 앱 모두 목록에 자동 재등록 확인(캡처). 사용자 스위치 ON 후 재시작 없이 granted=true. 재배포 2회 후에도 권한 유지(T1)
 
 ## Issue103: 라이선스 프로파일 A 적용 — CC BY-NC 4.0 이중 → Apache-2.0 + 훅 ①상표 ②배포본 약관(N=250), mcp/ 는 MIT (등록: 2026-09-27, 완료: 2026-09-27, Hash: 7449eff) ✅
 * 목적: CC 는 소프트웨어에 부적합하고 NC 는 회사 사용을 전부 막아 채택을 죽인다. 정본대로 소스 오픈 + 코드 밖 훅으로 전환한다(완화 방향이라 소급 문제 없음)
