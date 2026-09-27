@@ -4,18 +4,9 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 99
+* Issue HWM: 100
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
-  - faf4d55 (2026-07-15) - Docs: Close Issue87 — 이중 라이선스 잔존 정리(b4a874b) + 이슈 종결
-  - ffa4df9 (2026-07-13) - Chore: checkpoint — 이중 라이선스 전환(CC BY-NC 4.0 + 상업) 파일 변경 (Issue87)
-  - b587581 (2026-06-22) - Fix(MCP): fwarrange-mcp index.js를 REST API v2로 마이그레이션 (Issue85) + npm 1.0.2 배포(Issue83)
-  - ff36f3d (2026-06-21) - Fix(HotKey): cmd+, 글로벌 단축키 제거 — showSettingsShortcut 설정·REST 필드 삭제
-  - 609c51d (2026-06-15) - cli/_doc_arch 7문서 정합성 감사 완료 (리포트 cli/_doc_work/report/cli-doc-arch-audit_report.md, 미커밋 산출물)
-  - 53f2dfe (2026-05-18) - Feat(Issue78)(REST): /operations + op.* 이벤트 + 직렬화 enforce
-  - 39004f7 (2026-05-18) - Docs: Close Issue77
-  - 7b2e44b (2026-05-17) - Docs: Close Issue75
-  - fc33e79 (2026-05-16) - Feat(Issue74)(REST): 레이아웃 복구 응답에 실패 윈도우 상세 정보 노출
 
 # 🤔 결정사항
 
@@ -36,7 +27,23 @@ date: 2026-04-07
 
 # 📙 일반
 
-## Issue94: [Cleanup] `showInCmdTab` 죽은 키 제거 — paidApp 소유 이전으로 소비처 소멸 (등록: 2026-09-04)
+## Issue100: [Bug] PaidApp 생존추적 유닛테스트 7건 실패 — 상태 격리 결함(선재) (등록: 2026-09-27)
+* 목적: `fWarrangeCliTests` 전체 실행 시 PaidApp 생존 추적 도메인 테스트 7건이 실패한다(66개 중). Issue94 검증 중 발견한 **선재 결함**으로 `showInCmdTab` 제거와 인과 없음. register/unregister 인가·세션 구분·로그 디렉토리 자동생성이 기대와 어긋난다
+* 상세:
+    - 실패 7건(5 케이스): `PaidAppRouterTests.testStatusReturnsRunningAfterRegister`(register 실패) · `.testUnregisterWithForgedSessionIdFails403`(위조 sessionId 가 403 아닌 success) · `PaidAppStateLoggerTests.testAutoCreateDirectory`(디렉토리·파일 자동생성 실패) · `PaidAppStateStoreTests.testSameBundleIdDifferentStartTimeProducesDifferentSessions`(XCTAssertFalse 실패) · `.testUnregisterWithForgedSessionIdFails`(위조 unregister 가 성공)
+    - **cliApp 실행 여부 무관**: brew cliApp 을 stop 후 재실행해도 동일 7건 재현 → 실행 인스턴스 충돌 아님
+    - **격리 결함 의심**: `PaidAppStateStore()` 를 인자 없이 생성(공유/실경로 상태)해 테스트 간·실행 잔여 상태와 충돌하는 것으로 추정. 위조 sessionId 통과·디렉토리 이미 존재 양상이 이를 시사
+* 구현 명세:
+    - 각 테스트가 임시 디렉토리(격리된 store 경로)를 쓰도록 setUp/tearDown 정비, 공유 상태 초기화. 인가 로직이 실제로 깨졌는지(코드 결함) vs 오염된 상태 탓인지 분리 확인
+    - jma·jm4 양쪽에서 재현·수정 후 `fWarrangeCliTests` 전체 green 확인
+    - 요청 출처: Issue94(showInCmdTab 제거) 검증 중 전체 스위트 실행에서 발견
+
+
+# 📗 선택
+
+# ✅ 완료
+
+## Issue94: [Cleanup] `showInCmdTab` 죽은 키 제거 — paidApp 소유 이전으로 소비처 소멸 (등록: 2026-09-04, 완료: 2026-09-27, Hash: 9376526) ✅
 * 목적: paidApp 이 ⌘+Tab 앱 전환기 표시 설정의 소유를 자신의 UserDefaults 로 가져가면서(prj16#Issue276), cliApp 의 `showInCmdTab` 키는 **읽는 쪽도 쓰는 쪽도 없는 죽은 키**가 되었다. 남겨두면 소비처 없는 설정이 REST 응답·`_config.yml` 에 계속 노출되어, 다음에 이 키를 보는 사람이 "어딘가 쓰이겠거니" 하고 되살릴 여지를 남긴다
 * depends: prj16#Issue276
 * 상세:
@@ -52,11 +59,12 @@ date: 2026-04-07
     - **API 스펙 동시 갱신 필수**(api-rules): `api/openapi_v2.yaml` 의 `/settings/advanced` 스키마에서 `showInCmdTab` 제거. 소스만 고치고 스펙을 두면 규칙 위반
     - 기존 사용자의 `_config.yml` 에 남은 `showInCmdTab` 행은 파싱 시 무시되므로 마이그레이션 불필요. 다만 설정 저장이 한 번 일어나면 자연히 사라진다
     - ⚠️ 제거 전 paidApp 최신 소스에서 `showInCmdTab` 참조가 여전히 0건인지 재확인할 것 — 확인 없이 제거하면 소유 이전이 되돌려진 경우를 놓친다
-
-
-# 📗 선택
-
-# ✅ 완료
+* 검증·종결 (2026-09-27):
+    - **코드는 이미 제거됨**: 소스 4곳(AppSettings.swift 필드, AppSettings+Patch 직렬화·패치, RESTServer advanced 화이트리스트, _config.yml) + API 스펙(`openapi_v2.yaml` `/settings/advanced` 스키마 2곳)에서 `showInCmdTab` 전부 제거 확인. 제거는 9376526(Issue95 커밋)에 함께 반영돼 있었고 본 이슈는 명시 종결만 남아 있었다
+    - **paidApp 소비처 0건 재확인**: `fWarrange/` 실참조 0
+    - **회귀 없음 (jma, ff-only f4b59a2)**: `ServiceLabelAndPermissionTests` 11개 green — `showInCmdTab` 제거를 직접 검증(`fullSettingsDict`·`applySettingsPatch` 에서 nil)하는 케이스 포함. `confirmBeforeDelete`·`clickSwitchToMain` 은 보존
+    - ⚠️ 전체 스위트에 **무관한 선재 실패 7건**(PaidAppRouter/StateStore/StateLogger — paidApp 생존 추적 도메인) 관측. cliApp 실행 여부와 무관하게 재현되며 `showInCmdTab` 과 인과 없음. 별도 Issue100 으로 분리
+    - jm4 재배포 불필요: 동작 변경 없는 죽은 키 정리 — cliApp 재배포 없이 문서 종결
 
 ## Issue95: [Bug] Homebrew 서비스 label 규약 변경(`homebrew.mxcl.*` → `sh.brew.*`)으로 cliApp 무한 self-handoff — brew 최신 머신에서 기동 불가 (등록: 2026-09-05, 완료: 2026-09-27, Hash: 9376526, 203ca4f) ✅
 * 목적: Homebrew 가 서비스 label 규약을 `homebrew.mxcl.{formula}` 에서 `sh.brew.{formula}` 로 바꿨다. cliApp 은 구 label 을 **소스 3곳에 하드코딩**하고 있어, 최신 brew 가 깔린 머신에서 `brew services start` 든 `open` 이든 앱이 `exit(0)` 으로 즉시 종료하며 **전혀 기동하지 못한다**. 크래시도 로그도 남지 않아 원인 파악이 어렵다. brew 를 업데이트하는 모든 사용자에게 순차적으로 도달하는 회귀이므로 조기 수정이 필요하다
