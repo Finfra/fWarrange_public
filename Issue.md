@@ -27,7 +27,11 @@ date: 2026-04-07
 
 # 📙 일반
 
-## Issue100: [Bug] PaidApp 생존추적 유닛테스트 7건 실패 — 상태 격리 결함(선재) (등록: 2026-09-27)
+# 📗 선택
+
+# ✅ 완료
+
+## Issue100: [Bug] PaidApp 생존추적 유닛테스트 7건 실패 — unregister 위조 회귀 + Logger 디렉토리(선재) (등록: 2026-09-27, 완료: 2026-09-27, Hash: 92fd06a) ✅
 * 목적: `fWarrangeCliTests` 전체 실행 시 PaidApp 생존 추적 도메인 테스트 7건이 실패한다(66개 중). Issue94 검증 중 발견한 **선재 결함**으로 `showInCmdTab` 제거와 인과 없음. register/unregister 인가·세션 구분·로그 디렉토리 자동생성이 기대와 어긋난다
 * 상세:
     - 실패 7건(5 케이스): `PaidAppRouterTests.testStatusReturnsRunningAfterRegister`(register 실패) · `.testUnregisterWithForgedSessionIdFails403`(위조 sessionId 가 403 아닌 success) · `PaidAppStateLoggerTests.testAutoCreateDirectory`(디렉토리·파일 자동생성 실패) · `PaidAppStateStoreTests.testSameBundleIdDifferentStartTimeProducesDifferentSessions`(XCTAssertFalse 실패) · `.testUnregisterWithForgedSessionIdFails`(위조 unregister 가 성공)
@@ -37,11 +41,13 @@ date: 2026-04-07
     - 각 테스트가 임시 디렉토리(격리된 store 경로)를 쓰도록 setUp/tearDown 정비, 공유 상태 초기화. 인가 로직이 실제로 깨졌는지(코드 결함) vs 오염된 상태 탓인지 분리 확인
     - jma·jm4 양쪽에서 재현·수정 후 `fWarrangeCliTests` 전체 green 확인
     - 요청 출처: Issue94(showInCmdTab 제거) 검증 중 전체 스위트 실행에서 발견
+* 검증·종결 (2026-09-27, Hash: 92fd06a):
+    - **원인 3갈래 확정** (오진 2건 기각 — 상세 [`debug_TECH.md`](_public/cli/_doc_work/debug_TECH.md)): ① unregister 위조 통과 = 회귀 a197e62(`startTime nil → ?? true` 가 sessionId 불일치를 덮음) ② Logger 가 fileURL 주입 시 부모 디렉토리 미생성 ③ 테스트 bundlePath `"/p"` 가 setUp mock 미매핑 → 단계② forbidden
+    - "실행 중 cliApp 충돌"·"테스트 격리 오염" 가설은 **단독 실행에서도 재현**돼 기각. 실행·순서 무관한 로직/데이터 결함
+    - **수정**: unregister 는 sessionId 불일치 시 startTime 제공 시에만 fallback(위조 차단, 앱 코드) · appendSync 부모 디렉토리 자동생성(앱 코드) · 테스트 bundlePath 매핑 경로로
+    - jma 검증: `fWarrangeCliTests` **66개 전부 green**(TEST SUCCEEDED)
+    - ⚠️ **동작 변경**(unregister 위조 차단·Logger 디렉토리) 있음 — jm4 cliApp 재배포 필요 여부는 common-cf 에 보고(재배포는 잡/유휴 조건에서 처리)
 
-
-# 📗 선택
-
-# ✅ 완료
 
 ## Issue94: [Cleanup] `showInCmdTab` 죽은 키 제거 — paidApp 소유 이전으로 소비처 소멸 (등록: 2026-09-04, 완료: 2026-09-27, Hash: 9376526) ✅
 * 목적: paidApp 이 ⌘+Tab 앱 전환기 표시 설정의 소유를 자신의 UserDefaults 로 가져가면서(prj16#Issue276), cliApp 의 `showInCmdTab` 키는 **읽는 쪽도 쓰는 쪽도 없는 죽은 키**가 되었다. 남겨두면 소비처 없는 설정이 REST 응답·`_config.yml` 에 계속 노출되어, 다음에 이 키를 보는 사람이 "어딘가 쓰이겠거니" 하고 되살릴 여지를 남긴다
