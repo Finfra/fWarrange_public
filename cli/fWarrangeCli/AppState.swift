@@ -493,9 +493,16 @@ final class AppState {
         // 중복 인스턴스는 SingleInstanceGuard 가 exit(0) 으로 차단.
         BrewServiceSync.onAppStart()
 
-        // 접근성 권한 확인 (prompt:false — ad-hoc 서명에서는 시스템 프롬프트 무효)
+        // 접근성 권한 확인 — 미승인이면 새 프로세스에서 1회 목록 등록 요청(AccessibilityBootListing).
+        // XCTest 호스트에서는 시스템 창을 띄우지 않는다.
         if !windowManager.isAccessibilityGranted() {
-            logW("⚠️ Accessibility 권한이 필요합니다")
+            logW("⚠️ Accessibility 권한이 필요합니다 — 목록 등록 요청")
+            if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
+                AccessibilityBootListing.runIfNeeded(
+                    isGranted: windowManager.isAccessibilityGranted,
+                    requestListing: AccessibilityBootListing.requestSystemListing
+                )
+            }
             showAccessibilityGuide()
         }
 

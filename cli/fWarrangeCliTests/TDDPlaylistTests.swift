@@ -390,3 +390,28 @@ final class RESTListenerLifecycleTests: XCTestCase {
         )
     }
 }
+
+/// tdd accessibility-boot-listing (Issue104 · prj25 Issue237 이식): 미승인으로 부팅한 새 프로세스는
+/// 시스템 권한 요청을 정확히 1회 보내 손쉬운 사용 목록에 올라간다. 승인 상태면 묻지 않는다.
+final class AccessibilityBootListingTests: XCTestCase {
+
+    func testUngrantedBootRequestsListingOnce() {
+        var requests = 0
+        let requested = AccessibilityBootListing.runIfNeeded(
+            isGranted: { false },
+            requestListing: { requests += 1 }
+        )
+        XCTAssertTrue(requested)
+        XCTAssertEqual(requests, 1)
+    }
+
+    func testGrantedBootDoesNotAsk() {
+        var requests = 0
+        let requested = AccessibilityBootListing.runIfNeeded(
+            isGranted: { true },
+            requestListing: { requests += 1 }
+        )
+        XCTAssertFalse(requested)
+        XCTAssertEqual(requests, 0)
+    }
+}

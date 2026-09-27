@@ -9,7 +9,7 @@ date: 2026.09.26
 창 레이아웃 캡처와 복구 REST, 설정 영속성, brew 서비스 기동, 권한 상실 감지가 조용히 실패하지 않게 지킨다
 
 * 기존 러너: `bash cli/_tool/fwc-test.sh (8단계 통합) / bash cli/_tool/apiTestDo.sh v2 / bash cli/_tool/cmdTestDo.sh v2 / XCTest 타깃 cli/fWarrangeCliTests`
-* 목표 12개 중 기존 테스트로 덮인 것 5개 · 신규 7개 (prj5#Issue99 · Issue101, 2026.09.27)
+* 목표 13개 중 기존 테스트로 덮인 것 5개 · 신규 8개 (prj5#Issue99 · Issue101 · Issue104, 2026.09.27)
 * 최종 실행: **jma** — XCTest 84/84 passed (Issue101 이후)(`xcodebuild test`, test plan 격리) · `fwc-test.sh` ALL CLEAR 6 PASS / 0 FAIL
 * 테스트 호스트 격리: [fWarrangeCli.xctestplan](cli/fWarrangeCli.xctestplan) 이 `fWarrangeCli_config`·`FWARRANGE_DISABLE_HOTKEYS`·`FWARRANGE_PORT` 를 주입 — 실데이터 폴더·사용자 단축키·3016 포트를 건드리지 않는다
 
@@ -31,6 +31,7 @@ date: 2026.09.26
 | 10 | `version-label-match` | brew 패키지 라벨 버전, 앱 번들 버전, VERSION 파일이 서로 같다 | Issue89(brew 라벨 1.1.0 vs 번들 1.0.2 배포 사고), Issue91 | `cli/fWarrangeCliTests/TDDPlaylistTests.swift` (testVersionSourcesAgree) | ✅ 신규 |
 | 11 | `test-host-isolation` | XCTest 호스트(앱 바이너리 자체)가 실데이터 폴더 `~/Documents/finfra/fWarrangeData` 를 해석하지 않고, 글로벌 단축키를 등록하지 않는다 | prj5#Issue99 1차 라운드 발견(테스트 실행 중 Logger·PaidAppStateLogger 가 사용자 실데이터 폴더에 기록) | `cli/fWarrangeCliTests/TDDPlaylistTests.swift` (testTestHost*) + `cli/fWarrangeCli.xctestplan` | ✅ 신규 |
 | 12 | `rest-listener-lifecycle` | 프로세스당 AppState 는 1개이고, RESTServer 가 해제·재시작·중지되면 listener 도 닫혀 포트를 쥔 채 무응답이 되지 않는다 | Issue101(jma 3016 연결 accept 후 무응답 — AppState 이중 생성 + 고아 NWListener) | `cli/fWarrangeCliTests/TDDPlaylistTests.swift` (RESTListenerLifecycleTests) | ✅ 신규 |
+| 13 | `accessibility-boot-listing` | 미승인으로 부팅한 새 프로세스는 시스템 권한 요청을 정확히 1회 보내 손쉬운 사용 목록에 올라가고, 승인 상태로 부팅하면 아무것도 묻지 않는다 | Issue104(jma 에서 목록 미등록 → 수동 추가. 낡은 ad-hoc 서명 전제 정정) | `cli/fWarrangeCliTests/TDDPlaylistTests.swift` (AccessibilityBootListingTests) | ✅ jma |
 
 # 규약
 

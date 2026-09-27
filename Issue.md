@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 103
+* Issue HWM: 104
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -23,6 +23,15 @@ date: 2026-04-07
 
 1. `CLAUDE.md` 에 적힌 스킬 `build`·`deploy`·`brew-apply` 가 `.claude/skills/` 에 없음 · `README.md` 버전 1.0.2 표기 낡음(VERSION 1.1.1) (prj3#Issue717 배포용 TDD 적용 중 발견)
 # 🚧 진행중
+
+## Issue104: [Permission] 미승인 부팅 시 손쉬운 사용 목록 자동 등록 — prj25 Issue237 이식 (등록: 2026-09-27)
+* 목적: jma 에서 fWarrangeCli 가 손쉬운 사용 목록에 올라오지 않아 사용자가 수동 추가했다. 권한 요청 API 를 전혀 호출하지 않았고, `AppState` 주석의 *"ad-hoc 서명에서는 시스템 프롬프트 무효"* 는 Apple Development 서명 전환 전의 낡은 전제였다
+* 상세:
+    - Issue96 의 *"프롬프트는 실행 중 프로세스에 무효"* 는 유지 — 이번 요청은 **부팅 직후 새 프로세스 1회**에 한정
+    - 한 번 켠 권한은 재배포 뒤에도 유지(jma 재배포 2회 실측, `status/accessibility` granted=true)
+* 구현 명세:
+    - `AccessibilityBootListing`(`Services/AccessibilityService.swift`) — prj25 와 동일 계약. 호출은 `AppState` 부팅 미승인 분기, `XCTestConfigurationFilePath` 있으면 생략
+    - 검증: `TDDPlaylistTests.swift` 의 `AccessibilityBootListingTests` 2건 jma green · E2E — 목록 `−` 삭제 → 재기동 → 목록 자동 재등록 캡처
 
 # 📕 중요
 
