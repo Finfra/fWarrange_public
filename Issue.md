@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 101
+* Issue HWM: 102
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -21,8 +21,6 @@ date: 2026-04-07
 
 # 🌱 이슈후보
 
-1. RESTServer `allowExternal=false` 인데 `*:3016`(tcp46) 전체 인터페이스 바인딩 — `requiredLocalEndpoint` 를 NWListener 생성 후 설정해 무효 (Issue101 검증 중 jma `lsof` 실측)
-
 # 🚧 진행중
 
 # 📕 중요
@@ -32,6 +30,17 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue102: [Security] RESTServer 가 allowExternal=false 인데 `*:3016` 전체 인터페이스 바인딩 — 외부 노출 (등록: 2026-09-27, 완료: 2026-09-27, Hash: c5d8906) ✅
+* 목적: cliApp REST 는 기본 로컬 전용(allowExternal=false)이어야 하는데 jma `lsof` 실측에서 `*:3016`(tcp46) 전체 인터페이스에 바인딩돼 있었다. 같은 네트워크의 외부 호스트가 3016 에 접근 가능한 노출. Issue101(REST 무응답) 검증 중 발견
+* depends: Issue101
+* 상세:
+    - 원인: `RESTServer.bindListener()` 가 `requiredLocalEndpoint`(127.0.0.1)를 **NWListener 생성 후** `listener.parameters` 에 설정. `NWListener(using:)` 는 생성 시점 params 를 고정하므로 사후 변경이 반영되지 않아 전체 바인딩으로 남았다
+    - 2차 함정(수정 중 실측): 생성 **전** params 에 넣되 `on: nwPort` 와 함께 두면 requiredLocalEndpoint(host+port 완전 지정)와 중복돼 **listener 가 ready 되지 않고 REST 서버가 아예 안 뜬다**(lsof 3016 없음·REST 000). `on:` 생략으로 해결
+* 구현 명세:
+    - `bindListener()`: allowExternal=false 면 생성 전 `params.requiredLocalEndpoint = 127.0.0.1:port` + `NWListener(using: params)`(on: 생략). allowExternal=true 는 `NWListener(using: params, on: nwPort)` 유지
+    - 검증(jma, 공용 잠금): `lsof -nP -iTCP:3016 -sTCP:LISTEN` → **127.0.0.1:3016**(이전 `*:3016`) · REST 200 · 유닛테스트 84개 green · 배포 ALL CLEAR 11 PASS/0 FAIL
+    - ⚠️ 동작 변경(외부 3016 접근 차단) — jm4 재배포 시 반영. common-cf 보고
 
 ## Issue101: [Bug] REST 3016 이 연결을 받고도 응답하지 않는다 — AppState 이중 생성 + 고아 listener (등록: 2026-09-27, 완료: 2026-09-27, Hash: 9a710c6) ✅
 * 목적: prj5#Issue99 라운드 중 jma cliApp(pid 28113)이 3016 LISTEN·프로세스 생존 상태인데 health 가 타임아웃됐다. prj16 TDD 가 cliApp 에 의존하므로 원인을 제거한다
