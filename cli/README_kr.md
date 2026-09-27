@@ -32,7 +32,7 @@ fWarrange (Sandbox, App Store)          fWarrangeCli (Non-Sandbox, Helper)
 ## Homebrew (권장)
 
 > * **소스 코드**는 Apache-2.0 입니다. 직접 빌드하면 수량 제한 없이 사용할 수 있습니다.
-> * 아래 Homebrew 패키지 같은 **공식 빌드**는 개인 용도·교육·비영리·오픈소스 프로젝트, 그리고 그 밖의 조직은 **동시 250 카피**까지 무료입니다. 그 이상이거나 재판매·번들·호스팅 용도라면 상업 라이선스([COMMERCIAL.md](../COMMERCIAL.md))가 필요하며, 설치하면 [DISTRIBUTION-TERMS.md](../DISTRIBUTION-TERMS.md) 에 동의한 것으로 봅니다.
+> * 아래 Homebrew 패키지 같은 **공식 빌드**는 개인 용도·교육·비영리·오픈소스 프로젝트, 그리고 그 밖의 조직은 **동시 250 카피**까지 무료입니다. 그 이상이거나 재판매·번들·호스팅 용도라면 상업 라이선스([COMMERCIAL.md](../COMMERCIAL.md))가 필요하며, 설치하면 [배포본 약관](../DISTRIBUTION-TERMS_ko.md)([English](../DISTRIBUTION-TERMS.md))에 동의한 것으로 봅니다.
 
 ```bash
 brew tap finfra/tap

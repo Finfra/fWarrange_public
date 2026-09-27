@@ -39,7 +39,7 @@ macOS 창 관리 및 레이아웃 도구. 단축키 하나로 창 위치와 크�
 무료 오픈소스 CLI 엔진은 Homebrew로 배포됩니다.
 
 > * **소스 코드**는 Apache-2.0 입니다. 직접 빌드하면 수량 제한 없이 사용할 수 있습니다.
-> * 아래 Homebrew 패키지 같은 **공식 빌드**는 개인 용도·교육·비영리·오픈소스 프로젝트, 그리고 그 밖의 조직은 **동시 250 카피**까지 무료입니다. 그 이상이거나 재판매·번들·호스팅 용도라면 상업 라이선스([COMMERCIAL.md](COMMERCIAL.md))가 필요하며, 설치하면 [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) 에 동의한 것으로 봅니다.
+> * 아래 Homebrew 패키지 같은 **공식 빌드**는 개인 용도·교육·비영리·오픈소스 프로젝트, 그리고 그 밖의 조직은 **동시 250 카피**까지 무료입니다. 그 이상이거나 재판매·번들·호스팅 용도라면 상업 라이선스([COMMERCIAL.md](COMMERCIAL.md))가 필요하며, 설치하면 [배포본 약관](DISTRIBUTION-TERMS_ko.md)([English](DISTRIBUTION-TERMS.md))에 동의한 것으로 봅니다.
 
 ```bash
 # 1. tap 추가 및 설치
@@ -147,7 +147,7 @@ brew untap finfra/tap                 # (선택) tap 제거
 소스 코드는 Apache-2.0 으로 공개되어 있어 직접 빌드하면 수량 제한 없이 사용할 수 있습니다. 코드 라이선스와 별도로 다음 문서 3종이 있습니다:
 
 * [TRADEMARK.md](TRADEMARK.md) — "fWarrange"·"fWarrangeCli" 이름과 아이콘 (Apache-2.0 §6 은 상표권을 부여하지 않습니다). 포크는 이름을 바꿔야 합니다
-* [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) — **공식 빌드**(Homebrew `finfra/tap`, GitHub Releases)는 개인 용도·교육·비영리·오픈소스 프로젝트, 그리고 그 밖의 조직은 법인당 **동시 250 카피**(VM·컨테이너·CI 러너 포함)까지 무료입니다
+* [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) · [한국어본](DISTRIBUTION-TERMS_ko.md) — **공식 빌드**(Homebrew `finfra/tap`, GitHub Releases)는 개인 용도·교육·비영리·오픈소스 프로젝트, 그리고 그 밖의 조직은 법인당 **동시 250 카피**(VM·컨테이너·CI 러너 포함)까지 무료입니다
 * [COMMERCIAL.md](COMMERCIAL.md) — 250 카피 초과·재판매·유료 번들·호스팅 서비스
 
 한글 참고 번역: [LICENSE_ko.md](LICENSE_ko.md) (법적 효력은 영문본에 있습니다).
