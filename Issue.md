@@ -23,6 +23,7 @@ date: 2026-04-07
 1. `.claude/commands/deploy.md` 가 `brew publish` 를 🚧 TODO 로 표시하나 `cli/_tool/fwc-deploy-brew.sh` 에 `cmd_publish`(gh release + tap push)가 이미 구현됨 (prj3#Issue741 R2 배선 중 발견)
 
 1. `CLAUDE.md` 에 적힌 스킬 `build`·`deploy`·`brew-apply` 가 `.claude/skills/` 에 없음 · `README.md` 버전 1.0.2 표기 낡음(VERSION 1.1.1) (prj3#Issue717 배포용 TDD 적용 중 발견)
+1. XCTest 호스트가 기동 시 `BrewServiceSync.onAppStart()` 를 그대로 탄다 — 실 brew 서비스 조회(멈춰 있으면 `brew services start` handoff 까지)로 격리(#11) 결손 + 동기 `waitUntilExit` 중첩 런루프 안에서 테스트가 돌면 완료 후 호스트가 종료되지 않음(경쟁, 4/8회). `XCTestConfigurationFilePath` 가드 후보 · 진단 `cli/_doc_work/debug_TECH.md` (Issue105 중 발견)
 
 # 🚧 진행중
 
@@ -30,7 +31,11 @@ date: 2026-04-07
 
 # 📙 일반
 
-## Issue105: 라이선스 훅 문서 v1.1 → v1.2 재동기 + Official Build 구분 표식 (prj6#Issue17 적대적 검토 반영) (등록: 2026-09-27)
+# 📗 선택
+
+# ✅ 완료
+
+## Issue105: 라이선스 훅 문서 v1.1 → v1.2 재동기 + Official Build 구분 표식 (prj6#Issue17 적대적 검토 반영) (등록: 2026-09-27, 완료: 2026-09-28, Hash: f4bd0c7, b4ee029, 26c6f0f) ✅
 * 목적: Issue103 은 v1.1 템플릿으로 적용됐다. prj6 적대적 검토 29건 중 약관 정의 우회(컨테이너·CI·개인 예외·50% 미만 지배)·수정 금지와 Apache §2 충돌·NOTICE 의 Apache 전체 선언이 v1.1 에 남아 있다. v1.2 로 올린다
 * depends: prj6#Issue17
 * 상세:
@@ -38,14 +43,18 @@ date: 2026-04-07
     - README(en·ko) **설치 명령 바로 앞**에 약관 2줄(DISTRIBUTION-TERMS §0 요약)을 둔다 — 설치 후 caveats 만으로는 약관규제법상 사전 고지가 약하다(검토 medium)
     - Official Build 구분 표식(2단계 — 코드 변경이라 tdd red 먼저): 공식 빌드에만 들어가는 `resources/official/`(브랜드 배너·아이콘) + 공식 빌드 스크립트 분기 + `--version` 출력에 `Finfra Official Build` 표기. 소스 빌드에는 넣지 않는다. 없으면 약관 §1(b) 가 빈 집합이라 법무가 적용 대상을 구별 못 한다 — 1단계와 한 이슈로 하되 커밋은 나눈다
     - 근거: 템플릿 `/Users/nowage/_git/___architect/data/template/license/`(v1.2, prj6 `3195f25`) · 검토 처분표 `/Users/nowage/_git/___architect/_doc_work/report/license-hook-review_issue17_report.md` §반영 결과 · 정본 `/Users/nowage/_git/___architect/_doc_arch/license-profiles.md` §3-2·§5
+    - **한국어 약관본 추가** (prj6 템플릿 `/Users/nowage/_git/___architect/data/template/license/DISTRIBUTION-TERMS_ko.md`): 루트 `DISTRIBUTION-TERMS_ko.md` 를 영문 v1.2 와 **같은 커밋**으로 — 약관 §10 이 한국 거주 개인에게 한국어본의 동등 효력을 약속하므로 영문과 어긋나면 안 된다. 자리표 값은 영문과 동일. 확인: `diff <(grep -oE '^## [0-9]+\.' DISTRIBUTION-TERMS.md) <(grep -oE '^## [0-9]+\.' DISTRIBUTION-TERMS_ko.md)` 무출력
 * 구현 명세:
     - 검증: 4개 문서 `Version 1.2` · `grep -c '{{' ` 0 · README 설치 명령 앞 약관 2줄 · `mcp/LICENSE` MIT 불변
     - 금지: `git push` · npm publish · `Finfra/homebrew-tap` 수정 · 기존 태그 변경 · 템플릿 frontmatter·`📄 템플릿` 블록 복사
     - `Issue.md` 는 `python3 ~/.claude/sh/issue-tx.py --file Issue.md stage --issues <N>` / `check` 경유 · 커밋 후 ✅ 이동 + hash 기록
-
-# 📗 선택
-
-# ✅ 완료
+* 결과:
+    - 검증 통과 — 4개 문서 `Version 1.2`(TRADEMARK·COMMERCIAL·NOTICE 는 템플릿에 본문 판 표기가 없어 한 줄 추가) · `{{` 0건 · README(en·ko)·cli/README(en·ko) 설치 명령 앞 약관 2줄 · `mcp/LICENSE` 불변 · DISTRIBUTION-TERMS 는 템플릿과 단어열 일치 · 한국어본 조항 번호 `diff` 무출력
+    - 1단계(f4bd0c7): `{{MARKS}}` = `"fWarrangeCli", "fWarrange", the fWarrange icon`(NOTICE·TRADEMARK 동일) · 테마 전용 행·조항은 제외 · v1.1 의 "free for individuals" 를 v1.2 "personal use" 로 README·FAQ·formula caveats(스냅샷·생성기 2곳)까지 동기 · 명세의 «LICENSE_ko 변경 없음» 은 요약 절에 v1.1 개인 예외 문구가 있어 **요약 절만** 수정(Apache 번역부 불변)
+    - 한국어본(b4ee029): 요건이 1단계 커밋 뒤에 추가돼 «영문과 같은 커밋» 은 못 지켰다 — 두 판 모두 v1.2 로 HEAD 에서 정합
+    - 2단계(26c6f0f): `cli/resources/official/`(배너) + 빌드 단계 주입(약관 6종 동봉 = §6 «패키지 안») + `/cli/version` `distribution` → `--version` 에 `Finfra Official Build`/`Source Build`. 아이콘은 넣지 않았다(최소 1종 = 배너로 충족, 전용 아이콘 자산 없음). tdd #14 red→green, XCTest 93/93(jm4)
+    - 실측 발견: Xcode 는 빌드 단계만 번들을 바꾼 증분 빌드를 **재서명하지 않는다** → 공식 빌드를 전용 DerivedData + clean build 로 고정하고 `official_build_gate`(배너·`codesign --strict`) 추가. 진단은 `cli/_doc_work/debug_TECH.md`
+    - 미수행(사용자 몫): `git push` · tap formula caveats 갱신(personal use 문구) push · 실제 brew 공식 배포로 `--version` E2E
 
 ## Issue104: [Permission] 미승인 부팅 시 손쉬운 사용 목록 자동 등록 — prj25 Issue237 이식 (등록: 2026-09-27, 완료: 2026-09-27, Hash: 33b878a) ✅
 * 목적: jma 에서 fWarrangeCli 가 손쉬운 사용 목록에 올라오지 않아 사용자가 수동 추가했다. 권한 요청 API 를 전혀 호출하지 않았고, `AppState` 주석의 *"ad-hoc 서명에서는 시스템 프롬프트 무효"* 는 Apple Development 서명 전환 전의 낡은 전제였다
