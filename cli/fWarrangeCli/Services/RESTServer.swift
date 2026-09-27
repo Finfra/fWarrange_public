@@ -1322,7 +1322,8 @@ final class RESTServer: RESTServerProtocol {
         var data: [String: Any] = [
             "app": "fWarrangeCli",
             "version": version,
-            "build": build
+            "build": build,
+            "distribution": OfficialBuild.current
         ]
         if let min = minPaidAppVersion { data["minPaidAppVersion"] = min }
         let body: [String: Any] = ["status": "ok", "data": data]

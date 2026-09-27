@@ -136,19 +136,19 @@ paidApp (Sandbox GUI)                   cliApp (Non-Sandbox Daemon)
 
 ## 4.6 Windows / UI / System / CLI
 
-| Method | Path                         | 설명                                                   |
-| ------ | ---------------------------- | ------------------------------------------------------ |
-| GET    | `/windows/current`           | 현재 창 목록 (저장 없이)                               |
-| GET    | `/windows/apps`              | 실행 중 앱 목록                                        |
-| PUT    | `/ui/state`                  | UI 상태 변경 (캡처 자동화)                             |
-| GET    | `/status`                    | cliApp 런타임 스냅샷 (버전·포트·uptime·activeMode 포함) |
-| GET    | `/status/accessibility`      | 접근성 권한 상태 (TCC)                                 |
-| GET    | `/cli/status`                | CLI 헬퍼 상태                                          |
-| GET    | `/cli/version`               | CLI 헬퍼 버전                                          |
-| POST   | `/cli/quit`                  | CLI 종료 (`X-Confirm: true`)                           |
-| POST   | `/cli/restart`               | CLI 재시작 — launchd KeepAlive 의존 (`X-Confirm: true`) (Issue229_4) |
-| POST   | `/cli/pause`                 | REST API 일시정지 — `/`·`/cli/*` 외 503 (Issue229_4)   |
-| POST   | `/cli/resume`                | REST API 재개 (Issue229_4)                             |
+| Method | Path                    | 설명                                                                 |
+| ------ | ----------------------- | -------------------------------------------------------------------- |
+| GET    | `/windows/current`      | 현재 창 목록 (저장 없이)                                             |
+| GET    | `/windows/apps`         | 실행 중 앱 목록                                                      |
+| PUT    | `/ui/state`             | UI 상태 변경 (캡처 자동화)                                           |
+| GET    | `/status`               | cliApp 런타임 스냅샷 (버전·포트·uptime·activeMode 포함)              |
+| GET    | `/status/accessibility` | 접근성 권한 상태 (TCC)                                               |
+| GET    | `/cli/status`           | CLI 헬퍼 상태                                                        |
+| GET    | `/cli/version`          | CLI 헬퍼 버전 + `distribution`(공식/소스 빌드, Issue105)             |
+| POST   | `/cli/quit`             | CLI 종료 (`X-Confirm: true`)                                         |
+| POST   | `/cli/restart`          | CLI 재시작 — launchd KeepAlive 의존 (`X-Confirm: true`) (Issue229_4) |
+| POST   | `/cli/pause`            | REST API 일시정지 — `/`·`/cli/*` 외 503 (Issue229_4)                 |
+| POST   | `/cli/resume`           | REST API 재개 (Issue229_4)                                           |
 
 ## 4.7 Modes (Phase 2 — 컨텍스트 스위칭)
 

@@ -508,7 +508,7 @@ struct CLIHandler {
 
         Options:
           -h, --help          Show this help
-          -v, --version       Show version
+          -v, --version       Show version and build distribution (Finfra Official Build / Source Build)
           --port <port>       API port (default: 3016)
           --host <host>       API host (default: localhost)
           --pretty            Pretty-print JSON output

@@ -1991,6 +1991,13 @@ components:
             app: { type: string, example: fWarrangeCli }
             version: { type: string, example: "1.0.0" }
             build: { type: string, example: "1" }
+            distribution:
+              type: string
+              description: |
+                Build distribution (Issue105). "Finfra Official Build" when the bundle carries
+                the Official Build Components (DISTRIBUTION-TERMS.md §1(b)); "Source Build" for
+                a build made from source. Shown by `fWarrangeCli --version`.
+              example: "Finfra Official Build"
             minPaidAppVersion:
               type: string
               nullable: true
@@ -1998,7 +2005,7 @@ components:
                 paidApp과의 호환을 보장하는 최소 버전. Info.plist의 MinPaidAppVersion
                 키가 설정된 경우에만 포함된다. null이면 버전 제한 없음.
               example: "1.2.0"
-          required: [app, version, build]
+          required: [app, version, build, distribution]
       required: [status, data]
 
     SetUIStateRequest:

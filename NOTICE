@@ -13,6 +13,9 @@ Use of these marks is governed by TRADEMARK.md and is not granted by the Apache
 License (Section 6). Retaining this NOTICE as required by Section 4(d) of the Apache
 License is always permitted.
 
+The files in cli/resources/official/ are Official Build Components. They are not
+licensed under the Apache License and are included only in Official Builds.
+
 The MCP server package in mcp/ (npm: fwarrange-mcp) is licensed separately
 under the MIT License. See mcp/LICENSE.
 

@@ -61,6 +61,7 @@
 		DA8C1D721A4DDE07B0E8FB9C /* RestoreStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 633BCF8630F3A9F5B69FE7E8 /* RestoreStatus.swift */; };
 		DF36E5E2B8875DDC165C24BD /* WindowInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC65FB4F55C0366BCFD541BA /* WindowInfo.swift */; };
 		E58108B1DF458379DB3E8C90 /* WindowCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF3DC701F6F34498C5A607B /* WindowCaptureService.swift */; };
+		E589961B0352C97D9FD7EBAD /* OfficialBuild.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB88D8A29284C9C997E34D6 /* OfficialBuild.swift */; };
 		EFEA32B3FCD8D5FF47E461F1 /* WindowRestoreService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D014B086F458FF9FFCC06DFF /* WindowRestoreService.swift */; };
 		F0F7DCA11B19D2649EA9A972 /* RestoreStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 485F7966645B26620D254726 /* RestoreStats.swift */; };
 		F7461E5468F29CF86164D2DB /* MenuBarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E49C94352030852326F675A4 /* MenuBarManager.swift */; };
@@ -124,6 +125,7 @@
 		A1E137415D6E8C59805CCF00 /* PaidAppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppRouter.swift; sourceTree = "<group>"; };
 		A465F6F118008C206B5DAC8C /* TitleNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleNormalizer.swift; sourceTree = "<group>"; };
 		A804ACAAB31972F56325FA7F /* AppSettings+Patch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings+Patch.swift"; sourceTree = "<group>"; };
+		AAB88D8A29284C9C997E34D6 /* OfficialBuild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfficialBuild.swift; sourceTree = "<group>"; };
 		AEC521474E835C8993023C58 /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
 		B06E1306C0A7E734A73B6052 /* PaidAppStateLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppStateLogger.swift; sourceTree = "<group>"; };
 		B103338C6EF3DA1021783071 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -178,6 +180,7 @@
 				51F3BE19E9D78346060225CE /* KeySpecParser.swift */,
 				2473C39CC4C684EFCA5D58CB /* LocalizedStringManager.swift */,
 				A0D0D47C31F3DB1D08190C0C /* Logger.swift */,
+				AAB88D8A29284C9C997E34D6 /* OfficialBuild.swift */,
 				B06E1306C0A7E734A73B6052 /* PaidAppStateLogger.swift */,
 			);
 			path = Utils;
@@ -298,6 +301,7 @@
 			buildPhases = (
 				7CB21EE209B9D6FC89F5DFD1 /* Sources */,
 				0EA9F9EF5E7BBEADFB0ED848 /* Resources */,
+				2A794DD4F0F65D2ADA47EB41 /* Official Build Components */,
 			);
 			buildRules = (
 			);
@@ -361,6 +365,28 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		2A794DD4F0F65D2ADA47EB41 /* Official Build Components */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Official Build Components";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "bash \"${SRCROOT}/_tool/fwc-official-components.sh\"";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		77251AD83BE15AB375406FEE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -409,6 +435,7 @@
 				F7461E5468F29CF86164D2DB /* MenuBarManager.swift in Sources */,
 				D552584C661C9FB653657DBF /* Mode.swift in Sources */,
 				9347927C5890D11DB089E08D /* ModeStorageService.swift in Sources */,
+				E589961B0352C97D9FD7EBAD /* OfficialBuild.swift in Sources */,
 				B8968D717940342A62016738 /* OpType.swift in Sources */,
 				8466F8DBEC6EABE719FB69D4 /* Operation.swift in Sources */,
 				107AB86DCEB649908935802A /* OperationRegistry.swift in Sources */,

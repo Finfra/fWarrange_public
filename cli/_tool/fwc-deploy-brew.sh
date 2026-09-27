@@ -23,6 +23,8 @@ CLI_DIR="$(dirname "$SCRIPT_DIR")"
 TAP_DIR="/opt/homebrew/Library/Taps/finfra/homebrew-tap"
 TAP_FORMULA="$TAP_DIR/Formula/fwarrange-cli.rb"
 TARBALL="/tmp/fWarrangeCli-local.tar.gz"
+# Official builds get their own derived data (Issue105) — never shared with source builds
+OFFICIAL_DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData/fWarrangeCli-official"
 # VERSION 파일에서 읽기 (없으면 0.0.0-local 폴백)
 _VERSION_FILE="$(git -C "$CLI_DIR" rev-parse --show-toplevel 2>/dev/null)/VERSION"
 LOCAL_VERSION="$(cat "$_VERSION_FILE" 2>/dev/null | tr -d '[:space:]')"
@@ -142,6 +144,28 @@ bundle_version_gate() {
     return 0
 }
 
+# Post-build (Issue105): an official build must carry the Official Build Components
+# (DISTRIBUTION-TERMS.md §1(b)) and still pass signature verification after they were
+# injected by the "Official Build Components" build phase.
+# $1 = path to the .app bundle
+official_build_gate() {
+    local APP="$1"
+    local BANNER="$APP/Contents/Resources/Official/official-build.txt"
+
+    if [ "$(head -n 1 "$BANNER" 2>/dev/null)" != "Finfra Official Build" ]; then
+        echo "❌ Official Build 표식 누락 — 배포 중단: $BANNER"
+        echo "   → xcodebuild 에 FWARRANGE_OFFICIAL_BUILD=YES 가 전달됐는지 확인"
+        return 1
+    fi
+    if ! codesign --verify --deep --strict "$APP" 2>&1; then
+        echo "❌ 서명 검증 실패 — Official Build Components 주입 후 서명이 깨짐: $APP"
+        return 1
+    fi
+
+    echo "✅ Official Build 표식: $(head -n 1 "$BANNER") (서명 유효)"
+    return 0
+}
+
 # ==========================================
 # 서브커맨드: local (기존 8단계)
 # ==========================================
@@ -177,7 +201,11 @@ cmd_local() {
     echo ""
     echo "=== Step 1: Release 빌드 ==="
     pushd "$CLI_DIR" > /dev/null || { record_result "Release 빌드" "FAIL" "cd $CLI_DIR 실패"; return 1; }
-    xcodebuild -scheme fWarrangeCli -configuration Release build 2>&1 | tail -8
+    # Official build (Issue105): FWARRANGE_OFFICIAL_BUILD=YES injects the Official Build Components.
+    # Always a clean build in its own derived data — Xcode does not re-sign an incremental build
+    # whose bundle only changed through that phase, so a shared tree would ship a broken seal.
+    xcodebuild -scheme fWarrangeCli -configuration Release -derivedDataPath "$OFFICIAL_DERIVED_DATA" \
+        FWARRANGE_OFFICIAL_BUILD=YES clean build 2>&1 | tail -8
     local BUILD_STATUS=${PIPESTATUS[0]}
     popd > /dev/null || true
     if [ "$BUILD_STATUS" -eq 0 ]; then
@@ -234,7 +262,7 @@ cmd_local() {
     echo "=== Step 4: 로컬 tarball 생성 (서명된 .app 포함) ==="
     # Step 1에서 빌드된 .app 경로 조회
     local BUILT_APP
-    BUILT_APP=$(cd "$CLI_DIR" && xcodebuild -scheme fWarrangeCli -configuration Release -showBuildSettings 2>/dev/null | awk -F ' = ' '/ TARGET_BUILD_DIR =/ {print $2}' | xargs)
+    BUILT_APP=$(cd "$CLI_DIR" && xcodebuild -scheme fWarrangeCli -configuration Release -derivedDataPath "$OFFICIAL_DERIVED_DATA" -showBuildSettings 2>/dev/null | awk -F ' = ' '/ TARGET_BUILD_DIR =/ {print $2}' | xargs)
     if [ -z "$BUILT_APP" ] || [ ! -d "$BUILT_APP/fWarrangeCli.app" ]; then
         record_result "tarball 생성" "FAIL" "빌드된 .app 미존재: $BUILT_APP/fWarrangeCli.app"
         print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
@@ -247,6 +275,12 @@ cmd_local() {
         return 1
     fi
     record_result "번들 실측 게이트" "PASS" "CFBundleShortVersionString=$LOCAL_VERSION"
+    if ! official_build_gate "$BUILT_APP/fWarrangeCli.app"; then
+        record_result "Official Build 게이트" "FAIL" "표식 누락 또는 서명 무효"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    record_result "Official Build 게이트" "PASS" "Finfra Official Build (서명 유효)"
 
     # 서명 유지를 위해 -p (permissions) 옵션 사용
     # Homebrew가 단일 루트 디렉토리를 buildpath로 인식하므로
@@ -522,7 +556,11 @@ cmd_publish() {
     echo ""
     echo "=== Step 1: Release 빌드 ==="
     pushd "$CLI_DIR" > /dev/null || { record_result "Release 빌드" "FAIL" "cd $CLI_DIR 실패"; return 1; }
-    xcodebuild -scheme fWarrangeCli -configuration Release build 2>&1 | tail -8
+    # Official build (Issue105): FWARRANGE_OFFICIAL_BUILD=YES injects the Official Build Components.
+    # Always a clean build in its own derived data — Xcode does not re-sign an incremental build
+    # whose bundle only changed through that phase, so a shared tree would ship a broken seal.
+    xcodebuild -scheme fWarrangeCli -configuration Release -derivedDataPath "$OFFICIAL_DERIVED_DATA" \
+        FWARRANGE_OFFICIAL_BUILD=YES clean build 2>&1 | tail -8
     local BUILD_STATUS=${PIPESTATUS[0]}
     popd > /dev/null || true
     if [ "$BUILD_STATUS" -eq 0 ]; then
@@ -537,7 +575,7 @@ cmd_publish() {
     echo ""
     echo "=== Step 2: tarball 생성 ($ASSET) ==="
     local BUILT_APP
-    BUILT_APP=$(cd "$CLI_DIR" && xcodebuild -scheme fWarrangeCli -configuration Release -showBuildSettings 2>/dev/null | awk -F ' = ' '/ TARGET_BUILD_DIR =/ {print $2}' | xargs)
+    BUILT_APP=$(cd "$CLI_DIR" && xcodebuild -scheme fWarrangeCli -configuration Release -derivedDataPath "$OFFICIAL_DERIVED_DATA" -showBuildSettings 2>/dev/null | awk -F ' = ' '/ TARGET_BUILD_DIR =/ {print $2}' | xargs)
     if [ -z "$BUILT_APP" ] || [ ! -d "$BUILT_APP/fWarrangeCli.app" ]; then
         record_result "tarball 생성" "FAIL" "빌드된 .app 미존재: $BUILT_APP/fWarrangeCli.app"
         print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
@@ -550,6 +588,12 @@ cmd_publish() {
         return 1
     fi
     record_result "번들 실측 게이트" "PASS" "CFBundleShortVersionString=$LOCAL_VERSION"
+    if ! official_build_gate "$BUILT_APP/fWarrangeCli.app"; then
+        record_result "Official Build 게이트" "FAIL" "표식 누락 또는 서명 무효"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    record_result "Official Build 게이트" "PASS" "Finfra Official Build (서명 유효)"
 
     # 구조: fwarrange-cli-pkg/fWarrangeCli.app (Homebrew 가 단일 루트 디렉토리를 strip → buildpath 에 .app)
     # 서명 유지를 위해 -p (permissions) 사용

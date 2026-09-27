@@ -313,7 +313,7 @@ final class RESTListenerLifecycleTests: XCTestCase {
 
     // MARK: helpers
 
-    struct GetResult { var status: Int?; var error: Error?
+    struct GetResult { var status: Int?; var error: Error?; var data: Data?
         var refused: Bool { (error as? URLError)?.code == .cannotConnectToHost } }
 
     static func get(port: UInt16, path: String, timeout: TimeInterval) -> GetResult {
@@ -324,7 +324,8 @@ final class RESTListenerLifecycleTests: XCTestCase {
         defer { session.invalidateAndCancel() }
         var result = GetResult()
         let done = DispatchSemaphore(value: 0)
-        session.dataTask(with: URL(string: "http://127.0.0.1:\(port)\(path)")!) { _, resp, err in
+        session.dataTask(with: URL(string: "http://127.0.0.1:\(port)\(path)")!) { data, resp, err in
+            result.data = data
             result.status = (resp as? HTTPURLResponse)?.statusCode
             result.error = err
             done.signal()
@@ -413,5 +414,112 @@ final class AccessibilityBootListingTests: XCTestCase {
         )
         XCTAssertFalse(requested)
         XCTAssertEqual(requests, 0)
+    }
+}
+
+// MARK: - official-build-marker (Issue105)
+
+/// DISTRIBUTION-TERMS §1(b) applies only to Official Build Components. If an official
+/// build and a source build are indistinguishable, the terms have nothing to apply to.
+/// The components live in `cli/resources/official/` and are copied into the bundle only
+/// when the official build scripts pass `FWARRANGE_OFFICIAL_BUILD=YES`.
+final class OfficialBuildMarkerTests: XCTestCase {
+
+    private var tmpDir: URL!
+
+    override func setUpWithError() throws {
+        tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("OfficialBuildMarkerTests_\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: tmpDir)
+    }
+
+    private var cliRoot: URL {
+        // <root>/cli/fWarrangeCliTests/TDDPlaylistTests.swift
+        URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+    }
+
+    func testResourcesWithBannerAreOfficialBuild() throws {
+        let official = tmpDir.appendingPathComponent("Official")
+        try FileManager.default.createDirectory(at: official, withIntermediateDirectories: true)
+        try "Finfra Official Build\n".write(to: official.appendingPathComponent("official-build.txt"),
+                                             atomically: true, encoding: .utf8)
+        XCTAssertEqual(OfficialBuild.distribution(resourcesURL: tmpDir), "Finfra Official Build")
+    }
+
+    func testResourcesWithoutBannerAreSourceBuild() throws {
+        XCTAssertEqual(OfficialBuild.distribution(resourcesURL: tmpDir), "Source Build")
+        XCTAssertEqual(OfficialBuild.distribution(resourcesURL: nil), "Source Build")
+        let official = tmpDir.appendingPathComponent("Official")
+        try FileManager.default.createDirectory(at: official, withIntermediateDirectories: true)
+        try "  \n".write(to: official.appendingPathComponent("official-build.txt"), atomically: true, encoding: .utf8)
+        XCTAssertEqual(OfficialBuild.distribution(resourcesURL: tmpDir), "Source Build", "blank banner")
+    }
+
+    /// The checked-in component must produce the marker the terms refer to.
+    func testRepoBannerSaysFinfraOfficialBuild() throws {
+        let banner = try String(contentsOf: cliRoot.appendingPathComponent("resources/official/official-build.txt"),
+                                encoding: .utf8)
+        XCTAssertEqual(banner.split(separator: "\n").first.map(String.init), "Finfra Official Build")
+    }
+
+    /// A plain Xcode build — what anyone gets from `git clone` — must not ship the components.
+    func testTestHostIsSourceBuild() throws {
+        let resources = try XCTUnwrap(Bundle.main.resourceURL)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: resources.appendingPathComponent("Official").path),
+                       "a source build must not contain Official Build Components")
+        XCTAssertEqual(OfficialBuild.current, "Source Build")
+    }
+
+    /// `fWarrangeCli --version` prints GET /cli/version — the marker has to be in that payload.
+    func testCLIVersionResponseCarriesDistribution() throws {
+        let port = try XCTUnwrap(Env.port, "FWARRANGE_PORT must be injected by fWarrangeCli.xctestplan")
+        let result = RESTListenerLifecycleTests.get(port: port, path: "/api/v2/cli/version", timeout: 3)
+        XCTAssertEqual(result.status, 200, String(describing: result.error))
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(result.data)) as? [String: Any])
+        let data = try XCTUnwrap(json["data"] as? [String: Any])
+        XCTAssertEqual(data["distribution"] as? String, "Source Build")
+    }
+
+    // MARK: build-phase script (the official/source branch itself)
+
+    private func runInjector(official: Bool) throws -> Int32 {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [cliRoot.appendingPathComponent("_tool/fwc-official-components.sh").path]
+        var env = ["PATH": "/usr/bin:/bin",
+                   "SRCROOT": cliRoot.path,
+                   "TARGET_BUILD_DIR": tmpDir.path,
+                   "UNLOCALIZED_RESOURCES_FOLDER_PATH": "App.app/Contents/Resources"]
+        if official { env["FWARRANGE_OFFICIAL_BUILD"] = "YES" }
+        process.environment = env
+        try process.run()
+        process.waitUntilExit()
+        return process.terminationStatus
+    }
+
+    private var injectedDir: URL { tmpDir.appendingPathComponent("App.app/Contents/Resources/Official") }
+
+    func testOfficialBuildScriptCopiesComponentsAndTerms() throws {
+        XCTAssertEqual(try runInjector(official: true), 0)
+        for name in ["official-build.txt", "LICENSE", "NOTICE", "TRADEMARK.md", "DISTRIBUTION-TERMS.md",
+                     "DISTRIBUTION-TERMS_ko.md", "COMMERCIAL.md"] {
+            XCTAssertTrue(FileManager.default.fileExists(atPath: injectedDir.appendingPathComponent(name).path),
+                          "official build must carry \(name)")
+        }
+        XCTAssertEqual(OfficialBuild.distribution(resourcesURL: injectedDir.deletingLastPathComponent()),
+                       "Finfra Official Build")
+    }
+
+    /// DerivedData is shared between official and source builds — a source build must
+    /// remove components left behind by an earlier official build.
+    func testSourceBuildScriptRemovesStaleComponents() throws {
+        try FileManager.default.createDirectory(at: injectedDir, withIntermediateDirectories: true)
+        try "stale".write(to: injectedDir.appendingPathComponent("official-build.txt"), atomically: true, encoding: .utf8)
+        XCTAssertEqual(try runInjector(official: false), 0)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: injectedDir.path))
     }
 }

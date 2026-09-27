@@ -37,6 +37,13 @@ targets:
         ENABLE_HARDENED_RUNTIME: true
       release:
         ENABLE_PROFILE_GUIDED_OPTIMIZATION: false
+    # Official Build Components (Issue105): copied into the bundle only when the official
+    # build scripts pass FWARRANGE_OFFICIAL_BUILD=YES. Last phase → runs before code signing.
+    # Official builds must be clean builds (Xcode does not re-sign when only this phase changed).
+    postBuildScripts:
+      - name: Official Build Components
+        script: bash "${SRCROOT}/_tool/fwc-official-components.sh"
+        basedOnDependencyAnalysis: false
     entitlements:
       path: fWarrangeCli/fWarrangeCli.entitlements
       properties:
