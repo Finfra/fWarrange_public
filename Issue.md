@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 102
+* Issue HWM: 103
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -31,6 +31,24 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue103: 라이선스 프로파일 A 적용 — CC BY-NC 4.0 이중 → Apache-2.0 + 훅 ①상표 ②배포본 약관(N=250), mcp/ 는 MIT (등록: 2026-09-27, 완료: 2026-09-27, Hash: 7449eff) ✅
+* 목적: CC 는 소프트웨어에 부적합하고 NC 는 회사 사용을 전부 막아 채택을 죽인다. 정본대로 소스 오픈 + 코드 밖 훅으로 전환한다(완화 방향이라 소급 문제 없음)
+* 상세:
+    - 루트 `LICENSE`(현 이중 문서) → Apache-2.0 원문 · `NOTICE` · `TRADEMARK.md`·`DISTRIBUTION-TERMS.md`·`COMMERCIAL.md`(`{{N}}`=250 · `{{EFFECTIVE_DATE}}`=커밋일 · `{{CHANNELS}}`=Homebrew tap finfra/tap, GitHub Releases) · `LICENSE_ko.md` 참고 번역
+    - 현 LICENSE "Notes" 절(`fwarrange-mcp` ≤1.0.2 MIT)은 README 절로 이관 + "1.0.2 이후~이번 커밋 이전은 CC BY-NC 4.0 이중" 한 줄 추가
+    - `mcp/` 는 프로파일 C: `mcp/LICENSE` MIT 원문 · `mcp/package.json.license` `(CC-BY-NC-4.0 OR LicenseRef-Commercial)` → `MIT`
+    - README(en·kr) 라이선스 절을 `cli/`(Apache-2.0 + 훅 3문서) / `mcp/`(MIT) 표로 교체
+    - 정본 `/Users/nowage/_git/___architect/_doc_arch/license-profiles.md` §4 row 26 · 템플릿 `/Users/nowage/_git/___architect/data/template/license/README.md`(자리표 값 표 포함 — `{{N}}`=250 · `{{LICENSOR}}`=`Finfra Co., Ltd. (https://finfra.kr)` · `{{CONTACT}}`=finfra@gmail.com)
+* 구현 명세:
+    - 검증: 위 파일 전부 존재 · README 라이선스 절이 각 파일을 링크 · `grep -rn "All rights reserved" README*` 0건 · 정본 §4 해당 행과 대조
+    - 금지: `git push`(공개 라이선스 변경은 사용자가 push) · npm publish · `Finfra/homebrew-tap` 수정(formula `license "Apache-2.0"`·caveats 갱신 명령만 report 에 적는다) · 기존 릴리스 태그 변경
+    - `Issue.md` 는 `python3 ~/.claude/sh/issue-tx.py --file Issue.md stage --issues <N>` / `check` 경유 스테이징 · 커밋 후 ✅ 이동 + hash 기록
+* 결과:
+    - 검증 4항 통과 — 파일 7종 존재 · README(en·kr) 7종 링크 · `All rights reserved` 0건 · 정본 §4 row 26·§5 혼합 프로파일 규칙 충족. Apache 원문 md5 `3b83ef96…` = apache.org 공식본
+    - 명세 외 동반 정리: `cli/`·`mcp/` README · manual FAQ · `openapi_v2.yaml` `info.license` · brew formula 생성기(local·publish)·스냅샷의 `license "Apache-2.0"` + caveats 약관 3줄 (§5 «3곳 동시 갱신»)
+    - 보류: `openapi_v1.yaml` license 표기(동결 규칙) · tarball 약관 동봉 · `CONTRIBUTING.md` 부재 · prj6 `COMMERCIAL.md` 템플릿 절 번호(§3→§4) 결손 — 상세·tap 갱신 명령은 `cli/_doc_work/report/Issue103_license_report.md`
+    - 미수행(사용자 몫): `git push` · tap formula push · npm publish
 
 ## Issue102: [Security] RESTServer 가 allowExternal=false 인데 `*:3016` 전체 인터페이스 바인딩 — 외부 노출 (등록: 2026-09-27, 완료: 2026-09-27, Hash: c5d8906) ✅
 * 목적: cliApp REST 는 기본 로컬 전용(allowExternal=false)이어야 하는데 jma `lsof` 실측에서 `*:3016`(tcp46) 전체 인터페이스에 바인딩돼 있었다. 같은 네트워크의 외부 호스트가 3016 에 접근 가능한 노출. Issue101(REST 무응답) 검증 중 발견
