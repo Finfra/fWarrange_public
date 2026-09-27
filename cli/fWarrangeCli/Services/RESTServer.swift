@@ -264,21 +264,24 @@ final class RESTServer: RESTServerProtocol {
                 logE("[RESTServer] 유효하지 않은 포트: \(self.port)")
                 return
             }
-            newListener = try NWListener(using: params, on: nwPort)
+            // Issue102: requiredLocalEndpoint 는 NWListener 생성 **전** params 에 설정해야 한다.
+            // NWListener(using:) 는 생성 시점의 params 를 고정하므로, 생성 후
+            // listener.parameters 를 바꿔도 바인딩에 반영되지 않아 allowExternal=false 인데도
+            // *:3016 전체 인터페이스에 열렸다(외부 노출). 생성 전에 넣어 localhost 로 제한한다.
+            // ⚠️ requiredLocalEndpoint 가 host+port 를 모두 지정하므로 `on:` 파라미터와 중복되면
+            // listener 가 ready 되지 않는다 → localhost 경로는 `on:` 을 생략하고 endpoint 의 port 를 쓴다.
+            if !allowExternal {
+                params.requiredLocalEndpoint = NWEndpoint.hostPort(
+                    host: NWEndpoint.Host("127.0.0.1"),
+                    port: nwPort
+                )
+                newListener = try NWListener(using: params)
+            } else {
+                newListener = try NWListener(using: params, on: nwPort)
+            }
         } catch {
             logE("[RESTServer] Listener 생성 실패: \(error)")
             return
-        }
-
-        // 바인딩 주소 (외부 허용 여부)
-        if !allowExternal {
-            // localhost 전용
-            if let localPort = NWEndpoint.Port(rawValue: self.port) {
-                newListener.parameters.requiredLocalEndpoint = NWEndpoint.hostPort(
-                    host: NWEndpoint.Host("127.0.0.1"),
-                    port: localPort
-                )
-            }
         }
 
         newListener.stateUpdateHandler = { [weak self, weak newListener] state in
