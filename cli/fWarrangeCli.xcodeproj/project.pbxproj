@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0D3C2415DC6373F09EA80795 /* MenuBarIconService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02AABF5BA2DA9F699DE4D3F7 /* MenuBarIconService.swift */; };
 		107AB86DCEB649908935802A /* OperationRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BD5DFCD033C21B57C2C649E /* OperationRegistry.swift */; };
+		138A490D8DD1ACB6F4FF3900 /* TDDPlaylistTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 059621AA421611D1877BE187 /* TDDPlaylistTests.swift */; };
 		1690408C52A3A242AC5555EF /* PaidAppLauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7998C27A76039315BB327128 /* PaidAppLauncher.swift */; };
 		16A8E35E9A56AE10852C452E /* LoginItemService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48A88A66C463DAAA860A834A /* LoginItemService.swift */; };
 		18C22AC105FA8DF6951C2633 /* LayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 791814979BEAEF63CC0C95C8 /* LayoutManager.swift */; };
@@ -80,6 +81,7 @@
 
 /* Begin PBXFileReference section */
 		02AABF5BA2DA9F699DE4D3F7 /* MenuBarIconService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarIconService.swift; sourceTree = "<group>"; };
+		059621AA421611D1877BE187 /* TDDPlaylistTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TDDPlaylistTests.swift; sourceTree = "<group>"; };
 		0C7DF7ED030EBBAC16FD552B /* PaidAppStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaidAppStateStore.swift; sourceTree = "<group>"; };
 		0CF39B73806C305D1DA7D76C /* FWarrangeCliSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FWarrangeCliSmokeTests.swift; sourceTree = "<group>"; };
 		0EA8523BB57D0B3157DFB6B5 /* BrewServiceSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrewServiceSync.swift; sourceTree = "<group>"; };
@@ -235,6 +237,7 @@
 				E0CF6DAFCE546CC46A0E92C7 /* PaidAppStateLoggerTests.swift */,
 				96D9BE8B5B15A0FC8367FE33 /* PaidAppStateStoreTests.swift */,
 				8C9B500812621C578C458AF8 /* ServiceLabelAndPermissionTests.swift */,
+				059621AA421611D1877BE187 /* TDDPlaylistTests.swift */,
 				4E97DDA9945E4F5FCD01293C /* UndoShortcutTests.swift */,
 			);
 			path = fWarrangeCliTests;
@@ -369,6 +372,7 @@
 				B2CBEE112BD7F6D480059816 /* PaidAppStateLoggerTests.swift in Sources */,
 				D6BBE10639BAFBC04E911FA7 /* PaidAppStateStoreTests.swift in Sources */,
 				1B3B1477F4255BB3D9AD1E21 /* ServiceLabelAndPermissionTests.swift in Sources */,
+				138A490D8DD1ACB6F4FF3900 /* TDDPlaylistTests.swift in Sources */,
 				3A7ADCCC27B9C04C44D5B3B2 /* UndoShortcutTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

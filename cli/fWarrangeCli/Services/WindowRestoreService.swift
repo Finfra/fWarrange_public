@@ -24,25 +24,37 @@ private actor UsedWindowsActor {
 /// 다른 앱이 존재함. ex) VSCode: ownerName="Visual Studio Code" / localizedName="Code".
 /// 이름 기반 매칭은 휴리스틱이므로 bundleId가 있으면 항상 우선.
 fileprivate func appMatches(_ app: NSRunningApplication, targetApp: String, targetBundleId: String?) -> Bool {
-    // 1순위: bundleIdentifier 정확 일치
-    if let bid = targetBundleId, !bid.isEmpty,
-       let appBid = app.bundleIdentifier, !appBid.isEmpty,
-       appBid == bid {
-        return true
-    }
+    AppMatcher.matches(
+        bundleIdentifier: app.bundleIdentifier,
+        nameCandidates: [
+            app.localizedName,
+            app.bundleURL?.deletingPathExtension().lastPathComponent,
+            app.executableURL?.lastPathComponent
+        ].compactMap { $0 },
+        targetApp: targetApp,
+        targetBundleId: targetBundleId)
+}
 
-    // 2순위: 다중 이름 후보 매칭 (구 yml — bundleId 없는 데이터 — 호환)
-    let candidates: [String] = [
-        app.localizedName,
-        app.bundleURL?.deletingPathExtension().lastPathComponent,
-        app.executableURL?.lastPathComponent
-    ].compactMap { $0 }.filter { !$0.isEmpty }
+/// Pure matching rule behind `appMatches` — testable without NSRunningApplication.
+enum AppMatcher {
+    static func matches(bundleIdentifier: String?, nameCandidates: [String],
+                        targetApp: String, targetBundleId: String?) -> Bool {
+        // 1st: exact bundleIdentifier match
+        if let bid = targetBundleId, !bid.isEmpty,
+           let appBid = bundleIdentifier, !appBid.isEmpty,
+           appBid == bid {
+            return true
+        }
 
-    for name in candidates {
-        if name == targetApp { return true }
-        if name.hasPrefix(targetApp) || targetApp.hasPrefix(name) { return true }
+        // 2nd: name candidates, exact or bidirectional prefix (legacy yml without bundleId)
+        // An empty saved name is a prefix of every name, i.e. a wildcard — skip name matching
+        guard !targetApp.isEmpty else { return false }
+        for name in nameCandidates where !name.isEmpty {
+            if name == targetApp { return true }
+            if name.hasPrefix(targetApp) || targetApp.hasPrefix(name) { return true }
+        }
+        return false
     }
-    return false
 }
 
 /// `WindowInfo` 편의 오버로드 — 매칭 시 항상 bundleId+app 둘 다 사용

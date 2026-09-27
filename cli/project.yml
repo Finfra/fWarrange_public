@@ -48,6 +48,12 @@ targets:
       testTargets:
         - fWarrangeCliTests
       gatherCoverageData: true
+      # Test host isolation (prj5#Issue99): the plan injects fWarrangeCli_config /
+      # FWARRANGE_DISABLE_HOTKEYS / FWARRANGE_PORT so tests never touch real data,
+      # the user's global hotkeys or port 3016.
+      testPlans:
+        - path: fWarrangeCli.xctestplan
+          defaultPlan: true
 
   fWarrangeCliTests:
     type: bundle.unit-test

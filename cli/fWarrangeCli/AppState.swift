@@ -561,15 +561,25 @@ final class AppState {
         LoginItemService.sync(enabled: enabled)
     }
 
+    /// Issue96 gate as a pure decision so it can be tested without AX or NSAlert.
+    /// Returns false (and calls `onPermissionLost`) when a window action arrives without Accessibility.
+    nonisolated static func passesAccessibilityGate(
+        _ action: HotKeyAction, granted: Bool, onPermissionLost: () -> Void
+    ) -> Bool {
+        guard action.requiresAccessibility, !granted else { return true }
+        onPermissionLost()
+        return false
+    }
+
     func handleHotKeyAction(_ action: HotKeyAction) {
         // Issue96: Carbon RegisterEventHotKey 로 등록한 핫키는 접근성 권한과 무관하게 도달하지만
         // 창 조작 AX API 는 권한 없이 실패한다. "핫키는 들어왔는데 창 조작이 실패" 하는 이 지점이
         // 운영 중 권한 상실을 관측할 수 있는 곳이다 — 시작 시 1회 확인만으로는 잡히지 않는다.
-        if action.requiresAccessibility, !windowManager.isAccessibilityGranted() {
+        let granted = !action.requiresAccessibility || windowManager.isAccessibilityGranted()
+        guard Self.passesAccessibilityGate(action, granted: granted, onPermissionLost: {
             logW("⚠️ 접근성 권한 상실 감지 — 단축키(\(action)) 처리 중단 후 재시작 안내")
             AccessibilityGuidePresenter.showPermissionLost()
-            return
-        }
+        }) else { return }
 
         switch action {
         case .save:
