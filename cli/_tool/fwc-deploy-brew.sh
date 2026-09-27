@@ -192,8 +192,8 @@ class FwarrangeCli < Formula
   url "file://$TARBALL"
   version "$LOCAL_VERSION"
   sha256 "$SHA"
-  # Dual license: CC BY-NC 4.0 (non-commercial) or paid commercial license (see repository LICENSE)
-  license any_of: ["CC-BY-NC-4.0", :cannot_represent]
+  # Source: Apache-2.0. Official builds are also subject to DISTRIBUTION-TERMS.md (see caveats)
+  license "Apache-2.0"
 
   depends_on :macos
 
@@ -222,6 +222,10 @@ class FwarrangeCli < Formula
         시스템 설정 > 개인정보 보호 및 보안 > 접근성 > fWarrangeCli 체크
 
       TCC 권한이 꼬이면 Xcode Debug 경로로 재설정: /run tcc
+
+      License: source code is Apache-2.0. This official build is free for individuals,
+      education, non-profits, open source and organizations up to 250 concurrent copies.
+      Terms: https://github.com/Finfra/fWarrange_public/blob/main/DISTRIBUTION-TERMS.md
     EOS
   end
 
@@ -510,8 +514,8 @@ class FwarrangeCli < Formula
   # version is scanned from the URL basename (fWarrangeCli-${LOCAL_VERSION}.tar.gz)
   url "$DL_URL"
   sha256 "$SHA"
-  # Dual license: CC BY-NC 4.0 (non-commercial) or paid commercial license (see repository LICENSE)
-  license any_of: ["CC-BY-NC-4.0", :cannot_represent]
+  # Source: Apache-2.0. Official builds are also subject to DISTRIBUTION-TERMS.md (see caveats)
+  license "Apache-2.0"
 
   depends_on :macos
 
@@ -538,6 +542,10 @@ class FwarrangeCli < Formula
 
       Grant permission:
         System Settings > Privacy & Security > Accessibility > enable fWarrangeCli
+
+      License: source code is Apache-2.0. This official build is free for individuals,
+      education, non-profits, open source and organizations up to 250 concurrent copies.
+      Terms: https://github.com/Finfra/fWarrange_public/blob/main/DISTRIBUTION-TERMS.md
     EOS
   end
 

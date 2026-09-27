@@ -165,11 +165,9 @@ fWarrangeCli requires Accessibility permission to control window positions:
 
 # License
 
-Dual-licensed:
+fWarrangeCli source code is licensed under the [Apache License 2.0](../LICENSE) (see also [NOTICE](../NOTICE)).
 
-* **Non-commercial use** — free under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution required)
-* **Commercial use** — requires a paid commercial license: contact [finfra.kr](https://finfra.kr)
+* **Official builds** (Homebrew `finfra/tap`, GitHub Releases) are additionally covered by [DISTRIBUTION-TERMS.md](../DISTRIBUTION-TERMS.md) — free for individuals, education, non-profits, open-source projects, and organizations up to 250 concurrent copies. Builds you compile yourself are not affected
+* Names and icon: [TRADEMARK.md](../TRADEMARK.md) · Commercial licensing: [COMMERCIAL.md](../COMMERCIAL.md)
 
-See [LICENSE](../LICENSE) for details.
-
-Copyright (c) Finfra (finfra.kr)
+Copyright (c) 2026 Finfra Co., Ltd. (https://finfra.kr)

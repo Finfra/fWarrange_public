@@ -8,7 +8,7 @@ date: 2026-03-26
 ## 일반
 
 ### Q: fWarrange는 무료인가요?
-A: fWarrange는 이중 라이선스로 제공됩니다. 비상업적 이용은 CC BY-NC 4.0 조건으로 무료(출처 표기 필수)이며, 상업적 이용은 유료 상업 라이선스가 필요합니다 — [finfra.kr](https://finfra.kr) 문의.
+A: 이 저장소의 소스 코드는 Apache-2.0 오픈소스입니다(`mcp/` 패키지는 MIT). 직접 빌드하면 수량 제한 없이 사용할 수 있습니다. 공식 빌드(Homebrew `finfra/tap`, GitHub Releases)는 개인·교육·비영리·오픈소스 프로젝트, 그리고 법인당 동시 설치 250 카피까지 무료이며, 그 이상이거나 재판매·번들·호스팅 용도라면 [COMMERCIAL.md](../../COMMERCIAL.md) 를 참고하세요. 상세: [DISTRIBUTION-TERMS.md](../../DISTRIBUTION-TERMS.md) · [TRADEMARK.md](../../TRADEMARK.md) · [LICENSE_ko.md](../../LICENSE_ko.md).
 
 ### Q: 어떤 macOS 버전에서 동작하나요?
 A: macOS 15.0 (Sequoia) 이상에서 동작합니다.

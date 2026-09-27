@@ -166,11 +166,9 @@ fWarrangeCli는 창 위치를 제어하기 위해 Accessibility 권한이 필요
 
 # 라이선스
 
-이중 라이선스로 제공됩니다:
+fWarrangeCli 소스 코드는 [Apache License 2.0](../LICENSE) 으로 제공됩니다 ([NOTICE](../NOTICE) 참조, 한글 참고 번역 [LICENSE_ko.md](../LICENSE_ko.md)).
 
-* **비상업적 이용** — [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.ko) 조건으로 무료 (출처 표기 필수)
-* **상업적 이용** — 유료 상업 라이선스 필요: [finfra.kr](https://finfra.kr) 문의
+* **공식 빌드**(Homebrew `finfra/tap`, GitHub Releases)에는 [DISTRIBUTION-TERMS.md](../DISTRIBUTION-TERMS.md) 가 추가로 적용됩니다 — 개인·교육·비영리·오픈소스 프로젝트, 그리고 법인당 동시 설치 250 카피까지 무료입니다. 직접 빌드한 것에는 적용되지 않습니다
+* 이름·아이콘: [TRADEMARK.md](../TRADEMARK.md) · 상업 라이선스: [COMMERCIAL.md](../COMMERCIAL.md)
 
-상세는 [LICENSE](../LICENSE) 참조.
-
-Copyright (c) Finfra (finfra.kr)
+Copyright (c) 2026 Finfra Co., Ltd. (https://finfra.kr)

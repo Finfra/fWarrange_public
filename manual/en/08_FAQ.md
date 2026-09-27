@@ -8,7 +8,7 @@ date: 2026-03-26
 ## General
 
 ### Q: Is fWarrange free?
-A: fWarrange is dual-licensed. Non-commercial use is free under CC BY-NC 4.0 (attribution required). Commercial use requires a paid commercial license — contact [finfra.kr](https://finfra.kr).
+A: The source code in this repository is open source under Apache-2.0 (the `mcp/` package is MIT) — you can build and use it without limit. Official builds (Homebrew `finfra/tap`, GitHub Releases) are free for individuals, education, non-profits, open-source projects, and organizations up to 250 concurrent copies; beyond that, or for resale / bundling / hosting, see [COMMERCIAL.md](../../COMMERCIAL.md). Details: [DISTRIBUTION-TERMS.md](../../DISTRIBUTION-TERMS.md) · [TRADEMARK.md](../../TRADEMARK.md).
 
 ### Q: Which macOS versions are supported?
 A: macOS 15.0 (Sequoia) and later.

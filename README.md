@@ -136,11 +136,22 @@ See [`cli/README.md`](./cli/README.md) for build-from-source and full details.
 
 # License
 
-This project is dual-licensed:
+| Path                                                           | License    | Documents                             |
+| :------------------------------------------------------------- | :--------- | :------------------------------------ |
+| Repository (`cli/` source, docs, localization) — except `mcp/` | Apache-2.0 | [LICENSE](LICENSE) · [NOTICE](NOTICE) |
+| `mcp/` (npm `fwarrange-mcp`)                                   | MIT        | [mcp/LICENSE](mcp/LICENSE)            |
 
-* **Non-commercial use** — free under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) (attribution required)
-* **Commercial use** — requires a paid commercial license: contact [finfra.kr](https://finfra.kr)
+The source code is open under Apache-2.0: build it and use it without limit. Three documents sit outside the code license:
 
-See [LICENSE](LICENSE) for details.
+* [TRADEMARK.md](TRADEMARK.md) — the names "fWarrange" / "fWarrangeCli" and the icon (Apache-2.0 §6 grants no trademark rights). Forks must be renamed
+* [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) — **official builds** (Homebrew `finfra/tap`, GitHub Releases) are free for individuals, education, non-profits, open-source projects, and any organization up to **250 concurrent copies**
+* [COMMERCIAL.md](COMMERCIAL.md) — more than 250 copies, resale, paid bundling, or hosted services
 
-Copyright (c) Finfra (finfra.kr)
+Korean reference translation: [LICENSE_ko.md](LICENSE_ko.md) (the English text is binding).
+
+## License history
+
+* `fwarrange-mcp` versions up to and including 1.0.2 published to npm were released under the MIT license and remain MIT.
+* Repository contents from 2026-07-13 (after `fwarrange-mcp` 1.0.2) up to the 2026-09-27 license change were dual-licensed under CC BY-NC 4.0 or a paid commercial license. From 2026-09-27 the repository is Apache-2.0 (`mcp/`: MIT) as described above.
+
+Copyright (c) 2026 Finfra Co., Ltd. (https://finfra.kr)
