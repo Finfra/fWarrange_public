@@ -30,6 +30,9 @@ fWarrange (Sandbox, App Store)          fWarrangeCli (Non-Sandbox, Helper)
 
 ## Homebrew (recommended)
 
+> * The **source code** is Apache-2.0. Build it yourself and use it without any limit.
+> * **Official Builds** (the Homebrew package below) are free for personal use, education, non-profits, open-source projects, and any other organization on up to **250 concurrent copies**. Beyond that, or for resale / bundling / hosting, you need a commercial license ([COMMERCIAL.md](../COMMERCIAL.md)). Installing means you accept [DISTRIBUTION-TERMS.md](../DISTRIBUTION-TERMS.md).
+
 ```bash
 brew tap finfra/tap
 brew install finfra/tap/fwarrange-cli
@@ -167,7 +170,7 @@ fWarrangeCli requires Accessibility permission to control window positions:
 
 fWarrangeCli source code is licensed under the [Apache License 2.0](../LICENSE) (see also [NOTICE](../NOTICE)).
 
-* **Official builds** (Homebrew `finfra/tap`, GitHub Releases) are additionally covered by [DISTRIBUTION-TERMS.md](../DISTRIBUTION-TERMS.md) — free for individuals, education, non-profits, open-source projects, and organizations up to 250 concurrent copies. Builds you compile yourself are not affected
+* **Official builds** (Homebrew `finfra/tap`, GitHub Releases) are additionally covered by [DISTRIBUTION-TERMS.md](../DISTRIBUTION-TERMS.md) — free for personal use, education, non-profits, open-source projects, and other organizations up to 250 concurrent copies. Builds you compile yourself are not affected
 * Names and icon: [TRADEMARK.md](../TRADEMARK.md) · Commercial licensing: [COMMERCIAL.md](../COMMERCIAL.md)
 
 Copyright (c) 2026 Finfra Co., Ltd. (https://finfra.kr)

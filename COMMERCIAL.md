@@ -1,21 +1,25 @@
 # Commercial Licensing for fWarrangeCli
 
+Version 1.2
+
 Most people never need this page. fWarrangeCli's source code is Apache-2.0, and official
-builds are free for individuals, education, non-profits, open-source projects and
+builds are free for personal use, education, non-profits, open-source projects and
 organizations up to 250 concurrent copies.
 
 ## When you need a commercial license
 
-| Situation                                                                                               | Why                                               |
-| :------------------------------------------------------------------------------------------------------ | :------------------------------------------------ |
-| More than 250 concurrent installs of **official builds** within one organization (including affiliates) | [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) §4 |
-| Reselling official builds, or bundling them in a paid product or service                                | [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) §4 |
-| Offering fWarrangeCli to others as a hosted / managed service                                           | [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) §4 |
-| Using the fWarrangeCli name or logo on your own product or service                                      | [TRADEMARK.md](TRADEMARK.md)                      |
+| Situation                                                                                                                                   | Why                                               |
+| :------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------ |
+| More than 250 concurrent copies of **official builds** within one organization (including affiliates; VMs, containers and CI runners count) | [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) §4 |
+| Reselling official builds, or bundling / integrating them in a paid product, service or consulting deliverable                              | [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) §4 |
+| Offering fWarrangeCli to third parties as a hosted / managed service                                                                        | [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) §4 |
+| Removing, hiding, altering or circumventing any notice in an official build                                                                 | [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) §4 |
+| Using the fWarrangeCli name or logo on your own product or service                                                                          | [TRADEMARK.md](TRADEMARK.md)                      |
 
 Building from source and using your own builds is **never** subject to these terms.
-Official builds contain Finfra-proprietary build components in addition to the
-Apache-licensed code, which is why they carry their own terms ([DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) §1).
+Official builds are provided as an integrated package that includes Finfra-proprietary
+build components in addition to the Apache-licensed code, which is why that package
+carries its own terms ([DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) §1–§2).
 
 ## What you get
 

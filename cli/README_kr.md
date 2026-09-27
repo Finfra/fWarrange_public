@@ -31,6 +31,9 @@ fWarrange (Sandbox, App Store)          fWarrangeCli (Non-Sandbox, Helper)
 
 ## Homebrew (권장)
 
+> * **소스 코드**는 Apache-2.0 입니다. 직접 빌드하면 수량 제한 없이 사용할 수 있습니다.
+> * 아래 Homebrew 패키지 같은 **공식 빌드**는 개인 용도·교육·비영리·오픈소스 프로젝트, 그리고 그 밖의 조직은 **동시 250 카피**까지 무료입니다. 그 이상이거나 재판매·번들·호스팅 용도라면 상업 라이선스([COMMERCIAL.md](../COMMERCIAL.md))가 필요하며, 설치하면 [DISTRIBUTION-TERMS.md](../DISTRIBUTION-TERMS.md) 에 동의한 것으로 봅니다.
+
 ```bash
 brew tap finfra/tap
 brew install finfra/tap/fwarrange-cli
@@ -168,7 +171,7 @@ fWarrangeCli는 창 위치를 제어하기 위해 Accessibility 권한이 필요
 
 fWarrangeCli 소스 코드는 [Apache License 2.0](../LICENSE) 으로 제공됩니다 ([NOTICE](../NOTICE) 참조, 한글 참고 번역 [LICENSE_ko.md](../LICENSE_ko.md)).
 
-* **공식 빌드**(Homebrew `finfra/tap`, GitHub Releases)에는 [DISTRIBUTION-TERMS.md](../DISTRIBUTION-TERMS.md) 가 추가로 적용됩니다 — 개인·교육·비영리·오픈소스 프로젝트, 그리고 법인당 동시 설치 250 카피까지 무료입니다. 직접 빌드한 것에는 적용되지 않습니다
+* **공식 빌드**(Homebrew `finfra/tap`, GitHub Releases)에는 [DISTRIBUTION-TERMS.md](../DISTRIBUTION-TERMS.md) 가 추가로 적용됩니다 — 개인 용도·교육·비영리·오픈소스 프로젝트, 그리고 그 밖의 조직은 법인당 동시 250 카피까지 무료입니다. 직접 빌드한 것에는 적용되지 않습니다
 * 이름·아이콘: [TRADEMARK.md](../TRADEMARK.md) · 상업 라이선스: [COMMERCIAL.md](../COMMERCIAL.md)
 
 Copyright (c) 2026 Finfra Co., Ltd. (https://finfra.kr)

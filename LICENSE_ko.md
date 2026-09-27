@@ -8,20 +8,20 @@ date: 2026.09.27
 
 # fWarrangeCli 라이선스 — 한글 참고 번역
 
-**본 한글본은 참고 번역이며 법적 효력은 영문 [LICENSE](LICENSE) 원문이 가진다.** 두 문서 간 해석상 차이가 있을 경우 영문 원문이 우선한다. 아래 훅 문서 3종도 영문본만 구속력을 가진다.
+**본 한글본은 참고 번역이며 법적 효력은 영문 [LICENSE](LICENSE) 원문이 가진다.** 두 문서 간 해석상 차이가 있을 경우 영문 원문이 우선한다. 아래 훅 문서 3종도 영문본이 우선한다(단 한국 거주 개인에 대한 관할·번역 특칙은 [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) §10).
 
 ## 이 저장소의 라이선스 구성
 
-| 대상                                                                                             | 라이선스                                              | 문서                                           |
-| :----------------------------------------------------------------------------------------------- | :---------------------------------------------------- | :--------------------------------------------- |
-| 저장소 전체(`cli/` 소스·문서·다국어 리소스 등) — `mcp/` 제외                                     | Apache License 2.0                                    | [LICENSE](LICENSE) · [NOTICE](NOTICE)          |
-| `mcp/` (npm `fwarrange-mcp`)                                                                     | MIT                                                   | [mcp/LICENSE](mcp/LICENSE)                     |
-| 상표(이름·아이콘·"Powered by finfra.kr")                                                         | 상표 정책 — Apache-2.0 §6 은 상표권을 주지 않는다     | [TRADEMARK.md](TRADEMARK.md)                   |
-| Finfra 가 빌드·서명해 배포한 공식 빌드(`brew install finfra/tap/fwarrange-cli`, GitHub Releases) | 공식 배포본 약관 — 법인당 동시 설치 250 카피까지 무료 | [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) |
-| 250 카피 초과·재판매·유료 번들·호스팅                                                            | 상업 라이선스                                         | [COMMERCIAL.md](COMMERCIAL.md)                 |
+| 대상                                                                                        | 라이선스                                              | 문서                                           |
+| :------------------------------------------------------------------------------------------ | :---------------------------------------------------- | :--------------------------------------------- |
+| 저장소 전체(`cli/` 소스·문서·다국어 리소스 등) — `mcp/` 제외                                | Apache License 2.0                                    | [LICENSE](LICENSE) · [NOTICE](NOTICE)          |
+| `mcp/` (npm `fwarrange-mcp`)                                                                | MIT                                                   | [mcp/LICENSE](mcp/LICENSE)                     |
+| 상표(이름·아이콘·"Powered by finfra.kr")                                                    | 상표 정책 — Apache-2.0 §6 은 상표권을 주지 않는다     | [TRADEMARK.md](TRADEMARK.md)                   |
+| Finfra 가 빌드해 배포한 공식 빌드(`brew install finfra/tap/fwarrange-cli`, GitHub Releases) | 공식 배포본 약관 — 법인당 동시 설치 250 카피까지 무료 | [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) |
+| 250 카피 초과·재판매·유료 번들·호스팅                                                       | 상업 라이선스                                         | [COMMERCIAL.md](COMMERCIAL.md)                 |
 
 * **소스에서 직접 빌드해 쓰는 것은 Apache-2.0 그대로 무제한**이다. 배포본 약관은 공식 빌드에만 적용된다
-* 개인·교육기관·비영리·오픈소스 프로젝트는 공식 빌드도 수량 제한 없이 무료다
+* 개인 용도(조직이 관리하지 않고 업무에 쓰지 않는 기기)·교육기관·비영리·오픈소스 프로젝트는 공식 빌드도 수량 제한 없이 무료다. 조직의 직원·계약자가 업무 기기에 설치한 것은 법인 카피로 센다(VM·컨테이너·CI 러너 포함)
 
 ---
 
