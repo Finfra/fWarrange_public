@@ -20,7 +20,7 @@ info:
   contact:
     name: fWarrange
   license:
-    name: "Dual license: CC BY-NC 4.0 (non-commercial) / Commercial license (paid)"
+    name: Apache-2.0
     url: https://github.com/Finfra/fWarrange_public/blob/main/LICENSE
 
 servers:

@@ -136,11 +136,22 @@ brew untap finfra/tap                 # (선택) tap 제거
 
 # 라이선스
 
-이 프로젝트는 이중 라이선스로 제공됩니다:
+| 경로                                                      | 라이선스   | 문서                                  |
+| :-------------------------------------------------------- | :--------- | :------------------------------------ |
+| 저장소 전체(`cli/` 소스·문서·다국어 리소스) — `mcp/` 제외 | Apache-2.0 | [LICENSE](LICENSE) · [NOTICE](NOTICE) |
+| `mcp/` (npm `fwarrange-mcp`)                              | MIT        | [mcp/LICENSE](mcp/LICENSE)            |
 
-* **비상업적 이용** — [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.ko) 조건으로 무료 (출처 표기 필수)
-* **상업적 이용** — 유료 상업 라이선스 필요: [finfra.kr](https://finfra.kr) 문의
+소스 코드는 Apache-2.0 으로 공개되어 있어 직접 빌드하면 수량 제한 없이 사용할 수 있습니다. 코드 라이선스와 별도로 다음 문서 3종이 있습니다:
 
-상세는 [LICENSE](LICENSE) 참조.
+* [TRADEMARK.md](TRADEMARK.md) — "fWarrange"·"fWarrangeCli" 이름과 아이콘 (Apache-2.0 §6 은 상표권을 부여하지 않습니다). 포크는 이름을 바꿔야 합니다
+* [DISTRIBUTION-TERMS.md](DISTRIBUTION-TERMS.md) — **공식 빌드**(Homebrew `finfra/tap`, GitHub Releases)는 개인·교육·비영리·오픈소스 프로젝트, 그리고 법인당 **동시 설치 250 카피**까지 무료입니다
+* [COMMERCIAL.md](COMMERCIAL.md) — 250 카피 초과·재판매·유료 번들·호스팅 서비스
 
-Copyright (c) Finfra (finfra.kr)
+한글 참고 번역: [LICENSE_ko.md](LICENSE_ko.md) (법적 효력은 영문본에 있습니다).
+
+## 라이선스 이력
+
+* npm 에 배포된 `fwarrange-mcp` 1.0.2 이하 버전은 MIT 로 배포되었으며 그대로 MIT 가 유지됩니다.
+* 2026-07-13(`fwarrange-mcp` 1.0.2 이후)부터 2026-09-27 라이선스 변경 전까지의 저장소 내용은 CC BY-NC 4.0 또는 유료 상업 라이선스의 이중 라이선스였습니다. 2026-09-27 부터는 위와 같이 Apache-2.0(`mcp/` 는 MIT)입니다.
+
+Copyright (c) 2026 Finfra Co., Ltd. (https://finfra.kr)

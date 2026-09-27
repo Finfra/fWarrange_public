@@ -17,8 +17,8 @@ class FwarrangeCli < Formula
   url "https://github.com/Finfra/fWarrange_public/releases/download/cli-v1.1.1/fWarrangeCli-1.1.1.tar.gz"
   # sha256 is regenerated per release by fwc-deploy-brew.sh publish
   sha256 "af8dca788fc7275c45405c159fcd76fb83bcf86f75b5c2d89281536701bb0c3c"
-  # Dual license: CC BY-NC 4.0 (non-commercial) or paid commercial license (see repository LICENSE)
-  license any_of: ["CC-BY-NC-4.0", :cannot_represent]
+  # Source: Apache-2.0. Official builds are also subject to DISTRIBUTION-TERMS.md (see caveats)
+  license "Apache-2.0"
 
   depends_on :macos
 
@@ -47,6 +47,10 @@ class FwarrangeCli < Formula
         System Settings > Privacy & Security > Accessibility > fWarrangeCli
 
       If TCC permissions are corrupted, reset via Xcode Debug path: /run tcc
+
+      License: source code is Apache-2.0. This official build is free for individuals,
+      education, non-profits, open source and organizations up to 250 concurrent copies.
+      Terms: https://github.com/Finfra/fWarrange_public/blob/main/DISTRIBUTION-TERMS.md
     EOS
   end
 
