@@ -138,6 +138,7 @@ struct AppSettings: Codable {
     var restoreDefaultShortcut: KeyboardShortcutConfig?
     var restoreLastShortcut: KeyboardShortcutConfig?
     var showMainWindowShortcut: KeyboardShortcutConfig?
+    var undoShortcut: KeyboardShortcutConfig?   // Issue98
     // showSettings 글로벌 단축키 제거됨 — cliApp은 ⌘,를 글로벌 등록하지 않음. paidApp 설정은 in-app ⌘,(SwiftUI)로 진입
 
     // 로그인 시 자동 시작
@@ -197,6 +198,7 @@ struct AppSettings: Codable {
         restoreDefaultShortcut: nil,
         restoreLastShortcut: nil,
         showMainWindowShortcut: nil,
+        undoShortcut: KeyboardShortcutConfig.from(displayString: "⌃⌘F7"),   // Issue98: 신규라 기본값 부여(기존 4개는 nil)
         launchAtLogin: true,  // Issue228: default true so brew services plist persists across cliApp stops, enabling launchd auto-start at next login
         defaultLayoutName: nil,
         appLanguage: nil,

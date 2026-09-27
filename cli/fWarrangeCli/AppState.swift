@@ -163,13 +163,15 @@ final class AppState {
                     apply("restoreDefaultShortcut") { s.restoreDefaultShortcut = $0 }
                     apply("restoreLastShortcut") { s.restoreLastShortcut = $0 }
                     apply("showMainWindowShortcut") { s.showMainWindowShortcut = $0 }
+                    apply("undoShortcut") { s.undoShortcut = $0 }
                 }
                 NotificationCenter.default.post(name: .fWarrangeCliShortcutsUpdated, object: nil)
                 return [
                     "saveShortcut": s.saveShortcut?.displayString ?? "",
                     "restoreDefaultShortcut": s.restoreDefaultShortcut?.displayString ?? "",
                     "restoreLastShortcut": s.restoreLastShortcut?.displayString ?? "",
-                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? ""
+                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? "",
+                    "undoShortcut": s.undoShortcut?.displayString ?? ""
                 ]
             },
             getFullSettings: { [weak settingsService] in
@@ -229,7 +231,8 @@ final class AppState {
                     "saveShortcut": s.saveShortcut?.displayString ?? "",
                     "restoreDefaultShortcut": s.restoreDefaultShortcut?.displayString ?? "",
                     "restoreLastShortcut": s.restoreLastShortcut?.displayString ?? "",
-                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? ""
+                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? "",
+                    "undoShortcut": s.undoShortcut?.displayString ?? ""
                 ]
             },
             getLogFilePath: {
@@ -616,14 +619,36 @@ final class AppState {
         case .showMainWindow:
             // paidApp 메인 창 열기 — 감지 시 URL Scheme, 미감지 시 본 분기는 메뉴 클릭 경로에서 처리
             openPaidApp(action: "main")
+        case .undo:
+            // Issue98: 복구 직전 배치로 되돌린다. 스냅샷 없으면(복구 이력 없음) 무동작.
+            if let snapshot = undoSnapshot {
+                Task {
+                    await windowManager.restoreWindows(
+                        snapshot,
+                        maxRetries: settings.maxRetries,
+                        retryInterval: settings.retryInterval,
+                        minimumScore: settings.minimumMatchScore,
+                        enableParallel: settings.enableParallelRestore ?? true,
+                        mode: .normal
+                    )
+                    logI("↩️ Undo: 복구 직전 배치로 되돌림 (\(snapshot.count)창)")
+                }
+            } else {
+                logI("↩️ Undo: 복구 이력 없음 — 무동작")
+            }
         }
     }
+
+    /// Issue98: 복구 직전 전체 창 배치 스냅샷 (단일 Undo, 메모리 휘발)
+    private var undoSnapshot: [WindowInfo]?
 
     /// 이름으로 레이아웃 복구 (메뉴 클릭 / 핫키 공용)
     func restoreLayoutByName(_ name: String) {
         Task {
             let layout = try? layoutManager.storageServiceLoad(name: name)
             if let layout {
+                // Issue98: 복구 실행 직전 현재 배치를 Undo 스냅샷으로 저장
+                self.undoSnapshot = self.windowManager.captureCurrentWindows(filterApps: nil)
                 await windowManager.restoreWindows(
                     layout.windows,
                     maxRetries: settings.maxRetries,

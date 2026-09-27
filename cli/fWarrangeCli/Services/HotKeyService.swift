@@ -8,6 +8,7 @@ enum HotKeyAction {
     case restoreDefault
     case restoreLast
     case showMainWindow
+    case undo   // Issue98
 
     /// Issue96: 창 조작(`AXUIElement*`)을 수반하는 액션인지.
     ///
@@ -17,7 +18,7 @@ enum HotKeyAction {
     /// `showMainWindow` 는 paidApp URL Scheme 호출이라 권한이 필요 없다.
     var requiresAccessibility: Bool {
         switch self {
-        case .save, .restoreDefault, .restoreLast: return true
+        case .save, .restoreDefault, .restoreLast, .undo: return true
         case .showMainWindow: return false
         }
     }
@@ -60,7 +61,8 @@ final class CarbonHotKeyService: HotKeyService {
             (settings.saveShortcut, .save),
             (settings.restoreDefaultShortcut, .restoreDefault),
             (settings.restoreLastShortcut, .restoreLast),
-            (settings.showMainWindowShortcut, .showMainWindow)
+            (settings.showMainWindowShortcut, .showMainWindow),
+            (settings.undoShortcut, .undo)   // Issue98
         ]
 
         let validShortcuts = shortcuts.compactMap { (config, action) -> (KeyboardShortcutConfig, HotKeyAction)? in
