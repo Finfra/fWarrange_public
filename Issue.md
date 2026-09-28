@@ -21,11 +21,6 @@ date: 2026-04-07
 
 # 🌱 이슈후보
 
-1. `.claude/commands/deploy.md` 가 `brew publish` 를 🚧 TODO 로 표시하나 `cli/_tool/fwc-deploy-brew.sh` 에 `cmd_publish`(gh release + tap push)가 이미 구현됨 (prj3#Issue741 R2 배선 중 발견)
-
-1. `CLAUDE.md` 에 적힌 스킬 `build`·`deploy`·`brew-apply` 가 `.claude/skills/` 에 없음 · `README.md` 버전 1.0.2 표기 낡음(VERSION 1.1.1) (prj3#Issue717 배포용 TDD 적용 중 발견)
-1. XCTest 호스트가 기동 시 `BrewServiceSync.onAppStart()` 를 그대로 탄다 — 실 brew 서비스 조회(멈춰 있으면 `brew services start` handoff 까지)로 격리(#11) 결손 + 동기 `waitUntilExit` 중첩 런루프 안에서 테스트가 돌면 완료 후 호스트가 종료되지 않음(경쟁, 4/8회). `XCTestConfigurationFilePath` 가드 후보 · 진단 `cli/_doc_work/debug_TECH.md` (Issue105 중 발견)
-
 # 🚧 진행중
 
 # 📕 중요
