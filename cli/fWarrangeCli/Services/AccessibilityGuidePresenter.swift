@@ -8,12 +8,17 @@ enum AccessibilityGuidePresenter {
 
     /// Issue96: `NSAlert.runModal()` 은 블로킹이라 가드가 없으면 호출이 큐에 쌓여
     /// 닫는 즉시 또 뜬다(prj25 Issue221 실발생). 단축키는 연타될 수 있으므로 필수다.
-    /// 접근은 모두 main queue 안에서만 일어나 별도 동기화가 필요 없다.
+    /// 접근은 모두 main thread(run loop 블록) 안에서만 일어나 별도 동기화가 필요 없다.
     private static var isPresenting = false
 
     /// Schedules a modal alert on the main thread (Issue110).
+    ///
+    /// Not `DispatchQueue.main.async`: `runModal()` inside a main-queue block keeps that block
+    /// running until the alert closes, and the serial main queue cannot drain meanwhile — every
+    /// REST v2 handler (they hop to the main queue) hung while the guide was up.
+    /// A run-loop block runs outside the main-queue callout, so the modal loop keeps servicing it.
     static func schedule(_ present: @escaping () -> Void) {
-        DispatchQueue.main.async(execute: present)
+        RunLoop.main.perform(inModes: [.common], block: present)
     }
 
     static func show(windowManager: WindowManager) {
