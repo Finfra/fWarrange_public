@@ -59,6 +59,8 @@ enum BrewServiceSync {
         var startService: (String) -> (Int32, String)
         var flushLog: () -> Void
         var exitProcess: () -> Void
+        /// XCTest host process — it must never touch the real brew service (Issue106)
+        var isTestHost: () -> Bool = { false }
 
         static let live = StartEnvironment(
             optOut: { UserDefaults.standard.object(forKey: optOutKey) as? Bool },
@@ -68,7 +70,8 @@ enum BrewServiceSync {
             isFormulaInstalled: { BrewServiceSync.isFormulaInstalled(brewPath: $0) },
             startService: { runCommandWithStatus($0, args: ["services", "start", formulaName]) },
             flushLog: { Logger.shared.flush() },
-            exitProcess: { Foundation.exit(0) }
+            exitProcess: { Foundation.exit(0) },
+            isTestHost: { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
         )
     }
 
@@ -110,6 +113,12 @@ enum BrewServiceSync {
     /// 위임이 실패하면 exit 하지 않고 `.keptPrimary` 를 반환한다.
     @discardableResult
     static func onAppStart(_ env: StartEnvironment = .live) -> StartOutcome {
+        // Issue106: the XCTest host runs AppState too — never query or hand off to the real brew service there
+        if env.isTestHost() {
+            logD("[brew-sync] onAppStart skip — XCTest host")
+            return .skipped
+        }
+
         if let optOut = env.optOut(), optOut == false {
             logI("[brew-sync] onAppStart skip — \(optOutKey)=false")
             return .skipped

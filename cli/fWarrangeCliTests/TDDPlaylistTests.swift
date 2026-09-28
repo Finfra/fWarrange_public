@@ -589,6 +589,26 @@ final class BrewHandoffTests: XCTestCase {
         )
     }
 
+    /// Issue106: the XCTest host runs AppState like the real app. It must skip the brew sync before
+    /// asking launchctl or brew anything — a real `brew services start` handoff (or its nested
+    /// `waitUntilExit` run loop) inside the test host broke isolation and left the host hanging.
+    func testTestHostSkipsBrewSyncBeforeTouchingBrew() {
+        var env = environment(formulaInstalled: true, startStatus: 0)
+        env.isServiceLoaded = { [unowned self] in events.append("loaded?"); return false }
+        env.findBrewPath = { [unowned self] in events.append("brew?"); return "/fake/bin/brew" }
+        env.isTestHost = { true }
+
+        let outcome = BrewServiceSync.onAppStart(env)
+
+        XCTAssertEqual(outcome, .skipped)
+        XCTAssertEqual(events, [], "no launchctl / brew query, no start, no exit in the test host")
+    }
+
+    /// The live environment recognises this very process as the test host.
+    func testLiveEnvironmentDetectsTestHost() {
+        XCTAssertTrue(BrewServiceSync.StartEnvironment.live.isTestHost())
+    }
+
     /// jma R1 row 3: brew binary present, formula not installed.
     func testMissingFormulaDoesNotHandOffOrExit() {
         let outcome = BrewServiceSync.onAppStart(environment(formulaInstalled: false, startStatus: 0))
