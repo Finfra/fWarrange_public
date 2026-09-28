@@ -28,6 +28,25 @@ date: 2026-04-07
 
 # 🚧 진행중
 
+## Issue107: cliApp brew·npm 출고 R1 중단 — 기출고 `cli-v1.1.1` 번호 충돌·jma 화면 잠김 (등록: 2026-09-28)
+* 목적: 사용자 결정(2026-09-28, prj3 세션 05cbbead · mq 20260928-120438-001 — H:배포 승인)으로 fWarrangeCli 를 Homebrew tap·npm 으로 출고하려 R1 을 돌렸으나, 1.1.1 은 이미 공개 출고된 번호라 이번 변경(Issue95~105)을 1.1.1 로 낼 수 없다 — 버전 결정 대기
+* report: `../_doc_work/report/cli-release-1.1.1_report.md`
+* 상세:
+    - 위임: `../_doc_work/delegation_2026.09.28_cli-brew-npm-release.md` · 공개 반영(push·publish)은 prj3 세션 몫
+    - 증거(partial): `cli/_doc_work/_release/v1.1.1/release-test_1.1.1.md` — 1행 조건부(XCTest 93/93, Issue106 호스트 교착 재현) · 2~12행 미실행(jma `CGSSessionScreenIsLocked=1`) · 6행 dry-run 9 PASS(순서 밖 정보 실행)
+    - 충돌: `cli-v1.1.1` 태그(da9c41a, 2026-07-21 Issue89)·GitHub release(Latest)·공개 tap Formula(sha256 af8dca…, 구 CC BY-NC 라이선스)가 이미 있다. 그 뒤 코드 커밋 11건. 같은 번호 덮어쓰기는 기존 태그 변경 금지 + `brew upgrade` 미감지
+    - 정책: fapp-gitflow «버전은 항상 동일 — patch 예외 없음» → cliApp 단독 1.1.2 불가. paidApp 1.1.1 은 App Store 미제출(Issue265 대기 · prj16)이라 락스텝 1.1.2 는 추가 심사 비용이 없다
+    - jma 경합: 잠금 해제 시 prj16 스크린샷 위임 B 가 jma 를 자동 점유(mq 20260928-120452-001) — R1 의 clear·재배포와 순서 조정 필요
+    - npm: `fwarrange-mcp` 배포 불요 — `index.js`·`package.json` 이 공개본 1.0.2 와 동일(차이는 README 라이선스 문단·LICENSE 파일 신규뿐)
+    - 발견 결함 ①: `fwc-deploy-brew.sh publish --dry-run` 이 태그·release 중복 검사(Step 0-3)를 live 에서만 해 기출고 번호 재출고 계획을 PASS 로 보고한다
+    - 발견 결함 ②: 증거 기본 경로 `_doc_work/_release` 가 이 레포 경로 규칙(루트 `_doc_work/` 금지·doc-root-guard 차단)과 충돌 → `tdd/release.md` 에 `evidence_dir` 선언 필요. `cli/_doc_work/` 도 gitignore 라 R3(증거 커밋)용 추적 위치는 공개 노출(jma·prj16 SHA) 여부와 함께 결정
+    - 2026-09-28 사용자 결정: paidApp·cliApp **락스텝 1.1.2** (⏸️ → 🚧). 2단계 위임 — 1단계(bump + R1 1행, jm4) `../_doc_work/delegation_2026.09.28_cli-1.1.2-bump.md` · 2단계(jma 2~12행)는 prj16 스크린샷 위임 B 종료·jma 잠금 해제 뒤
+    - 1단계 bump: `VERSION` 1.1.1 → 1.1.2 · pbxproj `MARKETING_VERSION` ×2 · `cli/project.yml` + **`cli/Formula/fwarrange-cli.rb` url(sha256 은 0 자리표시 — publish 뒤 실값, Issue89 da9c41a→79227f6 선례) · `cli/version-meta.yml` `version:`** — 뒤 두 곳은 위임 지시에 없었으나 `testVersionSourcesAgree`(개발 재생목록 10행)가 대조하므로 빠뜨리면 1행이 확정 실패한다. `brew:` 상태 필드(formula·installed 1.1.1)는 설치 실태라 publish 뒤 갱신
+* 구현 명세:
+    - 사용자 결정: 버전 번호 — paidApp·cliApp 락스텝 1.1.2 로 결정됨 (2026-09-28)
+    - 결정 후: bump(`version-rules` 절차) → 새 후보 커밋에서 R1 처음부터(jma 잠금 해제 + 스크린샷 촬영과 점유 순서 합의) → R2 recheck → main `--no-ff` 병합 → main 에서 `publish`
+    - 결함 ①: dry-run 에서도 중복을 경고(또는 FAIL)로 내게 — 재현: 현 상태에서 `publish --dry-run` 이 ALL CLEAR
+
 # 📕 중요
 
 # 📙 일반
@@ -814,23 +833,6 @@ date: 2026-04-07
 > 종결된 이슈는 [`z_old/old_issue.md`](z_old/old_issue.md)로 이관됨.
 
 # ⏸️ 보류
-
-## Issue107: cliApp brew·npm 출고 R1 중단 — 기출고 `cli-v1.1.1` 번호 충돌·jma 화면 잠김 (등록: 2026-09-28)
-* 목적: 사용자 결정(2026-09-28, prj3 세션 05cbbead · mq 20260928-120438-001 — H:배포 승인)으로 fWarrangeCli 를 Homebrew tap·npm 으로 출고하려 R1 을 돌렸으나, 1.1.1 은 이미 공개 출고된 번호라 이번 변경(Issue95~105)을 1.1.1 로 낼 수 없다 — 버전 결정 대기
-* report: `../_doc_work/report/cli-release-1.1.1_report.md`
-* 상세:
-    - 위임: `../_doc_work/delegation_2026.09.28_cli-brew-npm-release.md` · 공개 반영(push·publish)은 prj3 세션 몫
-    - 증거(partial): `cli/_doc_work/_release/v1.1.1/release-test_1.1.1.md` — 1행 조건부(XCTest 93/93, Issue106 호스트 교착 재현) · 2~12행 미실행(jma `CGSSessionScreenIsLocked=1`) · 6행 dry-run 9 PASS(순서 밖 정보 실행)
-    - 충돌: `cli-v1.1.1` 태그(da9c41a, 2026-07-21 Issue89)·GitHub release(Latest)·공개 tap Formula(sha256 af8dca…, 구 CC BY-NC 라이선스)가 이미 있다. 그 뒤 코드 커밋 11건. 같은 번호 덮어쓰기는 기존 태그 변경 금지 + `brew upgrade` 미감지
-    - 정책: fapp-gitflow «버전은 항상 동일 — patch 예외 없음» → cliApp 단독 1.1.2 불가. paidApp 1.1.1 은 App Store 미제출(Issue265 대기 · prj16)이라 락스텝 1.1.2 는 추가 심사 비용이 없다
-    - jma 경합: 잠금 해제 시 prj16 스크린샷 위임 B 가 jma 를 자동 점유(mq 20260928-120452-001) — R1 의 clear·재배포와 순서 조정 필요
-    - npm: `fwarrange-mcp` 배포 불요 — `index.js`·`package.json` 이 공개본 1.0.2 와 동일(차이는 README 라이선스 문단·LICENSE 파일 신규뿐)
-    - 발견 결함 ①: `fwc-deploy-brew.sh publish --dry-run` 이 태그·release 중복 검사(Step 0-3)를 live 에서만 해 기출고 번호 재출고 계획을 PASS 로 보고한다
-    - 발견 결함 ②: 증거 기본 경로 `_doc_work/_release` 가 이 레포 경로 규칙(루트 `_doc_work/` 금지·doc-root-guard 차단)과 충돌 → `tdd/release.md` 에 `evidence_dir` 선언 필요. `cli/_doc_work/` 도 gitignore 라 R3(증거 커밋)용 추적 위치는 공개 노출(jma·prj16 SHA) 여부와 함께 결정
-* 구현 명세:
-    - 사용자 결정: 버전 번호 — 권장 paidApp·cliApp 락스텝 1.1.2
-    - 결정 후: bump(`version-rules` 절차) → 새 후보 커밋에서 R1 처음부터(jma 잠금 해제 + 스크린샷 촬영과 점유 순서 합의) → R2 recheck → main `--no-ff` 병합 → main 에서 `publish`
-    - 결함 ①: dry-run 에서도 중복을 경고(또는 FAIL)로 내게 — 재현: 현 상태에서 `publish --dry-run` 이 ALL CLEAR
 
 # 🚫 취소
 
