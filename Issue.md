@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 110
+* Issue HWM: 112
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -28,31 +28,31 @@ date: 2026-04-07
 
 # 🚧 진행중
 
-## Issue107: cliApp brew·npm 출고 R1 중단 — 기출고 `cli-v1.1.1` 번호 충돌·jma 화면 잠김 (등록: 2026-09-28)
-* 목적: 사용자 결정(2026-09-28, prj3 세션 05cbbead · mq 20260928-120438-001 — H:배포 승인)으로 fWarrangeCli 를 Homebrew tap·npm 으로 출고하려 R1 을 돌렸으나, 1.1.1 은 이미 공개 출고된 번호라 이번 변경(Issue95~105)을 1.1.1 로 낼 수 없다 — 버전 결정 대기
-* report: `../_doc_work/report/cli-release-1.1.1_report.md`, `../_doc_work/report/cli-release-1.1.2-stage1_report.md`, `../_doc_work/report/cli-release-1.1.2-stage2_report.md`, `../_doc_work/report/cli-release-1.1.2-stage3_report.md`
-* 상세:
-    - 위임: `../_doc_work/delegation_2026.09.28_cli-brew-npm-release.md` · 공개 반영(push·publish)은 prj3 세션 몫
-    - 증거(partial): `cli/_doc_work/_release/v1.1.1/release-test_1.1.1.md` — 1행 조건부(XCTest 93/93, Issue106 호스트 교착 재현) · 2~12행 미실행(jma `CGSSessionScreenIsLocked=1`) · 6행 dry-run 9 PASS(순서 밖 정보 실행)
-    - 충돌: `cli-v1.1.1` 태그(da9c41a, 2026-07-21 Issue89)·GitHub release(Latest)·공개 tap Formula(sha256 af8dca…, 구 CC BY-NC 라이선스)가 이미 있다. 그 뒤 코드 커밋 11건. 같은 번호 덮어쓰기는 기존 태그 변경 금지 + `brew upgrade` 미감지
-    - 정책: fapp-gitflow «버전은 항상 동일 — patch 예외 없음» → cliApp 단독 1.1.2 불가. paidApp 1.1.1 은 App Store 미제출(Issue265 대기 · prj16)이라 락스텝 1.1.2 는 추가 심사 비용이 없다
-    - jma 경합: 잠금 해제 시 prj16 스크린샷 위임 B 가 jma 를 자동 점유(mq 20260928-120452-001) — R1 의 clear·재배포와 순서 조정 필요
-    - npm: `fwarrange-mcp` 배포 불요 — `index.js`·`package.json` 이 공개본 1.0.2 와 동일(차이는 README 라이선스 문단·LICENSE 파일 신규뿐)
-    - 발견 결함 ①: `fwc-deploy-brew.sh publish --dry-run` 이 태그·release 중복 검사(Step 0-3)를 live 에서만 해 기출고 번호 재출고 계획을 PASS 로 보고한다
-    - 발견 결함 ②: 증거 기본 경로 `_doc_work/_release` 가 이 레포 경로 규칙(루트 `_doc_work/` 금지·doc-root-guard 차단)과 충돌 → `tdd/release.md` 에 `evidence_dir` 선언 필요. `cli/_doc_work/` 도 gitignore 라 R3(증거 커밋)용 추적 위치는 공개 노출(jma·prj16 SHA) 여부와 함께 결정
-    - 2026-09-28 사용자 결정: paidApp·cliApp **락스텝 1.1.2** (⏸️ → 🚧). 2단계 위임 — 1단계(bump + R1 1행, jm4) `../_doc_work/delegation_2026.09.28_cli-1.1.2-bump.md` · 2단계(jma 2~12행)는 prj16 스크린샷 위임 B 종료·jma 잠금 해제 뒤
-    - 1단계 bump: `VERSION` 1.1.1 → 1.1.2 · pbxproj `MARKETING_VERSION` ×2 · `cli/project.yml` + **`cli/Formula/fwarrange-cli.rb` url(sha256 은 0 자리표시 — publish 뒤 실값, Issue89 da9c41a→79227f6 선례) · `cli/version-meta.yml` `version:`** — 뒤 두 곳은 위임 지시에 없었으나 `testVersionSourcesAgree`(개발 재생목록 10행)가 대조하므로 빠뜨리면 1행이 확정 실패한다. `brew:` 상태 필드(formula·installed 1.1.1)는 설치 실태라 publish 뒤 갱신
-    - ✅ 1단계 완료 (2026-09-28, bump 8553c40): R1 1행 `dev-playlist-green` jm4 **조건부 통과** — XCTest 93/93 passed · 번들 1.1.2 · Issue106 호스트 교착 재현(호스트만 kill → `TEST SUCCEEDED` rc 0) · `fwc-test.sh` 부분은 4행(jma)으로. 증거 `cli/_doc_work/_release/v1.1.2/release-test_1.1.2.md`(`result: partial`, `dirty: yes` — 타 세션 미커밋분) · 보고 `../_doc_work/report/cli-release-1.1.2-stage1_report.md` · 2단계(jma 2~12행) 대기
-    - ⛔ 2단계 종료 (2026-09-28, 후보 45688ee — cd2a8eb 뒤 prj16#Issue280 이 manual md·png 만 추가, 빌드 입력 동일): R1 **`result: fail`** — 2행 `jma-clean-state` 통과 · **3행 `source-build-from-readme` 실패** → 위임 규약대로 정지(4~12행 미실행). README 빌드는 성공(1.1.2·Apple Development 유효)하나 `open` 기동 550ms 만에 앱이 스스로 종료 — brew 바이너리만 보고 formula 미설치 상태에서 `brew services start` 위임 후 결과와 무관하게 `exit(0)` (**Issue109**). 부수 발견: 접근성 미승인 기동 시 안내 모달이 REST v2 를 막음(**Issue110**) · 2행 clear 가 TCC 접근성·brew formula trust 를 리셋하므로 4·11행은 사람 승인 단계가 필요 · jma 는 1.1.1 두 앱·데이터·설정으로 원복(접근성 권한만 사람 손 필요). 보고 `../_doc_work/report/cli-release-1.1.2-stage2_report.md`
-    - ✅ 3단계 R1 통과 (2026-09-28, 새 후보 **41d93f8** — Issue109 수정): **`result: pass` · `dirty: no`**(모든 빌드가 후보 clean clone) — 1행 jm4 XCTest 98/98(Issue106 교착 미재현) · 2~7·9~12행 jma 통과 · 8행 출고 후. 3행 소스 빌드 60초 생존 · 4행 `fwc-test.sh` ALL CLEAR · 6행 dry-run 외부 상태 전후 동일 · 7행 publish tarball 설치 CDHash 보존 · 10·11행 prj16 0d8e211 `--check` FAIL 0·REST 18/0 · 12행 prj16 v1.1.1 등록·목록 반영. 접근성 재승인은 `say` 뒤 사람이 16:45 처리. R2 `recheck` 사전 확인 ✅. jma 1.1.1 원복 `--check` FAIL 0(접근성 `granted` 유지). 보고 `../_doc_work/report/cli-release-1.1.2-stage3_report.md` — 공개 반영은 prj3 세션 몫
-* 구현 명세:
-    - 사용자 결정: 버전 번호 — paidApp·cliApp 락스텝 1.1.2 로 결정됨 (2026-09-28)
-    - 결정 후: bump(`version-rules` 절차) → 새 후보 커밋에서 R1 처음부터(jma 잠금 해제 + 스크린샷 촬영과 점유 순서 합의) → R2 recheck → main `--no-ff` 병합 → main 에서 `publish`
-    - 결함 ①: dry-run 에서도 중복을 경고(또는 FAIL)로 내게 — 재현: 현 상태에서 `publish --dry-run` 이 ALL CLEAR
-
 # 📕 중요
 
 # 📙 일반
+
+## Issue111: [Bug] cliApp 재시작 뒤 `GET /api/v2/paidapp/status` 가 실행 중인 paidApp 을 `not_running` 으로 답함 — 메뉴 모드 판정(PaidAppMonitor)과 status 판정(paidAppRouter) 갈림 (등록: 2026-09-28)
+* 목적: 같은 사실(«paidApp 이 떠 있는가»)을 두 곳이 따로 판정해 cliApp 재시작 뒤 서로 다른 답을 낸다 — status 를 믿는 소비자(스크립트·QA·paidApp 쪽 점검)가 떠 있는 paidApp 을 없는 것으로 본다 (1.1.2 출고 R1 8행 뒤 jma 실측)
+* 상세:
+    - 재현 (2026-09-28 17:25, jma): paidApp 1.1.1 실행 중(PID 91381) 상태에서 cliApp 만 재기동(`brew services` 재설치·start) → `/api/v2/paidapp/status` = `{"state":"not_running"}` 이 90초 넘게 유지. paidApp 은 `applicationDidFinishLaunching` 에서만 register 한다
+    - 원인: `handlePaidAppStatus`(RESTServer.swift) 는 `paidAppRouter.status()` — REST register 기록만 본다. 재시작 복원(`PaidAppMonitor.init` 의 `runningApplications` 검색 → `.paidAppActive`)은 메뉴 모드에만 반영되고 status 에는 닿지 않는다
+    - 규약: `paid_cli_protocol.md` §3.4 «cliApp 재시작 → register 기록 소실 가능 → 실행 중 paidApp 검색으로 복원» — status 가 그 복원을 반영하지 않아 규약과 어긋남
+    - 1.1.2 회귀 아님(관련 코드 무변경). R1 12행은 paidApp 을 cliApp 뒤에 띄워 register 가 일어나는 순서라 드러나지 않았다
+* 구현 명세:
+    - 판정 단일 지점으로 통일: status 도 «register 기록 없음 + `runningApplications` 에 `kr.finfra.fWarrange` 있음» 이면 `running`(pid·출처 표기) — 또는 cliApp 기동 시 복원 경로가 router 에도 기록을 만든다. 어느 쪽이든 PaidAppMonitor 와 router 가 같은 답을 내야 한다
+    - red 먼저: register 기록 없이 paidApp 실행 중인 상태를 주입 → status 가 `not_running` 을 내는 테스트 → 수정 뒤 green
+    - openapi_v2.yaml `paidapp/status` 응답 설명 동기(api-rules)
+
+## Issue112: [Bug] `fwc-deploy-brew.sh publish --dry-run` 이 태그·release 중복 검사를 건너뛰고, 요약표가 실행 안 한 push·release 를 ✅ 로 찍음 (Issue107 결함 ① 분리) (등록: 2026-09-28)
+* 목적: 출고 판단자가 dry-run 결과를 믿고 기출고 번호를 다시 내거나, 이미 올라갔다고 오독한다 — dry-run 이 실제 publish 의 위험을 미리 보여 주지 못한다
+* 상세:
+    - 결함 ①(Issue107): Step 0-3 태그·release 중복 검사를 live 에서만 해, 기출고 `cli-v1.1.1` 재출고 계획을 dry-run 이 ALL CLEAR 로 보고했다
+    - 요약표 오표시(1.1.2 R1 3단계 보고 4절): dry-run 인데 «git tag push ✅ · gh release ✅ · tap push ✅» 로 찍힌다 — 실행되지 않은 단계다
+* 구현 명세:
+    - dry-run 에서도 원격 태그·release 존재를 조회해 중복이면 FAIL(또는 경고 + 비 0 종료)
+    - 요약표는 dry-run 단계를 «⏭ 계획(미실행)» 처럼 실행 결과와 구분되는 표기로
+    - red 먼저: 기존 태그 번호로 `publish --dry-run` → ALL CLEAR 가 나오는 것을 재현하는 검사
 
 ## Issue110: [Bug] 접근성 미승인 기동 시 `AccessibilityGuidePresenter` 모달(`NSAlert runModal`)이 메인 스레드를 잡아 REST v2 가 무응답 (등록: 2026-09-28)
 * 목적: 데몬의 REST 가 사람이 안내 창을 닫을 때까지 멈춘다 — paidApp·스크립트가 레이아웃 조회부터 막힌다 (1.1.2 출고 R1 2단계 원복 중 발견)
@@ -90,6 +90,33 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue107: cliApp brew·npm 출고 R1 중단 — 기출고 `cli-v1.1.1` 번호 충돌·jma 화면 잠김 (등록: 2026-09-28, 완료: 2026-09-28, Hash: 8553c40, 41d93f8, c7c8c21, d375c08) ✅
+* 목적: 사용자 결정(2026-09-28, prj3 세션 05cbbead · mq 20260928-120438-001 — H:배포 승인)으로 fWarrangeCli 를 Homebrew tap·npm 으로 출고하려 R1 을 돌렸으나, 1.1.1 은 이미 공개 출고된 번호라 이번 변경(Issue95~105)을 1.1.1 로 낼 수 없다 — 버전 결정 대기
+* report: `../_doc_work/report/cli-release-1.1.1_report.md`, `../_doc_work/report/cli-release-1.1.2-stage1_report.md`, `../_doc_work/report/cli-release-1.1.2-stage2_report.md`, `../_doc_work/report/cli-release-1.1.2-stage3_report.md`
+* 상세:
+    - 위임: `../_doc_work/delegation_2026.09.28_cli-brew-npm-release.md` · 공개 반영(push·publish)은 prj3 세션 몫
+    - 증거(partial): `cli/_doc_work/_release/v1.1.1/release-test_1.1.1.md` — 1행 조건부(XCTest 93/93, Issue106 호스트 교착 재현) · 2~12행 미실행(jma `CGSSessionScreenIsLocked=1`) · 6행 dry-run 9 PASS(순서 밖 정보 실행)
+    - 충돌: `cli-v1.1.1` 태그(da9c41a, 2026-07-21 Issue89)·GitHub release(Latest)·공개 tap Formula(sha256 af8dca…, 구 CC BY-NC 라이선스)가 이미 있다. 그 뒤 코드 커밋 11건. 같은 번호 덮어쓰기는 기존 태그 변경 금지 + `brew upgrade` 미감지
+    - 정책: fapp-gitflow «버전은 항상 동일 — patch 예외 없음» → cliApp 단독 1.1.2 불가. paidApp 1.1.1 은 App Store 미제출(Issue265 대기 · prj16)이라 락스텝 1.1.2 는 추가 심사 비용이 없다
+    - jma 경합: 잠금 해제 시 prj16 스크린샷 위임 B 가 jma 를 자동 점유(mq 20260928-120452-001) — R1 의 clear·재배포와 순서 조정 필요
+    - npm: `fwarrange-mcp` 배포 불요 — `index.js`·`package.json` 이 공개본 1.0.2 와 동일(차이는 README 라이선스 문단·LICENSE 파일 신규뿐)
+    - 발견 결함 ①: `fwc-deploy-brew.sh publish --dry-run` 이 태그·release 중복 검사(Step 0-3)를 live 에서만 해 기출고 번호 재출고 계획을 PASS 로 보고한다
+    - 발견 결함 ②: 증거 기본 경로 `_doc_work/_release` 가 이 레포 경로 규칙(루트 `_doc_work/` 금지·doc-root-guard 차단)과 충돌 → `tdd/release.md` 에 `evidence_dir` 선언 필요. `cli/_doc_work/` 도 gitignore 라 R3(증거 커밋)용 추적 위치는 공개 노출(jma·prj16 SHA) 여부와 함께 결정
+    - 2026-09-28 사용자 결정: paidApp·cliApp **락스텝 1.1.2** (⏸️ → 🚧). 2단계 위임 — 1단계(bump + R1 1행, jm4) `../_doc_work/delegation_2026.09.28_cli-1.1.2-bump.md` · 2단계(jma 2~12행)는 prj16 스크린샷 위임 B 종료·jma 잠금 해제 뒤
+    - 1단계 bump: `VERSION` 1.1.1 → 1.1.2 · pbxproj `MARKETING_VERSION` ×2 · `cli/project.yml` + **`cli/Formula/fwarrange-cli.rb` url(sha256 은 0 자리표시 — publish 뒤 실값, Issue89 da9c41a→79227f6 선례) · `cli/version-meta.yml` `version:`** — 뒤 두 곳은 위임 지시에 없었으나 `testVersionSourcesAgree`(개발 재생목록 10행)가 대조하므로 빠뜨리면 1행이 확정 실패한다. `brew:` 상태 필드(formula·installed 1.1.1)는 설치 실태라 publish 뒤 갱신
+    - ✅ 1단계 완료 (2026-09-28, bump 8553c40): R1 1행 `dev-playlist-green` jm4 **조건부 통과** — XCTest 93/93 passed · 번들 1.1.2 · Issue106 호스트 교착 재현(호스트만 kill → `TEST SUCCEEDED` rc 0) · `fwc-test.sh` 부분은 4행(jma)으로. 증거 `cli/_doc_work/_release/v1.1.2/release-test_1.1.2.md`(`result: partial`, `dirty: yes` — 타 세션 미커밋분) · 보고 `../_doc_work/report/cli-release-1.1.2-stage1_report.md` · 2단계(jma 2~12행) 대기
+    - ⛔ 2단계 종료 (2026-09-28, 후보 45688ee — cd2a8eb 뒤 prj16#Issue280 이 manual md·png 만 추가, 빌드 입력 동일): R1 **`result: fail`** — 2행 `jma-clean-state` 통과 · **3행 `source-build-from-readme` 실패** → 위임 규약대로 정지(4~12행 미실행). README 빌드는 성공(1.1.2·Apple Development 유효)하나 `open` 기동 550ms 만에 앱이 스스로 종료 — brew 바이너리만 보고 formula 미설치 상태에서 `brew services start` 위임 후 결과와 무관하게 `exit(0)` (**Issue109**). 부수 발견: 접근성 미승인 기동 시 안내 모달이 REST v2 를 막음(**Issue110**) · 2행 clear 가 TCC 접근성·brew formula trust 를 리셋하므로 4·11행은 사람 승인 단계가 필요 · jma 는 1.1.1 두 앱·데이터·설정으로 원복(접근성 권한만 사람 손 필요). 보고 `../_doc_work/report/cli-release-1.1.2-stage2_report.md`
+    - ✅ 3단계 R1 통과 (2026-09-28, 새 후보 **41d93f8** — Issue109 수정): **`result: pass` · `dirty: no`**(모든 빌드가 후보 clean clone) — 1행 jm4 XCTest 98/98(Issue106 교착 미재현) · 2~7·9~12행 jma 통과 · 8행 출고 후. 3행 소스 빌드 60초 생존 · 4행 `fwc-test.sh` ALL CLEAR · 6행 dry-run 외부 상태 전후 동일 · 7행 publish tarball 설치 CDHash 보존 · 10·11행 prj16 0d8e211 `--check` FAIL 0·REST 18/0 · 12행 prj16 v1.1.1 등록·목록 반영. 접근성 재승인은 `say` 뒤 사람이 16:45 처리. R2 `recheck` 사전 확인 ✅. jma 1.1.1 원복 `--check` FAIL 0(접근성 `granted` 유지). 보고 `../_doc_work/report/cli-release-1.1.2-stage3_report.md` — 공개 반영은 prj3 세션 몫
+    - 결함 ② 해소 (c7c8c21): `tdd/release.md` `evidence_dir: cli/_doc_work/_release` — recheck 가 «증거 없음» 대신 실제 증거를 읽는다. 첫 R1 통과에 따라 `r2: warn → block`(recheck ❌ 가 rc 0 으로 통과하던 경고 모드 종료)
+    - ✅ 공개 출고 (2026-09-28 17:2x, 사용자 승인 — prj26 세션 da453e47 · 오케스트레이터 05cbbead 종료로 인계): release/1.1.1 push(c6edbf7) → GitHub clone 에서 main ← release `--no-ff` 병합 **d375c08**(NOTICE add/add 충돌 1건 → release 판, main 판 19줄 전부 포함 확인 · 병합 트리 = release 트리) → 병합 커밋 recheck ✅ → main push → `publish --dry-run` 9/0 → `publish` 9/0: 태그 **`cli-v1.1.2`**(→ d375c08) · GitHub release **Latest** · asset `fWarrangeCli-1.1.2.tar.gz` sha256 `402dbe5e…` = 공개 tap Formula(Finfra/homebrew-tap 8395a11) · 번들 1.1.2 서명 유효. 원 저장소 `main` fast-forward·태그 동기
+    - ✅ R1 8행 `brew-tap-published-install` 통과 (17:25, jma): 공개 tap 동기(로컬 테스트 `fwarrange-cli.rb` 만 되돌리고 ff — `fsnippet-cli.rb` 로컬 수정 무접촉) → formula 단위 클린(데이터·paidApp·TCC 보존, 7행과 같은 방식) → `brew install finfra/tap/fwarrange-cli` → 라벨 1.1.2 = 번들 1.1.2 = REST 1.1.2 = `VERSION` · Homebrew 7 trust 자동 복구 · 접근성 `granted` 승계. jma 최종 = **공개본 1.1.2**(출고 후라 1.1.1 로 되돌리지 않음) + paidApp 1.1.1. 로그 `cli/_doc_work/_release/v1.1.2/logs/r1s4_row08_public_tap.log`
+    - 출고 뒤 정리: `cli/Formula/fwarrange-cli.rb` sha256 0 → 실값 · `cli/version-meta.yml` `formula_version` 1.1.2(`installed_version` 은 jm4 설치 실태 1.1.1 유지). npm 배포 없음(불요 판정 유지)
+    - 분리: 결함 ① + dry-run 요약 «push ✅» 오표시 → **Issue112** · 출고 뒤 발견한 `paidapp/status` 판정 갈림 → **Issue111**
+* 구현 명세:
+    - 사용자 결정: 버전 번호 — paidApp·cliApp 락스텝 1.1.2 로 결정됨 (2026-09-28)
+    - 결정 후: bump(`version-rules` 절차) → 새 후보 커밋에서 R1 처음부터(jma 잠금 해제 + 스크린샷 촬영과 점유 순서 합의) → R2 recheck → main `--no-ff` 병합 → main 에서 `publish`
+    - 결함 ①: dry-run 에서도 중복을 경고(또는 FAIL)로 내게 — 재현: 현 상태에서 `publish --dry-run` 이 ALL CLEAR → Issue112 로 이관
 
 ## Issue109: [Bug] `open` 기동한 cliApp 이 brew 바이너리만 있으면 formula 미설치여도 `brew services start` 위임 후 `exit(0)` — README 소스 빌드 앱이 기동 직후 사라짐 (등록: 2026-09-28, 완료: 2026-09-28, Hash: 41d93f8) ✅
 * 목적: 출고 R1 3행 `source-build-from-readme` 실패 원인. Homebrew 가 깔린 Mac 에서 README «Build from Source» 로 만든 앱을 `open` 하면 REST 가 한 번 응답한 뒤 1초 안에 종료된다 — 소스 빌드 사용자는 앱을 쓸 수 없다 (1.1.2 출고 R1 2단계 중 발견 · 위임 지시 «코드 수정은 범위 밖 — 이슈후보로» 에 따라 등록만)

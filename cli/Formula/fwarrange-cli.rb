@@ -16,7 +16,7 @@ class FwarrangeCli < Formula
   # version is scanned from the URL basename (fWarrangeCli-1.1.2.tar.gz)
   url "https://github.com/Finfra/fWarrange_public/releases/download/cli-v1.1.2/fWarrangeCli-1.1.2.tar.gz"
   # sha256 is regenerated per release by fwc-deploy-brew.sh publish
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  sha256 "402dbe5ed19575d6d442bac73e8593ba189f499a366b767a8f3bb87aadd36e25"
   # Source: Apache-2.0. Official builds are also subject to DISTRIBUTION-TERMS.md (see caveats)
   license "Apache-2.0"
 
