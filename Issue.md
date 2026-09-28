@@ -82,6 +82,7 @@ date: 2026-04-07
     - ② 실측 재현 (2026-09-28, jma clear 직후 1.1.2 후보 45688ee 첫 기동 — Issue107 R1 3행): 로그 `기존 데이터 마이그레이션 완료: jma-2/` 뒤 루트에 `_config.yml` 없음, `jma-2/_config.yml` 만 존재
     - ② 재재현 + 파급 (2026-09-28, 후보 41d93f8 R1 3·4행): 첫 기동에서 `jma-2/_config.yml` 로 이동한 파일이 레이아웃 **`_config`** 로 목록에 오르고, 4행 API `DELETE /layouts`(delete-all)가 그것까지 지웠다(`deletedCount 1`) — 설정 파일이 레이아웃 삭제에 쓸려 나간다. 호스트 폴더가 생긴 뒤 기동은 루트에 새 `_config.yml` 을 만든다
     - 우회(촬영용): prj16 `screenshots/demo/setup-demo.sh` 가 호스트 폴더를 미리 만들고 `open --env fWarrangeCli_config=…` 로 기동
+    - ✅ ② 해소 (2026-09-28, **d117d12**, `fix/issue108-config-migration`): `_` 접두 파일을 마이그레이션에서 제외 · 설정 파일만 있는 루트는 호스트 폴더를 만들지 않음. 재생목록 16행 `root-config-stays-at-root` red(4단언) → green. ① 은 정책 결정 대기라 이슈 유지
 * 구현 명세:
     - ① `dataDirectoryPath` 가 있으면 그것을 base 로 쓰도록 `resolveDefaultBaseDirectory()` 우선순위를 `env > settings.dataDirectoryPath > 기본값` 으로 — 변경 시 재기동 필요 여부·기존 데이터 이전 정책을 함께 정한다. red 먼저: 설정 변경 후 `GET /api/v2/layouts` 가 새 폴더를 보는지
     - ② 마이그레이션 대상에서 `_config.yml`(및 `_` 접두 파일) 제외. red 먼저: 빈 base 에서 AppState 기동 → 루트 `_config.yml` 존재 단언

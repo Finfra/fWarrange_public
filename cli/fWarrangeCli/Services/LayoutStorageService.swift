@@ -68,10 +68,9 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     // MARK: - Issue166_3: 마이그레이션 (루트 yml → hostname 폴더)
 
     /// 기존 루트 yml 파일을 hostname 폴더로 마이그레이션
-    static func migrateRootDataIfNeeded() {
-        let baseDir = resolveDefaultBaseDirectory()
-
-        let hostname = currentHostname()
+    /// - Parameters: injectable for tests — defaults are the real base folder and host name
+    static func migrateRootDataIfNeeded(baseDir: URL = resolveDefaultBaseDirectory(),
+                                        hostname: String = currentHostname()) {
         let hostnameDir = baseDir.appendingPathComponent(hostname)
         let fm = FileManager.default
 
@@ -79,14 +78,16 @@ final class YAMLLayoutStorageService: LayoutStorageService {
         guard !fm.fileExists(atPath: hostnameDir.path) else { return }
 
         // 루트에 .yml 파일이 있는지 확인
-        guard let contents = try? fm.contentsOfDirectory(at: baseDir, includingPropertiesForKeys: nil),
-              contents.contains(where: { $0.pathExtension == "yml" }) else { return }
+        // `_` prefixed files (`_config.yml`) are settings, not layouts — they stay at the root (Issue108 ②)
+        guard let contents = try? fm.contentsOfDirectory(at: baseDir, includingPropertiesForKeys: nil) else { return }
+        let layoutFiles = contents.filter { $0.pathExtension == "yml" && !$0.lastPathComponent.hasPrefix("_") }
+        guard !layoutFiles.isEmpty else { return }
 
         // hostname 폴더 생성
         try? fm.createDirectory(at: hostnameDir, withIntermediateDirectories: true)
 
         // .yml 파일 이동
-        for file in contents where file.pathExtension == "yml" {
+        for file in layoutFiles {
             let dest = hostnameDir.appendingPathComponent(file.lastPathComponent)
             try? fm.moveItem(at: file, to: dest)
         }

@@ -227,6 +227,34 @@ final class TDDPlaylistTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(lines.filter { $0.hasPrefix("  - \"") }.count, 2, "excludedApps")
     }
 
+    // MARK: - #16 root-config-stays-at-root (Issue108 ②)
+
+    /// The first launch moves legacy root layouts into the host folder, but `_config.yml`
+    /// (and any `_`-prefixed file) is settings, not a layout — it must stay at the root.
+    /// Moved into the host folder it showed up as a layout named `_config` and was wiped by delete-all.
+    func testMigrationKeepsUnderscoreFilesAtRoot() throws {
+        let fm = FileManager.default
+        try "restServerPort: 3016\n".write(to: tmpDir.appendingPathComponent("_config.yml"), atomically: true, encoding: .utf8)
+        try "- app: A\n".write(to: tmpDir.appendingPathComponent("legacy.yml"), atomically: true, encoding: .utf8)
+
+        YAMLLayoutStorageService.migrateRootDataIfNeeded(baseDir: tmpDir, hostname: "testhost")
+
+        XCTAssertTrue(fm.fileExists(atPath: tmpDir.appendingPathComponent("_config.yml").path), "_config.yml stays at the root")
+        XCTAssertFalse(fm.fileExists(atPath: tmpDir.appendingPathComponent("testhost/_config.yml").path), "_config.yml is not moved")
+        XCTAssertTrue(fm.fileExists(atPath: tmpDir.appendingPathComponent("testhost/legacy.yml").path), "legacy layout is migrated")
+    }
+
+    /// A fresh install has only `_config.yml` at the root — there is nothing to migrate.
+    func testConfigOnlyRootIsNotMigrated() throws {
+        let fm = FileManager.default
+        try "restServerPort: 3016\n".write(to: tmpDir.appendingPathComponent("_config.yml"), atomically: true, encoding: .utf8)
+
+        YAMLLayoutStorageService.migrateRootDataIfNeeded(baseDir: tmpDir, hostname: "testhost")
+
+        XCTAssertTrue(fm.fileExists(atPath: tmpDir.appendingPathComponent("_config.yml").path), "_config.yml stays at the root")
+        XCTAssertFalse(fm.fileExists(atPath: tmpDir.appendingPathComponent("testhost").path), "no host folder is created for a settings-only root")
+    }
+
     // MARK: - #10 version-label-match (Issue89, Issue91)
 
     private var repoRoot: URL {
