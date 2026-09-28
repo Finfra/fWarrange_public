@@ -27,7 +27,11 @@ date: 2026-04-07
 
 # 📙 일반
 
-## Issue110: [Bug] 접근성 미승인 기동 시 `AccessibilityGuidePresenter` 모달(`NSAlert runModal`)이 메인 스레드를 잡아 REST v2 가 무응답 (등록: 2026-09-28)
+# 📗 선택
+
+# ✅ 완료
+
+## Issue110: [Bug] 접근성 미승인 기동 시 `AccessibilityGuidePresenter` 모달(`NSAlert runModal`)이 메인 스레드를 잡아 REST v2 가 무응답 (등록: 2026-09-28, 완료: 2026-09-28, Hash: 7b56aff) ✅
 * 목적: 데몬의 REST 가 사람이 안내 창을 닫을 때까지 멈춘다 — paidApp·스크립트가 레이아웃 조회부터 막힌다 (1.1.2 출고 R1 2단계 원복 중 발견)
 * 상세:
     - 재현(jma 2026-09-28): TCC 접근성 리셋 뒤 brew 설치본 cliApp 1.1.1 기동 → `/` ·`/api/v2/health` 는 200, `/api/v2/status/accessibility`·`/api/v2/layouts` 는 8초 타임아웃(000). `sample` 메인 스레드 = `AccessibilityGuidePresenter` → `NSAlert runModal` → `runModalForWindow:`
@@ -37,10 +41,11 @@ date: 2026-04-07
 * 구현 명세:
     - red 먼저: 미승인 상태에서 안내 표시 중에도 `GET /api/v2/layouts` 가 응답함을 단언
     - 후보: 모달 대신 비모달 창(또는 `beginSheet`), REST 처리가 메인 액터 대기에 묶이지 않게
-
-# 📗 선택
-
-# ✅ 완료
+* 결과 (2026-09-28, 8f76dad 테스트 · **7b56aff** 수정 · `fix/issue110-a11y-guide-nonmodal`):
+    - 진짜 원인: 안내를 `DispatchQueue.main.async` 블록 **안에서** `runModal()` 로 띄워, 창이 닫힐 때까지 그 블록이 끝나지 않고 직렬 메인 큐가 비워지지 않았다. REST v2 핸들러는 메인 큐로 넘어가므로 전부 대기. `/`·`/health` 는 메인 큐를 안 거쳐 응답(비재현 조건 차이는 기동 경로의 호출 순서 차이로 봄)
+    - 수정: `AccessibilityGuidePresenter.schedule` = `RunLoop.main.perform(inModes: [.common])` — run loop 블록은 메인 큐 콜아웃 밖이라 모달 루프가 메인 큐를 계속 처리. 시작 시 안내·운영 중 권한 상실 안내 둘 다. 모달 형태·중복 방지 유지
+    - TDD: `AccessibilityGuideSchedulingTests`(중첩 modal-panel run loop 안에서 메인 큐 작업 실행) red → green · 재생목록 20행 · jma XCTest **108/108**
+    - jma E2E (TCC 리셋 → brew 기동): 수정 전 공개본 1.1.2 `layouts=000` · 수정 빌드 `layouts=200`·`granted:false` 응답 — `sample` 로 메인 스레드가 `NSAlert runModal` 안임을 확인. 이후 공개본 1.1.2 로 원복(이 수정은 다음 출고분부터)
 
 ## Issue108: `dataDirectoryPath` 설정이 저장만 되고 레이아웃 경로에 반영되지 않음 + 첫 기동 시 `_config.yml` 이 호스트 폴더로 옮겨짐 (등록: 2026-09-28, 완료: 2026-09-28, Hash: d117d12, a30f5d0) ✅
 * 목적: paidApp 설정 › 일반의 데이터 폴더 «변경»이 동작하지 않는다 — App Store 1.1.1 스크린샷 05 캡션(«저장 폴더 직접 선택»)·entitlement `files.user-selected.read-write` 근거와 충돌한다 (prj16#Issue265 위임 A 중 발견)
