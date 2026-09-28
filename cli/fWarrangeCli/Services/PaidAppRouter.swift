@@ -33,20 +33,34 @@ final class PaidAppRouter {
     /// 프로덕션 기본값은 `Bundle(url:)?.bundleIdentifier`.
     typealias BundleIdAtPathResolver = (_ url: URL) -> String?
 
+    /// A paidApp process found among running applications (not through REST register).
+    struct DetectedPaidApp: Equatable {
+        let pid: Int32
+        let version: String?
+        let bundlePath: String?
+    }
+
+    /// Running paidApp lookup used by `status()` when there is no registration (Issue111).
+    /// Injected in tests; production default queries `NSRunningApplication`.
+    typealias RunningPaidAppResolver = () -> DetectedPaidApp?
+
     static let paidAppBundleId = "kr.finfra.fWarrange"
 
     private let store: PaidAppStateStore
     private let senderBundleIdResolver: SenderBundleIdResolver
     private let bundleIdAtPathResolver: BundleIdAtPathResolver
+    private let runningPaidAppResolver: RunningPaidAppResolver
 
     init(
         store: PaidAppStateStore,
         senderBundleIdResolver: @escaping SenderBundleIdResolver = PaidAppRouter.defaultSenderResolver,
-        bundleIdAtPathResolver: @escaping BundleIdAtPathResolver = PaidAppRouter.defaultBundleIdAtPathResolver
+        bundleIdAtPathResolver: @escaping BundleIdAtPathResolver = PaidAppRouter.defaultBundleIdAtPathResolver,
+        runningPaidAppResolver: @escaping RunningPaidAppResolver = PaidAppRouter.defaultRunningPaidAppResolver
     ) {
         self.store = store
         self.senderBundleIdResolver = senderBundleIdResolver
         self.bundleIdAtPathResolver = bundleIdAtPathResolver
+        self.runningPaidAppResolver = runningPaidAppResolver
     }
 
     // MARK: - Handlers
@@ -157,7 +171,11 @@ final class PaidAppRouter {
     }
 
     func status() -> PaidAppStatusResponse {
-        return store.statusResponse()
+        let registered = store.statusResponse()
+        // After a cliApp restart the registration is gone while paidApp keeps running (protocol §3.4).
+        // Answer from the running process then, so status agrees with PaidAppMonitor (Issue111).
+        guard registered.state == .notRunning, let app = runningPaidAppResolver() else { return registered }
+        return PaidAppStatusResponse(state: .running, pid: app.pid, version: app.version, bundlePath: app.bundlePath)
     }
 
     // MARK: - 기본 발신자 검증기 (프로덕션)
@@ -173,6 +191,20 @@ final class PaidAppRouter {
     /// 단계 ② 기본 bundlePath 검증기 (프로덕션)
     static let defaultBundleIdAtPathResolver: BundleIdAtPathResolver = { url in
         return Bundle(url: url)?.bundleIdentifier
+    }
+
+    /// Production running-paidApp lookup (Issue111)
+    static let defaultRunningPaidAppResolver: RunningPaidAppResolver = {
+        #if canImport(AppKit)
+        guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: paidAppBundleId).first else {
+            return nil
+        }
+        let url = app.bundleURL
+        let version = url.flatMap { Bundle(url: $0)?.infoDictionary?["CFBundleShortVersionString"] as? String }
+        return DetectedPaidApp(pid: app.processIdentifier, version: version, bundlePath: url?.path)
+        #else
+        return nil
+        #endif
     }
 
     // MARK: - Helpers
