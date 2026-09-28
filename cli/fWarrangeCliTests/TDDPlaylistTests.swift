@@ -459,6 +459,35 @@ final class RESTListenerLifecycleTests: XCTestCase {
 
 /// tdd accessibility-boot-listing (Issue104 · prj25 Issue237 이식): 미승인으로 부팅한 새 프로세스는
 /// 시스템 권한 요청을 정확히 1회 보내 손쉬운 사용 목록에 올라간다. 승인 상태면 묻지 않는다.
+// MARK: - a11y-guide-keeps-rest-alive (Issue110)
+
+/// The accessibility guide is an `NSAlert.runModal()` — a nested run loop in modal-panel mode.
+/// REST v2 handlers hop to the main queue (`DispatchQueue.main.async`). If the guide itself is
+/// started from a main-queue block, the serial main queue cannot drain until the alert closes and
+/// every REST v2 request hangs (jma, TCC reset → brew launch: `/api/v2/layouts` 000 for as long as
+/// the guide was up). The presenter must schedule the alert so that main-queue work keeps running.
+final class AccessibilityGuideSchedulingTests: XCTestCase {
+
+    func testMainQueueWorkRunsWhileGuideIsUp() {
+        let done = expectation(description: "guide stand-in finished")
+        var mainQueueRan = false
+
+        AccessibilityGuidePresenter.schedule {
+            // stand-in for a REST v2 handler queued while the guide is shown
+            DispatchQueue.main.async { mainQueueRan = true }
+            // stand-in for NSAlert.runModal(): spin a nested run loop in modal-panel mode
+            let deadline = Date().addingTimeInterval(2)
+            while !mainQueueRan && Date() < deadline {
+                RunLoop.current.run(mode: .modalPanel, before: Date().addingTimeInterval(0.05))
+            }
+            XCTAssertTrue(mainQueueRan, "main-queue work must run while the modal guide is up")
+            done.fulfill()
+        }
+
+        wait(for: [done], timeout: 10)
+    }
+}
+
 final class AccessibilityBootListingTests: XCTestCase {
 
     func testUngrantedBootRequestsListingOnce() {

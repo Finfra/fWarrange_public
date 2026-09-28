@@ -11,8 +11,13 @@ enum AccessibilityGuidePresenter {
     /// 접근은 모두 main queue 안에서만 일어나 별도 동기화가 필요 없다.
     private static var isPresenting = false
 
+    /// Schedules a modal alert on the main thread (Issue110).
+    static func schedule(_ present: @escaping () -> Void) {
+        DispatchQueue.main.async(execute: present)
+    }
+
     static func show(windowManager: WindowManager) {
-        DispatchQueue.main.async {
+        schedule {
             let alert = NSAlert()
             alert.alertStyle = .warning
             alert.messageText = "Accessibility 권한 필요"
@@ -42,7 +47,7 @@ enum AccessibilityGuidePresenter {
     /// 권한이 해제되면 접근성 목록에서 항목 자체가 사라져 켤 대상이 없고,
     /// 실행 중인 프로세스는 스스로를 그 목록에 되돌릴 수 없다. 재시작이 유일한 복구 경로다.
     static func showPermissionLost() {
-        DispatchQueue.main.async {
+        schedule {
             guard !isPresenting else {
                 logD("[a11y] 권한 상실 안내 이미 표시 중 — 중복 호출 억제")
                 return
