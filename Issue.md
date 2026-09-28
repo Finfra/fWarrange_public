@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 113
+* Issue HWM: 114
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -26,6 +26,16 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+
+## Issue114: 1.1.2 공개본 출고 테스트 발견 결함 — 단일 창 복원 판정·테스트 도구 위험·README 불일치 (등록: 2026-09-29)
+* 목적: prj5#Issue107 jma 출고 테스트(2026-09-29, release/1.1.1 `af8537b` = 공개 1.1.2) 결과 기록 — 증거 result: partial
+* 상세:
+    - ① 단일 창 레이아웃을 다른 위치에서 복원하면 `noMatch`/`windowNotFound`·succeeded 0 보고, 실제로는 근사 이동 — 3회 재현(prj16#Issue283 ②). 1.1.1 부터인지는 미확인
+    - ② 1.1.2 공개본에 남은 기지 결함: Issue108 ②(클린 설치 첫 기동 `_config.yml` 이 호스트 폴더로 이동 → paidApp 목록에 `_config` 레이아웃) · Issue111(cliApp 재기동 뒤 `not_running`) · Issue112(publish dry-run 요약 거짓 ✅) — develop 수정분이 1.1.2 에 없다
+    - ③ `fwc-test.sh` API 단계 `delete-all` 이 실제 사용자 데이터 폴더 레이아웃을 전부 지운다 · API·CMD 단계를 응답 내용이 아니라 실행 건수로 PASS 판정
+    - ④ `cli/README.md` 불일치 — v1 «maintained» 인데 실제 410 · «brew services 불필요» 인데 Formula 에 service 정의 · 수동 기동 예시에 개발 경로 `/Applications/_nowage_app/`
+    - ⑤ `jma-fwarrange-deploy.sh` 기본값이 jm4→jma rsync 라 jma 의 release 소스를 jm4 develop 으로 덮는다(이번엔 `--no-sync` 로 우회)
+* 증거: `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_jma-2026.09.29.md` · prj16 `_doc_work/_release/v1.1.2/jma-logs_2026.09.29/`
 
 # 📗 선택
 
