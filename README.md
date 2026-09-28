@@ -16,7 +16,7 @@ macOS Window Management & Layout Tool. Save and restore window positions and siz
 | Edition | Interface | Price | Install | Version | Source |
 | ------- | --------- | ----- | ------- | ------- | ------ |
 | **fWarrange** (GUI) | Full GUI with menu bar | Paid (App Store) | [App Store](https://finfra.kr/product/fWarrange/en/index.html) | Latest | Closed |
-| **fWarrangeCli** (CLI) | Menu bar + REST API | **Free & Open Source** | `brew install finfra/tap/fwarrange-cli` | 1.0.2 | [`cli/`](./cli/) |
+| **fWarrangeCli** (CLI) | Menu bar + REST API | **Free & Open Source** | `brew install finfra/tap/fwarrange-cli` | 1.1.2 | [`cli/`](./cli/) |
 
 This repository serves as:
 * **User support & documentation** for the paid GUI version (App Store)

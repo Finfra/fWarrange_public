@@ -16,7 +16,7 @@ macOS 창 관리 및 레이아웃 도구. 단축키 하나로 창 위치와 크�
 | 에디션                 | 인터페이스        | 가격                | 설치                                                           | 버전   | 소스             |
 | ---------------------- | ----------------- | ------------------- | -------------------------------------------------------------- | ------ | ---------------- |
 | **fWarrange** (GUI)    | 풀 GUI + 메뉴바   | 유료 (App Store)    | [App Store](https://finfra.kr/product/fWarrange/kr/index.html) | 최신   | 비공개           |
-| **fWarrangeCli** (CLI) | 메뉴바 + REST API | **무료 & 오픈소스** | `brew install finfra/tap/fwarrange-cli`                        | 1.0.2  | [`cli/`](./cli/) |
+| **fWarrangeCli** (CLI) | 메뉴바 + REST API | **무료 & 오픈소스** | `brew install finfra/tap/fwarrange-cli`                        | 1.1.2  | [`cli/`](./cli/) |
 
 이 레포지터리는 다음 두 가지 역할을 합니다:
 * 유료 GUI 버전 (App Store)의 **사용자 지원 및 문서**
