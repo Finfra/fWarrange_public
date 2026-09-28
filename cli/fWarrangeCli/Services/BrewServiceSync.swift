@@ -59,6 +59,8 @@ enum BrewServiceSync {
         var startService: (String) -> (Int32, String)
         var flushLog: () -> Void
         var exitProcess: () -> Void
+        /// XCTest host process — it must never touch the real brew service (Issue106)
+        var isTestHost: () -> Bool = { false }
 
         static let live = StartEnvironment(
             optOut: { UserDefaults.standard.object(forKey: optOutKey) as? Bool },
@@ -68,7 +70,8 @@ enum BrewServiceSync {
             isFormulaInstalled: { BrewServiceSync.isFormulaInstalled(brewPath: $0) },
             startService: { runCommandWithStatus($0, args: ["services", "start", formulaName]) },
             flushLog: { Logger.shared.flush() },
-            exitProcess: { Foundation.exit(0) }
+            exitProcess: { Foundation.exit(0) },
+            isTestHost: { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
         )
     }
 
