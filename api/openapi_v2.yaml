@@ -1480,7 +1480,13 @@ components:
       properties:
         appLanguage: { type: string, example: ko }
         dataStorageMode: { type: string, enum: [host, share] }
-        dataDirectoryPath: { type: string, nullable: true }
+        dataDirectoryPath:
+          type: string
+          nullable: true
+          description: |
+            레이아웃 저장 base 폴더(`~` 확장). 우선순위: 환경변수 `fWarrangeCli_config` > 이 값 > 기본
+            `~/Documents/finfra/fWarrangeData`. **cliApp 다음 기동부터 적용**(기존 레이아웃은 옮기지 않음).
+            `_config.yml` 은 이 값과 무관하게 설정 폴더에 남는다 (Issue108 ①)
         launchAtLogin: { type: boolean }
         theme: { type: string, enum: [system, light, dark] }
         maxRetries: { type: integer, minimum: 0 }
@@ -1523,7 +1529,13 @@ components:
       properties:
         appLanguage: { type: string }
         dataStorageMode: { type: string, enum: [host, share] }
-        dataDirectoryPath: { type: string, nullable: true }
+        dataDirectoryPath:
+          type: string
+          nullable: true
+          description: |
+            레이아웃 저장 base 폴더(`~` 확장). 우선순위: 환경변수 `fWarrangeCli_config` > 이 값 > 기본
+            `~/Documents/finfra/fWarrangeData`. **cliApp 다음 기동부터 적용**(기존 레이아웃은 옮기지 않음).
+            `_config.yml` 은 이 값과 무관하게 설정 폴더에 남는다 (Issue108 ①)
         launchAtLogin: { type: boolean }
         theme: { type: string, enum: [system, light, dark] }
 

@@ -20,8 +20,8 @@ final class YAMLLayoutStorageService: LayoutStorageService {
 
     // MARK: - 경로 분기 (host/share 모드)
 
-    init(storageMode: DataStorageMode = .host) {
-        let baseDir = Self.resolveDefaultBaseDirectory()
+    init(storageMode: DataStorageMode = .host, baseDirectory: URL? = nil) {
+        let baseDir = baseDirectory ?? Self.resolveDefaultBaseDirectory()
 
         switch storageMode {
         case .host:
@@ -71,7 +71,18 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     static func resolveLayoutBaseDirectory(dataDirectoryPath: String?,
                                            configBase: URL,
                                            envPath: String? = Env.configPath) -> URL {
-        return configBase
+        if envPath != nil { return configBase }
+        guard let raw = dataDirectoryPath?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return configBase
+        }
+        let dir = URL(fileURLWithPath: (raw as NSString).expandingTildeInPath, isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            return dir
+        } catch {
+            logW("dataDirectoryPath 사용 불가 → 기본 폴더 유지: \(dir.path) (\(error.localizedDescription))")
+            return configBase
+        }
     }
 
     // MARK: - Issue166_3: 마이그레이션 (루트 yml → hostname 폴더)
@@ -107,9 +118,7 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     // MARK: - Issue166_2: _share 복사 (host 모드 최초 실행)
 
     /// host 모드 최초 실행 시 _share에서 데이터 복사
-    static func copyShareDataIfNeeded() {
-        let baseDir = resolveDefaultBaseDirectory()
-
+    static func copyShareDataIfNeeded(baseDir: URL = resolveDefaultBaseDirectory()) {
         let hostname = currentHostname()
         let hostnameDir = baseDir.appendingPathComponent(hostname)
         let shareDir = baseDir.appendingPathComponent("_share")
