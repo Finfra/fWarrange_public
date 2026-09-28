@@ -38,7 +38,11 @@ date: 2026-04-07
     - red 먼저: 미승인 상태에서 안내 표시 중에도 `GET /api/v2/layouts` 가 응답함을 단언
     - 후보: 모달 대신 비모달 창(또는 `beginSheet`), REST 처리가 메인 액터 대기에 묶이지 않게
 
-## Issue108: `dataDirectoryPath` 설정이 저장만 되고 레이아웃 경로에 반영되지 않음 + 첫 기동 시 `_config.yml` 이 호스트 폴더로 옮겨짐 (등록: 2026-09-28)
+# 📗 선택
+
+# ✅ 완료
+
+## Issue108: `dataDirectoryPath` 설정이 저장만 되고 레이아웃 경로에 반영되지 않음 + 첫 기동 시 `_config.yml` 이 호스트 폴더로 옮겨짐 (등록: 2026-09-28, 완료: 2026-09-28, Hash: d117d12, a30f5d0) ✅
 * 목적: paidApp 설정 › 일반의 데이터 폴더 «변경»이 동작하지 않는다 — App Store 1.1.1 스크린샷 05 캡션(«저장 폴더 직접 선택»)·entitlement `files.user-selected.read-write` 근거와 충돌한다 (prj16#Issue265 위임 A 중 발견)
 * 상세:
     - 출처: prj16 위임 A(`_doc_work/delegation_2026.09.28_appstore-prefix.md`) — 결정 권한 C 등급(타 repo 이슈 등록)으로 등록만 함. 판단 재료: prj16 `_doc_work/_release/v1.1.1/screenshots/candidates.md` «발견 3»
@@ -52,10 +56,11 @@ date: 2026-04-07
     - ① `dataDirectoryPath` 가 있으면 그것을 base 로 쓰도록 `resolveDefaultBaseDirectory()` 우선순위를 `env > settings.dataDirectoryPath > 기본값` 으로 — 변경 시 재기동 필요 여부·기존 데이터 이전 정책을 함께 정한다. red 먼저: 설정 변경 후 `GET /api/v2/layouts` 가 새 폴더를 보는지
     - ② 마이그레이션 대상에서 `_config.yml`(및 `_` 접두 파일) 제외. red 먼저: 빈 base 에서 AppState 기동 → 루트 `_config.yml` 존재 단언
     - 수정 후 prj16 AppStoreDoc·review-notes 의 entitlement 근거와 스크린샷 05 캡션을 재확인
-
-# 📗 선택
-
-# ✅ 완료
+* 결과 (2026-09-28):
+    - ② d117d12 — `_` 접두 파일 마이그레이션 제외 (재생목록 16행)
+    - ① **a30f5d0** (`fix/issue108-data-directory`) — 사용자 결정 «다음 기동부터 적용»: `resolveLayoutBaseDirectory` 우선순위 환경변수 > `dataDirectoryPath`(`~` 확장·폴더 생성, 실패 시 경고 후 설정 폴더) > 설정 폴더. AppState 의 저장소·마이그레이션·`_share` 복사가 레이아웃 base 를 쓴다. `_config.yml` 은 설정 폴더 유지. 기존 레이아웃은 옮기지 않음. openapi 설명 동기. 재생목록 19행 red(3단언) → green
+    - 검증: jma clean clone XCTest **107/107**. 미검증: paidApp UI 에서 폴더 변경 → cliApp 재기동 → 새 폴더 목록까지의 실기 흐름(테스트는 판정 함수·배선 단위)
+    - 남은 것(prj16 몫): AppStoreDoc·review-notes entitlement 근거·스크린샷 05 캡션 재확인 — 이제 «변경»이 동작하므로 캡션 유지 가능, paidApp 쪽 «재시작 뒤 적용» 안내 문구 필요 여부 판단
 
 ## Issue112: [Bug] `fwc-deploy-brew.sh publish --dry-run` 이 태그·release 중복 검사를 건너뛰고, 요약표가 실행 안 한 push·release 를 ✅ 로 찍음 (Issue107 결함 ① 분리) (등록: 2026-09-28, 완료: 2026-09-28, Hash: 12ec148) ✅
 * 목적: 출고 판단자가 dry-run 결과를 믿고 기출고 번호를 다시 내거나, 이미 올라갔다고 오독한다 — dry-run 이 실제 publish 의 위험을 미리 보여 주지 못한다
