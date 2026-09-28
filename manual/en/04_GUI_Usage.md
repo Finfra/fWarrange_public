@@ -68,8 +68,6 @@ Open the settings window via the menu bar > settings icon.
 
 ### Tab 4: API
 
-![API Settings](https://finfra.kr/product/fWarrange/en/setting_4_api.png)
-
 | Item           | Default        | Description                |
 | -------------- | -------------- | -------------------------- |
 | Enable Server  | OFF            | Start/stop REST API server |

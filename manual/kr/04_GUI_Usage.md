@@ -68,8 +68,6 @@ fWarrange는 macOS 메뉴바에 상주하는 SwiftUI 앱으로, 클릭 한 번�
 
 ### 탭 4: API
 
-![API 설정](https://finfra.kr/product/fWarrange/kr/setting_4_api.png)
-
 | 항목           | 기본값         | 설명                    |
 | -------------- | -------------- | ----------------------- |
 | 서버 활성화    | OFF            | REST API 서버 시작/중지 |
