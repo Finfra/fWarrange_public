@@ -9,7 +9,7 @@ date: 2026.09.26
 창 레이아웃 캡처와 복구 REST, 설정 영속성, brew 서비스 기동, 권한 상실 감지가 조용히 실패하지 않게 지킨다
 
 * 기존 러너: `bash cli/_tool/fwc-test.sh (8단계 통합) / bash cli/_tool/apiTestDo.sh v2 / bash cli/_tool/cmdTestDo.sh v2 / XCTest 타깃 cli/fWarrangeCliTests`
-* 목표 15개 중 기존 테스트로 덮인 것 5개 · 신규 10개 (prj5#Issue99 · Issue101 · Issue104 · Issue105 · Issue109, 2026.09.28)
+* 목표 16개 중 기존 테스트로 덮인 것 5개 · 신규 11개 (prj5#Issue99 · Issue101 · Issue104 · Issue105 · Issue109 · Issue108, 2026.09.28)
 * 최종 실행: **jma** — XCTest 84/84 passed (Issue101 이후)(`xcodebuild test`, test plan 격리) · `fwc-test.sh` ALL CLEAR 6 PASS / 0 FAIL · **jm4** — XCTest 98/98 passed (Issue109)
 * 테스트 호스트 격리: [fWarrangeCli.xctestplan](cli/fWarrangeCli.xctestplan) 이 `fWarrangeCli_config`·`FWARRANGE_DISABLE_HOTKEYS`·`FWARRANGE_PORT` 를 주입 — 실데이터 폴더·사용자 단축키·3016 포트를 건드리지 않는다
 
@@ -34,6 +34,7 @@ date: 2026.09.26
 | 13  | `accessibility-boot-listing`  | 미승인으로 부팅한 새 프로세스는 시스템 권한 요청을 정확히 1회 보내 손쉬운 사용 목록에 올라가고, 승인 상태로 부팅하면 아무것도 묻지 않는다                                                                                | Issue104(jma 에서 목록 미등록 → 수동 추가. 낡은 ad-hoc 서명 전제 정정)                                                                                              | `cli/fWarrangeCliTests/TDDPlaylistTests.swift` (AccessibilityBootListingTests)                                             | ✅ jma  |
 | 14  | `official-build-marker`       | 공식 빌드에만 Official Build Components(`cli/resources/official/` 배너 + 약관 문서)가 들어가 `--version` 이 `Finfra Official Build` 를 보고하고, 소스 빌드는 `Source Build` 이며 이전 공식 빌드의 잔재를 물려받지 않는다 | Issue105(DISTRIBUTION-TERMS v1.2 §1(b) — 표식이 없으면 약관 적용 대상이 빈 집합)                                                                                    | `cli/fWarrangeCliTests/TDDPlaylistTests.swift` (OfficialBuildMarkerTests) + `fwc-deploy-brew.sh` `official_build_gate`     | ✅ jm4  |
 | 15  | `brew-handoff-keeps-primary`  | `open` 기동 앱은 brew 바이너리가 있어도 formula 서비스 실행 파일이 없으면 handoff 하지 않고, `brew services start` 가 실패하면 exit 하지 않고 primary 로 남는다. 성공해 exit 할 때는 로그를 먼저 flush 한다              | Issue109(README 소스 빌드 앱이 formula 미설치 jma 에서 기동 0.55초 만에 자체 종료 — 1.1.2 R1 3행 실패)                                                              | `cli/fWarrangeCliTests/TDDPlaylistTests.swift` (BrewHandoffTests)                                                          | ✅ jm4  |
+| 16  | `root-config-stays-at-root`   | 첫 기동 마이그레이션은 루트의 레이아웃 yml 만 호스트 폴더로 옮기고 `_config.yml`(`_` 접두 파일)은 루트에 남긴다. 설정 파일만 있는 루트에는 호스트 폴더를 만들지 않는다                                                   | Issue108 ②(첫 기동마다 `_config.yml` 이 호스트 폴더로 옮겨져 레이아웃 `_config` 로 목록에 오르고 delete-all 에 지워짐 — 1.1.2 R1 3·4행)                             | `cli/fWarrangeCliTests/TDDPlaylistTests.swift` (testMigrationKeepsUnderscoreFilesAtRoot · testConfigOnlyRootIsNotMigrated) | ✅ jm4  |
 
 # 규약
 
