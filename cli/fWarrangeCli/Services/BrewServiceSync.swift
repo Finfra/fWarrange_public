@@ -113,6 +113,12 @@ enum BrewServiceSync {
     /// 위임이 실패하면 exit 하지 않고 `.keptPrimary` 를 반환한다.
     @discardableResult
     static func onAppStart(_ env: StartEnvironment = .live) -> StartOutcome {
+        // Issue106: the XCTest host runs AppState too — never query or hand off to the real brew service there
+        if env.isTestHost() {
+            logD("[brew-sync] onAppStart skip — XCTest host")
+            return .skipped
+        }
+
         if let optOut = env.optOut(), optOut == false {
             logI("[brew-sync] onAppStart skip — \(optOutKey)=false")
             return .skipped
