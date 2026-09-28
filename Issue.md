@@ -42,6 +42,7 @@ date: 2026-04-07
     - 발견 결함 ②: 증거 기본 경로 `_doc_work/_release` 가 이 레포 경로 규칙(루트 `_doc_work/` 금지·doc-root-guard 차단)과 충돌 → `tdd/release.md` 에 `evidence_dir` 선언 필요. `cli/_doc_work/` 도 gitignore 라 R3(증거 커밋)용 추적 위치는 공개 노출(jma·prj16 SHA) 여부와 함께 결정
     - 2026-09-28 사용자 결정: paidApp·cliApp **락스텝 1.1.2** (⏸️ → 🚧). 2단계 위임 — 1단계(bump + R1 1행, jm4) `../_doc_work/delegation_2026.09.28_cli-1.1.2-bump.md` · 2단계(jma 2~12행)는 prj16 스크린샷 위임 B 종료·jma 잠금 해제 뒤
     - 1단계 bump: `VERSION` 1.1.1 → 1.1.2 · pbxproj `MARKETING_VERSION` ×2 · `cli/project.yml` + **`cli/Formula/fwarrange-cli.rb` url(sha256 은 0 자리표시 — publish 뒤 실값, Issue89 da9c41a→79227f6 선례) · `cli/version-meta.yml` `version:`** — 뒤 두 곳은 위임 지시에 없었으나 `testVersionSourcesAgree`(개발 재생목록 10행)가 대조하므로 빠뜨리면 1행이 확정 실패한다. `brew:` 상태 필드(formula·installed 1.1.1)는 설치 실태라 publish 뒤 갱신
+    - ✅ 1단계 완료 (2026-09-28, bump 8553c40): R1 1행 `dev-playlist-green` jm4 **조건부 통과** — XCTest 93/93 passed · 번들 1.1.2 · Issue106 호스트 교착 재현(호스트만 kill → `TEST SUCCEEDED` rc 0) · `fwc-test.sh` 부분은 4행(jma)으로. 증거 `cli/_doc_work/_release/v1.1.2/release-test_1.1.2.md`(`result: partial`, `dirty: yes` — 타 세션 미커밋분) · 보고 `../_doc_work/report/cli-release-1.1.2-stage1_report.md` · 2단계(jma 2~12행) 대기
 * 구현 명세:
     - 사용자 결정: 버전 번호 — paidApp·cliApp 락스텝 1.1.2 로 결정됨 (2026-09-28)
     - 결정 후: bump(`version-rules` 절차) → 새 후보 커밋에서 R1 처음부터(jma 잠금 해제 + 스크린샷 촬영과 점유 순서 합의) → R2 recheck → main `--no-ff` 병합 → main 에서 `publish`
