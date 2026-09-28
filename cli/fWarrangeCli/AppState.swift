@@ -489,7 +489,8 @@ final class AppState {
         startTime = Date()
 
         // Issue39 매트릭스: app start × brew=stopped → brew services start 호출.
-        // launchd 기동 / 옵트아웃 / 이미 로드 / brew 미설치는 내부에서 skip.
+        // launchd 기동 / 옵트아웃 / 이미 로드 / brew·formula 미설치는 내부에서 skip.
+        // start 가 실패하면 exit 하지 않고 이 프로세스가 primary 로 남는다 (Issue109).
         // 중복 인스턴스는 SingleInstanceGuard 가 exit(0) 으로 차단.
         BrewServiceSync.onAppStart()
 

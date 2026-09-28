@@ -28,6 +28,20 @@ date: 2026-04-07
 
 # 🚧 진행중
 
+## Issue109: [Bug] `open` 기동한 cliApp 이 brew 바이너리만 있으면 formula 미설치여도 `brew services start` 위임 후 `exit(0)` — README 소스 빌드 앱이 기동 직후 사라짐 (등록: 2026-09-28)
+* 목적: 출고 R1 3행 `source-build-from-readme` 실패 원인. Homebrew 가 깔린 Mac 에서 README «Build from Source» 로 만든 앱을 `open` 하면 REST 가 한 번 응답한 뒤 1초 안에 종료된다 — 소스 빌드 사용자는 앱을 쓸 수 없다 (1.1.2 출고 R1 2단계 중 발견 · 위임 지시 «코드 수정은 범위 밖 — 이슈후보로» 에 따라 등록만)
+* 상세:
+    - 재현(jma 2026-09-28, 후보 45688ee, clear 직후): `open …/Release/fWarrangeCli.app` → 100ms 에 자식 `brew services start fwarrange-cli` 생성 → brew 가 `Refusing to load formula finfra/tap/fwarrange-cli from untrusted tap` (rc=1, formula 미설치) → 550ms 에 앱 종료. 통합 로그 `CoreAnalytics … Entering exit handler`(정상 종료, 크래시 아님)
+    - 원인(코드 판독): `BrewServiceSync.onAppStart()` 의 skip 조건이 optOut·launchd 기동·서비스 로드·**brew 바이너리 유무**뿐이고 formula 설치 여부를 보지 않는다 → `performHandoffStart()` 가 `brew services start` rc 와 무관하게 `Foundation.exit(0)` (`cli/fWarrangeCli/Services/BrewServiceSync.swift` onAppStart·performHandoffStart)
+    - 도입: Issue41 `03192bb` — 기출고 cli-v1.0.1~1.1.1 에도 포함(1.1.2 회귀 아님). jma 는 그동안 `kr.finfra.fWarrangeCli` `fwc.autoStartBrewService=false` 옵트아웃이 있어 가려져 있었다 — clear 가 prefs 를 지워 드러남
+    - 부수: 종료 직전 `logI("[brew-sync] performHandoffStart …")` 가 `wlog_cliApp.log` 에 남지 않는다 — exit 가 Logger 비동기 쓰기를 앞질러 자체 종료가 로그상 보이지 않음
+    - 관련: Issue106(같은 `onAppStart()` 가 XCTest 호스트에서 도는 격리 결손)
+    - 증거: `cli/_doc_work/_release/v1.1.2/logs/r1s2_row03_*` · 보고 `../_doc_work/report/cli-release-1.1.2-stage2_report.md`
+* 구현 명세:
+    - red 먼저: brew 바이너리 있음 + formula 미설치(또는 `brew services start` 실패) 상태에서 `onAppStart()` 가 프로세스를 종료하지 않음을 단언 (brew 조회는 주입으로 격리)
+    - 후보: handoff 전에 formula 설치 확인(`brew list --versions fwarrange-cli` 등) + `brew services start` 실패 시 exit 하지 않고 현 프로세스를 primary 로 유지. exit 전 Logger flush
+    - 수정 후 새 후보 커밋에서 R1 1행부터 다시 (Issue107)
+
 ## Issue107: cliApp brew·npm 출고 R1 중단 — 기출고 `cli-v1.1.1` 번호 충돌·jma 화면 잠김 (등록: 2026-09-28)
 * 목적: 사용자 결정(2026-09-28, prj3 세션 05cbbead · mq 20260928-120438-001 — H:배포 승인)으로 fWarrangeCli 를 Homebrew tap·npm 으로 출고하려 R1 을 돌렸으나, 1.1.1 은 이미 공개 출고된 번호라 이번 변경(Issue95~105)을 1.1.1 로 낼 수 없다 — 버전 결정 대기
 * report: `../_doc_work/report/cli-release-1.1.1_report.md`, `../_doc_work/report/cli-release-1.1.2-stage1_report.md`, `../_doc_work/report/cli-release-1.1.2-stage2_report.md`
@@ -50,20 +64,6 @@ date: 2026-04-07
     - 결함 ①: dry-run 에서도 중복을 경고(또는 FAIL)로 내게 — 재현: 현 상태에서 `publish --dry-run` 이 ALL CLEAR
 
 # 📕 중요
-
-## Issue109: [Bug] `open` 기동한 cliApp 이 brew 바이너리만 있으면 formula 미설치여도 `brew services start` 위임 후 `exit(0)` — README 소스 빌드 앱이 기동 직후 사라짐 (등록: 2026-09-28)
-* 목적: 출고 R1 3행 `source-build-from-readme` 실패 원인. Homebrew 가 깔린 Mac 에서 README «Build from Source» 로 만든 앱을 `open` 하면 REST 가 한 번 응답한 뒤 1초 안에 종료된다 — 소스 빌드 사용자는 앱을 쓸 수 없다 (1.1.2 출고 R1 2단계 중 발견 · 위임 지시 «코드 수정은 범위 밖 — 이슈후보로» 에 따라 등록만)
-* 상세:
-    - 재현(jma 2026-09-28, 후보 45688ee, clear 직후): `open …/Release/fWarrangeCli.app` → 100ms 에 자식 `brew services start fwarrange-cli` 생성 → brew 가 `Refusing to load formula finfra/tap/fwarrange-cli from untrusted tap` (rc=1, formula 미설치) → 550ms 에 앱 종료. 통합 로그 `CoreAnalytics … Entering exit handler`(정상 종료, 크래시 아님)
-    - 원인(코드 판독): `BrewServiceSync.onAppStart()` 의 skip 조건이 optOut·launchd 기동·서비스 로드·**brew 바이너리 유무**뿐이고 formula 설치 여부를 보지 않는다 → `performHandoffStart()` 가 `brew services start` rc 와 무관하게 `Foundation.exit(0)` (`cli/fWarrangeCli/Services/BrewServiceSync.swift` onAppStart·performHandoffStart)
-    - 도입: Issue41 `03192bb` — 기출고 cli-v1.0.1~1.1.1 에도 포함(1.1.2 회귀 아님). jma 는 그동안 `kr.finfra.fWarrangeCli` `fwc.autoStartBrewService=false` 옵트아웃이 있어 가려져 있었다 — clear 가 prefs 를 지워 드러남
-    - 부수: 종료 직전 `logI("[brew-sync] performHandoffStart …")` 가 `wlog_cliApp.log` 에 남지 않는다 — exit 가 Logger 비동기 쓰기를 앞질러 자체 종료가 로그상 보이지 않음
-    - 관련: Issue106(같은 `onAppStart()` 가 XCTest 호스트에서 도는 격리 결손)
-    - 증거: `cli/_doc_work/_release/v1.1.2/logs/r1s2_row03_*` · 보고 `../_doc_work/report/cli-release-1.1.2-stage2_report.md`
-* 구현 명세:
-    - red 먼저: brew 바이너리 있음 + formula 미설치(또는 `brew services start` 실패) 상태에서 `onAppStart()` 가 프로세스를 종료하지 않음을 단언 (brew 조회는 주입으로 격리)
-    - 후보: handoff 전에 formula 설치 확인(`brew list --versions fwarrange-cli` 등) + `brew services start` 실패 시 exit 하지 않고 현 프로세스를 primary 로 유지. exit 전 Logger flush
-    - 수정 후 새 후보 커밋에서 R1 1행부터 다시 (Issue107)
 
 # 📙 일반
 

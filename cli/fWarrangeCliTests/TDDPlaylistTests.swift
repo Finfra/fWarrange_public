@@ -523,3 +523,92 @@ final class OfficialBuildMarkerTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: injectedDir.path))
     }
 }
+
+// MARK: - brew-handoff-keeps-primary (Issue109)
+
+/// An `open`-launched instance hands its primary role to the brew service and exits.
+/// That handoff is only valid if launchd can actually spawn the service binary:
+/// with brew present but the formula missing (README source build) or with
+/// `brew services start` failing, the app used to exit anyway and vanish in 0.55s.
+/// Every outside effect (defaults, launchctl, brew, exit) is injected — no real brew call.
+final class BrewHandoffTests: XCTestCase {
+
+    private var events: [String] = []
+    private var tmpDir: URL!
+
+    override func setUpWithError() throws {
+        events = []
+        tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("BrewHandoffTests_\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: tmpDir)
+    }
+
+    /// `open` launch · service not loaded · brew at /fake/bin/brew.
+    private func environment(formulaInstalled: Bool, startStatus: Int32) -> BrewServiceSync.StartEnvironment {
+        BrewServiceSync.StartEnvironment(
+            optOut: { nil },
+            isLaunchedByLaunchd: { false },
+            isServiceLoaded: { false },
+            findBrewPath: { "/fake/bin/brew" },
+            isFormulaInstalled: { [unowned self] _ in events.append("formula?"); return formulaInstalled },
+            startService: { [unowned self] _ in events.append("start"); return (startStatus, "") },
+            flushLog: { [unowned self] in events.append("flush") },
+            exitProcess: { [unowned self] in events.append("exit") }
+        )
+    }
+
+    /// jma R1 row 3: brew binary present, formula not installed.
+    func testMissingFormulaDoesNotHandOffOrExit() {
+        let outcome = BrewServiceSync.onAppStart(environment(formulaInstalled: false, startStatus: 0))
+        XCTAssertEqual(outcome, .skipped)
+        XCTAssertFalse(events.contains("start"), "must not call brew services start without the formula")
+        XCTAssertFalse(events.contains("exit"))
+    }
+
+    /// Formula present but `brew services start` fails (e.g. untrusted tap).
+    func testFailedServiceStartKeepsProcessAsPrimary() {
+        let outcome = BrewServiceSync.onAppStart(environment(formulaInstalled: true, startStatus: 1))
+        XCTAssertEqual(outcome, .keptPrimary)
+        XCTAssertEqual(events, ["formula?", "start"])
+    }
+
+    /// Successful handoff exits — but only after the pending log lines are written.
+    func testSuccessfulHandoffFlushesLogBeforeExit() {
+        let outcome = BrewServiceSync.onAppStart(environment(formulaInstalled: true, startStatus: 0))
+        XCTAssertEqual(outcome, .handedOff)
+        XCTAssertEqual(events, ["formula?", "start", "flush", "exit"])
+    }
+
+    /// The formula counts as installed only if the service executable launchd would run exists.
+    func testFormulaInstalledIsJudgedByServiceExecutable() throws {
+        let brew = tmpDir.appendingPathComponent("bin/brew").path
+        XCTAssertFalse(BrewServiceSync.isFormulaInstalled(brewPath: brew))
+
+        let exe = tmpDir.appendingPathComponent(
+            "opt/\(BrewServiceSync.formulaName)/fWarrangeCli.app/Contents/MacOS/fWarrangeCli")
+        try FileManager.default.createDirectory(at: exe.deletingLastPathComponent(), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: exe.path, contents: Data(), attributes: [.posixPermissions: 0o755])
+        XCTAssertTrue(BrewServiceSync.isFormulaInstalled(brewPath: brew))
+    }
+
+    /// `exit` right after an async log call used to drop the line (Issue109: no trace of the exit).
+    /// The test host config sets logLevel 5 (file logging off), so raise it for this test.
+    /// A backlog of lines makes the unflushed read lose the race deterministically.
+    func testLoggerFlushWritesPendingLines() throws {
+        let saved = Logger.shared.currentLogLevel
+        Logger.shared.setLogLevel(.info)
+        defer { Logger.shared.currentLogLevel = saved }
+
+        let marker = "brew-handoff-flush-\(UUID().uuidString)"
+        for i in 0..<300 { logW("brew-handoff-flush backlog \(i)") }
+        logW(marker)
+        Logger.shared.flush()
+        let path = (Logger.shared.getLogFilePath() as NSString).expandingTildeInPath
+        let content = try String(contentsOfFile: path, encoding: .utf8)
+        XCTAssertTrue(content.contains(marker))
+    }
+}

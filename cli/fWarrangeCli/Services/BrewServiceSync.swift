@@ -41,21 +41,58 @@ enum BrewServiceSync {
 
     /// open/심링크 기동 경로에서 launchd-bootstrap 인스턴스에 primary 를 위임.
     /// brew services start 를 동기 호출 → launchd 가 새 프로세스 spawn →
-    /// 현재 프로세스는 Foundation.exit(0) 으로 clean 종료.
+    /// 현재 프로세스는 로그 flush 뒤 Foundation.exit(0) 으로 clean 종료.
     /// `handoffInProgress = true` 로 applicationWillTerminate 의 brew stop race 차단.
+    ///
+    /// Issue109: `brew services start` 가 실패하면 승계할 프로세스가 없다 — exit 하지 않고
+    /// 현재 프로세스가 primary 로 남는다. 예전에는 rc 와 무관하게 exit 해 앱이 기동 직후 사라졌다.
     private static var handoffInProgress = false
 
-    private static func performHandoffStart(brewPath: String) {
+    /// `onAppStart` 가 바깥 세계(UserDefaults·launchctl·brew·exit)를 만지는 지점.
+    /// 테스트는 가짜로 바꿔 끼워 실 brew 를 부르지 않는다 (Issue109).
+    struct StartEnvironment {
+        var optOut: () -> Bool?
+        var isLaunchedByLaunchd: () -> Bool
+        var isServiceLoaded: () -> Bool
+        var findBrewPath: () -> String?
+        var isFormulaInstalled: (String) -> Bool
+        var startService: (String) -> (Int32, String)
+        var flushLog: () -> Void
+        var exitProcess: () -> Void
+
+        static let live = StartEnvironment(
+            optOut: { UserDefaults.standard.object(forKey: optOutKey) as? Bool },
+            isLaunchedByLaunchd: { BrewServiceSync.isLaunchedByLaunchd() },
+            isServiceLoaded: { BrewServiceSync.isServiceLoaded() },
+            findBrewPath: { BrewServiceSync.findBrewPath() },
+            isFormulaInstalled: { BrewServiceSync.isFormulaInstalled(brewPath: $0) },
+            startService: { runCommandWithStatus($0, args: ["services", "start", formulaName]) },
+            flushLog: { Logger.shared.flush() },
+            exitProcess: { Foundation.exit(0) }
+        )
+    }
+
+    enum StartOutcome: Equatable {
+        case skipped      // 동기화 대상 아님 — 현재 프로세스 그대로
+        case keptPrimary  // handoff 실패 — 현재 프로세스가 primary 유지
+        case handedOff    // launchd 인스턴스에 위임하고 exit
+    }
+
+    private static func performHandoffStart(brewPath: String, env: StartEnvironment) -> StartOutcome {
         handoffInProgress = true
-        logI("[brew-sync] performHandoffStart — brew services start 동기 호출 후 self-terminate")
-        let (rc, output) = runCommandWithStatus(brewPath, args: ["services", "start", formulaName])
+        logI("[brew-sync] performHandoffStart — brew services start 동기 호출 (성공 시 self-terminate)")
+        let (rc, output) = env.startService(brewPath)
         let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
-        if rc == 0 {
-            logI("[brew-sync] ✅ brew services start 성공 → launchd-bootstrap 이 primary 승계: \(trimmed)")
-        } else {
-            logW("[brew-sync] ⚠️ brew services start 실패 (rc=\(rc)): \(trimmed)")
+        guard rc == 0 else {
+            handoffInProgress = false
+            logW("[brew-sync] ⚠️ brew services start 실패 (rc=\(rc)) — exit 하지 않고 primary 유지: \(trimmed)")
+            return .keptPrimary
         }
-        Foundation.exit(0)
+        logI("[brew-sync] ✅ brew services start 성공 → launchd-bootstrap 이 primary 승계: \(trimmed)")
+        // exit 가 Logger 의 비동기 쓰기를 앞지르면 자체 종료가 로그에 남지 않는다 (Issue109).
+        env.flushLog()
+        env.exitProcess()
+        return .handedOff
     }
 
     // MARK: - App Start → brew=started (매트릭스: app start 행)
@@ -67,31 +104,39 @@ enum BrewServiceSync {
     /// 2. launchd 가 이 프로세스를 기동 (XPC_SERVICE_NAME 매칭) — 무한 루프 방지
     /// 3. `launchctl list` 에 이미 로드됨 — brew state 이미 `started`
     /// 4. brew 바이너리 미존재
+    /// 5. formula 미설치 — launchd 가 띄울 서비스 실행 파일이 없다 (Issue109: README 소스 빌드)
     ///
     /// open/심링크 경로에서 brew=stopped 이면 `performHandoffStart()` 로 위임 후 exit.
-    static func onAppStart() {
-        if let optOut = UserDefaults.standard.object(forKey: optOutKey) as? Bool, optOut == false {
+    /// 위임이 실패하면 exit 하지 않고 `.keptPrimary` 를 반환한다.
+    @discardableResult
+    static func onAppStart(_ env: StartEnvironment = .live) -> StartOutcome {
+        if let optOut = env.optOut(), optOut == false {
             logI("[brew-sync] onAppStart skip — \(optOutKey)=false")
-            return
+            return .skipped
         }
 
-        if isLaunchedByLaunchd() {
+        if env.isLaunchedByLaunchd() {
             logD("[brew-sync] onAppStart skip — launchd 기동 프로세스 (XPC_SERVICE_NAME)")
-            return
+            return .skipped
         }
 
-        if isServiceLoaded() {
+        if env.isServiceLoaded() {
             logD("[brew-sync] onAppStart skip — brew state 이미 started (launchctl 에 서비스 로드됨)")
-            return
+            return .skipped
         }
 
-        guard let brewPath = findBrewPath() else {
+        guard let brewPath = env.findBrewPath() else {
             logI("[brew-sync] onAppStart skip — brew 미설치")
-            return
+            return .skipped
+        }
+
+        guard env.isFormulaInstalled(brewPath) else {
+            logI("[brew-sync] onAppStart skip — \(formulaName) formula 미설치 (brew 서비스로 승계 불가)")
+            return .skipped
         }
 
         // open/심링크 경로 × brew=stopped: launchd-bootstrap 에 primary 위임 후 self-terminate.
-        performHandoffStart(brewPath: brewPath)
+        return performHandoffStart(brewPath: brewPath, env: env)
     }
 
     // MARK: - Restart (Issue96 권한 복구)
@@ -208,6 +253,18 @@ enum BrewServiceSync {
             $0.pathExtension == "plist"
                 && isServiceLabel($0.deletingPathExtension().lastPathComponent)
         }
+    }
+
+    /// formula 가 설치돼 launchd 가 띄울 서비스 실행 파일이 있는지 (Issue109).
+    /// Formula `service` 블록의 `run` 경로(`{prefix}/opt/{formula}/fWarrangeCli.app/...`)를 그대로 본다.
+    /// `brew list` 는 기동 경로의 메인 스레드에서 Ruby 를 한 번 더 띄우므로 파일 판정으로 대신한다.
+    static func isFormulaInstalled(brewPath: String) -> Bool {
+        let prefix = URL(fileURLWithPath: brewPath)
+            .deletingLastPathComponent()   // bin
+            .deletingLastPathComponent()   // {prefix}
+        let executable = prefix
+            .appendingPathComponent("opt/\(formulaName)/fWarrangeCli.app/Contents/MacOS/fWarrangeCli")
+        return FileManager.default.isExecutableFile(atPath: executable.path)
     }
 
     static func findBrewPath() -> String? {
