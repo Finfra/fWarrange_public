@@ -1,0 +1,39 @@
+{
+  "configurations" : [
+    {
+      "id" : "5B0E6C1A-9F3D-4E2B-8A71-26C0D4F1A901",
+      "name" : "Default",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : true,
+    "environmentVariableEntries" : [
+      {
+        "key" : "fWarrangeCli_config",
+        "value" : "\/tmp\/fWarrangeCliTests-host"
+      },
+      {
+        "key" : "FWARRANGE_DISABLE_HOTKEYS",
+        "value" : "1"
+      },
+      {
+        "key" : "FWARRANGE_PORT",
+        "value" : "13016"
+      }
+    ]
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : false,
+      "target" : {
+        "containerPath" : "container:fWarrangeCli.xcodeproj",
+        "identifier" : "9EFA6F8DBB74AD8CD935F1D8",
+        "name" : "fWarrangeCliTests"
+      }
+    }
+  ],
+  "version" : 1
+}

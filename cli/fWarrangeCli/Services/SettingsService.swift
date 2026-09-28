@@ -126,7 +126,6 @@ final class YAMLSettingsService: SettingsService {
         lines.append("# UI options")
         lines.append("restoreButtonStyle: \(s.restoreButtonStyle ?? "nameIcon")")
         lines.append("confirmBeforeDelete: \(s.confirmBeforeDelete ?? true)")
-        lines.append("showInCmdTab: \(s.showInCmdTab ?? true)")
         lines.append("clickSwitchToMain: \(s.clickSwitchToMain ?? false)")
         lines.append("theme: \(s.theme ?? "system")")
         // 단축키 설정 (ex: ⌘F7, ⇧⌘F7, ⌃⌥S)
@@ -143,6 +142,9 @@ final class YAMLSettingsService: SettingsService {
         }
         if let sc = s.showMainWindowShortcut {
             lines.append("showMainWindowShortcut: \"\(sc.displayString)\"")
+        }
+        if let sc = s.undoShortcut {
+            lines.append("undoShortcut: \"\(sc.displayString)\"")
         }
         lines.append("")
         return lines.joined(separator: "\n")
@@ -201,6 +203,7 @@ final class YAMLSettingsService: SettingsService {
         s.restoreDefaultShortcut = parseShortcut(dict["restoreDefaultShortcut"])
         s.restoreLastShortcut = parseShortcut(dict["restoreLastShortcut"])
         s.showMainWindowShortcut = parseShortcut(dict["showMainWindowShortcut"])
+        s.undoShortcut = parseShortcut(dict["undoShortcut"])
         if let v = dict["launchAtLogin"], let b = Bool(v) { s.launchAtLogin = b }
         if let v = dict["defaultLayoutName"].map(parseStringValue), !v.isEmpty { s.defaultLayoutName = v }
         if let v = dict["appLanguage"] { s.appLanguage = v }
@@ -213,7 +216,6 @@ final class YAMLSettingsService: SettingsService {
         if let v = dict["retentionDays"], let i = Int(v) { s.retentionDays = i }
         if let v = dict["restoreButtonStyle"].map(parseStringValue) { s.restoreButtonStyle = v }
         if let v = dict["confirmBeforeDelete"], let b = Bool(v) { s.confirmBeforeDelete = b }
-        if let v = dict["showInCmdTab"], let b = Bool(v) { s.showInCmdTab = b }
         if let v = dict["clickSwitchToMain"], let b = Bool(v) { s.clickSwitchToMain = b }
         if let v = dict["theme"].map(parseStringValue) { s.theme = v }
         return s

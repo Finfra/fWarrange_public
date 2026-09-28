@@ -41,7 +41,12 @@ final class AppState {
     var menuBarIcon: NSImage = AppState.makeCLIIcon()
     var menuBarIconIsTemplate: Bool = true
 
+    /// 이 프로세스에서 생성된 AppState 수. 정상은 1 — 2 이상이면 RESTServer·listener 가 두 벌 생긴다.
+    /// (prj5#Issue99 후속: 두 번째 인스턴스가 해제되며 3016 에 고아 listener 가 남아 무응답)
+    @ObservationIgnored static private(set) var instanceCount = 0
+
     init() {
+        AppState.instanceCount += 1
         let baseDir = YAMLLayoutStorageService.resolveDefaultBaseDirectory()
         let settingsService = YAMLSettingsService(baseDirectory: baseDir)
         let settings = settingsService.load()
@@ -163,13 +168,15 @@ final class AppState {
                     apply("restoreDefaultShortcut") { s.restoreDefaultShortcut = $0 }
                     apply("restoreLastShortcut") { s.restoreLastShortcut = $0 }
                     apply("showMainWindowShortcut") { s.showMainWindowShortcut = $0 }
+                    apply("undoShortcut") { s.undoShortcut = $0 }
                 }
                 NotificationCenter.default.post(name: .fWarrangeCliShortcutsUpdated, object: nil)
                 return [
                     "saveShortcut": s.saveShortcut?.displayString ?? "",
                     "restoreDefaultShortcut": s.restoreDefaultShortcut?.displayString ?? "",
                     "restoreLastShortcut": s.restoreLastShortcut?.displayString ?? "",
-                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? ""
+                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? "",
+                    "undoShortcut": s.undoShortcut?.displayString ?? ""
                 ]
             },
             getFullSettings: { [weak settingsService] in
@@ -229,7 +236,8 @@ final class AppState {
                     "saveShortcut": s.saveShortcut?.displayString ?? "",
                     "restoreDefaultShortcut": s.restoreDefaultShortcut?.displayString ?? "",
                     "restoreLastShortcut": s.restoreLastShortcut?.displayString ?? "",
-                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? ""
+                    "showMainWindowShortcut": s.showMainWindowShortcut?.displayString ?? "",
+                    "undoShortcut": s.undoShortcut?.displayString ?? ""
                 ]
             },
             getLogFilePath: {
@@ -406,7 +414,15 @@ final class AppState {
     }
 
 
+    /// SwiftUI 는 App.init 을 여러 번 호출할 수 있다 — initialize 는 프로세스당 1회만 실행한다.
+    @ObservationIgnored private var didInitialize = false
+
     func initialize() {
+        guard !didInitialize else {
+            logW("AppState.initialize 중복 호출 무시 (App.init 재호출)")
+            return
+        }
+        didInitialize = true
         let effectiveLogLevel = Env.logLevel ?? LogLevel(rawValue: settings.logLevel ?? 5) ?? .critical
         Logger.shared.setLogLevel(effectiveLogLevel)
 
@@ -439,6 +455,20 @@ final class AppState {
         }
         startObservingMenuBarIcon()
 
+        // Issue99 근본예방: 레이아웃 삭제 시 defaultLayoutName 이 그 이름(또는 전체 삭제)이면 정리한다.
+        // 죽은 참조가 애초에 남지 않게 해, restoreDefault 가 존재하지 않는 이름으로 복구를 시도하는 상황을 예방한다.
+        layoutManager.onLayoutDeleted = { [weak self] name in
+            guard let self else { return }
+            // ⚠️ self.settings 는 프로세스 시작 시 로드된 스냅샷이라 REST(PUT /settings/default-layout)로
+            //    바뀐 defaultLayoutName 을 반영하지 못한다. paidApp GUI 는 전부 REST 를 타므로,
+            //    최신 저장값(load)과 대조해야 실사용 경로에서도 죽은 참조가 정리된다. (Issue99, fwarrange-1c 실측)
+            if let updated = AppState.clearDeadDefaultLayout(deletedName: name, svc: self.settingsService) {
+                self.settings = updated
+                ChangeTracker.shared.record(type: "settings.changed", target: "defaultLayout")
+                logI("Issue99: defaultLayoutName 정리 — 삭제된 레이아웃 참조 제거 (삭제=\(name))")
+            }
+        }
+
         layoutManager.loadMetadataList()
 
         // Issue81: 기동 시 보관 기간 초과 자동 캡처 정리 + 슬립/잠금 자동 캡처 구독 시작
@@ -459,13 +489,21 @@ final class AppState {
         startTime = Date()
 
         // Issue39 매트릭스: app start × brew=stopped → brew services start 호출.
-        // launchd 기동 / 옵트아웃 / 이미 로드 / brew 미설치는 내부에서 skip.
+        // launchd 기동 / 옵트아웃 / 이미 로드 / brew·formula 미설치는 내부에서 skip.
+        // start 가 실패하면 exit 하지 않고 이 프로세스가 primary 로 남는다 (Issue109).
         // 중복 인스턴스는 SingleInstanceGuard 가 exit(0) 으로 차단.
         BrewServiceSync.onAppStart()
 
-        // 접근성 권한 확인 (prompt:false — ad-hoc 서명에서는 시스템 프롬프트 무효)
+        // 접근성 권한 확인 — 미승인이면 새 프로세스에서 1회 목록 등록 요청(AccessibilityBootListing).
+        // XCTest 호스트에서는 시스템 창을 띄우지 않는다.
         if !windowManager.isAccessibilityGranted() {
-            logW("⚠️ Accessibility 권한이 필요합니다")
+            logW("⚠️ Accessibility 권한이 필요합니다 — 목록 등록 요청")
+            if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
+                AccessibilityBootListing.runIfNeeded(
+                    isGranted: windowManager.isAccessibilityGranted,
+                    requestListing: AccessibilityBootListing.requestSystemListing
+                )
+            }
             showAccessibilityGuide()
         }
 
@@ -544,7 +582,26 @@ final class AppState {
         LoginItemService.sync(enabled: enabled)
     }
 
+    /// Issue96 gate as a pure decision so it can be tested without AX or NSAlert.
+    /// Returns false (and calls `onPermissionLost`) when a window action arrives without Accessibility.
+    nonisolated static func passesAccessibilityGate(
+        _ action: HotKeyAction, granted: Bool, onPermissionLost: () -> Void
+    ) -> Bool {
+        guard action.requiresAccessibility, !granted else { return true }
+        onPermissionLost()
+        return false
+    }
+
     func handleHotKeyAction(_ action: HotKeyAction) {
+        // Issue96: Carbon RegisterEventHotKey 로 등록한 핫키는 접근성 권한과 무관하게 도달하지만
+        // 창 조작 AX API 는 권한 없이 실패한다. "핫키는 들어왔는데 창 조작이 실패" 하는 이 지점이
+        // 운영 중 권한 상실을 관측할 수 있는 곳이다 — 시작 시 1회 확인만으로는 잡히지 않는다.
+        let granted = !action.requiresAccessibility || windowManager.isAccessibilityGranted()
+        guard Self.passesAccessibilityGate(action, granted: granted, onPermissionLost: {
+            logW("⚠️ 접근성 권한 상실 감지 — 단축키(\(action)) 처리 중단 후 재시작 안내")
+            AccessibilityGuidePresenter.showPermissionLost()
+        }) else { return }
+
         switch action {
         case .save:
             let name = layoutManager.nextDailySequenceName()
@@ -575,10 +632,17 @@ final class AppState {
                 }
             }
         case .restoreDefault:
-            // defaultLayoutName SSOT 우선 → 미지정 시 fileDate 가장 최근
-            let target = settings.defaultLayoutName
+            // defaultLayoutName SSOT 우선 → 미지정·삭제된 이름이면 fileDate 가장 최근으로 fallback (Issue99)
+            // ⚠️ `??` 만으로는 nil 만 걸러진다 — defaultLayoutName 이 삭제된 레이아웃을 가리키면(값은 있음)
+            //    존재하지 않는 이름으로 복구를 시도해 조용히 실패한다. 실재 여부를 검증한 뒤 fallback 한다.
+            let existingNames = Set(layoutManager.layouts.map { $0.name })
+            let target = settings.defaultLayoutName.flatMap { existingNames.contains($0) ? $0 : nil }
                 ?? layoutManager.layouts.sorted { $0.fileDate > $1.fileDate }.first?.name
-            if let target { restoreLayoutByName(target) }
+            if let target {
+                restoreLayoutByName(target)
+            } else {
+                logW("restoreDefault: 복구할 레이아웃이 없습니다 (defaultLayoutName=\(settings.defaultLayoutName ?? "nil"), 저장된 레이아웃 0개)")
+            }
         case .restoreLast:
             // fileDate 가장 최근
             if let target = layoutManager.layouts.sorted(by: { $0.fileDate > $1.fileDate }).first?.name {
@@ -587,7 +651,36 @@ final class AppState {
         case .showMainWindow:
             // paidApp 메인 창 열기 — 감지 시 URL Scheme, 미감지 시 본 분기는 메뉴 클릭 경로에서 처리
             openPaidApp(action: "main")
+        case .undo:
+            // Issue98: 복구 직전 배치로 되돌린다. 스냅샷 없으면(복구 이력 없음) 무동작.
+            if let snapshot = undoSnapshot {
+                Task {
+                    await windowManager.restoreWindows(
+                        snapshot,
+                        maxRetries: settings.maxRetries,
+                        retryInterval: settings.retryInterval,
+                        minimumScore: settings.minimumMatchScore,
+                        enableParallel: settings.enableParallelRestore ?? true,
+                        mode: .normal
+                    )
+                    logI("↩️ Undo: 복구 직전 배치로 되돌림 (\(snapshot.count)창)")
+                }
+            } else {
+                logI("↩️ Undo: 복구 이력 없음 — 무동작")
+            }
         }
+    }
+
+    /// Issue98: 복구 직전 전체 창 배치 스냅샷 (단일 Undo, 메모리 휘발)
+    private var undoSnapshot: [WindowInfo]?
+
+    /// Issue99: 삭제된 레이아웃 이름이 **최신 저장된**(load) defaultLayoutName 이면 nil 로 정리한다.
+    /// self.settings 스냅샷 대신 svc.load() 를 대조해 REST 변경(paidApp GUI)도 반영한다. (fwarrange-1c 실측)
+    /// name `"*"` 은 전체 삭제. 정리했으면 갱신된 AppSettings 를, 아니면 nil 을 반환한다.
+    static func clearDeadDefaultLayout(deletedName: String, svc: SettingsService) -> AppSettings? {
+        let current = svc.load().defaultLayoutName
+        guard deletedName == "*" || current == deletedName else { return nil }
+        return svc.mutate { $0.defaultLayoutName = nil }
     }
 
     /// 이름으로 레이아웃 복구 (메뉴 클릭 / 핫키 공용)
@@ -595,6 +688,8 @@ final class AppState {
         Task {
             let layout = try? layoutManager.storageServiceLoad(name: name)
             if let layout {
+                // Issue98: 복구 실행 직전 현재 배치를 Undo 스냅샷으로 저장
+                self.undoSnapshot = self.windowManager.captureCurrentWindows(filterApps: nil)
                 await windowManager.restoreWindows(
                     layout.windows,
                     maxRetries: settings.maxRetries,

@@ -693,7 +693,6 @@ paths:
               maxAutoSaves: 5
               restoreButtonStyle: nameIcon
               confirmBeforeDelete: true
-              showInCmdTab: true
               clickSwitchToMain: false
       responses:
         '200':
@@ -1484,6 +1483,7 @@ components:
         retryInterval: { type: number, format: double, minimum: 0 }
         minimumMatchScore: { type: integer, minimum: 0, maximum: 100 }
         enableParallelRestore: { type: boolean }
+        matchAreaMatchEnabled: { type: boolean, description: "Enable area-similarity window matching (default true)" }
         excludedApps:
           type: array
           items: { type: string }
@@ -1499,7 +1499,6 @@ components:
           type: string
           enum: [iconOnly, nameIcon, nameOnly]
         confirmBeforeDelete: { type: boolean }
-        showInCmdTab: { type: boolean }
         clickSwitchToMain: { type: boolean }
         defaultLayoutName: { type: string, nullable: true }
         effectivePort: { type: integer, readOnly: true, description: "FWARRANGE_PORT 환경변수 오버라이드 반영 포트 (GET /settings v2 전용)" }
@@ -1544,6 +1543,7 @@ components:
         retryInterval: { type: number, format: double }
         minimumMatchScore: { type: integer }
         enableParallelRestore: { type: boolean }
+        matchAreaMatchEnabled: { type: boolean }
 
     RestoreSettingsResponse:
       type: object
@@ -1606,7 +1606,6 @@ components:
           type: string
           enum: [iconOnly, nameIcon, nameOnly]
         confirmBeforeDelete: { type: boolean }
-        showInCmdTab: { type: boolean }
         clickSwitchToMain: { type: boolean }
 
     AdvancedSettingsResponse:
@@ -1633,6 +1632,7 @@ components:
         restoreDefaultShortcut: { type: string, nullable: true }
         restoreLastShortcut: { type: string, nullable: true }
         showMainWindowShortcut: { type: string, nullable: true }
+        undoShortcut: { type: string, nullable: true }
 
     ShortcutsResponse:
       type: object
@@ -1645,6 +1645,7 @@ components:
             restoreDefaultShortcut: { type: string }
             restoreLastShortcut: { type: string }
             showMainWindowShortcut: { type: string }
+            undoShortcut: { type: string }
       required: [status, data]
 
     # ---- Window / Layout models (ported from v1) ----
@@ -1990,6 +1991,13 @@ components:
             app: { type: string, example: fWarrangeCli }
             version: { type: string, example: "1.0.0" }
             build: { type: string, example: "1" }
+            distribution:
+              type: string
+              description: |
+                Build distribution (Issue105). "Finfra Official Build" when the bundle carries
+                the Official Build Components (DISTRIBUTION-TERMS.md §1(b)); "Source Build" for
+                a build made from source. Shown by `fWarrangeCli --version`.
+              example: "Finfra Official Build"
             minPaidAppVersion:
               type: string
               nullable: true
@@ -1997,7 +2005,7 @@ components:
                 paidApp과의 호환을 보장하는 최소 버전. Info.plist의 MinPaidAppVersion
                 키가 설정된 경우에만 포함된다. null이면 버전 제한 없음.
               example: "1.2.0"
-          required: [app, version, build]
+          required: [app, version, build, distribution]
       required: [status, data]
 
     SetUIStateRequest:

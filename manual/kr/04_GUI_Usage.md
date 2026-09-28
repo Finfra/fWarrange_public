@@ -11,9 +11,9 @@ fWarrange는 macOS 메뉴바에 상주하는 SwiftUI 앱으로, 클릭 한 번�
 
 메뉴바 아이콘을 클릭하면 레이아웃 목록과 주요 버튼이 표시됩니다.
 
-![메인 화면](https://finfra.kr/product/fWarrange/kr/main_1.png)
+![메인 화면](../img/01_main-overview.png)
 
-![메인 화면 전체](https://finfra.kr/product/fWarrange/kr/main_all.png)
+![선택 복원](../img/02_selective-restore.png)
 
 ### 주요 기능
 * **캡처 버튼**: 현재 창 배치를 새 레이아웃으로 저장
@@ -27,7 +27,7 @@ fWarrange는 macOS 메뉴바에 상주하는 SwiftUI 앱으로, 클릭 한 번�
 
 ### 탭 1: 일반 (General)
 
-![일반 설정](https://finfra.kr/product/fWarrange/kr/setting_1_general.png)
+![일반 설정](../img/05_settings-general.png)
 
 | 항목        | 설명                                                |
 | ----------- | --------------------------------------------------- |
@@ -53,7 +53,7 @@ fWarrange는 macOS 메뉴바에 상주하는 SwiftUI 앱으로, 클릭 한 번�
 
 ### 탭 3: 복구 (Restore)
 
-![복구 설정](https://finfra.kr/product/fWarrange/kr/setting_3_restore.png)
+![복구 설정](../img/04_settings-restore.png)
 
 | 항목           | 기본값    | 설명                             |
 | -------------- | --------- | -------------------------------- |
@@ -67,8 +67,6 @@ fWarrange는 macOS 메뉴바에 상주하는 SwiftUI 앱으로, 클릭 한 번�
 * Dock, SystemUIServer, Spotlight
 
 ### 탭 4: API
-
-![API 설정](https://finfra.kr/product/fWarrange/kr/setting_4_api.png)
 
 | 항목           | 기본값         | 설명                    |
 | -------------- | -------------- | ----------------------- |

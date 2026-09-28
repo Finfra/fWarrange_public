@@ -49,164 +49,165 @@ echo ""
 
 # 2. Accessibility Status
 echo "--- Accessibility ---"
-RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v1/status/accessibility")
+RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v2/status/accessibility")
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "GET /api/v1/status/accessibility" "200" "$CODE" "$BODY"
+check "GET /api/v2/status/accessibility" "200" "$CODE" "$BODY"
 echo "  $BODY"
 echo ""
 
 # 3. Running Apps
 echo "--- Running Apps ---"
-RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v1/windows/apps")
+RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v2/windows/apps")
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "GET /api/v1/windows/apps" "200" "$CODE" "$BODY"
+check "GET /api/v2/windows/apps" "200" "$CODE" "$BODY"
 echo ""
 
 # 4. Current Windows
 echo "--- Current Windows ---"
-RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v1/windows/current")
+RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v2/windows/current")
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "GET /api/v1/windows/current" "200" "$CODE" "$BODY"
+check "GET /api/v2/windows/current" "200" "$CODE" "$BODY"
 echo ""
 
 # 5. Current Windows (filtered)
 echo "--- Current Windows (filtered) ---"
-RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v1/windows/current?filterApps=Safari")
+RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v2/windows/current?filterApps=Safari")
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "GET /api/v1/windows/current?filterApps=Safari" "200" "$CODE" "$BODY"
+check "GET /api/v2/windows/current?filterApps=Safari" "200" "$CODE" "$BODY"
 echo ""
 
 # 6. Capture
 echo "--- Capture ---"
-RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/v1/capture" \
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/v2/capture" \
     -H "Content-Type: application/json" \
     -d '{"name":"test-api-layout"}')
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "POST /api/v1/capture" "200" "$CODE" "$BODY"
+check "POST /api/v2/capture" "200" "$CODE" "$BODY"
 echo ""
 
 # 7. List Layouts
 echo "--- List Layouts ---"
-RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v1/layouts")
+RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v2/layouts")
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "GET /api/v1/layouts" "200" "$CODE" "$BODY"
+check "GET /api/v2/layouts" "200" "$CODE" "$BODY"
 echo ""
 
 # 8. Get Layout Detail
 echo "--- Layout Detail ---"
-RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v1/layouts/test-api-layout")
+RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v2/layouts/test-api-layout")
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "GET /api/v1/layouts/test-api-layout" "200" "$CODE" "$BODY"
+check "GET /api/v2/layouts/test-api-layout" "200" "$CODE" "$BODY"
 echo ""
 
 # 9. Rename Layout
 echo "--- Rename Layout ---"
-RESP=$(curl -s -w "\n%{http_code}" -X PUT "$BASE/api/v1/layouts/test-api-layout" \
+RESP=$(curl -s -w "\n%{http_code}" -X PUT "$BASE/api/v2/layouts/test-api-layout" \
     -H "Content-Type: application/json" \
     -d '{"newName":"test-api-renamed"}')
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "PUT /api/v1/layouts/test-api-layout (rename)" "200" "$CODE" "$BODY"
+check "PUT /api/v2/layouts/test-api-layout (rename)" "200" "$CODE" "$BODY"
 echo ""
 
 # 10. Get renamed layout
 echo "--- Renamed Layout Detail ---"
-RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v1/layouts/test-api-renamed")
+RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v2/layouts/test-api-renamed")
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "GET /api/v1/layouts/test-api-renamed" "200" "$CODE" "$BODY"
+check "GET /api/v2/layouts/test-api-renamed" "200" "$CODE" "$BODY"
 echo ""
 
 # 11. Restore Layout
 echo "--- Restore Layout ---"
-RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/v1/layouts/test-api-renamed/restore" \
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/v2/layouts/test-api-renamed/restore" \
     -H "Content-Type: application/json" \
     -d '{"maxRetries":2,"retryInterval":0.3}')
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "POST /api/v1/layouts/test-api-renamed/restore" "200" "$CODE" "$BODY"
+check "POST /api/v2/layouts/test-api-renamed/restore" "200" "$CODE" "$BODY"
 echo ""
 
 # 12. Delete Layout
 echo "--- Delete Layout ---"
-RESP=$(curl -s -w "\n%{http_code}" -X DELETE "$BASE/api/v1/layouts/test-api-renamed")
+RESP=$(curl -s -w "\n%{http_code}" -X DELETE "$BASE/api/v2/layouts/test-api-renamed")
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "DELETE /api/v1/layouts/test-api-renamed" "200" "$CODE" "$BODY"
+check "DELETE /api/v2/layouts/test-api-renamed" "200" "$CODE" "$BODY"
 echo ""
 
-# 13. Locale GET
-echo "--- Locale GET ---"
-RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v1/locale")
+# 13. Health (v2) — v1 의 /locale 은 v2 에 대응 경로가 없다(Issue213 에서 제거)
+echo "--- Health ---"
+RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v2/health")
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "GET /api/v1/locale" "200" "$CODE" "$BODY"
-echo "  $BODY"
+check "GET /api/v2/health" "200" "$CODE" "$BODY"
 echo ""
 
-# 14. Locale PUT
-echo "--- Locale PUT ---"
-RESP=$(curl -s -w "\n%{http_code}" -X PUT "$BASE/api/v1/locale" \
-    -H "Content-Type: application/json" \
-    -d '{"language":"en"}')
+# 14. v1 deprecation — v1 요청은 410 Gone 으로 차단돼야 한다(api-rules.md)
+echo "--- v1 Deprecated ---"
+RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v1/layouts")
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "PUT /api/v1/locale" "200" "$CODE" "$BODY"
-echo "  $BODY"
+check "GET /api/v1/layouts (deprecated, expect 410)" "410" "$CODE" "$BODY"
 echo ""
 
 # 15. UI State
 echo "--- UI State ---"
-RESP=$(curl -s -w "\n%{http_code}" -X PUT "$BASE/api/v1/ui/state" \
+RESP=$(curl -s -w "\n%{http_code}" -X PUT "$BASE/api/v2/ui/state" \
     -H "Content-Type: application/json" \
     -d '{"hideWindows":true}')
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "PUT /api/v1/ui/state" "200" "$CODE" "$BODY"
+check "PUT /api/v2/ui/state" "200" "$CODE" "$BODY"
 echo "  $BODY"
+curl -s -X PUT "$BASE/api/v2/ui/state" -H "Content-Type: application/json" \
+    -d '{"hideWindows":false}' > /dev/null
 echo ""
 
 # 16. Remove Windows (capture first, then remove)
 echo "--- Remove Windows ---"
 # 캡처하여 테스트용 레이아웃 생성
-curl -s -X POST "$BASE/api/v1/capture" \
+curl -s -X POST "$BASE/api/v2/capture" \
     -H "Content-Type: application/json" \
     -d '{"name":"test-remove-windows"}' > /dev/null 2>&1
-RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/v1/layouts/test-remove-windows/windows/remove" \
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/v2/layouts/test-remove-windows/windows/remove" \
     -H "Content-Type: application/json" \
     -d '{"windowIds":[99999]}')
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "POST /api/v1/layouts/test-remove-windows/windows/remove" "200" "$CODE" "$BODY"
+check "POST /api/v2/layouts/test-remove-windows/windows/remove" "200" "$CODE" "$BODY"
 echo "  $BODY"
 # 정리
-curl -s -X DELETE "$BASE/api/v1/layouts/test-remove-windows" > /dev/null 2>&1
+curl -s -X DELETE "$BASE/api/v2/layouts/test-remove-windows" > /dev/null 2>&1
 echo ""
 
 # 17. 404 Test
 echo "--- 404 Test ---"
-RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v1/layouts/nonexistent")
+RESP=$(curl -s -w "\n%{http_code}" "$BASE/api/v2/layouts/nonexistent")
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "GET /api/v1/layouts/nonexistent (404)" "404" "$CODE" "$BODY"
+check "GET /api/v2/layouts/nonexistent (404)" "404" "$CODE" "$BODY"
 echo ""
 
 # 18. Delete All (without header - should fail)
 echo "--- Delete All (no header) ---"
-RESP=$(curl -s -w "\n%{http_code}" -X DELETE "$BASE/api/v1/layouts")
+RESP=$(curl -s -w "\n%{http_code}" -X DELETE "$BASE/api/v2/layouts")
 BODY=$(echo "$RESP" | sed '$d')
 CODE=$(echo "$RESP" | tail -1)
-check "DELETE /api/v1/layouts (no header, expect 400)" "400" "$CODE" "$BODY"
+check "DELETE /api/v2/layouts (no header, expect 400)" "400" "$CODE" "$BODY"
 echo ""
 
 # Summary
 echo "=================================="
 echo -e "Results: ${GREEN}$PASS passed${NC}, ${RED}$FAIL failed${NC}"
 echo "=================================="
+
+# 실패가 있으면 비정상 종료 — 러너·CI 가 결과를 종료 코드로 판정할 수 있어야 한다
+[ "$FAIL" -eq 0 ]

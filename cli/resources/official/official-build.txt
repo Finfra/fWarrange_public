@@ -1,0 +1,2 @@
+Finfra Official Build
+fWarrangeCli is built and distributed by Finfra Co., Ltd. (https://finfra.kr) and is subject to DISTRIBUTION-TERMS.md.

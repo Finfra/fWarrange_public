@@ -5,14 +5,20 @@ import AppKit
 @main
 struct AppEntry {
     static func main() {
-        if CLIHandler.handleIfNeeded() {
-            return
-        }
-        // Issue39 Phase4: 동일 Bundle ID 중복 인스턴스 차단.
-        // LaunchServices 가 심링크/경로 차이로 별개 인스턴스를 허용하는 경우
-        // (`open _nowage_app/...` + `brew services start` 조합) 를 런타임에서 방어.
-        if SingleInstanceGuard.shouldTerminateAsDuplicate() {
-            exit(0)
+        // XCTest 환경에서는 CLI 처리·중복차단을 건너뛰되 GUI RunLoop(fWarrangeCliApp.main)는 유지한다.
+        // return 으로 조기 종료하거나 SingleInstanceGuard(brew 실행 중 = 중복)를 그대로 타면
+        // exit 되어 test runner 연결 전에 host app 이 죽는다("Early unexpected exit"). (Issue99 테스트 인프라)
+        let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        if !isRunningTests {
+            if CLIHandler.handleIfNeeded() {
+                return
+            }
+            // Issue39 Phase4: 동일 Bundle ID 중복 인스턴스 차단.
+            // LaunchServices 가 심링크/경로 차이로 별개 인스턴스를 허용하는 경우
+            // (`open _nowage_app/...` + `brew services start` 조합) 를 런타임에서 방어.
+            if SingleInstanceGuard.shouldTerminateAsDuplicate() {
+                exit(0)
+            }
         }
         fWarrangeCliApp.main()
     }
@@ -54,15 +60,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+/// 프로세스 단일 AppState 소유자.
+/// `@State var appState = AppState()` 를 App.init 에서 읽으면 SwiftUI(LazyStatePropertyBox)가 설치하는
+/// 인스턴스와 init 이 읽은 인스턴스가 갈라져 AppState 가 2개 생긴다. init 쪽 인스턴스가 REST 서버를 띄운 뒤
+/// 해제되면 3016 에 고아 listener 가 남아 연결을 받고도 응답하지 않는다 (prj5#Issue99 후속, jma 실측).
+@MainActor
+enum AppRuntime {
+    static let appState = AppState()
+}
+
 struct fWarrangeCliApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @State private var appState = AppState()
 
     init() {
         logI("🚀 fWarrangeCli 시작")
-        appDelegate.settingsService = appState.settingsService
+        let state = AppRuntime.appState
+        appDelegate.settingsService = state.settingsService
 
-        let state = appState
         let manager = appDelegate.menuBarManager
         // Issue62: NSStatusItem+NSMenu — initialize after AppState is ready
         DispatchQueue.main.async {

@@ -81,8 +81,13 @@ final class PaidAppStateLogger {
 
         // 파일에 append (newline 포함)
         do {
-            // 파일이 없으면 생성, 있으면 append
+            // 파일이 없으면 생성, 있으면 append.
+            // 부모 디렉토리가 없으면 자동 생성한다 — fileURL 주입 경로(기본 경로가 아닌 경우)
+            // 에서는 init 이 디렉토리를 만들지 않으므로 여기서 보장해야 createFile 이 성공한다. (Issue100)
             if !FileManager.default.fileExists(atPath: fileURL.path) {
+                try? FileManager.default.createDirectory(
+                    at: fileURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true, attributes: nil)
                 FileManager.default.createFile(atPath: fileURL.path, contents: nil, attributes: nil)
             }
 

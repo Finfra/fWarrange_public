@@ -58,3 +58,9 @@ cli/_tool/.last_build_path
 # Python
 __pycache__/
 *.pyc
+
+# issue-map 산출물 (Issue.md 로부터 재생성 — prj1#Issue286)
+Issue_map.htm
+
+# graphify 산출물 — 재생성 가능, 커밋 루프 방지 (Issue296)
+graphify-out/

@@ -9,7 +9,7 @@ date: 2026-06-15
 저장된 YAML 레이아웃을 다시 복구할 때 "이 창이 그 창이다"를 결정하는 매칭 로직을 정리하고, **인식률을 높이기 위한 개선 아이디어**를 토의하기 위한 문서임.
 
 * 코드 SSOT: [`cli/fWarrangeCli/Services/WindowRestoreService.swift`](../fWarrangeCli/Services/WindowRestoreService.swift) (`computeMatchScore`)
-* 점수표 SSOT (상위 paidApp 측): [`fWarrange/.claude/rules/window-rules.md`](../../../fWarrange/.claude/rules/window-rules.md)
+* 점수표 SSOT (상위 paidApp 측): [`fWarrange/.claude/rules/window-rules.md`](../../../.claude/rules/window-rules.md)
 
 # 현재 인식 방식
 
@@ -43,7 +43,7 @@ date: 2026-06-15
 | 100  | `.windowID`      | `cgWindowId == target.id` (target.id ≠ 0)     |
 | 90   | `.exactTitle`    | `axTitle == target.window`                    |
 | 80   | `.regexTitle`    | target.window를 정규식으로 해석 → axTitle 매칭 |
-| 70   | `.containsTitle` | axTitle이 target.window를 포함 (또는 역방향)   |
+| 70   | `.containsTitle` | axTitle이 target.window를 포함 (단방향 — 역방향 미체크) |
 | 60   | `.widthMatch`    | 너비가 거의 동일                               |
 | 50   | `.heightMatch`   | 높이가 거의 동일                               |
 | 40   | `.ratioMatch`    | 가로세로 비율 유사                             |
@@ -106,7 +106,7 @@ date: 2026-06-15
 
 * **서비스**: [`TitleNormalizer.swift`](../fWarrangeCli/Services/TitleNormalizer.swift) — 프로토콜 `TitleNormalizer` + 구현체 `FileTitleNormalizer`
 * **빌트인 Top-10 룰**: [L284–304](../fWarrangeCli/Services/TitleNormalizer.swift#L284) — Safari/Chrome/Edge/Firefox/VSCode/Cursor/Slack/iTerm2/Terminal/Xcode. `stripPrefix`·`stripSuffix`·`stripPattern`(ICU regex) 적용 순서로 동적 타이틀 흡수
-* **주입**: 캡처([`CGWindowCaptureService(titleNormalizer:)`](../fWarrangeCli/AppState.swift#L67))·복구([`AXWindowRestoreService(titleNormalizer:)`](../fWarrangeCli/AppState.swift#L69)) 양쪽이 **동일 인스턴스 공유** → 캡처·복구 정규화 대칭 보장. 복구 시 비교는 [`computeMatchScore` L459–462](../fWarrangeCli/Services/WindowRestoreService.swift#L459)에서 `axTitle` 정규화 후 `target.window`와 비교
+* **주입**: 캡처([`CGWindowCaptureService(titleNormalizer:)`](../fWarrangeCli/AppState.swift#L69))·복구([`AXWindowRestoreService(titleNormalizer:)`](../fWarrangeCli/AppState.swift#L71)) 양쪽이 **동일 인스턴스 공유** → 캡처·복구 정규화 대칭 보장. 복구 시 비교는 [`computeMatchScore` L458–463](../fWarrangeCli/Services/WindowRestoreService.swift#L458)에서 `axTitle` 정규화 후 `target.window`와 비교
 * **사용자 편집본**: `~/Library/Application Support/fWarrangeCli/title_normalize.yml` (env `fWarrangeCli_normalize_path`로 재정의). 파일 존재 시 빌트인 무시
 * **REST CRUD**: `GET/PUT/DELETE /api/v2/normalize-rules` ([`RESTServer.swift` L901–932](../fWarrangeCli/Services/RESTServer.swift#L901)). PUT=전체 교체, DELETE=빌트인 리셋. paidApp이 편집 UI 제공 (역할 분담 = Q5 답)
 
@@ -127,7 +127,7 @@ date: 2026-06-15
 ### S3. strict / normal / loose 매칭 모드 (Phase 5) — 구현됨 (구 Q4 답)
 
 * **enum + 정책**: [`MatchMode.swift`](../fWarrangeCli/Models/MatchMode.swift) — `MatchMode`(strict/normal/loose) + `RuntimeMatchPolicy`. 모드별 `minimumScore`: **strict=70(containsTitle 이상), normal=설정값(기본 30), loose=30** ([L47–73](../fWarrangeCli/Models/MatchMode.swift#L47))
-* **REST 파라미터**: `POST /api/v2/layouts/{name}/restore` 의 `mode` 필드를 [`RESTServer.swift:1395`](../fWarrangeCli/Services/RESTServer.swift#L1395) `MatchMode.parse(...)`로 파싱. 핸들러 시그니처에도 `mode: MatchMode` 포함 ([L23](../fWarrangeCli/Services/RESTServer.swift#L23))
+* **REST 파라미터**: `POST /api/v2/layouts/{name}/restore` 의 `mode` 필드를 [`RESTServer.swift:1398`](../fWarrangeCli/Services/RESTServer.swift#L1398) `MatchMode.parse(...)`로 파싱. 핸들러 시그니처에도 `mode: MatchMode` 포함 ([L23](../fWarrangeCli/Services/RESTServer.swift#L23))
 * **per-window override**: 특정 창만 `WindowInfo.matchMode` 명시 시 그 창 한정 정책 교체 ([`WindowRestoreService.swift` L567–577](../fWarrangeCli/Services/WindowRestoreService.swift#L567))
 * → 과거 Q4("strict vs loose 미해결")는 **틀림**. 이미 구현됨
 
@@ -152,8 +152,8 @@ date: 2026-06-15
 
 ### S8. areaMatch(30점) 토글 (Phase 4) — 구현됨 (구 "비활성화 검토"는 STALE)
 
-* 설정: [`AppSettings.matchAreaMatchEnabled`](../fWarrangeCli/Models/AppSettings.swift#L131) (기본 [true L190](../fWarrangeCli/Models/AppSettings.swift#L190))
-* 주입: [`AXWindowRestoreService(areaMatchEnabled:)`](../fWarrangeCli/AppState.swift#L69) → [`computeMatchScore` L509 게이트](../fWarrangeCli/Services/WindowRestoreService.swift#L509). false 시 30점 매칭이 `.noMatch`로 분류
+* 설정: [`AppSettings.matchAreaMatchEnabled`](../fWarrangeCli/Models/AppSettings.swift#L131) (기본 [true L191](../fWarrangeCli/Models/AppSettings.swift#L191))
+* 주입: [`AXWindowRestoreService(areaMatchEnabled:)`](../fWarrangeCli/AppState.swift#L71) → [`computeMatchScore` L509 게이트](../fWarrangeCli/Services/WindowRestoreService.swift#L509). false 시 30점 매칭이 `.noMatch`로 분류
 * → "비활성화 검토" 토의는 **이미 토글 존재**. 베이스라인 통계 보고 끄면 됨
 
 ### S9. dryRun / interactive preview (Phase 7-1) — 구현됨 (과거 문서 누락 — 신규 기재)
@@ -163,7 +163,7 @@ date: 2026-06-15
 
 ### S10. 측정 인프라 (Phase 1) — 구현됨 (구 "측정만 추가하면 됨"은 STALE)
 
-* **모델·수집기**: [`Models/RestoreStats.swift`](../fWarrangeCli/Models/RestoreStats.swift) + [`Services/RestoreStatsCollector.swift`](../fWarrangeCli/Services/RestoreStatsCollector.swift) (`actor JSONRestoreStatsCollector`, 디스크 영속). [`AppState.swift:79`](../fWarrangeCli/AppState.swift#L79)에서 조립, `WindowManager`가 매칭 결과 push
+* **모델·수집기**: [`Models/RestoreStats.swift`](../fWarrangeCli/Models/RestoreStats.swift) + [`Services/RestoreStatsCollector.swift`](../fWarrangeCli/Services/RestoreStatsCollector.swift) (`actor JSONRestoreStatsCollector`, 디스크 영속). [`AppState.swift:81`](../fWarrangeCli/AppState.swift#L81)에서 조립, `WindowManager`가 매칭 결과 push
 * **REST**: `GET /api/v2/restore-stats`(스냅샷) / `DELETE`(베이스라인 재시작) ([`RESTServer.swift` L883–895](../fWarrangeCli/Services/RESTServer.swift#L883))
 * → 과거 "집계 스크립트만 추가하면 됨"은 **완료됨**
 
@@ -273,6 +273,6 @@ date: 2026-06-15
 # 참고
 
 * [`cli/_doc_arch/cliApp_design.md`](cliApp_design.md) — cliApp 전체 아키텍처
-* [`fWarrange/.claude/rules/window-rules.md`](../../../fWarrange/.claude/rules/window-rules.md) — 점수표 SSOT (paidApp 측)
-* [`fWarrange/.claude/rules/coding-rules.md`](../../../fWarrange/.claude/rules/coding-rules.md) §5 — 매칭 임계값·허용오차
+* [`fWarrange/.claude/rules/window-rules.md`](../../../.claude/rules/window-rules.md) — 점수표 SSOT (paidApp 측)
+* [`fWarrange/.claude/rules/coding-rules.md`](../../../.claude/rules/coding-rules.md) §5 — 매칭 임계값·허용오차
 * 코드: [`WindowRestoreService.swift`](../fWarrangeCli/Services/WindowRestoreService.swift), [`MatchType.swift`](../fWarrangeCli/Models/MatchType.swift), [`WindowCaptureService.swift`](../fWarrangeCli/Services/WindowCaptureService.swift)

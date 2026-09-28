@@ -120,6 +120,11 @@ nonisolated final class Logger: Sendable {
         }
     }
 
+    /// 대기 중인 파일 쓰기를 모두 끝낸다. 프로세스를 직접 exit 하기 직전에 호출한다 (Issue109).
+    func flush() {
+        queue.sync {}
+    }
+
     private func formatTimestamp(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"

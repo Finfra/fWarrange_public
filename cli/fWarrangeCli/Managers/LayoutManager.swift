@@ -10,6 +10,11 @@ final class LayoutManager {
 
     private let storageService: LayoutStorageService
 
+    /// Issue99 근본예방: 레이아웃 삭제 시 호출된다 — 삭제된 이름이 `defaultLayoutName` 이면 정리하도록
+    /// 조립 지점(AppState)이 구독한다. LayoutManager 는 settings 를 모르므로 정합은 상위가 맡는다.
+    /// name `"*"` 은 전체 삭제를 뜻한다.
+    var onLayoutDeleted: ((String) -> Void)?
+
     var dataDirectoryPath: String { storageService.dataDirectoryPath }
 
     init(storageService: LayoutStorageService) {
@@ -146,6 +151,7 @@ final class LayoutManager {
         }
         // Issue73 Phase B: SSOT 이관
         ChangeTracker.shared.record(type: "layout.deleted", target: name)
+        onLayoutDeleted?(name)  // Issue99: defaultLayoutName 죽은 참조 예방
     }
 
     func deleteAllLayouts() throws {
@@ -155,6 +161,7 @@ final class LayoutManager {
         selectedLayoutDetail = nil
         // Issue73 Phase B: SSOT 이관 — 전체 삭제는 target="*"
         ChangeTracker.shared.record(type: "layout.deleted", target: "*")
+        onLayoutDeleted?("*")  // Issue99: 전체 삭제 → defaultLayoutName 정리
     }
 
     func removeWindows(layoutName: String, windowIds: Set<Int>) throws {
@@ -224,6 +231,7 @@ final class LayoutManager {
         // Issue73 Phase B: SSOT 이관 — 각 name마다 layout.deleted
         for name in names {
             ChangeTracker.shared.record(type: "layout.deleted", target: name)
+            onLayoutDeleted?(name)  // Issue99: defaultLayoutName 죽은 참조 예방
         }
     }
 

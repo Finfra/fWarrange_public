@@ -5,11 +5,6 @@ import AppKit
 // automatic right-aligned display via keyEquivalent + keyEquivalentModifierMask.
 @MainActor
 final class MenuBarManager: NSObject, NSMenuDelegate {
-    // Default display shortcuts (menu-only; global hotkeys still require _config.yml — Issue61).
-    private static let fallbackSave          = KeyboardShortcutConfig.from(displayString: "⌘F7")
-    private static let fallbackRestoreLast   = KeyboardShortcutConfig.from(displayString: "⌥⌘F7")
-    private static let fallbackRestoreDefault = KeyboardShortcutConfig.from(displayString: "⇧⌘F7")
-    private static let fallbackShowMain      = KeyboardShortcutConfig.from(displayString: "⌃⇧⌘F7")
     private var statusItem: NSStatusItem?
     private weak var appState: AppState?
 
@@ -97,14 +92,14 @@ final class MenuBarManager: NSObject, NSMenuDelegate {
         menu.addItem(makeShortcutItem(
             title: "🔁 " + L10n("menu.restore_last", lang: lang),
             action: #selector(restoreLast),
-            shortcut: state.settings.restoreLastShortcut ?? MenuBarManager.fallbackRestoreLast
+            shortcut: state.settings.restoreLastShortcut
         ))
 
         // Restore Default Layout
         menu.addItem(makeShortcutItem(
             title: "⭐ " + L10n("menu.restore_default", lang: lang),
             action: #selector(restoreDefault),
-            shortcut: state.settings.restoreDefaultShortcut ?? MenuBarManager.fallbackRestoreDefault
+            shortcut: state.settings.restoreDefaultShortcut
         ))
 
         // Layout list (Default + Recent N + ...and K more)
@@ -116,14 +111,14 @@ final class MenuBarManager: NSObject, NSMenuDelegate {
         menu.addItem(makeShortcutItem(
             title: "🖥️ " + L10n("menu.open_main_window", lang: lang),
             action: #selector(openMainWindow),
-            shortcut: state.settings.showMainWindowShortcut ?? MenuBarManager.fallbackShowMain
+            shortcut: state.settings.showMainWindowShortcut
         ))
 
         // Save Window Layout
         menu.addItem(makeShortcutItem(
             title: "📷 " + L10n("menu.save_layout", lang: lang),
             action: #selector(saveLayout),
-            shortcut: state.settings.saveShortcut ?? MenuBarManager.fallbackSave
+            shortcut: state.settings.saveShortcut
         ))
 
         // Daemon submenu

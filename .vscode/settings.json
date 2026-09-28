@@ -3,10 +3,10 @@
   "workbench.colorCustomizations": {
     "activityBar.activeBackground": "#f5f7fa",
     "activityBar.background": "#f5f7fa",
-    "editorError.foreground": "#000000ff",
+    "editorError.foreground": "#00000000",
     "editorGroup.border": "#f5f7fa",
-    "editorInfo.foreground": "#000000ff",
-    "editorWarning.foreground": "#000000ff",
+    "editorInfo.foreground": "#00000000",
+    "editorWarning.foreground": "#00000000",
     "panel.border": "#f5f7fa",
     "sash.hoverBorder": "#f5f7fa",
     "sideBar.border": "#f5f7fa",
@@ -15,7 +15,7 @@
     "statusBar.debuggingBackground": "#e8ded4",
     "statusBar.debuggingBorder": "#e8ded4",
     "statusBarItem.hoverBackground": "#b3c4d6",
-    "statusBarItem.remoteBackground": "#d4dee8",
+    "statusBarItem.remoteBackground": "#bc829f",
     "tab.activeBorder": "#f5f7fa",
     "titleBar.activeBackground": "#d4dee8",
     "titleBar.border": "#d4dee8",
@@ -27,7 +27,12 @@
     "statusBar.foreground": "#15202b",
     "statusBarItem.remoteForeground": "#15202b",
     "titleBar.activeForeground": "#15202b",
-    "titleBar.inactiveForeground": "#15202b99"
+    "titleBar.inactiveForeground": "#15202b99",
+    "activityBarTop.activeBackground": "#f5f7fa",
+    "activityBarTop.background": "#f5f7fa",
+    "activityBarTop.foreground": "#15202b",
+    "activityBarTop.inactiveForeground": "#15202b99",
+    "commandCenter.foreground": "#15202b"
   },
   "peacock.color": "#d4dee8"
 }

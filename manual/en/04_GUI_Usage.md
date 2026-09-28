@@ -11,9 +11,9 @@ fWarrange runs as a SwiftUI menu bar app on macOS, allowing one-click layout man
 
 Click the menu bar icon to view the layout list and primary controls.
 
-![Main Screen](https://finfra.kr/product/fWarrange/en/main_1.png)
+![Main Screen](../img/01_main-overview.png)
 
-![Main Screen Full](https://finfra.kr/product/fWarrange/en/main_all.png)
+![Selective Restore](../img/02_selective-restore.png)
 
 ### Key Functions
 * **Capture Button**: Save current window arrangement as a new layout
@@ -27,7 +27,7 @@ Open the settings window via the menu bar > settings icon.
 
 ### Tab 1: General
 
-![General Settings](https://finfra.kr/product/fWarrange/en/setting_1_general.png)
+![General Settings](../img/05_settings-general.png)
 
 | Item              | Description                                                    |
 | ----------------- | -------------------------------------------------------------- |
@@ -53,7 +53,7 @@ Open the settings window via the menu bar > settings icon.
 
 ### Tab 3: Restore
 
-![Restore Settings](https://finfra.kr/product/fWarrange/en/setting_3_restore.png)
+![Restore Settings](../img/04_settings-restore.png)
 
 | Item           | Default     | Description                          |
 | -------------- | ----------- | ------------------------------------ |
@@ -67,8 +67,6 @@ Open the settings window via the menu bar > settings icon.
 * Dock, SystemUIServer, Spotlight
 
 ### Tab 4: API
-
-![API Settings](https://finfra.kr/product/fWarrange/en/setting_4_api.png)
 
 | Item           | Default        | Description                |
 | -------------- | -------------- | -------------------------- |

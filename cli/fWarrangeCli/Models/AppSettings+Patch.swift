@@ -25,7 +25,6 @@ extension AppSettings {
             "retentionDays": s.retentionDays ?? 7,
             "restoreButtonStyle": s.restoreButtonStyle ?? "nameIcon",
             "confirmBeforeDelete": s.confirmBeforeDelete ?? true,
-            "showInCmdTab": s.showInCmdTab ?? true,
             "clickSwitchToMain": s.clickSwitchToMain ?? false,
             "theme": s.theme ?? "system"
         ]
@@ -62,7 +61,6 @@ extension AppSettings {
         if let v = body["retentionDays"] as? Int { s.retentionDays = v }
         if let v = body["restoreButtonStyle"] as? String { s.restoreButtonStyle = v }
         if let v = body["confirmBeforeDelete"] as? Bool { s.confirmBeforeDelete = v }
-        if let v = body["showInCmdTab"] as? Bool { s.showInCmdTab = v }
         if let v = body["clickSwitchToMain"] as? Bool { s.clickSwitchToMain = v }
         if let v = body["defaultLayoutName"] as? String { s.defaultLayoutName = v.isEmpty ? nil : v }
     }

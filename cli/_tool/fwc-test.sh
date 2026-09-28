@@ -122,7 +122,7 @@ if [ -f "$CONFIG_FILE" ]; then
     check_default "restServerPort" "3016"
     check_default "logLevel" "5"
     check_default "dataStorageMode" "host"
-    check_default "launchAtLogin" "false"
+    check_default "launchAtLogin" "true"   # Issue51: bundled seed default is true (brew services --keep)
     check_default "restServerEnabled" "true"
     check_default "allowExternalAccess" "false"
     check_default "allowedCIDR" "192.168.0.0/16"
@@ -130,7 +130,6 @@ if [ -f "$CONFIG_FILE" ]; then
     check_default "maxAutoSaves" "5"
     check_default "restoreButtonStyle" "nameIcon"
     check_default "confirmBeforeDelete" "true"
-    check_default "showInCmdTab" "true"
     check_default "clickSwitchToMain" "false"
     check_default "theme" "system"
     check_default "appLanguage" "system"
