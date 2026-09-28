@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 105
+* Issue HWM: 106
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -30,6 +30,14 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+
+## Issue106: XCTest 호스트가 BrewServiceSync.onAppStart() 를 그대로 탐 — 테스트 격리 결손·호스트 미종료 (🌱 후보 승격) (등록: 2026-09-28)
+* 목적: 실 brew 서비스 조회(멈춰 있으면 `brew services start` handoff 까지)로 격리(#11) 결손 + 동기 `waitUntilExit` 중첩 런루프 안에서 테스트가 돌면 완료 후 호스트가 종료되지 않음(경쟁, 4/8회) (Issue105 중 발견)
+* 상세:
+    - 출처: prj3 mq `20260928-023246-001` ③ — prj3#Issue756 C 등급: 🌱 후보 → 번호 이슈 승격(후보 줄은 다음 정리 때 삭제)
+    - 진단: `cli/_doc_work/debug_TECH.md`
+* 구현 명세:
+    - `XCTestConfigurationFilePath` 가드 후보 — 재현 테스트 red 먼저(8회 반복 종료 확인)
 
 # 📗 선택
 
