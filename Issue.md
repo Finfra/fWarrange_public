@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 107
+* Issue HWM: 108
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -39,6 +39,18 @@ date: 2026-04-07
     - 진단: `cli/_doc_work/debug_TECH.md`
 * 구현 명세:
     - `XCTestConfigurationFilePath` 가드 후보 — 재현 테스트 red 먼저(8회 반복 종료 확인)
+
+## Issue108: `dataDirectoryPath` 설정이 저장만 되고 레이아웃 경로에 반영되지 않음 + 첫 기동 시 `_config.yml` 이 호스트 폴더로 옮겨짐 (등록: 2026-09-28)
+* 목적: paidApp 설정 › 일반의 데이터 폴더 «변경»이 동작하지 않는다 — App Store 1.1.1 스크린샷 05 캡션(«저장 폴더 직접 선택»)·entitlement `files.user-selected.read-write` 근거와 충돌한다 (prj16#Issue265 위임 A 중 발견)
+* 상세:
+    - 출처: prj16 위임 A(`_doc_work/delegation_2026.09.28_appstore-prefix.md`) — 결정 권한 C 등급(타 repo 이슈 등록)으로 등록만 함. 판단 재료: prj16 `_doc_work/_release/v1.1.1/screenshots/candidates.md` «발견 3»
+    - ① `PATCH /api/v2/settings/general {dataDirectoryPath}` 는 `_config.yml` 에 기록만 된다. 저장소 경로는 `YAMLLayoutStorageService.resolveDefaultBaseDirectory()` 가 `Env.configPath`(환경변수 `fWarrangeCli_config`) → `~/Documents/finfra/fWarrangeData` 로만 정하고 `settings.dataDirectoryPath` 를 읽지 않는다. `init(dataDirectoryURL:)` 호출처는 `fWarrangeCliTests/TDDPlaylistTests.swift` 뿐 (2026-09-28 grep 실측)
+    - ② `AppState.init` 이 `_config.yml` 을 먼저 만들고(기본값 저장) 그 뒤 `migrateRootDataIfNeeded()` 가 **루트의 `*.yml` 전부**를 `<base>/<host>/` 로 옮긴다 — `pathExtension == "yml"` 이라 `_config.yml` 도 대상. 호스트 폴더가 없는 첫 기동(신규 설치·새 `fWarrangeCli_config`)마다 재현 가능성(검증 필요 — 코드 판독만, 실행 미확인)
+    - 우회(촬영용): prj16 `screenshots/demo/setup-demo.sh` 가 호스트 폴더를 미리 만들고 `open --env fWarrangeCli_config=…` 로 기동
+* 구현 명세:
+    - ① `dataDirectoryPath` 가 있으면 그것을 base 로 쓰도록 `resolveDefaultBaseDirectory()` 우선순위를 `env > settings.dataDirectoryPath > 기본값` 으로 — 변경 시 재기동 필요 여부·기존 데이터 이전 정책을 함께 정한다. red 먼저: 설정 변경 후 `GET /api/v2/layouts` 가 새 폴더를 보는지
+    - ② 마이그레이션 대상에서 `_config.yml`(및 `_` 접두 파일) 제외. red 먼저: 빈 base 에서 AppState 기동 → 루트 `_config.yml` 존재 단언
+    - 수정 후 prj16 AppStoreDoc·review-notes 의 entitlement 근거와 스크린샷 05 캡션을 재확인
 
 # 📗 선택
 
