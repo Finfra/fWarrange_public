@@ -6,6 +6,7 @@ gate: pre-merge
 r2: warn
 env: jma
 peers: prj16
+evidence_dir: cli/_doc_work/_release
 ---
 
 # 무엇을 지키나
