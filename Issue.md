@@ -65,7 +65,7 @@ date: 2026-04-07
     - ② d117d12 — `_` 접두 파일 마이그레이션 제외 (재생목록 16행)
     - ① **a30f5d0** (`fix/issue108-data-directory`) — 사용자 결정 «다음 기동부터 적용»: `resolveLayoutBaseDirectory` 우선순위 환경변수 > `dataDirectoryPath`(`~` 확장·폴더 생성, 실패 시 경고 후 설정 폴더) > 설정 폴더. AppState 의 저장소·마이그레이션·`_share` 복사가 레이아웃 base 를 쓴다. `_config.yml` 은 설정 폴더 유지. 기존 레이아웃은 옮기지 않음. openapi 설명 동기. 재생목록 19행 red(3단언) → green
     - 검증: jma clean clone XCTest **107/107**. 미검증: paidApp UI 에서 폴더 변경 → cliApp 재기동 → 새 폴더 목록까지의 실기 흐름(테스트는 판정 함수·배선 단위)
-    - 남은 것(prj16 몫): AppStoreDoc·review-notes entitlement 근거·스크린샷 05 캡션 재확인 — 이제 «변경»이 동작하므로 캡션 유지 가능, paidApp 쪽 «재시작 뒤 적용» 안내 문구 필요 여부 판단
+    - 남은 것(prj16 몫): AppStoreDoc·review-notes entitlement 근거·스크린샷 05 캡션 재확인 — 이제 «변경»이 동작하므로 캡션 유지 가능, paidApp 쪽 «재시작 뒤 적용» 안내 문구 필요 여부 판단 → **prj16#Issue282** 로 등록(e2a060f)
 
 ## Issue112: [Bug] `fwc-deploy-brew.sh publish --dry-run` 이 태그·release 중복 검사를 건너뛰고, 요약표가 실행 안 한 push·release 를 ✅ 로 찍음 (Issue107 결함 ① 분리) (등록: 2026-09-28, 완료: 2026-09-28, Hash: 12ec148) ✅
 * 목적: 출고 판단자가 dry-run 결과를 믿고 기출고 번호를 다시 내거나, 이미 올라갔다고 오독한다 — dry-run 이 실제 publish 의 위험을 미리 보여 주지 못한다
