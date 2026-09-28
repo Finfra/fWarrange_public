@@ -10,7 +10,8 @@ date: 2026.09.26
 
 * 기존 러너: `bash cli/_tool/fwc-test.sh (8단계 통합) / bash cli/_tool/apiTestDo.sh v2 / bash cli/_tool/cmdTestDo.sh v2 / bash cli/_tool/fwc-deploy-brew-test.sh / XCTest 타깃 cli/fWarrangeCliTests`
 * 목표 20개 중 기존 테스트로 덮인 것 5개 · 신규 15개 (prj5#Issue99 · Issue101 · Issue104 · Issue105 · Issue109 · Issue108 · Issue106 · Issue112 · Issue110, 2026.09.28)
-* 최종 실행: **jma** — XCTest 108/108 passed (Issue110, 2026.09.28 · develop 후보)(`xcodebuild test`, test plan 격리) · `fwc-test.sh` ALL CLEAR 6 PASS / 0 FAIL · **jm4** — XCTest 98/98 passed (Issue109)
+* 최종 실행: **jma** — 풀 재실행 2026.09.29 (Issue113 · common#Issue108, HEAD `48167f7`): XCTest **108/108 passed**(`build-for-testing` → `test-without-building`, test plan 격리) · 18행 `fwc-deploy-brew-test.sh --summary` PASS 1·2(jm4 에서도 check 1 PASS) · red 0 → 수정 커밋 없음. 9행의 `fwc-test.sh` 부분은 이번 회차 미실행 — 러너가 `kill.sh` 로 `pkill -9 -f` 를 부르고 jma 설치본을 교체해 웨이브 제약(`pkill -f` 금지)과 충돌, 9행 성질은 XCTest `testMissingConfigIsSeededWithDefaults` 로 확인
+* 직전 실행: **jma** — XCTest 108/108 passed (Issue110, 2026.09.28 · develop 후보)(`xcodebuild test`, test plan 격리) · `fwc-test.sh` ALL CLEAR 6 PASS / 0 FAIL · **jm4** — XCTest 98/98 passed (Issue109)
 * 테스트 호스트 격리: [fWarrangeCli.xctestplan](cli/fWarrangeCli.xctestplan) 이 `fWarrangeCli_config`·`FWARRANGE_DISABLE_HOTKEYS`·`FWARRANGE_PORT` 를 주입 — 실데이터 폴더·사용자 단축키·3016 포트를 건드리지 않는다
 
 # 재생목록

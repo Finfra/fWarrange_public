@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 112
+* Issue HWM: 113
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -30,6 +30,19 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue113: [TDD] 재생목록 풀 재실행 — 전 목표 회귀 (common#Issue108 웨이브) (등록: 2026-09-29, 완료: 2026-09-29, Hash: 커밋 대기) ✅
+* 목적: 사용자 지시(common#Issue108) — TDD 대상 전 prj 재생목록 풀 실행. 재생목록은 20/20 ✅ 이므로 현 HEAD 가 여전히 green 인지 회귀 확인하고 red 는 고친다
+* 상세:
+    - 대상: [tdd/playlist.md](tdd/playlist.md) ✅ 20행 (⬜ 행 없음) · 러너 전용 스크립트 없음 → 실행 열 그대로
+    - 제약(웨이브 승계): 빌드성은 jma 전용·공용 잠금 `/tmp/jma-xcode.lock` + 300초 워치독 · jm4 는 가벼운 것만 · `pkill -f`·push·worktree 금지
+* 구현 명세:
+    - TDD 해당 없음: 회귀 재실행이며 red 가 나오지 않아 수정 대상 없음
+* 결과 (2026-09-29, HEAD `48167f7`):
+    - jma: HEAD 를 `git bundle` 로 `/tmp/fwc-tdd-src` 에 격리 클론(jma 기존 사본·설치본 무접촉) → GUI tmux 에서 잠금 획득 후 `xcodebuild build-for-testing` rc 0 → `test-without-building -testPlan fWarrangeCli` **108/108 passed, 0 failures** (15 스위트 — TDDPlaylistTests·BrewHandoffTests·OfficialBuildMarkerTests·AccessibilityGuideSchedulingTests 등) · `fwc-deploy-brew-test.sh --summary` PASS 1 (기출고 cli-v1.1.2 에서 빌드 전 중단)·PASS 2 (미실행 4단계 ⏭, 가짜 버전 9.9.354) · 00:45:33~00:46:23
+    - jm4: `fwc-deploy-brew-test.sh` (check 1, xcodebuild 스텁·읽기 전용) PASS 1
+    - 미실행: 9행 `fwc-test.sh` — `kill.sh` 가 `pkill -9 -f "MacOS/fWarrangeCli"` 를 부르고 jma 설치본을 Debug 로 교체한다. 웨이브 제약과 충돌해 돌리지 않았고, 9행 성질(기본값 시드)은 XCTest `testMissingConfigIsSeededWithDefaults` 로 확인
+    - red → fix: 없음 · 로그 `logs/test/tdd-full_issue108_jma_20260929.log` (로컬, gitignored)
 
 ## Issue110: [Bug] 접근성 미승인 기동 시 `AccessibilityGuidePresenter` 모달(`NSAlert runModal`)이 메인 스레드를 잡아 REST v2 가 무응답 (등록: 2026-09-28, 완료: 2026-09-28, Hash: 7b56aff) ✅
 * 목적: 데몬의 REST 가 사람이 안내 창을 닫을 때까지 멈춘다 — paidApp·스크립트가 레이아웃 조회부터 막힌다 (1.1.2 출고 R1 2단계 원복 중 발견)
