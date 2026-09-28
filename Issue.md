@@ -32,18 +32,6 @@ date: 2026-04-07
 
 # 📙 일반
 
-## Issue111: [Bug] cliApp 재시작 뒤 `GET /api/v2/paidapp/status` 가 실행 중인 paidApp 을 `not_running` 으로 답함 — 메뉴 모드 판정(PaidAppMonitor)과 status 판정(paidAppRouter) 갈림 (등록: 2026-09-28)
-* 목적: 같은 사실(«paidApp 이 떠 있는가»)을 두 곳이 따로 판정해 cliApp 재시작 뒤 서로 다른 답을 낸다 — status 를 믿는 소비자(스크립트·QA·paidApp 쪽 점검)가 떠 있는 paidApp 을 없는 것으로 본다 (1.1.2 출고 R1 8행 뒤 jma 실측)
-* 상세:
-    - 재현 (2026-09-28 17:25, jma): paidApp 1.1.1 실행 중(PID 91381) 상태에서 cliApp 만 재기동(`brew services` 재설치·start) → `/api/v2/paidapp/status` = `{"state":"not_running"}` 이 90초 넘게 유지. paidApp 은 `applicationDidFinishLaunching` 에서만 register 한다
-    - 원인: `handlePaidAppStatus`(RESTServer.swift) 는 `paidAppRouter.status()` — REST register 기록만 본다. 재시작 복원(`PaidAppMonitor.init` 의 `runningApplications` 검색 → `.paidAppActive`)은 메뉴 모드에만 반영되고 status 에는 닿지 않는다
-    - 규약: `paid_cli_protocol.md` §3.4 «cliApp 재시작 → register 기록 소실 가능 → 실행 중 paidApp 검색으로 복원» — status 가 그 복원을 반영하지 않아 규약과 어긋남
-    - 1.1.2 회귀 아님(관련 코드 무변경). R1 12행은 paidApp 을 cliApp 뒤에 띄워 register 가 일어나는 순서라 드러나지 않았다
-* 구현 명세:
-    - 판정 단일 지점으로 통일: status 도 «register 기록 없음 + `runningApplications` 에 `kr.finfra.fWarrange` 있음» 이면 `running`(pid·출처 표기) — 또는 cliApp 기동 시 복원 경로가 router 에도 기록을 만든다. 어느 쪽이든 PaidAppMonitor 와 router 가 같은 답을 내야 한다
-    - red 먼저: register 기록 없이 paidApp 실행 중인 상태를 주입 → status 가 `not_running` 을 내는 테스트 → 수정 뒤 green
-    - openapi_v2.yaml `paidapp/status` 응답 설명 동기(api-rules)
-
 ## Issue112: [Bug] `fwc-deploy-brew.sh publish --dry-run` 이 태그·release 중복 검사를 건너뛰고, 요약표가 실행 안 한 push·release 를 ✅ 로 찍음 (Issue107 결함 ① 분리) (등록: 2026-09-28)
 * 목적: 출고 판단자가 dry-run 결과를 믿고 기출고 번호를 다시 내거나, 이미 올라갔다고 오독한다 — dry-run 이 실제 publish 의 위험을 미리 보여 주지 못한다
 * 상세:
@@ -91,6 +79,23 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue111: [Bug] cliApp 재시작 뒤 `GET /api/v2/paidapp/status` 가 실행 중인 paidApp 을 `not_running` 으로 답함 — 메뉴 모드 판정(PaidAppMonitor)과 status 판정(paidAppRouter) 갈림 (등록: 2026-09-28, 완료: 2026-09-28, Hash: aebef57) ✅
+* 목적: 같은 사실(«paidApp 이 떠 있는가»)을 두 곳이 따로 판정해 cliApp 재시작 뒤 서로 다른 답을 낸다 — status 를 믿는 소비자(스크립트·QA·paidApp 쪽 점검)가 떠 있는 paidApp 을 없는 것으로 본다 (1.1.2 출고 R1 8행 뒤 jma 실측)
+* 상세:
+    - 재현 (2026-09-28 17:25, jma): paidApp 1.1.1 실행 중(PID 91381) 상태에서 cliApp 만 재기동(`brew services` 재설치·start) → `/api/v2/paidapp/status` = `{"state":"not_running"}` 이 90초 넘게 유지. paidApp 은 `applicationDidFinishLaunching` 에서만 register 한다
+    - 원인: `handlePaidAppStatus`(RESTServer.swift) 는 `paidAppRouter.status()` — REST register 기록만 본다. 재시작 복원(`PaidAppMonitor.init` 의 `runningApplications` 검색 → `.paidAppActive`)은 메뉴 모드에만 반영되고 status 에는 닿지 않는다
+    - 규약: `paid_cli_protocol.md` §3.4 «cliApp 재시작 → register 기록 소실 가능 → 실행 중 paidApp 검색으로 복원» — status 가 그 복원을 반영하지 않아 규약과 어긋남
+    - 1.1.2 회귀 아님(관련 코드 무변경). R1 12행은 paidApp 을 cliApp 뒤에 띄워 register 가 일어나는 순서라 드러나지 않았다
+* 구현 명세:
+    - 판정 단일 지점으로 통일: status 도 «register 기록 없음 + `runningApplications` 에 `kr.finfra.fWarrange` 있음» 이면 `running`(pid·출처 표기) — 또는 cliApp 기동 시 복원 경로가 router 에도 기록을 만든다. 어느 쪽이든 PaidAppMonitor 와 router 가 같은 답을 내야 한다
+    - red 먼저: register 기록 없이 paidApp 실행 중인 상태를 주입 → status 가 `not_running` 을 내는 테스트 → 수정 뒤 green
+    - openapi_v2.yaml `paidapp/status` 응답 설명 동기(api-rules)
+* 결과 (2026-09-28, aebef57 · `fix/issue111-paidapp-status`):
+    - `PaidAppRouter.status()`: 등록 기록이 없고 paidApp 프로세스가 실행 중이면 `running`(pid·version·bundlePath, `sessionId`·`registeredAt` 없음). 등록 기록이 있으면 그것이 우선
+    - 실행 중 paidApp 조회를 `RunningPaidAppResolver` 로 주입 — 테스트 호스트 머신에 실제 paidApp 이 떠 있어도 기존 status 테스트가 흔들리지 않게(jm4 실측: paidApp 실행 중)
+    - TDD: `testStatusReportsRunningPaidAppWithoutRegistration` red(4단언) → green · openapi_v2.yaml 설명 동기
+    - 검증: **jma** clean clone XCTest **102/102** (jm4 는 사용자 사용 중이라 jma 에서 실행) · 테스트 호스트 정상 종료
 
 ## Issue107: cliApp brew·npm 출고 R1 중단 — 기출고 `cli-v1.1.1` 번호 충돌·jma 화면 잠김 (등록: 2026-09-28, 완료: 2026-09-28, Hash: 8553c40, 41d93f8, c7c8c21, d375c08) ✅
 * 목적: 사용자 결정(2026-09-28, prj3 세션 05cbbead · mq 20260928-120438-001 — H:배포 승인)으로 fWarrangeCli 를 Homebrew tap·npm 으로 출고하려 R1 을 돌렸으나, 1.1.1 은 이미 공개 출고된 번호라 이번 변경(Issue95~105)을 1.1.1 로 낼 수 없다 — 버전 결정 대기
