@@ -21,26 +21,11 @@ date: 2026-04-07
 
 # 🌱 이슈후보
 
-1. `.claude/commands/deploy.md` 가 `brew publish` 를 🚧 TODO 로 표시하나 `cli/_tool/fwc-deploy-brew.sh` 에 `cmd_publish`(gh release + tap push)가 이미 구현됨 (prj3#Issue741 R2 배선 중 발견)
-
-1. `CLAUDE.md` 에 적힌 스킬 `build`·`deploy`·`brew-apply` 가 `.claude/skills/` 에 없음 · `README.md` 버전 1.0.2 표기 낡음(VERSION 1.1.1) (prj3#Issue717 배포용 TDD 적용 중 발견)
-1. XCTest 호스트가 기동 시 `BrewServiceSync.onAppStart()` 를 그대로 탄다 — 실 brew 서비스 조회(멈춰 있으면 `brew services start` handoff 까지)로 격리(#11) 결손 + 동기 `waitUntilExit` 중첩 런루프 안에서 테스트가 돌면 완료 후 호스트가 종료되지 않음(경쟁, 4/8회). `XCTestConfigurationFilePath` 가드 후보 · 진단 `cli/_doc_work/debug_TECH.md` (Issue105 중 발견)
-
 # 🚧 진행중
 
 # 📕 중요
 
 # 📙 일반
-
-## Issue112: [Bug] `fwc-deploy-brew.sh publish --dry-run` 이 태그·release 중복 검사를 건너뛰고, 요약표가 실행 안 한 push·release 를 ✅ 로 찍음 (Issue107 결함 ① 분리) (등록: 2026-09-28)
-* 목적: 출고 판단자가 dry-run 결과를 믿고 기출고 번호를 다시 내거나, 이미 올라갔다고 오독한다 — dry-run 이 실제 publish 의 위험을 미리 보여 주지 못한다
-* 상세:
-    - 결함 ①(Issue107): Step 0-3 태그·release 중복 검사를 live 에서만 해, 기출고 `cli-v1.1.1` 재출고 계획을 dry-run 이 ALL CLEAR 로 보고했다
-    - 요약표 오표시(1.1.2 R1 3단계 보고 4절): dry-run 인데 «git tag push ✅ · gh release ✅ · tap push ✅» 로 찍힌다 — 실행되지 않은 단계다
-* 구현 명세:
-    - dry-run 에서도 원격 태그·release 존재를 조회해 중복이면 FAIL(또는 경고 + 비 0 종료)
-    - 요약표는 dry-run 단계를 «⏭ 계획(미실행)» 처럼 실행 결과와 구분되는 표기로
-    - red 먼저: 기존 태그 번호로 `publish --dry-run` → ALL CLEAR 가 나오는 것을 재현하는 검사
 
 ## Issue110: [Bug] 접근성 미승인 기동 시 `AccessibilityGuidePresenter` 모달(`NSAlert runModal`)이 메인 스레드를 잡아 REST v2 가 무응답 (등록: 2026-09-28)
 * 목적: 데몬의 REST 가 사람이 안내 창을 닫을 때까지 멈춘다 — paidApp·스크립트가 레이아웃 조회부터 막힌다 (1.1.2 출고 R1 2단계 원복 중 발견)
@@ -52,14 +37,6 @@ date: 2026-04-07
 * 구현 명세:
     - red 먼저: 미승인 상태에서 안내 표시 중에도 `GET /api/v2/layouts` 가 응답함을 단언
     - 후보: 모달 대신 비모달 창(또는 `beginSheet`), REST 처리가 메인 액터 대기에 묶이지 않게
-
-## Issue106: XCTest 호스트가 BrewServiceSync.onAppStart() 를 그대로 탐 — 테스트 격리 결손·호스트 미종료 (🌱 후보 승격) (등록: 2026-09-28)
-* 목적: 실 brew 서비스 조회(멈춰 있으면 `brew services start` handoff 까지)로 격리(#11) 결손 + 동기 `waitUntilExit` 중첩 런루프 안에서 테스트가 돌면 완료 후 호스트가 종료되지 않음(경쟁, 4/8회) (Issue105 중 발견)
-* 상세:
-    - 출처: prj3 mq `20260928-023246-001` ③ — prj3#Issue756 C 등급: 🌱 후보 → 번호 이슈 승격(후보 줄은 다음 정리 때 삭제)
-    - 진단: `cli/_doc_work/debug_TECH.md`
-* 구현 명세:
-    - `XCTestConfigurationFilePath` 가드 후보 — 재현 테스트 red 먼저(8회 반복 종료 확인)
 
 ## Issue108: `dataDirectoryPath` 설정이 저장만 되고 레이아웃 경로에 반영되지 않음 + 첫 기동 시 `_config.yml` 이 호스트 폴더로 옮겨짐 (등록: 2026-09-28)
 * 목적: paidApp 설정 › 일반의 데이터 폴더 «변경»이 동작하지 않는다 — App Store 1.1.1 스크린샷 05 캡션(«저장 폴더 직접 선택»)·entitlement `files.user-selected.read-write` 근거와 충돌한다 (prj16#Issue265 위임 A 중 발견)
@@ -79,6 +56,32 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue112: [Bug] `fwc-deploy-brew.sh publish --dry-run` 이 태그·release 중복 검사를 건너뛰고, 요약표가 실행 안 한 push·release 를 ✅ 로 찍음 (Issue107 결함 ① 분리) (등록: 2026-09-28, 완료: 2026-09-28, Hash: 12ec148) ✅
+* 목적: 출고 판단자가 dry-run 결과를 믿고 기출고 번호를 다시 내거나, 이미 올라갔다고 오독한다 — dry-run 이 실제 publish 의 위험을 미리 보여 주지 못한다
+* 상세:
+    - 결함 ①(Issue107): Step 0-3 태그·release 중복 검사를 live 에서만 해, 기출고 `cli-v1.1.1` 재출고 계획을 dry-run 이 ALL CLEAR 로 보고했다
+    - 요약표 오표시(1.1.2 R1 3단계 보고 4절): dry-run 인데 «git tag push ✅ · gh release ✅ · tap push ✅» 로 찍힌다 — 실행되지 않은 단계다
+* 구현 명세:
+    - dry-run 에서도 원격 태그·release 존재를 조회해 중복이면 FAIL(또는 경고 + 비 0 종료)
+    - 요약표는 dry-run 단계를 «⏭ 계획(미실행)» 처럼 실행 결과와 구분되는 표기로
+    - red 먼저: 기존 태그 번호로 `publish --dry-run` → ALL CLEAR 가 나오는 것을 재현하는 검사
+* 결과 (2026-09-28, 1e42616 검사 · **12ec148** 수정 · `fix/issue112-dryrun-dup-check`):
+    - Step 0-3 중복 검사를 dry-run 에서도 수행 — 기출고 버전이면 빌드 전 FAIL
+    - dry-run 의 미실행 단계(git tag push·gh release·tap push·검증)는 «⏭ (dry-run 계획, 미실행)» — PASS 개수에서 제외
+    - 검사 `cli/_tool/fwc-deploy-brew-test.sh`: 1) xcodebuild 스텁으로 빌드 없이 중복 정지 확인 — red(jma: 사전조건 통과 후 Step 1 도달) → green · 2) `--summary` 가짜 미출고 버전(9.9.969) dry-run → ⏭ 4건 PASS. 재생목록 18행 `publish-dry-run-truthful`
+
+## Issue106: XCTest 호스트가 BrewServiceSync.onAppStart() 를 그대로 탐 — 테스트 격리 결손·호스트 미종료 (🌱 후보 승격) (등록: 2026-09-28, 완료: 2026-09-28, Hash: 8eba7ff) ✅
+* 목적: 실 brew 서비스 조회(멈춰 있으면 `brew services start` handoff 까지)로 격리(#11) 결손 + 동기 `waitUntilExit` 중첩 런루프 안에서 테스트가 돌면 완료 후 호스트가 종료되지 않음(경쟁, 4/8회) (Issue105 중 발견)
+* 상세:
+    - 출처: prj3 mq `20260928-023246-001` ③ — prj3#Issue756 C 등급: 🌱 후보 → 번호 이슈 승격(후보 줄은 다음 정리 때 삭제)
+    - 진단: `cli/_doc_work/debug_TECH.md`
+* 구현 명세:
+    - `XCTestConfigurationFilePath` 가드 후보 — 재현 테스트 red 먼저(8회 반복 종료 확인)
+* 결과 (2026-09-28, cf32218 테스트 · **8eba7ff** 수정 · `fix/issue106-test-host-brew`):
+    - `BrewServiceSync.StartEnvironment.isTestHost`(live = `XCTestConfigurationFilePath`) 를 `onAppStart` 첫 판정으로 — 테스트 호스트는 launchctl·brew 조회 전에 skip
+    - TDD: `testTestHostSkipsBrewSyncBeforeTouchingBrew` red(jma — `handedOff` · 이벤트 loaded?→brew?→formula?→start→flush→exit) → green · 재생목록 17행 `test-host-skips-brew-sync`
+    - 검증: jma clean clone develop(9194869) XCTest **104/104** · 호스트 정상 종료. «8회 반복» 은 원인(실 brew 경로) 자체를 막아 대체함 — 1.1.2 R1 3단계부터 교착 미재현
 
 ## Issue111: [Bug] cliApp 재시작 뒤 `GET /api/v2/paidapp/status` 가 실행 중인 paidApp 을 `not_running` 으로 답함 — 메뉴 모드 판정(PaidAppMonitor)과 status 판정(paidAppRouter) 갈림 (등록: 2026-09-28, 완료: 2026-09-28, Hash: aebef57) ✅
 * 목적: 같은 사실(«paidApp 이 떠 있는가»)을 두 곳이 따로 판정해 cliApp 재시작 뒤 서로 다른 답을 낸다 — status 를 믿는 소비자(스크립트·QA·paidApp 쪽 점검)가 떠 있는 paidApp 을 없는 것으로 본다 (1.1.2 출고 R1 8행 뒤 jma 실측)
