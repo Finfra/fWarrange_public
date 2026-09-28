@@ -28,23 +28,9 @@ date: 2026-04-07
 
 # 🚧 진행중
 
-## Issue109: [Bug] `open` 기동한 cliApp 이 brew 바이너리만 있으면 formula 미설치여도 `brew services start` 위임 후 `exit(0)` — README 소스 빌드 앱이 기동 직후 사라짐 (등록: 2026-09-28)
-* 목적: 출고 R1 3행 `source-build-from-readme` 실패 원인. Homebrew 가 깔린 Mac 에서 README «Build from Source» 로 만든 앱을 `open` 하면 REST 가 한 번 응답한 뒤 1초 안에 종료된다 — 소스 빌드 사용자는 앱을 쓸 수 없다 (1.1.2 출고 R1 2단계 중 발견 · 위임 지시 «코드 수정은 범위 밖 — 이슈후보로» 에 따라 등록만)
-* 상세:
-    - 재현(jma 2026-09-28, 후보 45688ee, clear 직후): `open …/Release/fWarrangeCli.app` → 100ms 에 자식 `brew services start fwarrange-cli` 생성 → brew 가 `Refusing to load formula finfra/tap/fwarrange-cli from untrusted tap` (rc=1, formula 미설치) → 550ms 에 앱 종료. 통합 로그 `CoreAnalytics … Entering exit handler`(정상 종료, 크래시 아님)
-    - 원인(코드 판독): `BrewServiceSync.onAppStart()` 의 skip 조건이 optOut·launchd 기동·서비스 로드·**brew 바이너리 유무**뿐이고 formula 설치 여부를 보지 않는다 → `performHandoffStart()` 가 `brew services start` rc 와 무관하게 `Foundation.exit(0)` (`cli/fWarrangeCli/Services/BrewServiceSync.swift` onAppStart·performHandoffStart)
-    - 도입: Issue41 `03192bb` — 기출고 cli-v1.0.1~1.1.1 에도 포함(1.1.2 회귀 아님). jma 는 그동안 `kr.finfra.fWarrangeCli` `fwc.autoStartBrewService=false` 옵트아웃이 있어 가려져 있었다 — clear 가 prefs 를 지워 드러남
-    - 부수: 종료 직전 `logI("[brew-sync] performHandoffStart …")` 가 `wlog_cliApp.log` 에 남지 않는다 — exit 가 Logger 비동기 쓰기를 앞질러 자체 종료가 로그상 보이지 않음
-    - 관련: Issue106(같은 `onAppStart()` 가 XCTest 호스트에서 도는 격리 결손)
-    - 증거: `cli/_doc_work/_release/v1.1.2/logs/r1s2_row03_*` · 보고 `../_doc_work/report/cli-release-1.1.2-stage2_report.md`
-* 구현 명세:
-    - red 먼저: brew 바이너리 있음 + formula 미설치(또는 `brew services start` 실패) 상태에서 `onAppStart()` 가 프로세스를 종료하지 않음을 단언 (brew 조회는 주입으로 격리)
-    - 후보: handoff 전에 formula 설치 확인(`brew list --versions fwarrange-cli` 등) + `brew services start` 실패 시 exit 하지 않고 현 프로세스를 primary 로 유지. exit 전 Logger flush
-    - 수정 후 새 후보 커밋에서 R1 1행부터 다시 (Issue107)
-
 ## Issue107: cliApp brew·npm 출고 R1 중단 — 기출고 `cli-v1.1.1` 번호 충돌·jma 화면 잠김 (등록: 2026-09-28)
 * 목적: 사용자 결정(2026-09-28, prj3 세션 05cbbead · mq 20260928-120438-001 — H:배포 승인)으로 fWarrangeCli 를 Homebrew tap·npm 으로 출고하려 R1 을 돌렸으나, 1.1.1 은 이미 공개 출고된 번호라 이번 변경(Issue95~105)을 1.1.1 로 낼 수 없다 — 버전 결정 대기
-* report: `../_doc_work/report/cli-release-1.1.1_report.md`, `../_doc_work/report/cli-release-1.1.2-stage1_report.md`, `../_doc_work/report/cli-release-1.1.2-stage2_report.md`
+* report: `../_doc_work/report/cli-release-1.1.1_report.md`, `../_doc_work/report/cli-release-1.1.2-stage1_report.md`, `../_doc_work/report/cli-release-1.1.2-stage2_report.md`, `../_doc_work/report/cli-release-1.1.2-stage3_report.md`
 * 상세:
     - 위임: `../_doc_work/delegation_2026.09.28_cli-brew-npm-release.md` · 공개 반영(push·publish)은 prj3 세션 몫
     - 증거(partial): `cli/_doc_work/_release/v1.1.1/release-test_1.1.1.md` — 1행 조건부(XCTest 93/93, Issue106 호스트 교착 재현) · 2~12행 미실행(jma `CGSSessionScreenIsLocked=1`) · 6행 dry-run 9 PASS(순서 밖 정보 실행)
@@ -58,6 +44,7 @@ date: 2026-04-07
     - 1단계 bump: `VERSION` 1.1.1 → 1.1.2 · pbxproj `MARKETING_VERSION` ×2 · `cli/project.yml` + **`cli/Formula/fwarrange-cli.rb` url(sha256 은 0 자리표시 — publish 뒤 실값, Issue89 da9c41a→79227f6 선례) · `cli/version-meta.yml` `version:`** — 뒤 두 곳은 위임 지시에 없었으나 `testVersionSourcesAgree`(개발 재생목록 10행)가 대조하므로 빠뜨리면 1행이 확정 실패한다. `brew:` 상태 필드(formula·installed 1.1.1)는 설치 실태라 publish 뒤 갱신
     - ✅ 1단계 완료 (2026-09-28, bump 8553c40): R1 1행 `dev-playlist-green` jm4 **조건부 통과** — XCTest 93/93 passed · 번들 1.1.2 · Issue106 호스트 교착 재현(호스트만 kill → `TEST SUCCEEDED` rc 0) · `fwc-test.sh` 부분은 4행(jma)으로. 증거 `cli/_doc_work/_release/v1.1.2/release-test_1.1.2.md`(`result: partial`, `dirty: yes` — 타 세션 미커밋분) · 보고 `../_doc_work/report/cli-release-1.1.2-stage1_report.md` · 2단계(jma 2~12행) 대기
     - ⛔ 2단계 종료 (2026-09-28, 후보 45688ee — cd2a8eb 뒤 prj16#Issue280 이 manual md·png 만 추가, 빌드 입력 동일): R1 **`result: fail`** — 2행 `jma-clean-state` 통과 · **3행 `source-build-from-readme` 실패** → 위임 규약대로 정지(4~12행 미실행). README 빌드는 성공(1.1.2·Apple Development 유효)하나 `open` 기동 550ms 만에 앱이 스스로 종료 — brew 바이너리만 보고 formula 미설치 상태에서 `brew services start` 위임 후 결과와 무관하게 `exit(0)` (**Issue109**). 부수 발견: 접근성 미승인 기동 시 안내 모달이 REST v2 를 막음(**Issue110**) · 2행 clear 가 TCC 접근성·brew formula trust 를 리셋하므로 4·11행은 사람 승인 단계가 필요 · jma 는 1.1.1 두 앱·데이터·설정으로 원복(접근성 권한만 사람 손 필요). 보고 `../_doc_work/report/cli-release-1.1.2-stage2_report.md`
+    - ✅ 3단계 R1 통과 (2026-09-28, 새 후보 **41d93f8** — Issue109 수정): **`result: pass` · `dirty: no`**(모든 빌드가 후보 clean clone) — 1행 jm4 XCTest 98/98(Issue106 교착 미재현) · 2~7·9~12행 jma 통과 · 8행 출고 후. 3행 소스 빌드 60초 생존 · 4행 `fwc-test.sh` ALL CLEAR · 6행 dry-run 외부 상태 전후 동일 · 7행 publish tarball 설치 CDHash 보존 · 10·11행 prj16 0d8e211 `--check` FAIL 0·REST 18/0 · 12행 prj16 v1.1.1 등록·목록 반영. 접근성 재승인은 `say` 뒤 사람이 16:45 처리. R2 `recheck` 사전 확인 ✅. jma 1.1.1 원복 `--check` FAIL 0(접근성 `granted` 유지). 보고 `../_doc_work/report/cli-release-1.1.2-stage3_report.md` — 공개 반영은 prj3 세션 몫
 * 구현 명세:
     - 사용자 결정: 버전 번호 — paidApp·cliApp 락스텝 1.1.2 로 결정됨 (2026-09-28)
     - 결정 후: bump(`version-rules` 절차) → 새 후보 커밋에서 R1 처음부터(jma 잠금 해제 + 스크린샷 촬영과 점유 순서 합의) → R2 recheck → main `--no-ff` 병합 → main 에서 `publish`
@@ -73,6 +60,7 @@ date: 2026-04-07
     - 재현(jma 2026-09-28): TCC 접근성 리셋 뒤 brew 설치본 cliApp 1.1.1 기동 → `/` ·`/api/v2/health` 는 200, `/api/v2/status/accessibility`·`/api/v2/layouts` 는 8초 타임아웃(000). `sample` 메인 스레드 = `AccessibilityGuidePresenter` → `NSAlert runModal` → `runModalForWindow:`
     - 증거: `cli/_doc_work/_release/v1.1.2/logs/r1s2_restore_cli_sample_20260928_1606.txt` (1.1.1 바이너리 — 1.1.2 코드 경로도 `AppState` 가 미승인 시 `showAccessibilityGuide()` 호출, 동일 여부 검증 필요)
     - 영향: R1 4·11행(REST 테스트)은 clear 뒤 첫 기동마다 이 모달을 만난다
+    - 비재현 (2026-09-28, 후보 41d93f8 R1 3행): clear 직후 소스 빌드 `open` 기동에서는 미승인 중에도 `/api/v2/status/accessibility` 가 응답했다(`granted:false`) — 재현 조건이 brew 설치본(launchd) 기동에 한정될 수 있다(검증 필요)
 * 구현 명세:
     - red 먼저: 미승인 상태에서 안내 표시 중에도 `GET /api/v2/layouts` 가 응답함을 단언
     - 후보: 모달 대신 비모달 창(또는 `beginSheet`), REST 처리가 메인 액터 대기에 묶이지 않게
@@ -92,6 +80,7 @@ date: 2026-04-07
     - ① `PATCH /api/v2/settings/general {dataDirectoryPath}` 는 `_config.yml` 에 기록만 된다. 저장소 경로는 `YAMLLayoutStorageService.resolveDefaultBaseDirectory()` 가 `Env.configPath`(환경변수 `fWarrangeCli_config`) → `~/Documents/finfra/fWarrangeData` 로만 정하고 `settings.dataDirectoryPath` 를 읽지 않는다. `init(dataDirectoryURL:)` 호출처는 `fWarrangeCliTests/TDDPlaylistTests.swift` 뿐 (2026-09-28 grep 실측)
     - ② `AppState.init` 이 `_config.yml` 을 먼저 만들고(기본값 저장) 그 뒤 `migrateRootDataIfNeeded()` 가 **루트의 `*.yml` 전부**를 `<base>/<host>/` 로 옮긴다 — `pathExtension == "yml"` 이라 `_config.yml` 도 대상. 호스트 폴더가 없는 첫 기동(신규 설치·새 `fWarrangeCli_config`)마다 재현 가능성(검증 필요 — 코드 판독만, 실행 미확인)
     - ② 실측 재현 (2026-09-28, jma clear 직후 1.1.2 후보 45688ee 첫 기동 — Issue107 R1 3행): 로그 `기존 데이터 마이그레이션 완료: jma-2/` 뒤 루트에 `_config.yml` 없음, `jma-2/_config.yml` 만 존재
+    - ② 재재현 + 파급 (2026-09-28, 후보 41d93f8 R1 3·4행): 첫 기동에서 `jma-2/_config.yml` 로 이동한 파일이 레이아웃 **`_config`** 로 목록에 오르고, 4행 API `DELETE /layouts`(delete-all)가 그것까지 지웠다(`deletedCount 1`) — 설정 파일이 레이아웃 삭제에 쓸려 나간다. 호스트 폴더가 생긴 뒤 기동은 루트에 새 `_config.yml` 을 만든다
     - 우회(촬영용): prj16 `screenshots/demo/setup-demo.sh` 가 호스트 폴더를 미리 만들고 `open --env fWarrangeCli_config=…` 로 기동
 * 구현 명세:
     - ① `dataDirectoryPath` 가 있으면 그것을 base 로 쓰도록 `resolveDefaultBaseDirectory()` 우선순위를 `env > settings.dataDirectoryPath > 기본값` 으로 — 변경 시 재기동 필요 여부·기존 데이터 이전 정책을 함께 정한다. red 먼저: 설정 변경 후 `GET /api/v2/layouts` 가 새 폴더를 보는지
@@ -101,6 +90,24 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue109: [Bug] `open` 기동한 cliApp 이 brew 바이너리만 있으면 formula 미설치여도 `brew services start` 위임 후 `exit(0)` — README 소스 빌드 앱이 기동 직후 사라짐 (등록: 2026-09-28, 완료: 2026-09-28, Hash: 41d93f8) ✅
+* 목적: 출고 R1 3행 `source-build-from-readme` 실패 원인. Homebrew 가 깔린 Mac 에서 README «Build from Source» 로 만든 앱을 `open` 하면 REST 가 한 번 응답한 뒤 1초 안에 종료된다 — 소스 빌드 사용자는 앱을 쓸 수 없다 (1.1.2 출고 R1 2단계 중 발견 · 위임 지시 «코드 수정은 범위 밖 — 이슈후보로» 에 따라 등록만)
+* 상세:
+    - 재현(jma 2026-09-28, 후보 45688ee, clear 직후): `open …/Release/fWarrangeCli.app` → 100ms 에 자식 `brew services start fwarrange-cli` 생성 → brew 가 `Refusing to load formula finfra/tap/fwarrange-cli from untrusted tap` (rc=1, formula 미설치) → 550ms 에 앱 종료. 통합 로그 `CoreAnalytics … Entering exit handler`(정상 종료, 크래시 아님)
+    - 원인(코드 판독): `BrewServiceSync.onAppStart()` 의 skip 조건이 optOut·launchd 기동·서비스 로드·**brew 바이너리 유무**뿐이고 formula 설치 여부를 보지 않는다 → `performHandoffStart()` 가 `brew services start` rc 와 무관하게 `Foundation.exit(0)` (`cli/fWarrangeCli/Services/BrewServiceSync.swift` onAppStart·performHandoffStart)
+    - 도입: Issue41 `03192bb` — 기출고 cli-v1.0.1~1.1.1 에도 포함(1.1.2 회귀 아님). jma 는 그동안 `kr.finfra.fWarrangeCli` `fwc.autoStartBrewService=false` 옵트아웃이 있어 가려져 있었다 — clear 가 prefs 를 지워 드러남
+    - 부수: 종료 직전 `logI("[brew-sync] performHandoffStart …")` 가 `wlog_cliApp.log` 에 남지 않는다 — exit 가 Logger 비동기 쓰기를 앞질러 자체 종료가 로그상 보이지 않음
+    - 관련: Issue106(같은 `onAppStart()` 가 XCTest 호스트에서 도는 격리 결손)
+    - 증거: `cli/_doc_work/_release/v1.1.2/logs/r1s2_row03_*` · 보고 `../_doc_work/report/cli-release-1.1.2-stage2_report.md`
+* 구현 명세:
+    - red 먼저: brew 바이너리 있음 + formula 미설치(또는 `brew services start` 실패) 상태에서 `onAppStart()` 가 프로세스를 종료하지 않음을 단언 (brew 조회는 주입으로 격리)
+    - 후보: handoff 전에 formula 설치 확인(`brew list --versions fwarrange-cli` 등) + `brew services start` 실패 시 exit 하지 않고 현 프로세스를 primary 로 유지. exit 전 Logger flush
+    - 수정 후 새 후보 커밋에서 R1 1행부터 다시 (Issue107)
+* 결과 (2026-09-28, 위임 `../_doc_work/delegation_2026.09.28_cli-1.1.2-fix109-r1.md`):
+    - 수정 41d93f8: handoff 전 formula 서비스 실행 파일(`{prefix}/opt/fwarrange-cli/fWarrangeCli.app/…` — Formula `service` `run` 경로) 확인 · `brew services start` 실패 시 exit 하지 않고 primary 유지(`handoffInProgress` 리셋) · 성공 시 `Logger.flush()` 뒤 exit · 외부 효과 `StartEnvironment` 주입
+    - TDD: `tdd/playlist.md` 15행 `brew-handoff-keeps-primary` — `BrewHandoffTests` 5건 red 5/5 실패(단언 8) → green · flush 테스트는 no-op flush 로 red 재확인 · XCTest 98/98 (jm4)
+    - 실측: R1 3행(jma clear 직후 formula 미설치, 후보 41d93f8) `open` → 60초 생존·REST 200·자식 `brew services` 0회 — 이전 후보는 0.55초에 자체 종료. 증거 `cli/_doc_work/_release/v1.1.2/release-test_1.1.2.md` · 진단 `cli/_doc_work/debug_TECH.md`
 
 ## Issue105: 라이선스 훅 문서 v1.1 → v1.2 재동기 + Official Build 구분 표식 (prj6#Issue17 적대적 검토 반영) (등록: 2026-09-27, 완료: 2026-09-28, Hash: f4bd0c7, b4ee029, 26c6f0f) ✅
 * 목적: Issue103 은 v1.1 템플릿으로 적용됐다. prj6 적대적 검토 29건 중 약관 정의 우회(컨테이너·CI·개인 예외·50% 미만 지배)·수정 금지와 Apache §2 충돌·NOTICE 의 Apache 전체 선언이 v1.1 에 남아 있다. v1.2 로 올린다
