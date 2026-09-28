@@ -483,16 +483,21 @@ cmd_publish() {
     local TOTAL_PASS=0
     local TOTAL_FAIL=0
     local STEP_RESULTS=()
+    # PLAN = a step the dry-run only printed — neither PASS nor FAIL (Issue112)
     record_result() {
         local step="$1" result="$2" detail="$3"
         if [ "$result" = "PASS" ]; then
             TOTAL_PASS=$((TOTAL_PASS + 1))
             STEP_RESULTS+=("✅ $step: $detail")
+        elif [ "$result" = "PLAN" ]; then
+            STEP_RESULTS+=("⏭ $step: (dry-run 계획, 미실행) $detail")
         else
             TOTAL_FAIL=$((TOTAL_FAIL + 1))
             STEP_RESULTS+=("❌ $step: $detail")
         fi
     }
+    # live → PASS, dry-run → PLAN
+    ok_or_plan() { [ "$DRY_RUN" -eq 1 ] && echo PLAN || echo PASS; }
     # dry-run 래퍼: live 면 실행, dry 면 출력만
     run() {
         if [ "$DRY_RUN" -eq 1 ]; then
@@ -531,18 +536,16 @@ cmd_publish() {
         print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
         return 1
     fi
-    # 0-3: 태그 중복 (live 에서만 차단 — 덮어쓰기 방지)
-    if [ "$DRY_RUN" -eq 0 ]; then
-        if git -C "$CLI_DIR" rev-parse "$TAG" >/dev/null 2>&1; then
-            record_result "사전조건" "FAIL" "로컬 태그 $TAG 이미 존재 — VERSION bump 필요"
-            print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
-            return 1
-        fi
-        if gh release view "$TAG" --repo "$GH_RELEASE_REPO" >/dev/null 2>&1; then
-            record_result "사전조건" "FAIL" "원격 release $TAG 이미 존재 — VERSION bump 필요"
-            print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
-            return 1
-        fi
+    # 0-3: duplicate tag/release — blocks dry-run too, like live (Issue112: dry-run reported a released version as ALL CLEAR)
+    if git -C "$CLI_DIR" rev-parse "$TAG" >/dev/null 2>&1; then
+        record_result "사전조건" "FAIL" "로컬 태그 $TAG 이미 존재 — VERSION bump 필요"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
+    fi
+    if gh release view "$TAG" --repo "$GH_RELEASE_REPO" >/dev/null 2>&1; then
+        record_result "사전조건" "FAIL" "원격 release $TAG 이미 존재 — VERSION bump 필요"
+        print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
+        return 1
     fi
     # 0-4: 버전 정합 게이트 (Issue89) — VERSION ↔ xcodeproj MARKETING_VERSION
     if ! version_gate; then
@@ -619,7 +622,7 @@ cmd_publish() {
     echo ""
     echo "=== Step 3: git tag $TAG + push ==="
     if run git -C "$CLI_DIR" tag "$TAG" && run git -C "$CLI_DIR" push origin "$TAG"; then
-        record_result "git tag push" "PASS" "$TAG → origin"
+        record_result "git tag push" "$(ok_or_plan)" "$TAG → origin"
     else
         record_result "git tag push" "FAIL" "tag 생성/push 실패"
         print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
@@ -633,7 +636,7 @@ cmd_publish() {
             --repo "$GH_RELEASE_REPO" \
             --title "fWarrangeCli ${LOCAL_VERSION}" \
             --notes "fWarrangeCli ${LOCAL_VERSION} — Homebrew tap release (brew install finfra/tap/fwarrange-cli)"; then
-        record_result "gh release" "PASS" "$TAG + $ASSET 업로드"
+        record_result "gh release" "$(ok_or_plan)" "$TAG + $ASSET 업로드"
     else
         record_result "gh release" "FAIL" "release 생성/asset 업로드 실패"
         print_report "$TOTAL_PASS" "$TOTAL_FAIL" "${STEP_RESULTS[@]}"
@@ -719,7 +722,7 @@ FORMULA
     fi
     rm -rf "$TAP_CLONE"
     if [ "$TAP_PUSH_OK" -eq 1 ]; then
-        record_result "tap push" "PASS" "Formula → $REMOTE_TAP_SLUG"
+        record_result "tap push" "$(ok_or_plan)" "Formula → $REMOTE_TAP_SLUG"
     else
         record_result "tap push" "FAIL" "commit/push 실패"
     fi
@@ -729,7 +732,7 @@ FORMULA
     echo "=== Step 6: 원격 Formula 검증 ==="
     if [ "$DRY_RUN" -eq 1 ]; then
         echo "   [dry-run] 검증 생략"
-        record_result "검증" "PASS" "dry-run skip"
+        record_result "검증" "PLAN" "원격 Formula 검증 생략"
     else
         # 원격 tap 메타 갱신 후 audit (구문/스타일)
         brew tap "$REMOTE_TAP_SLUG" >/dev/null 2>&1 || true
