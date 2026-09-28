@@ -255,6 +255,43 @@ final class TDDPlaylistTests: XCTestCase {
         XCTAssertFalse(fm.fileExists(atPath: tmpDir.appendingPathComponent("testhost").path), "no host folder is created for a settings-only root")
     }
 
+    // MARK: - #19 data-directory-setting-applies (Issue108 ①)
+
+    /// `dataDirectoryPath` saved from paidApp settings must become the layout base (from the next start).
+    func testDataDirectorySettingBecomesLayoutBase() {
+        let custom = tmpDir.appendingPathComponent("custom-data")
+        let base = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: custom.path, configBase: tmpDir.appendingPathComponent("cfg"), envPath: nil)
+
+        XCTAssertEqual(base.standardizedFileURL.path, custom.standardizedFileURL.path)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: custom.path), "the chosen folder is created")
+    }
+
+    /// `~` in the saved path is the user's home, not a folder named "~".
+    func testDataDirectorySettingExpandsTilde() {
+        let base = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: "~/fwc-tilde-\(UUID().uuidString)", configBase: tmpDir, envPath: nil)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        XCTAssertTrue(base.path.hasPrefix(FileManager.default.homeDirectoryForCurrentUser.path), base.path)
+        XCTAssertFalse(base.path.contains("/~/"))
+    }
+
+    /// The env override (tests, demo setup) wins over the setting; no setting keeps the config base.
+    func testEnvOverrideAndMissingSettingKeepConfigBase() {
+        let cfg = tmpDir.appendingPathComponent("cfg")
+        let env = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: tmpDir.appendingPathComponent("custom").path, configBase: cfg, envPath: cfg.path)
+        let unset = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: nil, configBase: cfg, envPath: nil)
+        let empty = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: "  ", configBase: cfg, envPath: nil)
+
+        XCTAssertEqual(env, cfg)
+        XCTAssertEqual(unset, cfg)
+        XCTAssertEqual(empty, cfg)
+    }
+
     // MARK: - #10 version-label-match (Issue89, Issue91)
 
     private var repoRoot: URL {

@@ -65,6 +65,15 @@ final class YAMLLayoutStorageService: LayoutStorageService {
         return defaultDir
     }
 
+    /// Base folder for layouts (Issue108 ①): env `fWarrangeCli_config` > settings `dataDirectoryPath` > config base.
+    /// `_config.yml` itself always stays in the config base — only layouts follow `dataDirectoryPath`.
+    /// Read once at launch: a changed `dataDirectoryPath` takes effect on the next start.
+    static func resolveLayoutBaseDirectory(dataDirectoryPath: String?,
+                                           configBase: URL,
+                                           envPath: String? = Env.configPath) -> URL {
+        return configBase
+    }
+
     // MARK: - Issue166_3: 마이그레이션 (루트 yml → hostname 폴더)
 
     /// 기존 루트 yml 파일을 hostname 폴더로 마이그레이션
