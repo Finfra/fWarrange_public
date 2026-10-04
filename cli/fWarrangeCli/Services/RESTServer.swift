@@ -709,6 +709,10 @@ final class RESTServer: RESTServerProtocol {
             }
             if method == "PATCH" {
                 let body = request.jsonBody() ?? [:]
+                if let reason = AppSettings.settingsPatchError(body: body) {
+                    completion(.badRequest(message: reason))
+                    return true
+                }
                 // Issue78: settingsPatch register (동시 허용)
                 Task { [weak self] in
                     guard let self = self else { return }
@@ -755,6 +759,10 @@ final class RESTServer: RESTServerProtocol {
                 // 허용된 필드만 통과
                 var filtered: [String: Any] = [:]
                 for k in fields { if let v = body[k] { filtered[k] = v } }
+                if let reason = AppSettings.settingsPatchError(body: filtered) {
+                    completion(.badRequest(message: reason))
+                    return true
+                }
                 // 탭 이름 추출 (ex: /settings/general → general)
                 let section = path.split(separator: "/").last.map(String.init) ?? "unknown"
                 // Issue78: settingsPatch register (동시 허용)
