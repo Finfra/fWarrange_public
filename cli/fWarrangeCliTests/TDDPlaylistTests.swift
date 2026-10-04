@@ -612,11 +612,15 @@ final class AccessibilityGuideSchedulingTests: XCTestCase {
             if presented == 1 {
                 AccessibilityGuidePresenter.show(openSettings: {})
                 AccessibilityGuidePresenter.showPermissionLost()
+                // run-loop blocks run in order — once this one ran, the two requests above were serviced
+                var serviced = false
+                AccessibilityGuidePresenter.schedule { serviced = true }
                 // stand-in for runModal's nested loop — the requests above get serviced in here
-                let until = Date().addingTimeInterval(0.5)
-                while Date() < until {
+                let deadline = Date().addingTimeInterval(5)
+                while !serviced && Date() < deadline {
                     RunLoop.current.run(mode: .modalPanel, before: Date().addingTimeInterval(0.05))
                 }
+                XCTAssertTrue(serviced, "the nested requests must have been serviced, or the count proves nothing")
                 closed.fulfill()
             }
             return .alertSecondButtonReturn   // "나중에" — no settings, no restart
