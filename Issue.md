@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 117
+* Issue HWM: 118
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -38,6 +38,16 @@ date: 2026-04-07
 * 증거: `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_jma-2026.09.29.md` · prj16 `_doc_work/_release/v1.1.2/jma-logs_2026.09.29/`
 
 # 📗 선택
+
+## Issue118: [Test] `fwc-run-xcode.sh` 가 Xcode 에 열린 문서가 없는 차가운 상태에서 workspace 로드 60s 대기를 넘겨 `fwc-test.sh` 가 빌드 전에 실패 (등록: 2026-10-04)
+* 목적: R1 4행(`app-bundle-all-clear`)이 코드와 무관하게 환경 상태로 실패한다 — 출고 테스트마다 재현 가능
+* 상세:
+    - 재현(jma 2026-10-04 R1 사전 점검): Xcode 실행 중·열린 문서 0 → `fwc-test.sh` Step 2 `[open] fWarrangeCli.xcodeproj 오픈 중...` → `execution error: Xcode workspace did not finish loading within 60s (-2700)` → `❌ 빌드 실패 — 중단`
+    - 우회: 대상 프로젝트를 Xcode 에 미리 열고 로드 완료 후 실행 → ALL CLEAR 6/0 (`cli/_doc_work/_release/v1.1.2/release-test_1.1.2_r1pre-2026.10.04.md` 4행)
+    - 연관: Issue114 ③(`fwc-test.sh` delete-all 이 실 데이터 폴더를 지움)
+* 구현 명세:
+    - 로드 대기를 문서 유무·Xcode 기동 직후 여부에 따라 연장하거나, `loaded` 폴링 상한을 설정값으로
+    - red 먼저: Xcode 문서 0 상태에서 `fwc-run-xcode.sh build-deploy` 가 성공하는지(jma)
 
 # ✅ 완료
 
