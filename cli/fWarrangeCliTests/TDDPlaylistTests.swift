@@ -571,6 +571,57 @@ final class AccessibilityGuideSchedulingTests: XCTestCase {
 
         wait(for: [done], timeout: 10)
     }
+
+    // MARK: - #22 a11y-guide-single-alert (Issue116)
+
+    override func tearDown() {
+        AccessibilityGuidePresenter.runModal = { $0.runModal() }
+        super.tearDown()
+    }
+
+    /// Because guides run as run-loop blocks (Issue110), a guide requested while another is up
+    /// runs inside the open alert's modal loop. It must not stack a second alert.
+    func testGuideIsNotStackedWhileOneIsUp() {
+        let closed = expectation(description: "first guide closed")
+        var presented = 0
+        AccessibilityGuidePresenter.runModal = { _ in
+            presented += 1
+            if presented == 1 {
+                AccessibilityGuidePresenter.show(openSettings: {})
+                AccessibilityGuidePresenter.showPermissionLost()
+                // stand-in for runModal's nested loop — the requests above get serviced in here
+                let until = Date().addingTimeInterval(0.5)
+                while Date() < until {
+                    RunLoop.current.run(mode: .modalPanel, before: Date().addingTimeInterval(0.05))
+                }
+                closed.fulfill()
+            }
+            return .alertSecondButtonReturn   // "나중에" — no settings, no restart
+        }
+
+        AccessibilityGuidePresenter.show(openSettings: {})
+        wait(for: [closed], timeout: 10)
+
+        XCTAssertEqual(presented, 1, "only one accessibility alert may be up at a time")
+    }
+
+    /// The guard is released when the alert closes — a later request shows again.
+    func testGuideShowsAgainAfterClosing() {
+        let both = expectation(description: "two guides closed")
+        both.expectedFulfillmentCount = 2
+        var presented = 0
+        AccessibilityGuidePresenter.runModal = { _ in
+            presented += 1
+            both.fulfill()
+            return .alertSecondButtonReturn
+        }
+
+        AccessibilityGuidePresenter.show(openSettings: {})
+        AccessibilityGuidePresenter.show(openSettings: {})
+        wait(for: [both], timeout: 10)
+
+        XCTAssertEqual(presented, 2)
+    }
 }
 
 final class AccessibilityBootListingTests: XCTestCase {

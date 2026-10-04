@@ -9,6 +9,7 @@ enum AccessibilityGuidePresenter {
     /// Issue96: `NSAlert.runModal()` 은 블로킹이라 가드가 없으면 호출이 큐에 쌓여
     /// 닫는 즉시 또 뜬다(prj25 Issue221 실발생). 단축키는 연타될 수 있으므로 필수다.
     /// 접근은 모두 main thread(run loop 블록) 안에서만 일어나 별도 동기화가 필요 없다.
+    /// Issue116: 시작 안내·권한 상실 안내가 같은 가드를 쓴다(`scheduleExclusive`).
     private static var isPresenting = false
 
     /// Schedules a modal alert on the main thread (Issue110).
@@ -21,8 +22,35 @@ enum AccessibilityGuidePresenter {
         RunLoop.main.perform(inModes: [.common], block: present)
     }
 
-    static func show(windowManager: WindowManager) {
+    /// Schedules `present` unless an accessibility alert is already up (Issue116).
+    ///
+    /// Run-loop blocks also run *inside* an open alert's modal loop, so the serial main queue
+    /// no longer keeps guides apart — this shared guard does. One accessibility alert at a time.
+    private static func scheduleExclusive(_ name: String, _ present: @escaping () -> Void) {
         schedule {
+            guard !isPresenting else {
+                logD("[a11y] \(name) — 다른 접근성 안내가 이미 표시 중, 중복 호출 억제")
+                return
+            }
+            isPresenting = true
+            defer { isPresenting = false }
+            present()
+        }
+    }
+
+    /// Runs an alert modally. A seam so tests can stand in for `NSAlert.runModal()` (Issue116).
+    static var runModal: (NSAlert) -> NSApplication.ModalResponse = { $0.runModal() }
+
+    static func show(windowManager: WindowManager) {
+        show(openSettings: {
+            Task { @MainActor in
+                windowManager.openAccessibilitySettings()
+            }
+        })
+    }
+
+    static func show(openSettings: @escaping () -> Void) {
+        scheduleExclusive("시작 안내") {
             let alert = NSAlert()
             alert.alertStyle = .warning
             alert.messageText = "Accessibility 권한 필요"
@@ -35,11 +63,9 @@ enum AccessibilityGuidePresenter {
             alert.addButton(withTitle: "설정 열기")
             alert.addButton(withTitle: "나중에")
 
-            let response = alert.runModal()
+            let response = runModal(alert)
             if response == .alertFirstButtonReturn {
-                Task { @MainActor in
-                    windowManager.openAccessibilitySettings()
-                }
+                openSettings()
             }
         }
     }
@@ -52,14 +78,7 @@ enum AccessibilityGuidePresenter {
     /// 권한이 해제되면 접근성 목록에서 항목 자체가 사라져 켤 대상이 없고,
     /// 실행 중인 프로세스는 스스로를 그 목록에 되돌릴 수 없다. 재시작이 유일한 복구 경로다.
     static func showPermissionLost() {
-        schedule {
-            guard !isPresenting else {
-                logD("[a11y] 권한 상실 안내 이미 표시 중 — 중복 호출 억제")
-                return
-            }
-            isPresenting = true
-            defer { isPresenting = false }
-
+        scheduleExclusive("권한 상실 안내") {
             let alert = NSAlert()
             alert.alertStyle = .warning
             alert.messageText = "접근성 권한이 해제되었습니다"
@@ -73,7 +92,7 @@ enum AccessibilityGuidePresenter {
             alert.addButton(withTitle: "지금 재시작")
             alert.addButton(withTitle: "나중에")
 
-            let response = alert.runModal()
+            let response = runModal(alert)
             guard response == .alertFirstButtonReturn else {
                 logI("[a11y] 권한 상실 안내 — 사용자가 재시작을 미룸")
                 return
