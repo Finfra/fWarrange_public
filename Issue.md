@@ -25,16 +25,6 @@ date: 2026-04-07
 
 # 📕 중요
 
-## Issue117: [Security] 레이아웃 이름에 `../` 가 들어가면 base 밖에 `*.yml` 쓰기·삭제·이름변경 가능 — 이름 검증 부재 (등록: 2026-10-04)
-* 목적: Issue115 가 `dataDirectoryPath` 로 base 를 옮기는 길을 막았지만, 같은 공격자(토큰 없는 REST, CIDR 만 검사)가 레이아웃 **이름**으로 같은 결과를 얻는다 (Issue115 적대적 검증 2026-10-04 — 기존 결함이라 범위 밖으로 분리)
-* 상세:
-    - `LayoutStorageService` 의 save·load·delete·rename 이 `dataDirectory.appendingPathComponent("\(name).yml")` — 이름 검증이 없다(최초 커밋 48e01d7 부터)
-    - URL 경로는 `/` 로 쪼개 `..` 단독만 들어오지만, JSON body 의 이름(`POST /capture {name}`·`PUT /layouts/{name} {newName}` 등)은 `../../x` 를 그대로 받는다 → `{data}/../../x.yml` 쓰기·이동
-* 구현 명세:
-    - 이름 검증 단일 지점: 빈 값·`/`·`\0`·`..` 구성요소·선행 `.` 거부, 길이 상한. REST 는 400, 저장소 계층도 방어(이중)
-    - red 먼저: `../escape` 이름으로 save·rename 하면 dataDirectory 밖에 파일이 생기지 않는다
-    - openapi_v2 의 name 제약 기술 동기
-
 # 📙 일반
 
 ## Issue114: 1.1.2 공개본 출고 테스트 발견 결함 — 단일 창 복원 판정·테스트 도구 위험·README 불일치 (등록: 2026-09-29)
@@ -50,6 +40,22 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue117: [Security] 레이아웃 이름에 `../` 가 들어가면 base 밖에 `*.yml` 쓰기·삭제·이름변경 가능 — 이름 검증 부재 (등록: 2026-10-04, 완료: 2026-10-04, Hash: 38898c6, 20c9d38) ✅
+* 목적: Issue115 가 `dataDirectoryPath` 로 base 를 옮기는 길을 막았지만, 같은 공격자(토큰 없는 REST, CIDR 만 검사)가 레이아웃 **이름**으로 같은 결과를 얻는다 (Issue115 적대적 검증 2026-10-04 — 기존 결함이라 범위 밖으로 분리)
+* 상세:
+    - `LayoutStorageService` 의 save·load·delete·rename 이 `dataDirectory.appendingPathComponent("\(name).yml")` — 이름 검증이 없다(최초 커밋 48e01d7 부터)
+    - URL 경로는 `/` 로 쪼개 `..` 단독만 들어오지만, JSON body 의 이름(`POST /capture {name}`·`PUT /layouts/{name} {newName}` 등)은 `../../x` 를 그대로 받는다 → `{data}/../../x.yml` 쓰기·이동
+* 구현 명세:
+    - 이름 검증 단일 지점: 빈 값·`/`·`\0`·`..` 구성요소·선행 `.` 거부, 길이 상한. REST 는 400, 저장소 계층도 방어(이중)
+    - red 먼저: `../escape` 이름으로 save·rename 하면 dataDirectory 밖에 파일이 생기지 않는다
+    - openapi_v2 의 name 제약 기술 동기
+* 결과 (2026-10-04, **38898c6** · 후속 **20c9d38** · release/1.1.1 병합 23873c2):
+    - `StorageName` 단일 판정(`LayoutStorageService.swift`): 새 이름(save·rename 대상·REST 생성)은 `rejection`(빈/공백·`/`·NUL·`.`/`..`·255바이트 초과), 기존 항목(load·delete·rename 원본)은 `escapeRejection` 만 + `fileURL` 이 결과 경로가 저장 폴더 밖이면 throw
+    - 범위 확대: 같은 결함이 **Mode 저장소**(`ModeStorageService` — `{base}/{host}/modes/{name}.yml`)에도 있어 함께 수정. REST 400: capture `name` · layout rename `newName` · mode 생성 `name`. openapi_v2 동기
+    - 적대적 검증(우회·회귀 리뷰 + 지적별 반박): 우회 0건 · 회귀 1건(nit — 이전 버전의 공백 이름 항목이 열기·삭제·이름변경 불가) → 20c9d38 에서 기존 항목은 탈출 판정만으로 분리
+    - TDD: 재생목록 23행 red(4테스트 9단언 — 실제로 폴더 밖 쓰기·이동·삭제 재현) + 후속 red(3) → green · jm4·**jma XCTest 124/124**
+    - jma `/run`(brew local) FAIL 0 · REST E2E: `../` 이름 capture·mode 생성·rename 400, 일반 이름 capture→rename→delete 200, 잔여 파일 0. E2E capture 가 비어 있던 `defaultLayoutName` 을 테스트 이름으로 채워 원복(키 제거)함 — capture 의 «기본값 없으면 새 이름 지정»·rename/delete 가 기본값을 따라가지 않는 동작은 기존 동작(범위 밖)
 
 ## Issue116: [Bug] 접근성 시작 안내 `show()` 에 중복 표시 가드가 없어, Issue110 이후 안내 창이 겹쳐 뜰 수 있음 (등록: 2026-10-04, 완료: 2026-10-04, Hash: d079be1, fb4cbbd) ✅
 * 목적: Issue110 이 안내를 run loop 블록(`RunLoop.main.perform(inModes: [.common])`)으로 옮기면서, 열린 안내의 모달 루프 안에서 다음 안내가 실행된다 — 예전엔 직렬 메인 큐가 자연히 하나씩만 띄웠다 (ultrareview 2026-10-03 — nit)
