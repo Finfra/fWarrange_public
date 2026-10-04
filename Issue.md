@@ -47,7 +47,25 @@ date: 2026-04-07
     - ⑤ `jma-fwarrange-deploy.sh` 기본값이 jm4→jma rsync 라 jma 의 release 소스를 jm4 develop 으로 덮는다(이번엔 `--no-sync` 로 우회)
 * 증거: `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_jma-2026.09.29.md` · prj16 `_doc_work/_release/v1.1.2/jma-logs_2026.09.29/`
 
-## Issue115: [Security] `dataDirectoryPath` 가 경로 검증 없이 레이아웃 base 가 됨 — 토큰 없는 REST PATCH 로 임의 폴더 지정·첫 기동 마이그레이션이 그 폴더의 `*.yml` 을 옮김 (등록: 2026-10-04)
+# 📗 선택
+
+# ✅ 완료
+
+## Issue116: [Bug] 접근성 시작 안내 `show()` 에 중복 표시 가드가 없어, Issue110 이후 안내 창이 겹쳐 뜰 수 있음 (등록: 2026-10-04, 완료: 2026-10-04, Hash: d079be1, fb4cbbd) ✅
+* 목적: Issue110 이 안내를 run loop 블록(`RunLoop.main.perform(inModes: [.common])`)으로 옮기면서, 열린 안내의 모달 루프 안에서 다음 안내가 실행된다 — 예전엔 직렬 메인 큐가 자연히 하나씩만 띄웠다 (ultrareview 2026-10-03 — nit)
+* 상세:
+    - `isPresenting` 가드는 `showPermissionLost()` 에만 있고 `show(windowManager:)` 는 확인·설정 둘 다 안 한다(`AccessibilityGuidePresenter.swift:24-61`)
+    - 결과: `show()` 연속 호출, 또는 시작 안내와 권한 상실 안내가 겹치면 알림이 쌓인다
+* 구현 명세:
+    - 두 안내가 같은 가드를 공유 — 접근성 안내는 한 번에 하나
+    - 테스트 시임: 모달 실행(`runModal`)을 주입 가능하게, 설정 열기 동작을 클로저로 분리
+    - red 먼저: 안내 표시 중(중첩 modal-panel run loop) 다시 `show()` 를 부르면 알림이 1개만 뜬다 — 재생목록 22행
+* 결과 (2026-10-04, **d079be1** · 테스트 보강 **fb4cbbd** · release/1.1.1 병합 805b50a·8e085fd):
+    - `scheduleExclusive`: 시작 안내·권한 상실 안내가 같은 `isPresenting` 가드 — 접근성 안내는 한 번에 하나. 시임 `runModal` 주입 · `show(openSettings:)` 분리
+    - TDD: 재생목록 22행 red(알림 3개 겹침 — 리뷰 지적 실재 확인) → green. 테스트 감사 관찰 반영 fb4cbbd: 중첩 요청 처리 확인 감시 블록(공허한 통과 방지)
+    - 검증: jm4 XCTest 117/117 · jma XCTest 117/117. 실기 E2E 미실시 — jma 접근성 `granted` 라 안내가 뜨지 않음(TCC 리셋은 사람 재승인 필요해 생략)
+
+## Issue115: [Security] `dataDirectoryPath` 가 경로 검증 없이 레이아웃 base 가 됨 — 토큰 없는 REST PATCH 로 임의 폴더 지정·첫 기동 마이그레이션이 그 폴더의 `*.yml` 을 옮김 (등록: 2026-10-04, 완료: 2026-10-04, Hash: f4d83b5, 2d88660) ✅
 * 목적: Issue108 ① 이후 `dataDirectoryPath` 가 실제로 쓰이게 되면서, 검증 없는 경로가 파일시스템 동작(폴더 생성·yml 이동·저장·삭제)으로 이어진다 (ultrareview 2026-10-03, release/1.1.1 `f97926d` — normal)
 * 상세:
     - `resolveLayoutBaseDirectory()`(`LayoutStorageService.swift:71-86`)는 trim·`~` 확장 뒤 `createDirectory(withIntermediateDirectories: true)` 만 한다 — 홈 밖·시스템 폴더·심볼릭 링크 우회를 거르지 않는다
@@ -59,20 +77,13 @@ date: 2026-04-07
     - PATCH 시: 거부되면 `400` — 디스크에 저장하지 않는다. openapi_v2 동기
     - 레거시 루트 마이그레이션은 레이아웃 base 가 설정 폴더일 때만 돈다(`_share` 복사는 fWarrange 소유 하위 폴더라 유지)
     - red 먼저: ① 허용 루트 밖(`/private/tmp`)·심볼릭 링크 우회 경로가 base 로 채택됨 ② PATCH 검증이 거부 사유를 내지 않음 ③ 사용자 지정 base 의 남의 `*.yml` 이 호스트 폴더로 옮겨짐 — 재생목록 21행
-
-## Issue116: [Bug] 접근성 시작 안내 `show()` 에 중복 표시 가드가 없어, Issue110 이후 안내 창이 겹쳐 뜰 수 있음 (등록: 2026-10-04)
-* 목적: Issue110 이 안내를 run loop 블록(`RunLoop.main.perform(inModes: [.common])`)으로 옮기면서, 열린 안내의 모달 루프 안에서 다음 안내가 실행된다 — 예전엔 직렬 메인 큐가 자연히 하나씩만 띄웠다 (ultrareview 2026-10-03 — nit)
-* 상세:
-    - `isPresenting` 가드는 `showPermissionLost()` 에만 있고 `show(windowManager:)` 는 확인·설정 둘 다 안 한다(`AccessibilityGuidePresenter.swift:24-61`)
-    - 결과: `show()` 연속 호출, 또는 시작 안내와 권한 상실 안내가 겹치면 알림이 쌓인다
-* 구현 명세:
-    - 두 안내가 같은 가드를 공유 — 접근성 안내는 한 번에 하나
-    - 테스트 시임: 모달 실행(`runModal`)을 주입 가능하게, 설정 열기 동작을 클로저로 분리
-    - red 먼저: 안내 표시 중(중첩 modal-panel run loop) 다시 `show()` 를 부르면 알림이 1개만 뜬다 — 재생목록 22행
-
-# 📗 선택
-
-# ✅ 완료
+* 결과 (2026-10-04, **f4d83b5** · 후속 **2d88660** · release/1.1.1 병합 3146b1b·6ba8487):
+    - `validateDataDirectoryPath` 단일 판정: `~` 확장 → 절대 경로 → `..` 정규화 + 존재 조상 `realpath` 뒤 **홈·`/Volumes` 의 엄격한 하위**만. 기동 시 거부 → 설정 폴더 유지 · PATCH `/settings`·`/settings/general` 거부 → 400(일부도 적용 안 함) · openapi_v2 동기
+    - 레거시 루트 마이그레이션은 레이아웃 base == 설정 폴더일 때만(`prepareHostLayoutBase`)
+    - 적대적 검증(관점별 리뷰 4 + 지적별 반박) 후속 2d88660: 실제 쓰기 폴더 `{base}/{host}`·`_share` 가 base 밖(심볼릭 링크)을 가리키면 거부 · `/Users/Shared`(world-writable — 다른 계정이 호스트 폴더를 심을 수 있음) 허용 철회
+    - TDD: 재생목록 21행 red(신규 6테스트 14단언 + 후속 2) → green · jm4 XCTest 117/117 · **jma XCTest 117/117**
+    - jma E2E(실행 중 cliApp, release 트리): 허용 밖 4종(`/private/tmp`·`/Volumes/../etc`·상대·`/`) 400 + 폴더 미생성·`_config.yml` 미기록·동반 필드(`theme`) 미적용 · 허용 경로 200 → 원값(null) 복원
+    - 분리 등록: 레이아웃 이름 `../` 경로 탈출(기존 결함, high) → **Issue117** · paidApp 400 뒤 거부 경로 표시 → **prj16#Issue285** · 기각: 업그레이드 시 저장값 무시(a30f5d0 미출시라 해당 없음)·개행 값(기존 직렬화, 거부 시 설정 폴더로 안전 귀결)
 
 ## Issue113: [TDD] 재생목록 풀 재실행 — 전 목표 회귀 (common#Issue108 웨이브) (등록: 2026-09-29, 완료: 2026-09-29, Hash: e7e1685) ✅
 * 목적: 사용자 지시(common#Issue108) — TDD 대상 전 prj 재생목록 풀 실행. 재생목록은 20/20 ✅ 이므로 현 HEAD 가 여전히 green 인지 회귀 확인하고 red 는 고친다
