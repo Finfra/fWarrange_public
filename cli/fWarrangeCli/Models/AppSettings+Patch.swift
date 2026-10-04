@@ -33,6 +33,17 @@ extension AppSettings {
         return d
     }
 
+    /// PATCH body 거부 사유 — nil 이면 적용 가능 (Issue115).
+    /// 거부된 body 는 일부도 적용하지 않는다 — 호출자가 400 으로 응답한다.
+    static func settingsPatchError(body: [String: Any]) -> String? {
+        if let v = body["dataDirectoryPath"] as? String,
+           !v.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           case .failure(let rejection) = YAMLLayoutStorageService.validateDataDirectoryPath(v) {
+            return "dataDirectoryPath 거부 — \(rejection)"
+        }
+        return nil
+    }
+
     /// REST API PATCH 요청의 body를 AppSettings에 적용
     /// appLanguage 변경 시 호출자가 applyLanguageSetting()을 별도로 호출해야 함
     static func applySettingsPatch(_ s: inout AppSettings, body: [String: Any]) {

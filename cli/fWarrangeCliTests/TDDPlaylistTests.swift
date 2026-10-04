@@ -261,9 +261,11 @@ final class TDDPlaylistTests: XCTestCase {
     func testDataDirectorySettingBecomesLayoutBase() {
         let custom = tmpDir.appendingPathComponent("custom-data")
         let base = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
-            dataDirectoryPath: custom.path, configBase: tmpDir.appendingPathComponent("cfg"), envPath: nil)
+            dataDirectoryPath: custom.path, configBase: tmpDir.appendingPathComponent("cfg"), envPath: nil,
+            allowedRoots: [tmpDir])
 
-        XCTAssertEqual(base.standardizedFileURL.path, custom.standardizedFileURL.path)
+        // the base comes back canonical (/var → /private/var) — compare symlink-resolved (Issue115)
+        XCTAssertEqual(base.resolvingSymlinksInPath().path, custom.resolvingSymlinksInPath().path)
         XCTAssertTrue(FileManager.default.fileExists(atPath: custom.path), "the chosen folder is created")
     }
 
@@ -290,6 +292,89 @@ final class TDDPlaylistTests: XCTestCase {
         XCTAssertEqual(env, cfg)
         XCTAssertEqual(unset, cfg)
         XCTAssertEqual(empty, cfg)
+    }
+
+    // MARK: - #21 data-directory-path-guarded (Issue115)
+
+    /// A path outside the allowed roots — or the root itself — must not become the layout base,
+    /// and nothing may be created there.
+    func testDataDirectoryRefusedOutsideAllowedRoots() {
+        let cfg = tmpDir.appendingPathComponent("cfg")
+        let outside = "/private/tmp/fwc-issue115-\(UUID().uuidString)"
+        defer { try? FileManager.default.removeItem(atPath: outside) }
+
+        for raw in [outside, tmpDir.path, "relative/fwc-data", tmpDir.appendingPathComponent("../escape").path] {
+            let base = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+                dataDirectoryPath: raw, configBase: cfg, envPath: nil, allowedRoots: [tmpDir])
+            XCTAssertEqual(base, cfg, "\(raw) must fall back to the config base")
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: outside), "a refused folder is not created")
+    }
+
+    /// A symlink inside an allowed root must not smuggle the base outside of it.
+    func testDataDirectoryRefusedThroughSymlink() throws {
+        let link = tmpDir.appendingPathComponent("link")
+        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: "/private/tmp")
+        let cfg = tmpDir.appendingPathComponent("cfg")
+        let name = "fwc-issue115-\(UUID().uuidString)"
+        let raw = link.appendingPathComponent(name).path
+        // a regression would create the folder through the link — don't leave it behind
+        defer { try? FileManager.default.removeItem(atPath: "/private/tmp/\(name)") }
+
+        let base = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: raw, configBase: cfg, envPath: nil, allowedRoots: [tmpDir])
+        XCTAssertEqual(base, cfg)
+        if case .success = YAMLLayoutStorageService.validateDataDirectoryPath(raw, allowedRoots: [tmpDir]) {
+            XCTFail("symlink escape accepted: \(raw)")
+        }
+    }
+
+    /// Default roots: under home, /Volumes and /Users/Shared are fine; system folders and home itself are not.
+    func testDataDirectoryDefaultRoots() {
+        func accepted(_ raw: String) -> Bool {
+            if case .success = YAMLLayoutStorageService.validateDataDirectoryPath(raw) { return true }
+            return false
+        }
+        XCTAssertTrue(accepted("~/Documents/finfra/fWarrangeData"))
+        XCTAssertTrue(accepted("/Volumes/fwc-issue115-drive/fWarrangeData"))
+        XCTAssertTrue(accepted("/Users/Shared/fWarrangeData"))
+        XCTAssertFalse(accepted("/etc/fwc"))
+        XCTAssertFalse(accepted("/"))
+        XCTAssertFalse(accepted("/Volumes/../etc/fwc"))
+        XCTAssertFalse(accepted(FileManager.default.homeDirectoryForCurrentUser.path))
+    }
+
+    /// REST PATCH must refuse an unsafe `dataDirectoryPath` instead of persisting it.
+    func testSettingsPatchRefusesUnsafeDataDirectory() {
+        XCTAssertNotNil(AppSettings.settingsPatchError(body: ["dataDirectoryPath": "/private/tmp/fwc"]))
+        XCTAssertNotNil(AppSettings.settingsPatchError(body: ["dataDirectoryPath": "/", "theme": "dark"]))
+        XCTAssertNil(AppSettings.settingsPatchError(body: ["dataDirectoryPath": "~/Documents/fwc"]))
+        XCTAssertNil(AppSettings.settingsPatchError(body: ["dataDirectoryPath": ""]), "empty clears the setting")
+        XCTAssertNil(AppSettings.settingsPatchError(body: ["dataDirectoryPath": NSNull()]))
+        XCTAssertNil(AppSettings.settingsPatchError(body: ["theme": "dark"]))
+    }
+
+    /// A user-chosen base may hold foreign yml files — the legacy root migration must leave them alone.
+    func testCustomLayoutBaseKeepsForeignYmlAtRoot() throws {
+        let fm = FileManager.default
+        let custom = tmpDir.appendingPathComponent("custom")
+        try fm.createDirectory(at: custom, withIntermediateDirectories: true)
+        try "services: {}\n".write(to: custom.appendingPathComponent("docker-compose.yml"), atomically: true, encoding: .utf8)
+
+        YAMLLayoutStorageService.prepareHostLayoutBase(custom, configBase: tmpDir.appendingPathComponent("cfg"), hostname: "testhost")
+
+        XCTAssertTrue(fm.fileExists(atPath: custom.appendingPathComponent("docker-compose.yml").path), "foreign yml stays put")
+        XCTAssertFalse(fm.fileExists(atPath: custom.appendingPathComponent("testhost").path), "no host folder is created")
+    }
+
+    /// The config base itself still gets the legacy migration (Issue166_3 behaviour kept).
+    func testConfigBaseStillMigratesLegacyLayouts() throws {
+        let fm = FileManager.default
+        try "- app: \"Safari\"\n".write(to: tmpDir.appendingPathComponent("legacy.yml"), atomically: true, encoding: .utf8)
+
+        YAMLLayoutStorageService.prepareHostLayoutBase(tmpDir, configBase: tmpDir, hostname: "testhost")
+
+        XCTAssertTrue(fm.fileExists(atPath: tmpDir.appendingPathComponent("testhost/legacy.yml").path))
     }
 
     // MARK: - #10 version-label-match (Issue89, Issue91)

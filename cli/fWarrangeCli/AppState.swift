@@ -70,8 +70,7 @@ final class AppState {
 
         let storageMode = settings.dataStorageMode ?? .host
         if storageMode == .host {
-            YAMLLayoutStorageService.migrateRootDataIfNeeded(baseDir: layoutBaseDir)
-            YAMLLayoutStorageService.copyShareDataIfNeeded(baseDir: layoutBaseDir)
+            YAMLLayoutStorageService.prepareHostLayoutBase(layoutBaseDir, configBase: baseDir)
         }
 
         // Issue72_3 (Phase 3): 타이틀 정규화 서비스 — 캡처·복구가 공유.

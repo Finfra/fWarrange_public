@@ -70,12 +70,20 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     /// Read once at launch: a changed `dataDirectoryPath` takes effect on the next start.
     static func resolveLayoutBaseDirectory(dataDirectoryPath: String?,
                                            configBase: URL,
-                                           envPath: String? = Env.configPath) -> URL {
+                                           envPath: String? = Env.configPath,
+                                           allowedRoots: [URL] = dataDirectoryAllowedRoots) -> URL {
         if envPath != nil { return configBase }
         guard let raw = dataDirectoryPath?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
             return configBase
         }
-        let dir = URL(fileURLWithPath: (raw as NSString).expandingTildeInPath, isDirectory: true)
+        let dir: URL
+        switch validateDataDirectoryPath(raw, allowedRoots: allowedRoots) {
+        case .success(let url):
+            dir = url
+        case .failure(let rejection):
+            logW("dataDirectoryPath 거부 → 기본 폴더 유지: \(rejection)")
+            return configBase
+        }
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             return dir
@@ -83,6 +91,83 @@ final class YAMLLayoutStorageService: LayoutStorageService {
             logW("dataDirectoryPath 사용 불가 → 기본 폴더 유지: \(dir.path) (\(error.localizedDescription))")
             return configBase
         }
+    }
+
+    // MARK: - Issue115: dataDirectoryPath 검증 (단일 판정 지점)
+
+    /// Why a `dataDirectoryPath` is refused.
+    enum DataDirectoryRejection: Error, Equatable, CustomStringConvertible {
+        case notAbsolute(String)
+        case unresolvable(String)
+        case outsideAllowedRoots(String)
+
+        var description: String {
+            switch self {
+            case .notAbsolute(let p): return "절대 경로가 아님: \(p)"
+            case .unresolvable(let p): return "경로를 해석할 수 없음: \(p)"
+            case .outsideAllowedRoots(let p): return "홈 폴더·/Volumes·/Users/Shared 하위가 아님: \(p)"
+            }
+        }
+    }
+
+    /// Roots a layout base may live under: the user's home, mounted volumes and the shared user folder.
+    static var dataDirectoryAllowedRoots: [URL] {
+        [FileManager.default.homeDirectoryForCurrentUser,
+         URL(fileURLWithPath: "/Volumes", isDirectory: true),
+         URL(fileURLWithPath: "/Users/Shared", isDirectory: true)]
+    }
+
+    /// The single check for a `dataDirectoryPath` value — used at launch and on REST PATCH.
+    /// Accepts only an absolute path (after `~`) that, with `..` folded and symlinks resolved,
+    /// lies strictly below one of `allowedRoots`. Pure: never creates anything.
+    static func validateDataDirectoryPath(_ raw: String,
+                                          allowedRoots: [URL] = dataDirectoryAllowedRoots) -> Result<URL, DataDirectoryRejection> {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let expanded = (trimmed as NSString).expandingTildeInPath
+        guard expanded.hasPrefix("/") else { return .failure(.notAbsolute(trimmed)) }
+
+        guard let candidate = canonicalPath(URL(fileURLWithPath: expanded, isDirectory: true)) else {
+            return .failure(.unresolvable(expanded))
+        }
+        let inside = allowedRoots.contains { root in
+            guard let r = canonicalPath(root), r != "/" else { return false }
+            return candidate.hasPrefix(r + "/")
+        }
+        guard inside else { return .failure(.outsideAllowedRoots(candidate)) }
+        return .success(URL(fileURLWithPath: candidate, isDirectory: true))
+    }
+
+    /// Lexically folds `.`/`..`, then resolves symlinks of the deepest existing ancestor
+    /// (`realpath`) and re-appends the not-yet-existing tail. nil if an existing item can't be resolved
+    /// (ex) a dangling symlink — creating "through" it must not be possible).
+    private static func canonicalPath(_ url: URL) -> String? {
+        let fm = FileManager.default
+        var existing = url.standardizedFileURL
+        var tail: [String] = []
+        // attributesOfItem does not follow symlinks — a dangling link counts as existing
+        while (try? fm.attributesOfItem(atPath: existing.path)) == nil {
+            guard existing.path != "/" else { return nil }
+            tail.insert(existing.lastPathComponent, at: 0)
+            existing = existing.deletingLastPathComponent()
+        }
+        guard let resolved = realpath(existing.path, nil) else { return nil }
+        defer { free(resolved) }
+        var path = String(cString: resolved)
+        for component in tail {
+            path = (path as NSString).appendingPathComponent(component)
+        }
+        return path
+    }
+
+    /// Host-mode preparation of a layout base at launch (Issue166_2·3).
+    /// The legacy root migration moves every root `*.yml` into the host folder — that is only
+    /// meaningful for fWarrange's own config folder. A user-chosen base may hold foreign yml
+    /// files, so it gets no migration (Issue115). `_share` lives in fWarrange's own subfolder.
+    static func prepareHostLayoutBase(_ layoutBase: URL, configBase: URL, hostname: String = currentHostname()) {
+        if layoutBase.standardizedFileURL.path == configBase.standardizedFileURL.path {
+            migrateRootDataIfNeeded(baseDir: layoutBase, hostname: hostname)
+        }
+        copyShareDataIfNeeded(baseDir: layoutBase, hostname: hostname)
     }
 
     // MARK: - Issue166_3: 마이그레이션 (루트 yml → hostname 폴더)
@@ -118,8 +203,8 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     // MARK: - Issue166_2: _share 복사 (host 모드 최초 실행)
 
     /// host 모드 최초 실행 시 _share에서 데이터 복사
-    static func copyShareDataIfNeeded(baseDir: URL = resolveDefaultBaseDirectory()) {
-        let hostname = currentHostname()
+    static func copyShareDataIfNeeded(baseDir: URL = resolveDefaultBaseDirectory(),
+                                      hostname: String = currentHostname()) {
         let hostnameDir = baseDir.appendingPathComponent(hostname)
         let shareDir = baseDir.appendingPathComponent("_share")
         let fm = FileManager.default
