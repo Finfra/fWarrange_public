@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 114
+* Issue HWM: 116
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -36,6 +36,29 @@ date: 2026-04-07
     - ④ `cli/README.md` 불일치 — v1 «maintained» 인데 실제 410 · «brew services 불필요» 인데 Formula 에 service 정의 · 수동 기동 예시에 개발 경로 `/Applications/_nowage_app/`
     - ⑤ `jma-fwarrange-deploy.sh` 기본값이 jm4→jma rsync 라 jma 의 release 소스를 jm4 develop 으로 덮는다(이번엔 `--no-sync` 로 우회)
 * 증거: `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_jma-2026.09.29.md` · prj16 `_doc_work/_release/v1.1.2/jma-logs_2026.09.29/`
+
+## Issue115: [Security] `dataDirectoryPath` 가 경로 검증 없이 레이아웃 base 가 됨 — 토큰 없는 REST PATCH 로 임의 폴더 지정·첫 기동 마이그레이션이 그 폴더의 `*.yml` 을 옮김 (등록: 2026-10-04)
+* 목적: Issue108 ① 이후 `dataDirectoryPath` 가 실제로 쓰이게 되면서, 검증 없는 경로가 파일시스템 동작(폴더 생성·yml 이동·저장·삭제)으로 이어진다 (ultrareview 2026-10-03, release/1.1.1 `f97926d` — normal)
+* 상세:
+    - `resolveLayoutBaseDirectory()`(`LayoutStorageService.swift:71-86`)는 trim·`~` 확장 뒤 `createDirectory(withIntermediateDirectories: true)` 만 한다 — 홈 밖·시스템 폴더·심볼릭 링크 우회를 거르지 않는다
+    - 값은 `PATCH /api/v2/settings`·`/settings/general` 로 바뀐다(`RESTServer.swift:730`). REST 는 인증 토큰이 없고 CIDR 만 본다 — `allowExternalAccess` 를 켜면 허용 대역 누구나 바꿀 수 있다(기본 false, 127.0.0.1)
+    - 코드 판독 추가 발견: 다음 기동 때 `AppState` 가 그 base 에 `migrateRootDataIfNeeded()` 를 돌려 **루트의 `_` 아닌 `*.yml` 전부를 `<base>/<host>/` 로 옮긴다** — 사용자가 정상 선택한 일반 폴더(ex) 동기화 폴더)에서도 남의 yml 이 옮겨지고, 이후 delete-all 대상이 된다. 레거시 마이그레이션(Issue166_3)은 기본 설정 폴더에만 의미가 있다
+* 구현 명세:
+    - 검증 단일 지점 `YAMLLayoutStorageService.validateDataDirectoryPath` — 절대 경로(`~` 확장 후), `..` 정규화 + 존재하는 조상의 심볼릭 링크 해소 뒤 **홈 디렉토리 또는 `/Volumes` 의 하위**(그 자체는 불가)만 허용
+    - 기동 시: 거부되면 경고 로그 후 설정 폴더 유지(`resolveLayoutBaseDirectory`)
+    - PATCH 시: 거부되면 `400` — 디스크에 저장하지 않는다. openapi_v2 동기
+    - 레거시 루트 마이그레이션은 레이아웃 base 가 설정 폴더일 때만 돈다(`_share` 복사는 fWarrange 소유 하위 폴더라 유지)
+    - red 먼저: ① 허용 루트 밖(`/private/tmp`)·심볼릭 링크 우회 경로가 base 로 채택됨 ② PATCH 검증이 거부 사유를 내지 않음 ③ 사용자 지정 base 의 남의 `*.yml` 이 호스트 폴더로 옮겨짐 — 재생목록 21행
+
+## Issue116: [Bug] 접근성 시작 안내 `show()` 에 중복 표시 가드가 없어, Issue110 이후 안내 창이 겹쳐 뜰 수 있음 (등록: 2026-10-04)
+* 목적: Issue110 이 안내를 run loop 블록(`RunLoop.main.perform(inModes: [.common])`)으로 옮기면서, 열린 안내의 모달 루프 안에서 다음 안내가 실행된다 — 예전엔 직렬 메인 큐가 자연히 하나씩만 띄웠다 (ultrareview 2026-10-03 — nit)
+* 상세:
+    - `isPresenting` 가드는 `showPermissionLost()` 에만 있고 `show(windowManager:)` 는 확인·설정 둘 다 안 한다(`AccessibilityGuidePresenter.swift:24-61`)
+    - 결과: `show()` 연속 호출, 또는 시작 안내와 권한 상실 안내가 겹치면 알림이 쌓인다
+* 구현 명세:
+    - 두 안내가 같은 가드를 공유 — 접근성 안내는 한 번에 하나
+    - 테스트 시임: 모달 실행(`runModal`)을 주입 가능하게, 설정 열기 동작을 클로저로 분리
+    - red 먼저: 안내 표시 중(중첩 modal-panel run loop) 다시 `show()` 를 부르면 알림이 1개만 뜬다 — 재생목록 22행
 
 # 📗 선택
 
