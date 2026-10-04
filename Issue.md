@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 116
+* Issue HWM: 117
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -24,6 +24,16 @@ date: 2026-04-07
 # 🚧 진행중
 
 # 📕 중요
+
+## Issue117: [Security] 레이아웃 이름에 `../` 가 들어가면 base 밖에 `*.yml` 쓰기·삭제·이름변경 가능 — 이름 검증 부재 (등록: 2026-10-04)
+* 목적: Issue115 가 `dataDirectoryPath` 로 base 를 옮기는 길을 막았지만, 같은 공격자(토큰 없는 REST, CIDR 만 검사)가 레이아웃 **이름**으로 같은 결과를 얻는다 (Issue115 적대적 검증 2026-10-04 — 기존 결함이라 범위 밖으로 분리)
+* 상세:
+    - `LayoutStorageService` 의 save·load·delete·rename 이 `dataDirectory.appendingPathComponent("\(name).yml")` — 이름 검증이 없다(최초 커밋 48e01d7 부터)
+    - URL 경로는 `/` 로 쪼개 `..` 단독만 들어오지만, JSON body 의 이름(`POST /capture {name}`·`PUT /layouts/{name} {newName}` 등)은 `../../x` 를 그대로 받는다 → `{data}/../../x.yml` 쓰기·이동
+* 구현 명세:
+    - 이름 검증 단일 지점: 빈 값·`/`·`\0`·`..` 구성요소·선행 `.` 거부, 길이 상한. REST 는 400, 저장소 계층도 방어(이중)
+    - red 먼저: `../escape` 이름으로 save·rename 하면 dataDirectory 밖에 파일이 생기지 않는다
+    - openapi_v2 의 name 제약 기술 동기
 
 # 📙 일반
 
