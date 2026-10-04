@@ -105,6 +105,11 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ModeDetailResponse' }
+        '400':
+          description: name missing or unusable as a file name (Issue117)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
 
   /modes/{name}:
     parameters:
@@ -856,7 +861,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/RenameResponse'
         '400':
-          description: Invalid request
+          description: Invalid request — or newName unusable as a file name (Issue117)
           content:
             application/json:
               schema:
@@ -1025,6 +1030,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CaptureResponse'
+        '400':
+          description: name unusable as a file name (Issue117)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Capture failed
           content:
@@ -1739,7 +1750,7 @@ components:
     CaptureRequest:
       type: object
       properties:
-        name: { type: string, description: Layout name (defaults to "default" if omitted) }
+        name: { type: string, description: "Layout name (defaults to \"default\" if omitted). One path component (Issue117): no '/', not empty, not '.'/'..', name + '.yml' ≤ 255 bytes — otherwise 400" }
         filterApps:
           type: array
           items: { type: string }
@@ -1893,7 +1904,7 @@ components:
     RenameRequest:
       type: object
       properties:
-        newName: { type: string }
+        newName: { type: string, description: "One path component (Issue117): no '/', not empty, not '.'/'..', name + '.yml' ≤ 255 bytes — otherwise 400" }
       required: [newName]
 
     RenameResponse:
@@ -2106,7 +2117,7 @@ components:
     ModeCreateRequest:
       type: object
       properties:
-        name: { type: string }
+        name: { type: string, description: "One path component (Issue117): no '/', not empty, not '.'/'..', name + '.yml' ≤ 255 bytes — otherwise 400" }
         icon: { type: string, default: rectangle.3.group }
         shortcut: { type: string }
         layout: { type: string }

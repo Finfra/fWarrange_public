@@ -1185,6 +1185,10 @@ final class RESTServer: RESTServerProtocol {
             completion(.badRequest(message: "name 필드가 필요합니다"))
             return
         }
+        if let reason = StorageName.rejection(name) {
+            completion(.badRequest(message: "name 사용 불가 — \(reason)"))
+            return
+        }
         let icon = json["icon"] as? String ?? "rectangle.3.group"
         let shortcut = json["shortcut"] as? String
         let layoutRef = json["layout"] as? String ?? name
@@ -1444,6 +1448,10 @@ final class RESTServer: RESTServerProtocol {
         let json = request.jsonBody()
         let rawName = (json?["name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = (rawName?.isEmpty ?? true) ? handlers.nextDailySequenceName() : rawName!
+        if let reason = StorageName.rejection(name) {
+            completion(.badRequest(message: "name 사용 불가 — \(reason)"))
+            return
+        }
         let filterApps = json?["filterApps"] as? [String]
 
         // Issue78: capture register (직렬화 — 동시 호출 시 409)
@@ -1597,6 +1605,10 @@ final class RESTServer: RESTServerProtocol {
     private func handleRenameLayout(name: String, request: HTTPRequest, completion: @escaping (HTTPResponse) -> Void) {
         guard let json = request.jsonBody(), let newName = json["newName"] as? String, !newName.isEmpty else {
             completion(.badRequest(message: "newName 필드가 필요합니다"))
+            return
+        }
+        if let reason = StorageName.rejection(newName) {
+            completion(.badRequest(message: "newName 사용 불가 — \(reason)"))
             return
         }
 
