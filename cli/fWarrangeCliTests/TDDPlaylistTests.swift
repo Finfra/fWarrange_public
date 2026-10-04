@@ -953,6 +953,19 @@ final class StorageNameTraversalTests: XCTestCase {
         }
     }
 
+    /// A whitespace-only name saved by an older build must stay openable, deletable and
+    /// renamable — only *new* names get the full rule; existing ones only the escape check.
+    func testLegacyBlankNameStaysManageable() throws {
+        let storage = YAMLLayoutStorageService(dataDirectoryURL: dataDir)
+        try "- app: \"x\"\n".write(to: dataDir.appendingPathComponent(" .yml"), atomically: true, encoding: .utf8)
+
+        XCTAssertNoThrow(try storage.load(name: " "))
+        XCTAssertNoThrow(try storage.rename(oldName: " ", newName: "rescued"))
+        XCTAssertNoThrow(try storage.delete(name: "rescued"))
+        XCTAssertThrowsError(try storage.save(name: " ", windows: []), "a new blank name is still refused")
+        XCTAssertThrowsError(try storage.delete(name: "../victim"), "existing-item paths still refuse escapes")
+    }
+
     /// Ordinary names keep working (spaces, unicode, dots inside).
     func testOrdinaryNamesStillWork() throws {
         let storage = YAMLLayoutStorageService(dataDirectoryURL: dataDir)

@@ -152,7 +152,7 @@ final class YAMLModeStorageService: ModeStorageService {
     }
 
     func load(name: String) throws -> Mode {
-        let fileURL = try StorageName.fileURL(in: modesDirectory, name: name)
+        let fileURL = try StorageName.fileURL(in: modesDirectory, name: name, existing: true)
         let content = try String(contentsOf: fileURL, encoding: .utf8)
 
         guard isV2Schema(content) else {
@@ -209,7 +209,7 @@ final class YAMLModeStorageService: ModeStorageService {
     }
 
     func delete(name: String) throws {
-        let fileURL = try StorageName.fileURL(in: modesDirectory, name: name)
+        let fileURL = try StorageName.fileURL(in: modesDirectory, name: name, existing: true)
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             throw ModeStorageError.notFound(name)
         }
@@ -217,7 +217,7 @@ final class YAMLModeStorageService: ModeStorageService {
     }
 
     func rename(oldName: String, newName: String) throws {
-        let oldURL = try StorageName.fileURL(in: modesDirectory, name: oldName)
+        let oldURL = try StorageName.fileURL(in: modesDirectory, name: oldName, existing: true)
         if let reason = StorageName.rejection(newName) { throw StorageName.Invalid(name: newName, reason: reason) }
         guard FileManager.default.fileExists(atPath: oldURL.path) else {
             throw ModeStorageError.notFound(oldName)
