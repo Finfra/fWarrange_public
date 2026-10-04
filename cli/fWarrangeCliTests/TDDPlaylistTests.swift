@@ -329,7 +329,7 @@ final class TDDPlaylistTests: XCTestCase {
         }
     }
 
-    /// Default roots: under home, /Volumes and /Users/Shared are fine; system folders and home itself are not.
+    /// Default roots: under home and /Volumes are fine; system folders and home itself are not.
     func testDataDirectoryDefaultRoots() {
         func accepted(_ raw: String) -> Bool {
             if case .success = YAMLLayoutStorageService.validateDataDirectoryPath(raw) { return true }
@@ -337,11 +337,34 @@ final class TDDPlaylistTests: XCTestCase {
         }
         XCTAssertTrue(accepted("~/Documents/finfra/fWarrangeData"))
         XCTAssertTrue(accepted("/Volumes/fwc-issue115-drive/fWarrangeData"))
-        XCTAssertTrue(accepted("/Users/Shared/fWarrangeData"))
+        // world-writable: another local account could plant the host folder (Issue115 verify)
+        XCTAssertFalse(accepted("/Users/Shared/fWarrangeData"))
         XCTAssertFalse(accepted("/etc/fwc"))
         XCTAssertFalse(accepted("/"))
         XCTAssertFalse(accepted("/Volumes/../etc/fwc"))
         XCTAssertFalse(accepted(FileManager.default.homeDirectoryForCurrentUser.path))
+    }
+
+    /// Files are written into `{base}/{hostname}` (and `_share`), not into the base itself.
+    /// If that subfolder is a symlink leading out of the base, the base must be refused.
+    func testDataDirectoryRefusedWhenHostFolderEscapes() throws {
+        let fm = FileManager.default
+        let base = tmpDir.appendingPathComponent("base")
+        let outside = tmpDir.appendingPathComponent("outside")   // still under the allowed root on purpose
+        try fm.createDirectory(at: base, withIntermediateDirectories: true)
+        try fm.createDirectory(at: outside, withIntermediateDirectories: true)
+        try fm.createSymbolicLink(atPath: base.appendingPathComponent("testhost").path, withDestinationPath: outside.path)
+        let cfg = tmpDir.appendingPathComponent("cfg")
+
+        let resolved = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: base.path, configBase: cfg, envPath: nil, allowedRoots: [tmpDir], hostname: "testhost")
+        XCTAssertEqual(resolved, cfg, "a host folder that leaves the base must not be used")
+
+        // a plain host folder is fine
+        try fm.removeItem(at: base.appendingPathComponent("testhost"))
+        let ok = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: base.path, configBase: cfg, envPath: nil, allowedRoots: [tmpDir], hostname: "testhost")
+        XCTAssertEqual(ok.resolvingSymlinksInPath().path, base.resolvingSymlinksInPath().path)
     }
 
     /// REST PATCH must refuse an unsafe `dataDirectoryPath` instead of persisting it.

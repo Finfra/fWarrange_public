@@ -419,7 +419,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/FullSettingsResponse'
         '400':
-          description: Invalid body — or `dataDirectoryPath` refused (not under home, /Volumes or /Users/Shared; nothing is applied, Issue115)
+          description: Invalid body — or `dataDirectoryPath` refused (not under home or /Volumes; nothing is applied, Issue115)
           content:
             application/json:
               schema:
@@ -465,7 +465,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/GeneralSettingsResponse'
         '400':
-          description: Invalid body — or `dataDirectoryPath` refused (not under home, /Volumes or /Users/Shared; nothing is applied, Issue115)
+          description: Invalid body — or `dataDirectoryPath` refused (not under home or /Volumes; nothing is applied, Issue115)
           content:
             application/json:
               schema:
@@ -1487,7 +1487,7 @@ components:
             레이아웃 저장 base 폴더(`~` 확장). 우선순위: 환경변수 `fWarrangeCli_config` > 이 값 > 기본
             `~/Documents/finfra/fWarrangeData`. **cliApp 다음 기동부터 적용**(기존 레이아웃은 옮기지 않음).
             `_config.yml` 은 이 값과 무관하게 설정 폴더에 남는다 (Issue108 ①).
-            홈 폴더·`/Volumes`·`/Users/Shared` 하위(그 자체 불가, `..`·심볼릭 링크 해소 후 판정)만 허용 — 아니면 PATCH 는 400,
+            홈 폴더·`/Volumes` 하위(그 자체 불가, `..`·심볼릭 링크 해소 후 판정)만 허용 — 쓰기 폴더(`{base}/{host}`·`_share`)가 base 밖을 가리켜도 거부 — 아니면 PATCH 는 400,
             기동 시에는 설정 폴더 유지. 사용자 지정 폴더에는 레거시 루트 마이그레이션을 돌리지 않는다 (Issue115)
         launchAtLogin: { type: boolean }
         theme: { type: string, enum: [system, light, dark] }
@@ -1538,7 +1538,7 @@ components:
             레이아웃 저장 base 폴더(`~` 확장). 우선순위: 환경변수 `fWarrangeCli_config` > 이 값 > 기본
             `~/Documents/finfra/fWarrangeData`. **cliApp 다음 기동부터 적용**(기존 레이아웃은 옮기지 않음).
             `_config.yml` 은 이 값과 무관하게 설정 폴더에 남는다 (Issue108 ①).
-            홈 폴더·`/Volumes`·`/Users/Shared` 하위(그 자체 불가, `..`·심볼릭 링크 해소 후 판정)만 허용 — 아니면 PATCH 는 400,
+            홈 폴더·`/Volumes` 하위(그 자체 불가, `..`·심볼릭 링크 해소 후 판정)만 허용 — 쓰기 폴더(`{base}/{host}`·`_share`)가 base 밖을 가리켜도 거부 — 아니면 PATCH 는 400,
             기동 시에는 설정 폴더 유지. 사용자 지정 폴더에는 레거시 루트 마이그레이션을 돌리지 않는다 (Issue115)
         launchAtLogin: { type: boolean }
         theme: { type: string, enum: [system, light, dark] }
