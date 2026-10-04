@@ -83,6 +83,7 @@ date: 2026-04-07
     - 적대적 검증(관점별 리뷰 4 + 지적별 반박) 후속 2d88660: 실제 쓰기 폴더 `{base}/{host}`·`_share` 가 base 밖(심볼릭 링크)을 가리키면 거부 · `/Users/Shared`(world-writable — 다른 계정이 호스트 폴더를 심을 수 있음) 허용 철회
     - TDD: 재생목록 21행 red(신규 6테스트 14단언 + 후속 2) → green · jm4 XCTest 117/117 · **jma XCTest 117/117**
     - jma E2E(실행 중 cliApp, release 트리): 허용 밖 4종(`/private/tmp`·`/Volumes/../etc`·상대·`/`) 400 + 폴더 미생성·`_config.yml` 미기록·동반 필드(`theme`) 미적용 · 허용 경로 200 → 원값(null) 복원
+    - jma `/run`(brew local, 2026-10-04): 1차는 brew install 거부 — jma CLT 26.6 ↔ Xcode 27.0, 배포 중 Homebrew 자동 갱신(8b92a1a)이 CLT 일치를 요구(9/28 은 같은 조합으로 통과). 사람이 CLT 27.0 설치 후 재실행 → `fwarrange-cli 1.1.2` `started` · 정식 서명(Apple Development) · 접근성 granted · PATCH `/private/tmp` **400**
     - 분리 등록: 레이아웃 이름 `../` 경로 탈출(기존 결함, high) → **Issue117** · paidApp 400 뒤 거부 경로 표시 → **prj16#Issue285** · 기각: 업그레이드 시 저장값 무시(a30f5d0 미출시라 해당 없음)·개행 값(기존 직렬화, 거부 시 설정 폴더로 안전 귀결)
 
 ## Issue113: [TDD] 재생목록 풀 재실행 — 전 목표 회귀 (common#Issue108 웨이브) (등록: 2026-09-29, 완료: 2026-09-29, Hash: e7e1685) ✅
