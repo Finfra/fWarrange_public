@@ -889,3 +889,76 @@ final class BrewHandoffTests: XCTestCase {
         XCTAssertTrue(content.contains(marker))
     }
 }
+
+// MARK: - #23 storage-name-no-traversal (Issue117)
+
+/// Layout and mode names become file names (`{dir}/{name}.yml`). A name with `/` must not
+/// reach outside the storage folder — REST takes these names without a token.
+final class StorageNameTraversalTests: XCTestCase {
+
+    private var tmpDir: URL!
+    private var dataDir: URL!
+
+    override func setUpWithError() throws {
+        tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("StorageNameTraversalTests_\(UUID().uuidString)")
+        dataDir = tmpDir.appendingPathComponent("data")
+        try FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: tmpDir)
+    }
+
+    private func exists(_ name: String) -> Bool {
+        FileManager.default.fileExists(atPath: tmpDir.appendingPathComponent(name).path)
+    }
+
+    func testLayoutSaveRefusesTraversalName() {
+        let storage = YAMLLayoutStorageService(dataDirectoryURL: dataDir)
+        XCTAssertThrowsError(try storage.save(name: "../escape", windows: []))
+        XCTAssertFalse(exists("escape.yml"), "nothing may be written outside the layout folder")
+    }
+
+    func testLayoutRenameRefusesTraversalName() throws {
+        let storage = YAMLLayoutStorageService(dataDirectoryURL: dataDir)
+        try storage.save(name: "ok", windows: [])
+        XCTAssertThrowsError(try storage.rename(oldName: "ok", newName: "../moved"))
+        XCTAssertFalse(exists("moved.yml"))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: dataDir.appendingPathComponent("ok.yml").path))
+    }
+
+    func testLayoutDeleteRefusesTraversalName() throws {
+        try "- app: \"x\"\n".write(to: tmpDir.appendingPathComponent("victim.yml"), atomically: true, encoding: .utf8)
+        let storage = YAMLLayoutStorageService(dataDirectoryURL: dataDir)
+        XCTAssertThrowsError(try storage.delete(name: "../victim"))
+        XCTAssertTrue(exists("victim.yml"), "a file outside the layout folder must survive")
+    }
+
+    func testModeSaveRefusesTraversalName() {
+        let base = tmpDir.appendingPathComponent("modebase")
+        let storage = YAMLModeStorageService(baseDirectory: base)
+        // modes live in {base}/{host}/modes — three levels up is tmpDir
+        XCTAssertThrowsError(try storage.save(Mode(name: "../../../mode-escape", icon: "x", shortcut: nil, layoutRef: "x")))
+        XCTAssertFalse(exists("mode-escape.yml"))
+    }
+
+    /// The single check REST uses before touching storage (capture name · rename newName · mode name).
+    func testStorageNameRejection() {
+        for bad in ["../x", "a/b", "/abs", "", "  ", ".", "..", "nul\0x", String(repeating: "a", count: 252)] {
+            XCTAssertNotNil(StorageName.rejection(bad), "must refuse: \(bad.prefix(20))")
+        }
+        for good in ["Work Setup", "작업 1", "v1.2 layout", "..hidden-ish", "a:b", String(repeating: "a", count: 251)] {
+            XCTAssertNil(StorageName.rejection(good), "must accept: \(good.prefix(20))")
+        }
+    }
+
+    /// Ordinary names keep working (spaces, unicode, dots inside).
+    func testOrdinaryNamesStillWork() throws {
+        let storage = YAMLLayoutStorageService(dataDirectoryURL: dataDir)
+        for name in ["Work Setup", "작업 1", "v1.2 layout", "2026-10-04_001"] {
+            try storage.save(name: name, windows: [])
+            XCTAssertNoThrow(try storage.load(name: name))
+        }
+    }
+}

@@ -13,6 +13,37 @@ protocol LayoutStorageService {
     func rename(oldName: String, newName: String) throws
 }
 
+// MARK: - Issue117: 저장 이름 검증 (레이아웃·모드 공통 단일 판정 지점)
+
+/// Layout and mode names become file names (`{dir}/{name}.yml`) — a name must stay one path component.
+enum StorageName {
+    struct Invalid: Error, CustomStringConvertible {
+        let name: String
+        let reason: String
+        var description: String { "이름 '\(name)' 사용 불가 — \(reason)" }
+    }
+
+    /// Why `name` can't be a stored name, or nil.
+    static func rejection(_ name: String) -> String? {
+        if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "빈 이름" }
+        if name.contains("/") { return "'/' 포함" }
+        if name.contains("\0") { return "NUL 포함" }
+        if name == "." || name == ".." { return "'.'·'..' 불가" }
+        if (name + ".yml").utf8.count > 255 { return "너무 김(파일명 255바이트 초과)" }
+        return nil
+    }
+
+    /// `{dir}/{name}.yml`, or throws if the name is invalid or the result leaves `dir`.
+    static func fileURL(in dir: URL, name: String) throws -> URL {
+        if let reason = rejection(name) { throw Invalid(name: name, reason: reason) }
+        let url = dir.appendingPathComponent("\(name).yml")
+        guard url.deletingLastPathComponent().standardizedFileURL.path == dir.standardizedFileURL.path else {
+            throw Invalid(name: name, reason: "저장 폴더 밖")
+        }
+        return url
+    }
+}
+
 // MARK: - 구현체
 
 final class YAMLLayoutStorageService: LayoutStorageService {
@@ -431,14 +462,14 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     // MARK: - CRUD
 
     func save(name: String, windows: [WindowInfo]) throws {
+        let fileURL = try StorageName.fileURL(in: dataDirectory, name: name)
         try FileManager.default.createDirectory(at: dataDirectory, withIntermediateDirectories: true)
-        let fileURL = dataDirectory.appendingPathComponent("\(name).yml")
         let yaml = serializeToYAML(windows)
         try yaml.write(to: fileURL, atomically: true, encoding: .utf8)
     }
 
     func load(name: String) throws -> Layout {
-        let fileURL = dataDirectory.appendingPathComponent("\(name).yml")
+        let fileURL = try StorageName.fileURL(in: dataDirectory, name: name)
         let content = try String(contentsOf: fileURL, encoding: .utf8)
         let windows = parseYAML(content)
         let attrs = try FileManager.default.attributesOfItem(atPath: fileURL.path)
@@ -484,7 +515,7 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     }
 
     func delete(name: String) throws {
-        let fileURL = dataDirectory.appendingPathComponent("\(name).yml")
+        let fileURL = try StorageName.fileURL(in: dataDirectory, name: name)
         try FileManager.default.removeItem(at: fileURL)
     }
 
@@ -497,8 +528,8 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     }
 
     func rename(oldName: String, newName: String) throws {
-        let oldURL = dataDirectory.appendingPathComponent("\(oldName).yml")
-        let newURL = dataDirectory.appendingPathComponent("\(newName).yml")
+        let oldURL = try StorageName.fileURL(in: dataDirectory, name: oldName)
+        let newURL = try StorageName.fileURL(in: dataDirectory, name: newName)
         try FileManager.default.moveItem(at: oldURL, to: newURL)
     }
 }
