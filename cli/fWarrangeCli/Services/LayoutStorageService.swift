@@ -71,7 +71,8 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     static func resolveLayoutBaseDirectory(dataDirectoryPath: String?,
                                            configBase: URL,
                                            envPath: String? = Env.configPath,
-                                           allowedRoots: [URL] = dataDirectoryAllowedRoots) -> URL {
+                                           allowedRoots: [URL] = dataDirectoryAllowedRoots,
+                                           hostname: String = currentHostname()) -> URL {
         if envPath != nil { return configBase }
         guard let raw = dataDirectoryPath?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
             return configBase
@@ -86,6 +87,11 @@ final class YAMLLayoutStorageService: LayoutStorageService {
         }
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            // files land in {base}/{hostname} and {base}/_share — validating the base alone is not enough
+            if let escaping = escapingSubfolder(of: dir, names: [hostname, "_share"]) {
+                logW("dataDirectoryPath 거부 → 기본 폴더 유지: \(DataDirectoryRejection.subfolderEscapes(escaping))")
+                return configBase
+            }
             return dir
         } catch {
             logW("dataDirectoryPath 사용 불가 → 기본 폴더 유지: \(dir.path) (\(error.localizedDescription))")
@@ -100,21 +106,23 @@ final class YAMLLayoutStorageService: LayoutStorageService {
         case notAbsolute(String)
         case unresolvable(String)
         case outsideAllowedRoots(String)
+        case subfolderEscapes(String)
 
         var description: String {
             switch self {
             case .notAbsolute(let p): return "절대 경로가 아님: \(p)"
             case .unresolvable(let p): return "경로를 해석할 수 없음: \(p)"
-            case .outsideAllowedRoots(let p): return "홈 폴더·/Volumes·/Users/Shared 하위가 아님: \(p)"
+            case .outsideAllowedRoots(let p): return "홈 폴더 또는 /Volumes 하위가 아님: \(p)"
+            case .subfolderEscapes(let p): return "쓰기 폴더가 base 밖을 가리킴: \(p)"
             }
         }
     }
 
-    /// Roots a layout base may live under: the user's home, mounted volumes and the shared user folder.
+    /// Roots a layout base may live under: the user's home and mounted volumes.
+    /// Not `/Users/Shared` — it is world-writable, so another local account could plant the
+    /// folders fWarrange writes into (Issue115 verify).
     static var dataDirectoryAllowedRoots: [URL] {
-        [FileManager.default.homeDirectoryForCurrentUser,
-         URL(fileURLWithPath: "/Volumes", isDirectory: true),
-         URL(fileURLWithPath: "/Users/Shared", isDirectory: true)]
+        [FileManager.default.homeDirectoryForCurrentUser, URL(fileURLWithPath: "/Volumes", isDirectory: true)]
     }
 
     /// The single check for a `dataDirectoryPath` value — used at launch and on REST PATCH.
@@ -157,6 +165,17 @@ final class YAMLLayoutStorageService: LayoutStorageService {
             path = (path as NSString).appendingPathComponent(component)
         }
         return path
+    }
+
+    /// The first of `names` under `base` whose resolved path is not strictly inside `base`
+    /// (ex) a symlinked host folder), or nil.
+    static func escapingSubfolder(of base: URL, names: [String]) -> String? {
+        guard let root = canonicalPath(base) else { return base.path }
+        for name in names {
+            let sub = base.appendingPathComponent(name)
+            guard let resolved = canonicalPath(sub), resolved.hasPrefix(root + "/") else { return sub.path }
+        }
+        return nil
     }
 
     /// Host-mode preparation of a layout base at launch (Issue166_2·3).
