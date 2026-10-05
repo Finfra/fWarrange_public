@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 119
+* Issue HWM: 120
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -26,6 +26,18 @@ date: 2026-04-07
    - 장애: 타 prj memory 경로에 대한 쓰기 권한 제약(위임 범위) — Issue.md 에 이슈 등록만 수행, memory 파일 작성은 사용자 몫으로 미룸
 
 # 🚧 진행중
+
+## Issue120: [Version] cliApp 1.1.2 → 1.1.3 bump + R1 전 행 — Issue115·116·117 출고 (등록: 2026-10-05)
+* 목적: `cli-v1.1.2` 출고 뒤 수정(Issue115 경로 검증·116 안내 중복·117 이름 탈출)을 Homebrew 로 내보낸다 — 기출고 번호 재사용 불가라 1.1.3
+* depends: prj16#Issue286
+* 상세:
+    - 사용자 결정(2026-10-05): paidApp 1.1.2 미제출 → 1.1.3 락스텝 진행. 공개 출고(태그·release·tap push)는 직전에 재확인
+    - R1 사전 점검(1.1.2, `527fa22`) 7행 통과 — `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_r1pre-2026.10.04.md`
+* 구현 명세:
+    - bump(8553c40 선례): `vm_bump_patch` · pbxproj `MARKETING_VERSION` ×2 · `cli/project.yml` · `cli/version-meta.yml` · Formula url 1.1.3 + sha256 자리표시
+    - R1(`tdd/release.md`) 1~7·9~12행 jma · 8행은 출고 후 · 증거 `cli/_doc_work/_release/v1.1.3/release-test_1.1.3.md`(peers prj16@Issue286 hash)
+    - R2·출고: release → main `--no-ff` · `recheck` · `publish` — 사용자 재확인 후
+
 
 # 📕 중요
 
