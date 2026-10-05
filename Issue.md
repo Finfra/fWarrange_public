@@ -27,19 +27,6 @@ date: 2026-04-07
 
 # 🚧 진행중
 
-## Issue120: [Version] cliApp 1.1.2 → 1.1.3 bump + R1 전 행 — Issue115·116·117 출고 (등록: 2026-10-05)
-* 목적: `cli-v1.1.2` 출고 뒤 수정(Issue115 경로 검증·116 안내 중복·117 이름 탈출)을 Homebrew 로 내보낸다 — 기출고 번호 재사용 불가라 1.1.3
-* depends: prj16#Issue286
-* 상세:
-    - 사용자 결정(2026-10-05): paidApp 1.1.2 미제출 → 1.1.3 락스텝 진행. 공개 출고(태그·release·tap push)는 직전에 재확인
-    - R1 사전 점검(1.1.2, `527fa22`) 7행 통과 — `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_r1pre-2026.10.04.md`
-* 구현 명세:
-    - bump(8553c40 선례): `vm_bump_patch` · pbxproj `MARKETING_VERSION` ×2 · `cli/project.yml` · `cli/version-meta.yml` · Formula url 1.1.3 + sha256 자리표시
-    - R1(`tdd/release.md`) 1~7·9~12행 jma · 8행은 출고 후 · 증거 `cli/_doc_work/_release/v1.1.3/release-test_1.1.3.md`(peers prj16@Issue286 hash)
-    - R2·출고: release → main `--no-ff` · `recheck` · `publish` — 사용자 재확인 후
-* 결과 (2026-10-05, bump — prj16 세션): VERSION·pbxproj `MARKETING_VERSION` ×2·`cli/project.yml`·`cli/version-meta.yml`·Formula url 1.1.3 + sha256 자리표시 — 8553c40 와 같은 범위. 선행 수정 Issue114 ①(430a2ea) 포함. R1 은 jma 에서 이어 진행
-
-
 # 📕 중요
 
 # 📙 일반
@@ -71,6 +58,27 @@ date: 2026-04-07
     - red 먼저: Xcode 문서 0 상태에서 `fwc-run-xcode.sh build-deploy` 가 성공하는지(jma)
 
 # ✅ 완료
+
+## Issue120: [Version] cliApp 1.1.2 → 1.1.3 bump + R1 전 행 — Issue115·116·117 출고 (등록: 2026-10-05, 완료: 2026-10-05, Hash: c899fab, c597152) ✅
+* 목적: `cli-v1.1.2` 출고 뒤 수정(Issue115 경로 검증·116 안내 중복·117 이름 탈출)을 Homebrew 로 내보낸다 — 기출고 번호 재사용 불가라 1.1.3
+* depends: prj16#Issue286
+* 상세:
+    - 사용자 결정(2026-10-05): paidApp 1.1.2 미제출 → 1.1.3 락스텝 진행. 공개 출고(태그·release·tap push)는 직전에 재확인
+    - R1 사전 점검(1.1.2, `527fa22`) 7행 통과 — `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_r1pre-2026.10.04.md`
+* 구현 명세:
+    - bump(8553c40 선례): `vm_bump_patch` · pbxproj `MARKETING_VERSION` ×2 · `cli/project.yml` · `cli/version-meta.yml` · Formula url 1.1.3 + sha256 자리표시
+    - R1(`tdd/release.md`) 1~7·9~12행 jma · 8행은 출고 후 · 증거 `cli/_doc_work/_release/v1.1.3/release-test_1.1.3.md`(peers prj16@Issue286 hash)
+    - R2·출고: release → main `--no-ff` · `recheck` · `publish` — 사용자 재확인 후
+* 결과 (2026-10-05):
+    - bump **c899fab**(prj16 세션) — paidApp 락스텝 prj16#Issue286(5a75e3f). 사용자 결정으로 범위 확대: Issue119(restart 복귀) · Issue121(복원 성공 오보, prj16 R1 발견) 포함 — 1.1.3 cliApp 수정 = Issue114·115·116·117·119·121
+    - R1(`cli/_doc_work/_release/v1.1.3/release-test_1.1.3.md`, 후보 **d4a531e** · peers prj16@29da246, jma): **1~12행 전부 통과** — 1 XCTest 136/136 · 2 clear · 3 소스 빌드 60s · 4 fwc-test ALL CLEAR(Issue118 우회: Xcode 선로드) · 5 brew local 12/0 · 6 dry-run 5/0·외부 불변 · 7 tarball CDHash 보존 · 8 공개 tap 설치(출고 후) · 9 버전 4곳 1.1.3 · 10 prj16 후보 FAIL 0 · 11 REST 18/0 · 12 App Store 현행 v1.1.1 paidApp 연동. 접근성 재승인 1회(16:04)
+    - R2: `recheck` d4a531e 유효 — release HEAD · 병합 커밋 양쪽
+    - 출고(사용자 승인 «전부 진행»): release/1.1.1 push(af8537b..d4a531e) → 공개 clone 에서 main ← release `--no-ff` **c597152**(충돌 0 · 병합 트리 = release 트리) → main push → jma `publish --dry-run` 5/0 → `publish` **9/0**: 태그 **`cli-v1.1.3`**(→ c597152) · GitHub release(asset sha256 `e8f1d5d6…`) · 공개 tap **`22d6a02`** · brew audit 통과
+    - 8행 1차는 jma 로컬 tap 환경 실패(publish 검증의 Homebrew 자동 업데이트 autostash → pop 충돌 `UU` → Formula 파싱 실패) — Formula 를 공개본으로 되돌리고 `HOMEBREW_NO_AUTO_UPDATE=1` 로 재실행 통과. jma 최종 = **공개본 1.1.3** started · 접근성 granted · paidApp 1.1.3 running
+    - repo Formula sha256 실값(`e8f1d5d6…`) · `cli/version-meta.yml` brew 상태 1.1.3 반영
+    - 공유 jma·작업트리: prj16 세션(fwarrange-3c)과 `/tmp/jma-xcode.lock` mkdir 잠금·경로 지정 커밋으로 교대
+* 결과 (2026-10-05, bump — prj16 세션): VERSION·pbxproj `MARKETING_VERSION` ×2·`cli/project.yml`·`cli/version-meta.yml`·Formula url 1.1.3 + sha256 자리표시 — 8553c40 와 같은 범위. 선행 수정 Issue114 ①(430a2ea) 포함. R1 은 jma 에서 이어 진행
+
 
 ## Issue121: [Bug] 복원 응답이 목표에 크게 못 미친 창도 `succeeded` 로 보고 — Issue114 best-effort 판정에 편차 상한이 없음 (등록: 2026-10-05, 완료: 2026-10-05, Hash: 4d0da35) ✅
 * 목적: 사용자·paidApp 이 «복원 성공» 을 믿었는데 창은 엉뚱한 위치·크기에 있다 — 1.1.2 는 같은 경로를 failed 로 보고했으므로 1.1.3 에서 보고가 거짓 쪽으로 바뀌었다 (prj16 R1 6행, fwarrange-3c 2026-10-05 발견 · peers prj26@32b054c)
