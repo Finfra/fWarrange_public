@@ -1367,11 +1367,12 @@ final class RESTServer: RESTServerProtocol {
         }
 
         logI("[RESTServer] CLI restart 요청 수신 - 재시작합니다")
-        completion(.ok(json: ["status": "ok", "message": "fWarrangeCli 재시작 (launchd KeepAlive 의존)"]))
+        completion(.ok(json: ["status": "ok", "message": "fWarrangeCli 재시작 — brew 서비스면 brew services restart, 아니면 자가 재실행"]))
 
-        // 응답 전송 후 잠시 대기 후 종료 (launchd가 재시작)
+        // Issue119: terminate 만 하면 open 기동 인스턴스는 돌아오지 않는다(launchd 관리 밖).
+        // 접근성 안내와 같은 판정(AppRestarter)으로 기동 방식에 맞춰 되살린다. 응답이 나간 뒤 실행.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            NSApplication.shared.terminate(nil)
+            AppRestarter.restart(reason: "REST cli/restart")
         }
     }
 

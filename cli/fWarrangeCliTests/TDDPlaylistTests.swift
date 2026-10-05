@@ -1026,3 +1026,62 @@ final class RestoreLeftoverTests: XCTestCase {
         XCTAssertEqual(r.unmatched, [missing])
     }
 }
+
+// MARK: - #24 restart-comes-back (Issue119)
+
+/// `POST /api/v2/cli/restart` only terminated and relied on launchd KeepAlive — an `open`-launched
+/// instance never came back. Restart now goes through the same decision as the accessibility guide.
+final class AppRestarterTests: XCTestCase {
+
+    override func tearDown() {
+        AppRestarter.resetSeams()
+        super.tearDown()
+    }
+
+    func testManagedInstanceDelegatesToBrew() {
+        var relaunched = 0
+        AppRestarter.requestManagedRestart = { true }
+        AppRestarter.relaunchViaOpen = { relaunched += 1 }
+
+        XCTAssertEqual(AppRestarter.restart(reason: "test"), .brewService)
+        XCTAssertEqual(relaunched, 0, "launchd brings it back — no self-relaunch")
+    }
+
+    func testOpenLaunchedInstanceRelaunchesItself() {
+        var relaunched = 0
+        AppRestarter.requestManagedRestart = { false }
+        AppRestarter.relaunchViaOpen = { relaunched += 1 }
+
+        XCTAssertEqual(AppRestarter.restart(reason: "test"), .openRelaunch)
+        XCTAssertEqual(relaunched, 1)
+    }
+
+    /// The REST endpoint must use that decision — not a bare terminate.
+    func testRESTRestartGoesThroughAppRestarter() throws {
+        let decided = expectation(description: "restart decision reached")
+        AppRestarter.requestManagedRestart = { decided.fulfill(); return true }   // brew path: nothing real happens
+        AppRestarter.relaunchViaOpen = { XCTFail("managed path must not self-relaunch") }
+
+        let port = RESTListenerLifecycleTests.freePort()
+        let server = RESTServer(handlers: RESTListenerLifecycleTests.stubHandlers())
+        server.start(port: port)
+        defer { server.stop() }
+        XCTAssertTrue(RESTListenerLifecycleTests.waitUntil {
+            RESTListenerLifecycleTests.get(port: port, path: "/api/v2/health", timeout: 1).status == 200
+        })
+
+        var req = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/api/v2/cli/restart")!)
+        req.httpMethod = "POST"
+        req.setValue("true", forHTTPHeaderField: "X-Confirm")
+        let responded = expectation(description: "200")
+        var body = ""
+        URLSession(configuration: .ephemeral).dataTask(with: req) { data, resp, _ in
+            XCTAssertEqual((resp as? HTTPURLResponse)?.statusCode, 200)
+            body = String(data: data ?? Data(), encoding: .utf8) ?? ""
+            responded.fulfill()
+        }.resume()
+
+        wait(for: [responded, decided], timeout: 10)
+        XCTAssertFalse(body.contains("KeepAlive"), "response must not claim launchd KeepAlive: \(body)")
+    }
+}

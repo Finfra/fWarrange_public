@@ -97,18 +97,39 @@ enum AccessibilityGuidePresenter {
                 logI("[a11y] 권한 상실 안내 — 사용자가 재시작을 미룸")
                 return
             }
-            restart()
+            AppRestarter.restart(reason: "접근성 권한 상실 안내")
         }
     }
+}
 
-    /// 재시작 경로는 기동 방식에 따라 갈린다.
-    /// launchd(brew services) 관리분은 brew 에 위임하고, `open` 기동분만 자가 재실행한다.
-    private static func restart() {
-        if BrewServiceSync.requestManagedRestart() {
-            logI("[a11y] 재시작을 brew services 에 위임 — launchd 가 새 인스턴스를 기동")
-            return
+// MARK: - Issue119: 재시작 단일 판정 지점
+
+/// Restarts this cliApp instance the way it was launched. Used by the accessibility guide
+/// (Issue96) and `POST /api/v2/cli/restart` (Issue119) — one decision, so they can't drift apart.
+///
+/// * launchd (brew services) managed → `brew services restart` (launchd brings the new instance up)
+/// * `open` launched → detached helper waits for this process to exit, then `open`s the bundle again
+enum AppRestarter {
+    enum Path: String { case brewService = "brew-service", openRelaunch = "open-relaunch" }
+
+    /// Seams for tests — production uses the real brew / relaunch actions.
+    static var requestManagedRestart: () -> Bool = { BrewServiceSync.requestManagedRestart() }
+    static var relaunchViaOpen: () -> Void = { relaunchViaOpenDefault() }
+
+    static func resetSeams() {
+        requestManagedRestart = { BrewServiceSync.requestManagedRestart() }
+        relaunchViaOpen = { relaunchViaOpenDefault() }
+    }
+
+    @discardableResult
+    static func restart(reason: String) -> Path {
+        if requestManagedRestart() {
+            logI("[restart] \(reason) — brew services 에 위임, launchd 가 새 인스턴스를 기동")
+            return .brewService
         }
+        logI("[restart] \(reason) — open 기동 인스턴스 자가 재실행")
         relaunchViaOpen()
+        return .openRelaunch
     }
 
     /// `open` 기동 인스턴스의 자가 재실행.
@@ -116,7 +137,7 @@ enum AccessibilityGuidePresenter {
     /// 새 인스턴스를 먼저 띄우면 `SingleInstanceGuard` 의 패자 규칙(non-launchd 는 기존 인스턴스에
     /// 양보하고 exit)에 걸려 곧바로 종료된다. 그래서 **현재 프로세스가 사라진 뒤** 뜨도록
     /// 분리된 셸 프로세스에 지연 실행을 맡긴다. 이 자식 프로세스는 부모 종료와 무관하게 살아남는다.
-    private static func relaunchViaOpen() {
+    private static func relaunchViaOpenDefault() {
         let bundlePath = Bundle.main.bundleURL.path
         let helper = Process()
         helper.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -130,10 +151,10 @@ enum AccessibilityGuidePresenter {
         do {
             try helper.run()
         } catch {
-            logW("[a11y] ⚠️ 재시작 헬퍼 실행 실패 — \(error.localizedDescription). 수동 재시작이 필요합니다")
+            logW("[restart] ⚠️ 재시작 헬퍼 실행 실패 — \(error.localizedDescription). 수동 재시작이 필요합니다")
             return
         }
-        logI("[a11y] 자가 재시작 — 현재 인스턴스 종료 후 새 인스턴스 기동")
+        logI("[restart] 자가 재시작 — 현재 인스턴스 종료 후 새 인스턴스 기동")
         NSApp.terminate(nil)
     }
 }
