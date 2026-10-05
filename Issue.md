@@ -42,18 +42,6 @@ date: 2026-04-07
 
 # 📕 중요
 
-## Issue121: [Bug] 복원 응답이 목표에 크게 못 미친 창도 `succeeded` 로 보고 — Issue114 best-effort 판정에 편차 상한이 없음 (등록: 2026-10-05)
-* 목적: 사용자·paidApp 이 «복원 성공» 을 믿었는데 창은 엉뚱한 위치·크기에 있다 — 1.1.2 는 같은 경로를 failed 로 보고했으므로 1.1.3 에서 보고가 거짓 쪽으로 바뀌었다 (prj16 R1 6행, fwarrange-3c 2026-10-05 발견 · peers prj26@32b054c)
-* 상세:
-    - 재현(jma): TextEdit 같은 제목 창 2개 중 1개(id 1804) 단일 창 레이아웃을 200,200 800×500 으로 복원 → 응답 `succeeded=1, matchType windowID 100`, CGWindowList 실측 200,40 1077×660 · 200,105 987×595 등 — 8초 관찰 동안 고정. Finder 창은 정확
-    - 증거(jma): `~/tdd-logs/16-r113-R6.txt` · `16-r113-R6-diag.txt` · `16-r113-R6-diag-finder.txt`
-    - 판정: `430a2ea`(Issue114 ①) `RestoreLeftover.resolve` 가 검증(3px) 실패 매칭을 편차 크기와 무관하게 `success: true` 로 확정 — 의도는 TextEdit 줄 단위 높이 스냅(수 px). 여기선 y 160px·크기 수백 px 차이
-    - 별개 원인 후보: 창이 왜 목표에 도달하지 못하는가(같은 제목 2창 · TextEdit 최소/줄단위 크기 · 위치→크기 적용 순서)
-* 구현 명세:
-    - best-effort 성공에 편차 상한(ex) 위치 ±N px·크기 ±줄 높이 수준) — 넘으면 `success: false` + 실패 사유 `verifyFailed`(actual 기하 포함)
-    - 도달 실패 원인 조사(AX set 순서·재시도 간 기하 변화)
-    - red 먼저: 목표와 큰 편차로 끝난 검증 실패는 성공으로 보고되지 않는다 · TextEdit 수 px 스냅은 여전히 성공
-
 # 📙 일반
 
 ## Issue114: 1.1.2 공개본 출고 테스트 발견 결함 — 단일 창 복원 판정·테스트 도구 위험·README 불일치 (등록: 2026-09-29)
@@ -83,6 +71,23 @@ date: 2026-04-07
     - red 먼저: Xcode 문서 0 상태에서 `fwc-run-xcode.sh build-deploy` 가 성공하는지(jma)
 
 # ✅ 완료
+
+## Issue121: [Bug] 복원 응답이 목표에 크게 못 미친 창도 `succeeded` 로 보고 — Issue114 best-effort 판정에 편차 상한이 없음 (등록: 2026-10-05, 완료: 2026-10-05, Hash: 4d0da35) ✅
+* 목적: 사용자·paidApp 이 «복원 성공» 을 믿었는데 창은 엉뚱한 위치·크기에 있다 — 1.1.2 는 같은 경로를 failed 로 보고했으므로 1.1.3 에서 보고가 거짓 쪽으로 바뀌었다 (prj16 R1 6행, fwarrange-3c 2026-10-05 발견 · peers prj26@32b054c)
+* 상세:
+    - 재현(jma): TextEdit 같은 제목 창 2개 중 1개(id 1804) 단일 창 레이아웃을 200,200 800×500 으로 복원 → 응답 `succeeded=1, matchType windowID 100`, CGWindowList 실측 200,40 1077×660 · 200,105 987×595 등 — 8초 관찰 동안 고정. Finder 창은 정확
+    - 증거(jma): `~/tdd-logs/16-r113-R6.txt` · `16-r113-R6-diag.txt` · `16-r113-R6-diag-finder.txt`
+    - 판정: `430a2ea`(Issue114 ①) `RestoreLeftover.resolve` 가 검증(3px) 실패 매칭을 편차 크기와 무관하게 `success: true` 로 확정 — 의도는 TextEdit 줄 단위 높이 스냅(수 px). 여기선 y 160px·크기 수백 px 차이
+    - 별개 원인 후보: 창이 왜 목표에 도달하지 못하는가(같은 제목 2창 · TextEdit 최소/줄단위 크기 · 위치→크기 적용 순서)
+* 구현 명세:
+    - best-effort 성공에 편차 상한(ex) 위치 ±N px·크기 ±줄 높이 수준) — 넘으면 `success: false` + 실패 사유 `verifyFailed`(actual 기하 포함)
+    - 도달 실패 원인 조사(AX set 순서·재시도 간 기하 변화)
+    - red 먼저: 목표와 큰 편차로 끝난 검증 실패는 성공으로 보고되지 않는다 · TextEdit 수 px 스냅은 여전히 성공
+* 결과 (2026-10-05, **4d0da35** · 재생목록 번호 정리 c4c23a7):
+    - 검증(3px) 실패 시 실측 프레임 기록(`measure`) · `RestoreLeftover.isNearMiss`(±24px, 줄 단위 스냅)만 best-effort 성공 · 그 밖·측정 불가는 매칭 정보 유지한 실패 → REST `failures[].reason = axOperationFailed`(enum 무변경), Moom/noMatch 로 떨어지지 않음
+    - TDD: 재생목록 26행 RestoreBestEffortBoundTests red(큰 편차·측정 불가 성공 처리) → green · Issue114 테스트는 스냅 기하 명시 · jm4·**jma XCTest 136/136**
+    - jma E2E(prj16 R1 6행 재실행, fwarrange-3c, 15:32, c4c23a7 정식 서명 brew): Finder 4/4 succeeded·편차 0 · TextEdit moved 2회 `succeeded=0`·`axOperationFailed`·windowID 100 유지(실측 편차 45·235) · orig 2회 succeeded(편차 15·21 = 근사 기준 내) → **8/8 응답이 실측과 일치, 성공 오보 0**. 로그 jma `~/tdd-logs/16-r121-*.txt`
+    - 남은 것(별도): TextEdit 이 목표 기하에 도달하지 못하는 원인 — 같은 제목 2창·줄 단위 크기·적용 순서 조사
 
 ## Issue119: `POST /api/v2/cli/restart` 가 종료만 하고 재기동하지 않음 — «launchd KeepAlive 의존» 전제 불성립 (등록: 2026-10-05, 완료: 2026-10-05, Hash: a36ef70, 9b842b3, 32b054c) ✅
 * 목적: paidApp 의 «지금 재시작»(prj16#Issue282)·Daemon 재시작이 cliApp 을 되살리지 못해 «재시작» 이 사실상 «종료» 가 된다. paidApp 은 우회(종료 확인 후 `/usr/bin/open -a` 재기동)를 넣었지만 API 자체 계약이 거짓이다
