@@ -1029,8 +1029,9 @@ final class RestoreLeftoverTests: XCTestCase {
 
 // MARK: - #24 restart-comes-back (Issue119)
 
-/// `POST /api/v2/cli/restart` only terminated and relied on launchd KeepAlive — an `open`-launched
-/// instance never came back. Restart now goes through the same decision as the accessibility guide.
+/// `POST /api/v2/cli/restart` only terminated and relied on launchd KeepAlive — the instance never came
+/// back. jma showed that anything the app spawns dies with it, so the comeback is an independent launchd
+/// job (`launchctl submit`) that waits for this PID, then kickstarts the service or re-opens the bundle.
 final class AppRestarterTests: XCTestCase {
 
     override func tearDown() {
@@ -1038,29 +1039,54 @@ final class AppRestarterTests: XCTestCase {
         super.tearDown()
     }
 
-    func testManagedInstanceDelegatesToBrew() {
-        var relaunched = 0
-        AppRestarter.requestManagedRestart = { true }
-        AppRestarter.relaunchViaOpen = { relaunched += 1 }
-
-        XCTAssertEqual(AppRestarter.restart(reason: "test"), .brewService)
-        XCTAssertEqual(relaunched, 0, "launchd brings it back — no self-relaunch")
+    func testPlanForBrewServiceKickstartsTheSameLabel() {
+        let p = AppRestarter.plan(pid: 123, uid: 501, bundlePath: "/opt/x.app", serviceLabel: "sh.brew.fwarrange-cli")
+        XCTAssertEqual(p.path, .brewService)
+        XCTAssertEqual(p.jobLabel, "kr.finfra.fWarrangeCli.relaunch.123")
+        XCTAssertTrue(p.script.contains("kill -0 123"), "must wait for this PID to exit: \(p.script)")
+        XCTAssertTrue(p.script.contains("/bin/launchctl kickstart gui/501/sh.brew.fwarrange-cli"), p.script)
+        XCTAssertTrue(p.script.hasSuffix("/bin/launchctl remove kr.finfra.fWarrangeCli.relaunch.123"), "job removes itself")
+        XCTAssertFalse(p.script.contains("/usr/bin/open"))
     }
 
-    func testOpenLaunchedInstanceRelaunchesItself() {
-        var relaunched = 0
-        AppRestarter.requestManagedRestart = { false }
-        AppRestarter.relaunchViaOpen = { relaunched += 1 }
+    func testPlanForOpenInstanceReopensTheBundle() {
+        let p = AppRestarter.plan(pid: 7, uid: 501, bundlePath: "/Applications/it's here.app", serviceLabel: nil)
+        XCTAssertEqual(p.path, .openRelaunch)
+        XCTAssertTrue(p.script.contains("kill -0 7"))
+        XCTAssertTrue(p.script.contains("/usr/bin/open '/Applications/it'\\''s here.app'"), "bundle path must be shell-quoted: \(p.script)")
+        XCTAssertFalse(p.script.contains("kickstart"))
+    }
+
+    /// The helper must be scheduled before quitting — and a failed schedule must not quit.
+    func testRestartSchedulesHelperThenTerminates() {
+        var events: [String] = []
+        AppRestarter.managedServiceLabel = { nil }
+        AppRestarter.submit = { label, _ in events.append("submit:\(label)"); return true }
+        AppRestarter.terminate = { events.append("terminate") }
 
         XCTAssertEqual(AppRestarter.restart(reason: "test"), .openRelaunch)
-        XCTAssertEqual(relaunched, 1)
+        XCTAssertEqual(events, ["submit:kr.finfra.fWarrangeCli.relaunch.\(getpid())", "terminate"])
     }
 
-    /// The REST endpoint must use that decision — not a bare terminate.
+    func testFailedSchedulingKeepsTheAppRunning() {
+        var terminated = false
+        AppRestarter.managedServiceLabel = { "sh.brew.fwarrange-cli" }
+        AppRestarter.submit = { _, _ in false }
+        AppRestarter.terminate = { terminated = true }
+
+        AppRestarter.restart(reason: "test")
+        XCTAssertFalse(terminated, "without a helper, quitting would be a plain stop")
+    }
+
+    /// The REST endpoint must use that path — not a bare terminate.
     func testRESTRestartGoesThroughAppRestarter() throws {
-        let decided = expectation(description: "restart decision reached")
-        AppRestarter.requestManagedRestart = { decided.fulfill(); return true }   // brew path: nothing real happens
-        AppRestarter.relaunchViaOpen = { XCTFail("managed path must not self-relaunch") }
+        let scheduled = expectation(description: "helper scheduled")
+        AppRestarter.managedServiceLabel = { nil }
+        AppRestarter.submit = { _, script in
+            XCTAssertTrue(script.contains("kill -0 \(getpid())"))
+            scheduled.fulfill(); return true
+        }
+        AppRestarter.terminate = { }   // the test host must survive
 
         let port = RESTListenerLifecycleTests.freePort()
         let server = RESTServer(handlers: RESTListenerLifecycleTests.stubHandlers())
@@ -1081,7 +1107,7 @@ final class AppRestarterTests: XCTestCase {
             responded.fulfill()
         }.resume()
 
-        wait(for: [responded, decided], timeout: 10)
+        wait(for: [responded, scheduled], timeout: 10)
         XCTAssertFalse(body.contains("KeepAlive"), "response must not claim launchd KeepAlive: \(body)")
     }
 }

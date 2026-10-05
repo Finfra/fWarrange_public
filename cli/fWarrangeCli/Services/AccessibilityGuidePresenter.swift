@@ -107,54 +107,81 @@ enum AccessibilityGuidePresenter {
 /// Restarts this cliApp instance the way it was launched. Used by the accessibility guide
 /// (Issue96) and `POST /api/v2/cli/restart` (Issue119) — one decision, so they can't drift apart.
 ///
-/// * launchd (brew services) managed → `brew services restart` (launchd brings the new instance up)
-/// * `open` launched → detached helper waits for this process to exit, then `open`s the bundle again
+/// Anything this app spawns dies with it (jma 실측 2026-10-05: an in-app `brew services restart`
+/// child and an in-app `sh` relaunch helper were both reaped when the app/service stopped).
+/// So the comeback is handed to an **independent launchd job** (`launchctl submit`) that waits for
+/// this PID to exit, then:
+/// * launchd (brew services) managed → `launchctl kickstart gui/<uid>/<label>` — the plist's
+///   `KeepAlive {SuccessfulExit=false}` does not restart a clean exit by itself
+/// * `open` launched → `open <bundle>`
+/// The job removes itself afterwards.
 enum AppRestarter {
     enum Path: String { case brewService = "brew-service", openRelaunch = "open-relaunch" }
 
-    /// Seams for tests — production uses the real brew / relaunch actions.
-    static var requestManagedRestart: () -> Bool = { BrewServiceSync.requestManagedRestart() }
-    static var relaunchViaOpen: () -> Void = { relaunchViaOpenDefault() }
+    struct Plan: Equatable {
+        let path: Path
+        let jobLabel: String
+        let script: String
+    }
+
+    /// Seams for tests — production uses the real launchd label, `launchctl submit` and terminate.
+    static var managedServiceLabel: () -> String? = { BrewServiceSync.runningServiceLabel() }
+    static var submit: (_ jobLabel: String, _ script: String) -> Bool = { submitDefault(jobLabel: $0, script: $1) }
+    static var terminate: () -> Void = { NSApp.terminate(nil) }
 
     static func resetSeams() {
-        requestManagedRestart = { BrewServiceSync.requestManagedRestart() }
-        relaunchViaOpen = { relaunchViaOpenDefault() }
+        managedServiceLabel = { BrewServiceSync.runningServiceLabel() }
+        submit = { submitDefault(jobLabel: $0, script: $1) }
+        terminate = { NSApp.terminate(nil) }
+    }
+
+    /// The helper job's script — pure, so tests can read it.
+    static func plan(pid: Int32, uid: UInt32, bundlePath: String, serviceLabel: String?) -> Plan {
+        let jobLabel = "kr.finfra.fWarrangeCli.relaunch.\(pid)"
+        // wait up to 20s for this process to exit
+        let wait = "for _ in $(seq 1 100); do kill -0 \(pid) 2>/dev/null || break; sleep 0.2; done"
+        let action: String
+        let path: Path
+        if let label = serviceLabel {
+            action = "/bin/launchctl kickstart gui/\(uid)/\(label)"
+            path = .brewService
+        } else {
+            action = "/usr/bin/open \(shellQuote(bundlePath))"
+            path = .openRelaunch
+        }
+        return Plan(path: path, jobLabel: jobLabel, script: "\(wait); \(action); /bin/launchctl remove \(jobLabel)")
     }
 
     @discardableResult
     static func restart(reason: String) -> Path {
-        if requestManagedRestart() {
-            logI("[restart] \(reason) — brew services 에 위임, launchd 가 새 인스턴스를 기동")
-            return .brewService
+        let label = managedServiceLabel()
+        let p = plan(pid: getpid(), uid: getuid(), bundlePath: Bundle.main.bundleURL.path, serviceLabel: label)
+        guard submit(p.jobLabel, p.script) else {
+            // no helper → quitting now would be a plain stop; stay up instead
+            logW("[restart] ⚠️ \(reason) — 재기동 헬퍼 예약 실패, 종료하지 않음. 수동 재시작이 필요합니다")
+            return p.path
         }
-        logI("[restart] \(reason) — open 기동 인스턴스 자가 재실행")
-        relaunchViaOpen()
-        return .openRelaunch
+        if label != nil { BrewServiceSync.beginManagedRelaunch() }
+        logI("[restart] \(reason) — \(p.path.rawValue) 헬퍼 예약(\(p.jobLabel)) 후 종료")
+        terminate()
+        return p.path
     }
 
-    /// `open` 기동 인스턴스의 자가 재실행.
-    ///
-    /// 새 인스턴스를 먼저 띄우면 `SingleInstanceGuard` 의 패자 규칙(non-launchd 는 기존 인스턴스에
-    /// 양보하고 exit)에 걸려 곧바로 종료된다. 그래서 **현재 프로세스가 사라진 뒤** 뜨도록
-    /// 분리된 셸 프로세스에 지연 실행을 맡긴다. 이 자식 프로세스는 부모 종료와 무관하게 살아남는다.
-    private static func relaunchViaOpenDefault() {
-        let bundlePath = Bundle.main.bundleURL.path
-        let helper = Process()
-        helper.executableURL = URL(fileURLWithPath: "/bin/sh")
-        // $0 = 번들 경로. 경로에 공백이 있어도 안전하도록 인자로 전달한다.
-        // 최대 10초까지 자신의 종료를 기다린 뒤 open — 종료가 지연돼도 재시작을 놓치지 않는다.
-        helper.arguments = [
-            "-c",
-            #"for _ in $(seq 1 50); do pgrep -f "$0/Contents/MacOS/" >/dev/null 2>&1 || break; sleep 0.2; done; /usr/bin/open "$0""#,
-            bundlePath
-        ]
+    private static func shellQuote(_ s: String) -> String {
+        "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+
+    private static func submitDefault(jobLabel: String, script: String) -> Bool {
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        proc.arguments = ["submit", "-l", jobLabel, "--", "/bin/sh", "-c", script]
         do {
-            try helper.run()
+            try proc.run()
+            proc.waitUntilExit()
+            return proc.terminationStatus == 0
         } catch {
-            logW("[restart] ⚠️ 재시작 헬퍼 실행 실패 — \(error.localizedDescription). 수동 재시작이 필요합니다")
-            return
+            logW("[restart] launchctl submit 실패 — \(error.localizedDescription)")
+            return false
         }
-        logI("[restart] 자가 재시작 — 현재 인스턴스 종료 후 새 인스턴스 기동")
-        NSApp.terminate(nil)
     }
 }
