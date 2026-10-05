@@ -993,7 +993,8 @@ final class RestoreLeftoverTests: XCTestCase {
         let t = target(1)
         let r = RestoreLeftover.resolve(
             pending: [t],
-            verifyFailures: [.init(target: t, title: "Untitled 1", matchType: .exactTitle, score: 90)])
+            verifyFailures: [.init(target: t, title: "Untitled 1", matchType: .exactTitle, score: 90,
+                                   actual: CGRect(x: 100, y: 100, width: 600, height: 390))])  // line-height snap
 
         XCTAssertEqual(r.bestEffort.count, 1)
         XCTAssertTrue(r.unmatched.isEmpty)
@@ -1019,11 +1020,54 @@ final class RestoreLeftoverTests: XCTestCase {
         let r = RestoreLeftover.resolve(
             pending: [failed, missing],
             verifyFailures: [
-                .init(target: failed, title: "Untitled 3", matchType: .windowID, score: 100),
+                .init(target: failed, title: "Untitled 3", matchType: .windowID, score: 100,
+                      actual: CGRect(x: 100, y: 100, width: 600, height: 392)),
                 .init(target: done, title: "Untitled 5", matchType: .windowID, score: 100)
             ])
         XCTAssertEqual(r.bestEffort.map(\.targetWindow), [failed])
         XCTAssertEqual(r.unmatched, [missing])
+    }
+}
+
+// MARK: - #25 best-effort-has-a-bound (Issue121)
+
+/// prj16 R1 (jma): a TextEdit window restored to 200,200 800×500 stayed at 200,40 1077×660 and the API
+/// still said `succeeded` — Issue114's best-effort accepted any verify failure. Best effort is for
+/// line-height snapping (a few px), not for a window that never got there.
+final class RestoreBestEffortBoundTests: XCTestCase {
+
+    private let target = WindowInfo(id: 1804, app: "TextEdit", window: "testBoard.txt", layer: 0,
+                                    pos: WindowPosition(x: 200, y: 200), size: WindowSize(width: 800, height: 500))
+
+    func testLargeDeviationIsReportedAsFailureWithMatchKept() {
+        let r = RestoreLeftover.resolve(pending: [target], verifyFailures: [
+            .init(target: target, title: "testBoard.txt", matchType: .windowID, score: 100,
+                  actual: CGRect(x: 200, y: 40, width: 1077, height: 660))])
+
+        XCTAssertTrue(r.bestEffort.isEmpty, "a window 160px / 277px off is not a success")
+        XCTAssertEqual(r.offTarget.count, 1)
+        XCTAssertFalse(r.offTarget[0].success)
+        XCTAssertEqual(r.offTarget[0].matchType, .windowID, "match info is kept — it was found, just not placed")
+        XCTAssertEqual(r.offTarget[0].score, 100)
+        XCTAssertTrue(r.unmatched.isEmpty, "found windows must not fall to the Moom fallback / noMatch")
+        XCTAssertEqual(RESTServer.classifyRestoreFailure(result: r.offTarget[0], minimumScore: 30,
+                                                         runningAppNames: ["TextEdit"], runningBundleIDs: []),
+                       "axOperationFailed")
+    }
+
+    func testLineHeightSnapIsStillBestEffort() {
+        let r = RestoreLeftover.resolve(pending: [target], verifyFailures: [
+            .init(target: target, title: "testBoard.txt", matchType: .windowID, score: 100,
+                  actual: CGRect(x: 200, y: 200, width: 800, height: 486))])
+        XCTAssertEqual(r.bestEffort.count, 1)
+        XCTAssertTrue(r.offTarget.isEmpty)
+    }
+
+    func testUnmeasuredVerifyFailureIsNotASuccess() {
+        let r = RestoreLeftover.resolve(pending: [target], verifyFailures: [
+            .init(target: target, title: "testBoard.txt", matchType: .windowID, score: 100, actual: nil)])
+        XCTAssertTrue(r.bestEffort.isEmpty, "unknown geometry cannot be called a success")
+        XCTAssertEqual(r.offTarget.count, 1)
     }
 }
 
