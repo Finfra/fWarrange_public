@@ -1,6 +1,12 @@
 # agent
 .claude/
 CLAUDE.md
+.agents/
+.codex/
+AGENTS.md
+
+# 로그 (로컬 전용 — log-path-rules)
+logs/
 
 # 작업 문서 (로컬 전용)
 # 본 레포는 cli/_doc_arch/, cli/_doc_work/만 사용 — 루트 _doc_arch/, _doc_work/ 사용 금지
