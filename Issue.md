@@ -27,6 +27,22 @@ date: 2026-04-07
 
 # 🚧 진행중
 
+## Issue119: `POST /api/v2/cli/restart` 가 종료만 하고 재기동하지 않음 — «launchd KeepAlive 의존» 전제 불성립 (등록: 2026-10-05)
+* 목적: paidApp 의 «지금 재시작»(prj16#Issue282)·Daemon 재시작이 cliApp 을 되살리지 못해 «재시작» 이 사실상 «종료» 가 된다. paidApp 은 우회(종료 확인 후 `/usr/bin/open -a` 재기동)를 넣었지만 API 자체 계약이 거짓이다
+* 상세:
+    - `RESTServer.handleCLIRestart` 는 응답 후 `NSApplication.terminate` 만 한다 — 주석·응답 메시지가 «launchd KeepAlive 의존» 을 전제
+    - 실측(jma, 2026-10-04): `open` 기동 인스턴스는 restart 후 프로세스 부재(8초 대기) — launchd 관리 밖이라 당연
+    - brew 서비스: Formula `keep_alive successful_exit: false` 라 정상 종료(exit 0)는 재기동 대상이 아닐 수 있다(검증 필요)
+    - 대조: 접근성 재시작은 `AccessibilityGuidePresenter.restart()` 가 brew 위임/`open` 자가 재실행을 갈라 처리한다 — 같은 판정을 쓰지 않아 갈라진 상태
+* 구현 명세:
+    - restart 경로를 `AccessibilityGuidePresenter.restart()` 와 같은 판정(BrewServiceSync 위임 → 아니면 relaunchViaOpen)으로 통일
+    - 검증: `open` 기동·brew 서비스 기동 각각 restart 후 새 PID·REST 응답 확인 · 응답 메시지에서 «launchd KeepAlive 의존» 제거
+    - paidApp 우회(prj16 `CLIAutoLaunchService.restartCLI`)는 cliApp 이 스스로 되살아나면 `autoStartIfNeeded` 가 생략하므로 그대로 둬도 무해
+* 진행 (2026-10-05, prj26 세션 — 사용자 결정 «1.1.3 에 포함»):
+    - 수정 **a36ef70**: `AppRestarter` 단일 판정(brew 서비스 → `brew services restart` 위임 / 아니면 `open` 자가 재실행) — REST `cli/restart` 와 접근성 권한 상실 재시작이 공유. 응답 메시지·openapi_v2 의 KeepAlive 전제 제거. 재생목록 24행(AppRestarterTests 3)
+    - jma red(수정 전 c899fab 바이너리): brew 관리 인스턴스 restart → 20s 프로세스 없음 + **brew 서비스까지 `none`**(`onAppStop` 이 stop 동기화) · open 기동 인스턴스 → 새 프로세스 없음. 로그 `logs/test/issue119_jma_red.log`
+    - 남은 것: jma green E2E — prj16 R1(fwarrange-3c)이 a36ef70 로 cliApp 재배포한 뒤
+
 ## Issue120: [Version] cliApp 1.1.2 → 1.1.3 bump + R1 전 행 — Issue115·116·117 출고 (등록: 2026-10-05)
 * 목적: `cli-v1.1.2` 출고 뒤 수정(Issue115 경로 검증·116 안내 중복·117 이름 탈출)을 Homebrew 로 내보낸다 — 기출고 번호 재사용 불가라 1.1.3
 * depends: prj16#Issue286
@@ -43,18 +59,6 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
-
-## Issue119: `POST /api/v2/cli/restart` 가 종료만 하고 재기동하지 않음 — «launchd KeepAlive 의존» 전제 불성립 (등록: 2026-10-05)
-* 목적: paidApp 의 «지금 재시작»(prj16#Issue282)·Daemon 재시작이 cliApp 을 되살리지 못해 «재시작» 이 사실상 «종료» 가 된다. paidApp 은 우회(종료 확인 후 `/usr/bin/open -a` 재기동)를 넣었지만 API 자체 계약이 거짓이다
-* 상세:
-    - `RESTServer.handleCLIRestart` 는 응답 후 `NSApplication.terminate` 만 한다 — 주석·응답 메시지가 «launchd KeepAlive 의존» 을 전제
-    - 실측(jma, 2026-10-04): `open` 기동 인스턴스는 restart 후 프로세스 부재(8초 대기) — launchd 관리 밖이라 당연
-    - brew 서비스: Formula `keep_alive successful_exit: false` 라 정상 종료(exit 0)는 재기동 대상이 아닐 수 있다(검증 필요)
-    - 대조: 접근성 재시작은 `AccessibilityGuidePresenter.restart()` 가 brew 위임/`open` 자가 재실행을 갈라 처리한다 — 같은 판정을 쓰지 않아 갈라진 상태
-* 구현 명세:
-    - restart 경로를 `AccessibilityGuidePresenter.restart()` 와 같은 판정(BrewServiceSync 위임 → 아니면 relaunchViaOpen)으로 통일
-    - 검증: `open` 기동·brew 서비스 기동 각각 restart 후 새 PID·REST 응답 확인 · 응답 메시지에서 «launchd KeepAlive 의존» 제거
-    - paidApp 우회(prj16 `CLIAutoLaunchService.restartCLI`)는 cliApp 이 스스로 되살아나면 `autoStartIfNeeded` 가 생략하므로 그대로 둬도 무해
 
 ## Issue114: 1.1.2 공개본 출고 테스트 발견 결함 — 단일 창 복원 판정·테스트 도구 위험·README 불일치 (등록: 2026-09-29)
 * 목적: prj5#Issue107 jma 출고 테스트(2026-09-29, release/1.1.1 `af8537b` = 공개 1.1.2) 결과 기록 — 증거 result: partial
