@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 120
+* Issue HWM: 121
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -41,6 +41,18 @@ date: 2026-04-07
 
 
 # 📕 중요
+
+## Issue121: [Bug] 복원 응답이 목표에 크게 못 미친 창도 `succeeded` 로 보고 — Issue114 best-effort 판정에 편차 상한이 없음 (등록: 2026-10-05)
+* 목적: 사용자·paidApp 이 «복원 성공» 을 믿었는데 창은 엉뚱한 위치·크기에 있다 — 1.1.2 는 같은 경로를 failed 로 보고했으므로 1.1.3 에서 보고가 거짓 쪽으로 바뀌었다 (prj16 R1 6행, fwarrange-3c 2026-10-05 발견 · peers prj26@32b054c)
+* 상세:
+    - 재현(jma): TextEdit 같은 제목 창 2개 중 1개(id 1804) 단일 창 레이아웃을 200,200 800×500 으로 복원 → 응답 `succeeded=1, matchType windowID 100`, CGWindowList 실측 200,40 1077×660 · 200,105 987×595 등 — 8초 관찰 동안 고정. Finder 창은 정확
+    - 증거(jma): `~/tdd-logs/16-r113-R6.txt` · `16-r113-R6-diag.txt` · `16-r113-R6-diag-finder.txt`
+    - 판정: `430a2ea`(Issue114 ①) `RestoreLeftover.resolve` 가 검증(3px) 실패 매칭을 편차 크기와 무관하게 `success: true` 로 확정 — 의도는 TextEdit 줄 단위 높이 스냅(수 px). 여기선 y 160px·크기 수백 px 차이
+    - 별개 원인 후보: 창이 왜 목표에 도달하지 못하는가(같은 제목 2창 · TextEdit 최소/줄단위 크기 · 위치→크기 적용 순서)
+* 구현 명세:
+    - best-effort 성공에 편차 상한(ex) 위치 ±N px·크기 ±줄 높이 수준) — 넘으면 `success: false` + 실패 사유 `verifyFailed`(actual 기하 포함)
+    - 도달 실패 원인 조사(AX set 순서·재시도 간 기하 변화)
+    - red 먼저: 목표와 큰 편차로 끝난 검증 실패는 성공으로 보고되지 않는다 · TextEdit 수 px 스냅은 여전히 성공
 
 # 📙 일반
 
