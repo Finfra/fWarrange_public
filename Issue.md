@@ -37,6 +37,7 @@ date: 2026-04-07
     - bump(8553c40 선례): `vm_bump_patch` · pbxproj `MARKETING_VERSION` ×2 · `cli/project.yml` · `cli/version-meta.yml` · Formula url 1.1.3 + sha256 자리표시
     - R1(`tdd/release.md`) 1~7·9~12행 jma · 8행은 출고 후 · 증거 `cli/_doc_work/_release/v1.1.3/release-test_1.1.3.md`(peers prj16@Issue286 hash)
     - R2·출고: release → main `--no-ff` · `recheck` · `publish` — 사용자 재확인 후
+* 결과 (2026-10-05, bump — prj16 세션): VERSION·pbxproj `MARKETING_VERSION` ×2·`cli/project.yml`·`cli/version-meta.yml`·Formula url 1.1.3 + sha256 자리표시 — 8553c40 와 같은 범위. 선행 수정 Issue114 ①(430a2ea) 포함. R1 은 jma 에서 이어 진행
 
 
 # 📕 중요
