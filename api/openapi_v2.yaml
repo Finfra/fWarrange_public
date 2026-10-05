@@ -105,6 +105,11 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ModeDetailResponse' }
+        '400':
+          description: name missing or unusable as a file name (Issue117)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
 
   /modes/{name}:
     parameters:
@@ -419,7 +424,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/FullSettingsResponse'
         '400':
-          description: Invalid body
+          description: Invalid body — or `dataDirectoryPath` refused (not under home or /Volumes; nothing is applied, Issue115)
           content:
             application/json:
               schema:
@@ -465,7 +470,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/GeneralSettingsResponse'
         '400':
-          description: Invalid body
+          description: Invalid body — or `dataDirectoryPath` refused (not under home or /Volumes; nothing is applied, Issue115)
           content:
             application/json:
               schema:
@@ -856,7 +861,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/RenameResponse'
         '400':
-          description: Invalid request
+          description: Invalid request — or newName unusable as a file name (Issue117)
           content:
             application/json:
               schema:
@@ -1025,6 +1030,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CaptureResponse'
+        '400':
+          description: name unusable as a file name (Issue117)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Capture failed
           content:
@@ -1173,8 +1184,9 @@ paths:
     post:
       summary: Restart CLI helper (Issue229_4)
       description: |
-        Restarts the fWarrangeCli helper app. The app terminates itself and relies on
-        launchd (`KeepAlive` policy) to bring it back up. Requires `X-Confirm: true` header.
+        Restarts the fWarrangeCli helper app the way it was launched (Issue119): a brew-services
+        (launchd) instance delegates to `brew services restart`; an `open`-launched instance relaunches
+        itself after it exits. The 200 response is sent first. Requires `X-Confirm: true` header.
       operationId: restartCLIV2
       tags: [CLI]
       parameters:
@@ -1347,6 +1359,10 @@ paths:
         현재 등록된 paidApp 세션의 상태 스냅샷을 반환한다. 인증 불필요.
         디버깅·지원 문의·Phase B의 2-way handshake (URL Scheme 하이재킹 감지)에서
         사용된다.
+        등록 기록이 없어도 paidApp(`kr.finfra.fWarrange`) 프로세스가 실행 중이면
+        `running` 을 반환한다 — cliApp 재시작으로 register 기록이 사라진 경우(Issue111).
+        이때 `sessionId`·`registeredAt` 은 없다(이 프로세스에 등록한 적이 없으므로).
+        등록 기록이 있으면 그것이 우선한다.
       operationId: getPaidAppStatusV2
       tags: [PaidApp]
       responses:
@@ -1476,7 +1492,15 @@ components:
       properties:
         appLanguage: { type: string, example: ko }
         dataStorageMode: { type: string, enum: [host, share] }
-        dataDirectoryPath: { type: string, nullable: true }
+        dataDirectoryPath:
+          type: string
+          nullable: true
+          description: |
+            레이아웃 저장 base 폴더(`~` 확장). 우선순위: 환경변수 `fWarrangeCli_config` > 이 값 > 기본
+            `~/Documents/finfra/fWarrangeData`. **cliApp 다음 기동부터 적용**(기존 레이아웃은 옮기지 않음).
+            `_config.yml` 은 이 값과 무관하게 설정 폴더에 남는다 (Issue108 ①).
+            홈 폴더·`/Volumes` 하위(그 자체 불가, `..`·심볼릭 링크 해소 후 판정)만 허용 — 쓰기 폴더(`{base}/{host}`·`_share`)가 base 밖을 가리켜도 거부 — 아니면 PATCH 는 400,
+            기동 시에는 설정 폴더 유지. 사용자 지정 폴더에는 레거시 루트 마이그레이션을 돌리지 않는다 (Issue115)
         launchAtLogin: { type: boolean }
         theme: { type: string, enum: [system, light, dark] }
         maxRetries: { type: integer, minimum: 0 }
@@ -1519,7 +1543,15 @@ components:
       properties:
         appLanguage: { type: string }
         dataStorageMode: { type: string, enum: [host, share] }
-        dataDirectoryPath: { type: string, nullable: true }
+        dataDirectoryPath:
+          type: string
+          nullable: true
+          description: |
+            레이아웃 저장 base 폴더(`~` 확장). 우선순위: 환경변수 `fWarrangeCli_config` > 이 값 > 기본
+            `~/Documents/finfra/fWarrangeData`. **cliApp 다음 기동부터 적용**(기존 레이아웃은 옮기지 않음).
+            `_config.yml` 은 이 값과 무관하게 설정 폴더에 남는다 (Issue108 ①).
+            홈 폴더·`/Volumes` 하위(그 자체 불가, `..`·심볼릭 링크 해소 후 판정)만 허용 — 쓰기 폴더(`{base}/{host}`·`_share`)가 base 밖을 가리켜도 거부 — 아니면 PATCH 는 400,
+            기동 시에는 설정 폴더 유지. 사용자 지정 폴더에는 레거시 루트 마이그레이션을 돌리지 않는다 (Issue115)
         launchAtLogin: { type: boolean }
         theme: { type: string, enum: [system, light, dark] }
 
@@ -1719,7 +1751,7 @@ components:
     CaptureRequest:
       type: object
       properties:
-        name: { type: string, description: Layout name (defaults to "default" if omitted) }
+        name: { type: string, description: "Layout name (defaults to \"default\" if omitted). One path component (Issue117): no '/', not empty, not '.'/'..', name + '.yml' ≤ 255 bytes — otherwise 400" }
         filterApps:
           type: array
           items: { type: string }
@@ -1873,7 +1905,7 @@ components:
     RenameRequest:
       type: object
       properties:
-        newName: { type: string }
+        newName: { type: string, description: "One path component (Issue117): no '/', not empty, not '.'/'..', name + '.yml' ≤ 255 bytes — otherwise 400" }
       required: [newName]
 
     RenameResponse:
@@ -2086,7 +2118,7 @@ components:
     ModeCreateRequest:
       type: object
       properties:
-        name: { type: string }
+        name: { type: string, description: "One path component (Issue117): no '/', not empty, not '.'/'..', name + '.yml' ≤ 255 bytes — otherwise 400" }
         icon: { type: string, default: rectangle.3.group }
         shortcut: { type: string }
         layout: { type: string }

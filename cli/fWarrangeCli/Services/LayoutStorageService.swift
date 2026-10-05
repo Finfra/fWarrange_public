@@ -13,6 +13,48 @@ protocol LayoutStorageService {
     func rename(oldName: String, newName: String) throws
 }
 
+// MARK: - Issue117: 저장 이름 검증 (레이아웃·모드 공통 단일 판정 지점)
+
+/// Layout and mode names become file names (`{dir}/{name}.yml`) — a name must stay one path component.
+enum StorageName {
+    struct Invalid: Error, CustomStringConvertible {
+        let name: String
+        let reason: String
+        var description: String { "이름 '\(name)' 사용 불가 — \(reason)" }
+    }
+
+    /// Why `name` can't be a **new** stored name, or nil (save · rename target · REST create).
+    static func rejection(_ name: String) -> String? {
+        if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "빈 이름" }
+        if let reason = escapeRejection(name) { return reason }
+        if (name + ".yml").utf8.count > 255 { return "너무 김(파일명 255바이트 초과)" }
+        return nil
+    }
+
+    /// The escape check only — for names that point at an **existing** item (load · delete ·
+    /// rename source). Older builds could store e.g. a whitespace-only name; it must stay manageable.
+    static func escapeRejection(_ name: String) -> String? {
+        if name.isEmpty { return "빈 이름" }
+        if name.contains("/") { return "'/' 포함" }
+        if name.contains("\0") { return "NUL 포함" }
+        if name == "." || name == ".." { return "'.'·'..' 불가" }
+        return nil
+    }
+
+    /// `{dir}/{name}.yml`, or throws if the name is invalid or the result leaves `dir`.
+    /// `existing: true` applies only the escape check (see `escapeRejection`).
+    static func fileURL(in dir: URL, name: String, existing: Bool = false) throws -> URL {
+        if let reason = existing ? escapeRejection(name) : rejection(name) {
+            throw Invalid(name: name, reason: reason)
+        }
+        let url = dir.appendingPathComponent("\(name).yml")
+        guard url.deletingLastPathComponent().standardizedFileURL.path == dir.standardizedFileURL.path else {
+            throw Invalid(name: name, reason: "저장 폴더 밖")
+        }
+        return url
+    }
+}
+
 // MARK: - 구현체
 
 final class YAMLLayoutStorageService: LayoutStorageService {
@@ -20,8 +62,8 @@ final class YAMLLayoutStorageService: LayoutStorageService {
 
     // MARK: - 경로 분기 (host/share 모드)
 
-    init(storageMode: DataStorageMode = .host) {
-        let baseDir = Self.resolveDefaultBaseDirectory()
+    init(storageMode: DataStorageMode = .host, baseDirectory: URL? = nil) {
+        let baseDir = baseDirectory ?? Self.resolveDefaultBaseDirectory()
 
         switch storageMode {
         case .host:
@@ -65,13 +107,136 @@ final class YAMLLayoutStorageService: LayoutStorageService {
         return defaultDir
     }
 
+    /// Base folder for layouts (Issue108 ①): env `fWarrangeCli_config` > settings `dataDirectoryPath` > config base.
+    /// `_config.yml` itself always stays in the config base — only layouts follow `dataDirectoryPath`.
+    /// Read once at launch: a changed `dataDirectoryPath` takes effect on the next start.
+    static func resolveLayoutBaseDirectory(dataDirectoryPath: String?,
+                                           configBase: URL,
+                                           envPath: String? = Env.configPath,
+                                           allowedRoots: [URL] = dataDirectoryAllowedRoots,
+                                           hostname: String = currentHostname()) -> URL {
+        if envPath != nil { return configBase }
+        guard let raw = dataDirectoryPath?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return configBase
+        }
+        let dir: URL
+        switch validateDataDirectoryPath(raw, allowedRoots: allowedRoots) {
+        case .success(let url):
+            dir = url
+        case .failure(let rejection):
+            logW("dataDirectoryPath 거부 → 기본 폴더 유지: \(rejection)")
+            return configBase
+        }
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            // files land in {base}/{hostname} and {base}/_share — validating the base alone is not enough
+            if let escaping = escapingSubfolder(of: dir, names: [hostname, "_share"]) {
+                logW("dataDirectoryPath 거부 → 기본 폴더 유지: \(DataDirectoryRejection.subfolderEscapes(escaping))")
+                return configBase
+            }
+            return dir
+        } catch {
+            logW("dataDirectoryPath 사용 불가 → 기본 폴더 유지: \(dir.path) (\(error.localizedDescription))")
+            return configBase
+        }
+    }
+
+    // MARK: - Issue115: dataDirectoryPath 검증 (단일 판정 지점)
+
+    /// Why a `dataDirectoryPath` is refused.
+    enum DataDirectoryRejection: Error, Equatable, CustomStringConvertible {
+        case notAbsolute(String)
+        case unresolvable(String)
+        case outsideAllowedRoots(String)
+        case subfolderEscapes(String)
+
+        var description: String {
+            switch self {
+            case .notAbsolute(let p): return "절대 경로가 아님: \(p)"
+            case .unresolvable(let p): return "경로를 해석할 수 없음: \(p)"
+            case .outsideAllowedRoots(let p): return "홈 폴더 또는 /Volumes 하위가 아님: \(p)"
+            case .subfolderEscapes(let p): return "쓰기 폴더가 base 밖을 가리킴: \(p)"
+            }
+        }
+    }
+
+    /// Roots a layout base may live under: the user's home and mounted volumes.
+    /// Not `/Users/Shared` — it is world-writable, so another local account could plant the
+    /// folders fWarrange writes into (Issue115 verify).
+    static var dataDirectoryAllowedRoots: [URL] {
+        [FileManager.default.homeDirectoryForCurrentUser, URL(fileURLWithPath: "/Volumes", isDirectory: true)]
+    }
+
+    /// The single check for a `dataDirectoryPath` value — used at launch and on REST PATCH.
+    /// Accepts only an absolute path (after `~`) that, with `..` folded and symlinks resolved,
+    /// lies strictly below one of `allowedRoots`. Pure: never creates anything.
+    static func validateDataDirectoryPath(_ raw: String,
+                                          allowedRoots: [URL] = dataDirectoryAllowedRoots) -> Result<URL, DataDirectoryRejection> {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let expanded = (trimmed as NSString).expandingTildeInPath
+        guard expanded.hasPrefix("/") else { return .failure(.notAbsolute(trimmed)) }
+
+        guard let candidate = canonicalPath(URL(fileURLWithPath: expanded, isDirectory: true)) else {
+            return .failure(.unresolvable(expanded))
+        }
+        let inside = allowedRoots.contains { root in
+            guard let r = canonicalPath(root), r != "/" else { return false }
+            return candidate.hasPrefix(r + "/")
+        }
+        guard inside else { return .failure(.outsideAllowedRoots(candidate)) }
+        return .success(URL(fileURLWithPath: candidate, isDirectory: true))
+    }
+
+    /// Lexically folds `.`/`..`, then resolves symlinks of the deepest existing ancestor
+    /// (`realpath`) and re-appends the not-yet-existing tail. nil if an existing item can't be resolved
+    /// (ex) a dangling symlink — creating "through" it must not be possible).
+    private static func canonicalPath(_ url: URL) -> String? {
+        let fm = FileManager.default
+        var existing = url.standardizedFileURL
+        var tail: [String] = []
+        // attributesOfItem does not follow symlinks — a dangling link counts as existing
+        while (try? fm.attributesOfItem(atPath: existing.path)) == nil {
+            guard existing.path != "/" else { return nil }
+            tail.insert(existing.lastPathComponent, at: 0)
+            existing = existing.deletingLastPathComponent()
+        }
+        guard let resolved = realpath(existing.path, nil) else { return nil }
+        defer { free(resolved) }
+        var path = String(cString: resolved)
+        for component in tail {
+            path = (path as NSString).appendingPathComponent(component)
+        }
+        return path
+    }
+
+    /// The first of `names` under `base` whose resolved path is not strictly inside `base`
+    /// (ex) a symlinked host folder), or nil.
+    static func escapingSubfolder(of base: URL, names: [String]) -> String? {
+        guard let root = canonicalPath(base) else { return base.path }
+        for name in names {
+            let sub = base.appendingPathComponent(name)
+            guard let resolved = canonicalPath(sub), resolved.hasPrefix(root + "/") else { return sub.path }
+        }
+        return nil
+    }
+
+    /// Host-mode preparation of a layout base at launch (Issue166_2·3).
+    /// The legacy root migration moves every root `*.yml` into the host folder — that is only
+    /// meaningful for fWarrange's own config folder. A user-chosen base may hold foreign yml
+    /// files, so it gets no migration (Issue115). `_share` lives in fWarrange's own subfolder.
+    static func prepareHostLayoutBase(_ layoutBase: URL, configBase: URL, hostname: String = currentHostname()) {
+        if layoutBase.standardizedFileURL.path == configBase.standardizedFileURL.path {
+            migrateRootDataIfNeeded(baseDir: layoutBase, hostname: hostname)
+        }
+        copyShareDataIfNeeded(baseDir: layoutBase, hostname: hostname)
+    }
+
     // MARK: - Issue166_3: 마이그레이션 (루트 yml → hostname 폴더)
 
     /// 기존 루트 yml 파일을 hostname 폴더로 마이그레이션
-    static func migrateRootDataIfNeeded() {
-        let baseDir = resolveDefaultBaseDirectory()
-
-        let hostname = currentHostname()
+    /// - Parameters: injectable for tests — defaults are the real base folder and host name
+    static func migrateRootDataIfNeeded(baseDir: URL = resolveDefaultBaseDirectory(),
+                                        hostname: String = currentHostname()) {
         let hostnameDir = baseDir.appendingPathComponent(hostname)
         let fm = FileManager.default
 
@@ -79,14 +244,16 @@ final class YAMLLayoutStorageService: LayoutStorageService {
         guard !fm.fileExists(atPath: hostnameDir.path) else { return }
 
         // 루트에 .yml 파일이 있는지 확인
-        guard let contents = try? fm.contentsOfDirectory(at: baseDir, includingPropertiesForKeys: nil),
-              contents.contains(where: { $0.pathExtension == "yml" }) else { return }
+        // `_` prefixed files (`_config.yml`) are settings, not layouts — they stay at the root (Issue108 ②)
+        guard let contents = try? fm.contentsOfDirectory(at: baseDir, includingPropertiesForKeys: nil) else { return }
+        let layoutFiles = contents.filter { $0.pathExtension == "yml" && !$0.lastPathComponent.hasPrefix("_") }
+        guard !layoutFiles.isEmpty else { return }
 
         // hostname 폴더 생성
         try? fm.createDirectory(at: hostnameDir, withIntermediateDirectories: true)
 
         // .yml 파일 이동
-        for file in contents where file.pathExtension == "yml" {
+        for file in layoutFiles {
             let dest = hostnameDir.appendingPathComponent(file.lastPathComponent)
             try? fm.moveItem(at: file, to: dest)
         }
@@ -97,10 +264,8 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     // MARK: - Issue166_2: _share 복사 (host 모드 최초 실행)
 
     /// host 모드 최초 실행 시 _share에서 데이터 복사
-    static func copyShareDataIfNeeded() {
-        let baseDir = resolveDefaultBaseDirectory()
-
-        let hostname = currentHostname()
+    static func copyShareDataIfNeeded(baseDir: URL = resolveDefaultBaseDirectory(),
+                                      hostname: String = currentHostname()) {
         let hostnameDir = baseDir.appendingPathComponent(hostname)
         let shareDir = baseDir.appendingPathComponent("_share")
         let fm = FileManager.default
@@ -308,14 +473,14 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     // MARK: - CRUD
 
     func save(name: String, windows: [WindowInfo]) throws {
+        let fileURL = try StorageName.fileURL(in: dataDirectory, name: name)
         try FileManager.default.createDirectory(at: dataDirectory, withIntermediateDirectories: true)
-        let fileURL = dataDirectory.appendingPathComponent("\(name).yml")
         let yaml = serializeToYAML(windows)
         try yaml.write(to: fileURL, atomically: true, encoding: .utf8)
     }
 
     func load(name: String) throws -> Layout {
-        let fileURL = dataDirectory.appendingPathComponent("\(name).yml")
+        let fileURL = try StorageName.fileURL(in: dataDirectory, name: name, existing: true)
         let content = try String(contentsOf: fileURL, encoding: .utf8)
         let windows = parseYAML(content)
         let attrs = try FileManager.default.attributesOfItem(atPath: fileURL.path)
@@ -361,7 +526,7 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     }
 
     func delete(name: String) throws {
-        let fileURL = dataDirectory.appendingPathComponent("\(name).yml")
+        let fileURL = try StorageName.fileURL(in: dataDirectory, name: name, existing: true)
         try FileManager.default.removeItem(at: fileURL)
     }
 
@@ -374,8 +539,8 @@ final class YAMLLayoutStorageService: LayoutStorageService {
     }
 
     func rename(oldName: String, newName: String) throws {
-        let oldURL = dataDirectory.appendingPathComponent("\(oldName).yml")
-        let newURL = dataDirectory.appendingPathComponent("\(newName).yml")
+        let oldURL = try StorageName.fileURL(in: dataDirectory, name: oldName, existing: true)
+        let newURL = try StorageName.fileURL(in: dataDirectory, name: newName)
         try FileManager.default.moveItem(at: oldURL, to: newURL)
     }
 }

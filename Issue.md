@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 110
+* Issue HWM: 121
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -20,15 +20,241 @@ date: 2026-04-07
 | Issue72_6 — cliApp(non-sandbox)에서 CGS 계열 비공개 API 사용 합의 (2026-05-16)        | Issue72_6 본문                                                             |
 
 # 🌱 이슈후보
-
-1. `.claude/commands/deploy.md` 가 `brew publish` 를 🚧 TODO 로 표시하나 `cli/_tool/fwc-deploy-brew.sh` 에 `cmd_publish`(gh release + tap push)가 이미 구현됨 (prj3#Issue741 R2 배선 중 발견)
-
-1. `CLAUDE.md` 에 적힌 스킬 `build`·`deploy`·`brew-apply` 가 `.claude/skills/` 에 없음 · `README.md` 버전 1.0.2 표기 낡음(VERSION 1.1.1) (prj3#Issue717 배포용 TDD 적용 중 발견)
-1. XCTest 호스트가 기동 시 `BrewServiceSync.onAppStart()` 를 그대로 탄다 — 실 brew 서비스 조회(멈춰 있으면 `brew services start` handoff 까지)로 격리(#11) 결손 + 동기 `waitUntilExit` 중첩 런루프 안에서 테스트가 돌면 완료 후 호스트가 종료되지 않음(경쟁, 4/8회). `XCTestConfigurationFilePath` 가드 후보 · 진단 `cli/_doc_work/debug_TECH.md` (Issue105 중 발견)
+1. **[Observer 패턴] 배포 workflow 에 3+ dry-run 검증 단계 반복 패턴 — instinct 파일 생성 대기** (session d2d223aa-dfa6-4be8-9b7b-dd59c70126d2 관찰)
+   - 패턴: `fwc-deploy-brew.sh` 와 `fpm-deploy-record.sh` 모두 `--dry-run` 플래그 사용 + 다단계 Step 0~8 검증 반복
+   - 의도: `_public` 의 instinct_deploy-dry-run-validation-gate.md + instinct_deploy-multistage-validation.md 작성
+   - 장애: 타 prj memory 경로에 대한 쓰기 권한 제약(위임 범위) — Issue.md 에 이슈 등록만 수행, memory 파일 작성은 사용자 몫으로 미룸
 
 # 🚧 진행중
 
-## Issue107: cliApp brew·npm 출고 R1 중단 — 기출고 `cli-v1.1.1` 번호 충돌·jma 화면 잠김 (등록: 2026-09-28)
+## Issue120: [Version] cliApp 1.1.2 → 1.1.3 bump + R1 전 행 — Issue115·116·117 출고 (등록: 2026-10-05)
+* 목적: `cli-v1.1.2` 출고 뒤 수정(Issue115 경로 검증·116 안내 중복·117 이름 탈출)을 Homebrew 로 내보낸다 — 기출고 번호 재사용 불가라 1.1.3
+* depends: prj16#Issue286
+* 상세:
+    - 사용자 결정(2026-10-05): paidApp 1.1.2 미제출 → 1.1.3 락스텝 진행. 공개 출고(태그·release·tap push)는 직전에 재확인
+    - R1 사전 점검(1.1.2, `527fa22`) 7행 통과 — `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_r1pre-2026.10.04.md`
+* 구현 명세:
+    - bump(8553c40 선례): `vm_bump_patch` · pbxproj `MARKETING_VERSION` ×2 · `cli/project.yml` · `cli/version-meta.yml` · Formula url 1.1.3 + sha256 자리표시
+    - R1(`tdd/release.md`) 1~7·9~12행 jma · 8행은 출고 후 · 증거 `cli/_doc_work/_release/v1.1.3/release-test_1.1.3.md`(peers prj16@Issue286 hash)
+    - R2·출고: release → main `--no-ff` · `recheck` · `publish` — 사용자 재확인 후
+* 결과 (2026-10-05, bump — prj16 세션): VERSION·pbxproj `MARKETING_VERSION` ×2·`cli/project.yml`·`cli/version-meta.yml`·Formula url 1.1.3 + sha256 자리표시 — 8553c40 와 같은 범위. 선행 수정 Issue114 ①(430a2ea) 포함. R1 은 jma 에서 이어 진행
+
+
+# 📕 중요
+
+# 📙 일반
+
+## Issue114: 1.1.2 공개본 출고 테스트 발견 결함 — 단일 창 복원 판정·테스트 도구 위험·README 불일치 (등록: 2026-09-29)
+* 목적: prj5#Issue107 jma 출고 테스트(2026-09-29, release/1.1.1 `af8537b` = 공개 1.1.2) 결과 기록 — 증거 result: partial
+* 상세:
+    - ① 단일 창 레이아웃을 다른 위치에서 복원하면 `noMatch`/`windowNotFound`·succeeded 0 보고, 실제로는 근사 이동 — 3회 재현(prj16#Issue283 ②). 1.1.1 부터인지는 미확인
+    - ② 1.1.2 공개본에 남은 기지 결함: Issue108 ②(클린 설치 첫 기동 `_config.yml` 이 호스트 폴더로 이동 → paidApp 목록에 `_config` 레이아웃) · Issue111(cliApp 재기동 뒤 `not_running`) · Issue112(publish dry-run 요약 거짓 ✅) — develop 수정분이 1.1.2 에 없다
+    - ③ `fwc-test.sh` API 단계 `delete-all` 이 실제 사용자 데이터 폴더 레이아웃을 전부 지운다 · API·CMD 단계를 응답 내용이 아니라 실행 건수로 PASS 판정
+    - ④ `cli/README.md` 불일치 — v1 «maintained» 인데 실제 410 · «brew services 불필요» 인데 Formula 에 service 정의 · 수동 기동 예시에 개발 경로 `/Applications/_nowage_app/`
+    - ⑤ `jma-fwarrange-deploy.sh` 기본값이 jm4→jma rsync 라 jma 의 release 소스를 jm4 develop 으로 덮는다(이번엔 `--no-sync` 로 우회)
+* 증거: `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_jma-2026.09.29.md` · prj16 `_doc_work/_release/v1.1.3/jma-logs_2026.09.29/`
+* 결과 (2026-10-05, ① 수정 — prj16 세션):
+    - 원인: 창은 매칭·이동했으나 3px 검증 실패(TextEdit 은 높이를 줄 단위로 맞춤) → 재시도 대상 → 2회차도 성공 0 → **조기 종료** `break` 가 마지막 시도 best-effort 분기를 건너뛰어 매칭 정보가 버려지고 `noMatch`/score 0 → REST `windowNotFound`. 다창 레이아웃은 회차마다 성공이 있어 조기 종료에 안 걸림
+    - 수정: 검증 실패 매칭을 회차별로 기록하고 루프 종료 뒤 `RestoreLeftover.resolve` 한 곳에서 판정 — 마지막 시도·조기 종료 모두 matchType·score 유지 best-effort. 기존 `isLastAttempt` 분기 2곳(병렬·순차) 제거
+    - 검증: 재생목록 24행 `verify-failed-best-effort` — red(컴파일 실패) → jma XCTest 127/127 passed. E2E(TextEdit 단일 창 REST 복원)는 1.1.3 R1 6행에서 확인
+
+# 📗 선택
+
+## Issue118: [Test] `fwc-run-xcode.sh` 가 Xcode 에 열린 문서가 없는 차가운 상태에서 workspace 로드 60s 대기를 넘겨 `fwc-test.sh` 가 빌드 전에 실패 (등록: 2026-10-04)
+* 목적: R1 4행(`app-bundle-all-clear`)이 코드와 무관하게 환경 상태로 실패한다 — 출고 테스트마다 재현 가능
+* 상세:
+    - 재현(jma 2026-10-04 R1 사전 점검): Xcode 실행 중·열린 문서 0 → `fwc-test.sh` Step 2 `[open] fWarrangeCli.xcodeproj 오픈 중...` → `execution error: Xcode workspace did not finish loading within 60s (-2700)` → `❌ 빌드 실패 — 중단`
+    - 우회: 대상 프로젝트를 Xcode 에 미리 열고 로드 완료 후 실행 → ALL CLEAR 6/0 (`cli/_doc_work/_release/v1.1.2/release-test_1.1.2_r1pre-2026.10.04.md` 4행)
+    - 연관: Issue114 ③(`fwc-test.sh` delete-all 이 실 데이터 폴더를 지움)
+* 구현 명세:
+    - 로드 대기를 문서 유무·Xcode 기동 직후 여부에 따라 연장하거나, `loaded` 폴링 상한을 설정값으로
+    - red 먼저: Xcode 문서 0 상태에서 `fwc-run-xcode.sh build-deploy` 가 성공하는지(jma)
+
+# ✅ 완료
+
+## Issue121: [Bug] 복원 응답이 목표에 크게 못 미친 창도 `succeeded` 로 보고 — Issue114 best-effort 판정에 편차 상한이 없음 (등록: 2026-10-05, 완료: 2026-10-05, Hash: 4d0da35) ✅
+* 목적: 사용자·paidApp 이 «복원 성공» 을 믿었는데 창은 엉뚱한 위치·크기에 있다 — 1.1.2 는 같은 경로를 failed 로 보고했으므로 1.1.3 에서 보고가 거짓 쪽으로 바뀌었다 (prj16 R1 6행, fwarrange-3c 2026-10-05 발견 · peers prj26@32b054c)
+* 상세:
+    - 재현(jma): TextEdit 같은 제목 창 2개 중 1개(id 1804) 단일 창 레이아웃을 200,200 800×500 으로 복원 → 응답 `succeeded=1, matchType windowID 100`, CGWindowList 실측 200,40 1077×660 · 200,105 987×595 등 — 8초 관찰 동안 고정. Finder 창은 정확
+    - 증거(jma): `~/tdd-logs/16-r113-R6.txt` · `16-r113-R6-diag.txt` · `16-r113-R6-diag-finder.txt`
+    - 판정: `430a2ea`(Issue114 ①) `RestoreLeftover.resolve` 가 검증(3px) 실패 매칭을 편차 크기와 무관하게 `success: true` 로 확정 — 의도는 TextEdit 줄 단위 높이 스냅(수 px). 여기선 y 160px·크기 수백 px 차이
+    - 별개 원인 후보: 창이 왜 목표에 도달하지 못하는가(같은 제목 2창 · TextEdit 최소/줄단위 크기 · 위치→크기 적용 순서)
+* 구현 명세:
+    - best-effort 성공에 편차 상한(ex) 위치 ±N px·크기 ±줄 높이 수준) — 넘으면 `success: false` + 실패 사유 `verifyFailed`(actual 기하 포함)
+    - 도달 실패 원인 조사(AX set 순서·재시도 간 기하 변화)
+    - red 먼저: 목표와 큰 편차로 끝난 검증 실패는 성공으로 보고되지 않는다 · TextEdit 수 px 스냅은 여전히 성공
+* 결과 (2026-10-05, **4d0da35** · 재생목록 번호 정리 c4c23a7):
+    - 검증(3px) 실패 시 실측 프레임 기록(`measure`) · `RestoreLeftover.isNearMiss`(±24px, 줄 단위 스냅)만 best-effort 성공 · 그 밖·측정 불가는 매칭 정보 유지한 실패 → REST `failures[].reason = axOperationFailed`(enum 무변경), Moom/noMatch 로 떨어지지 않음
+    - TDD: 재생목록 26행 RestoreBestEffortBoundTests red(큰 편차·측정 불가 성공 처리) → green · Issue114 테스트는 스냅 기하 명시 · jm4·**jma XCTest 136/136**
+    - jma E2E(prj16 R1 6행 재실행, fwarrange-3c, 15:32, c4c23a7 정식 서명 brew): Finder 4/4 succeeded·편차 0 · TextEdit moved 2회 `succeeded=0`·`axOperationFailed`·windowID 100 유지(실측 편차 45·235) · orig 2회 succeeded(편차 15·21 = 근사 기준 내) → **8/8 응답이 실측과 일치, 성공 오보 0**. 로그 jma `~/tdd-logs/16-r121-*.txt`
+    - 남은 것(별도): TextEdit 이 목표 기하에 도달하지 못하는 원인 — 같은 제목 2창·줄 단위 크기·적용 순서 조사
+
+## Issue119: `POST /api/v2/cli/restart` 가 종료만 하고 재기동하지 않음 — «launchd KeepAlive 의존» 전제 불성립 (등록: 2026-10-05, 완료: 2026-10-05, Hash: a36ef70, 9b842b3, 32b054c) ✅
+* 목적: paidApp 의 «지금 재시작»(prj16#Issue282)·Daemon 재시작이 cliApp 을 되살리지 못해 «재시작» 이 사실상 «종료» 가 된다. paidApp 은 우회(종료 확인 후 `/usr/bin/open -a` 재기동)를 넣었지만 API 자체 계약이 거짓이다
+* 상세:
+    - `RESTServer.handleCLIRestart` 는 응답 후 `NSApplication.terminate` 만 한다 — 주석·응답 메시지가 «launchd KeepAlive 의존» 을 전제
+    - 실측(jma, 2026-10-04): `open` 기동 인스턴스는 restart 후 프로세스 부재(8초 대기) — launchd 관리 밖이라 당연
+    - brew 서비스: Formula `keep_alive successful_exit: false` 라 정상 종료(exit 0)는 재기동 대상이 아닐 수 있다(검증 필요)
+    - 대조: 접근성 재시작은 `AccessibilityGuidePresenter.restart()` 가 brew 위임/`open` 자가 재실행을 갈라 처리한다 — 같은 판정을 쓰지 않아 갈라진 상태
+* 구현 명세:
+    - restart 경로를 `AccessibilityGuidePresenter.restart()` 와 같은 판정(BrewServiceSync 위임 → 아니면 relaunchViaOpen)으로 통일
+    - 검증: `open` 기동·brew 서비스 기동 각각 restart 후 새 PID·REST 응답 확인 · 응답 메시지에서 «launchd KeepAlive 의존» 제거
+    - paidApp 우회(prj16 `CLIAutoLaunchService.restartCLI`)는 cliApp 이 스스로 되살아나면 `autoStartIfNeeded` 가 생략하므로 그대로 둬도 무해
+* 진행 (2026-10-05, prj26 세션 — 사용자 결정 «1.1.3 에 포함»):
+    - 수정 **a36ef70**: `AppRestarter` 단일 판정(brew 서비스 → `brew services restart` 위임 / 아니면 `open` 자가 재실행) — REST `cli/restart` 와 접근성 권한 상실 재시작이 공유. 응답 메시지·openapi_v2 의 KeepAlive 전제 제거. 재생목록 24행(AppRestarterTests 3)
+    - jma red(수정 전 c899fab 바이너리): brew 관리 인스턴스 restart → 20s 프로세스 없음 + **brew 서비스까지 `none`**(`onAppStop` 이 stop 동기화) · open 기동 인스턴스 → 새 프로세스 없음. 로그 `logs/test/issue119_jma_red.log`
+* 결과 (2026-10-05, **a36ef70** → **9b842b3** → **32b054c**):
+    - 1차 a36ef70(in-app 판정 통일)은 jma green **실패** — 진단: 앱이 띄운 자식(`brew services restart`·`sh` 재실행 헬퍼)이 앱/서비스 종료와 함께 정리됨(`issue119_jma_diag.log`)
+    - 9b842b3: 재기동을 앱 job 밖 독립 launchd job(`launchctl submit`)에 위임 — 현재 PID 종료 대기 → brew 관리면 `launchctl kickstart gui/<uid>/<XPC_SERVICE_NAME>`, 아니면 `open <bundle>` → job 자기 제거. 헬퍼 예약 실패 시 종료하지 않음. jma: open 기동 PASS · brew 관리 여전히 FAIL(svc none)
+    - 32b054c: **진짜 원인 — 종료 시 brew stop 판정 갈림**. `AppDelegate.applicationWillTerminate`(Issue51)가 handoff 가드 없이 `brew services stop --keep` 로 서비스를 unload → `BrewServiceSync.terminateStopArguments` 단일 판정(재시작 중 nil)으로 통일. 접근성 «지금 재시작»(Issue96)도 같은 경로라 함께 해소
+    - TDD: 재생목록 24행 AppRestarterTests 6(계획 스크립트 2 · 예약→종료 순서 · 예약 실패 시 생존 · 종료 동기화 가드 red→green · REST 경로) · jm4 개발 확인 133/133
+    - jma E2E(32b054c 정식 서명): brew 관리 restart 2회 1s·9s 새 PID·REST 200·svc started·XPC 유지 · open 기동 2s 새 PID · 헬퍼 job 잔존 0 · 원복(started·granted·opt-out 키 없음). red(c899fab): 두 방식 모두 미복귀 + svc none — 로그 `cli/_doc_work/_release/v1.1.3/logs/r1_2026.10.05/issue119_*`
+    - 공유 jma 는 prj16 R1(fwarrange-3c)과 `/tmp/jma-xcode.lock` mkdir 잠금으로 교대 사용
+
+## Issue117: [Security] 레이아웃 이름에 `../` 가 들어가면 base 밖에 `*.yml` 쓰기·삭제·이름변경 가능 — 이름 검증 부재 (등록: 2026-10-04, 완료: 2026-10-04, Hash: 38898c6, 20c9d38) ✅
+* 목적: Issue115 가 `dataDirectoryPath` 로 base 를 옮기는 길을 막았지만, 같은 공격자(토큰 없는 REST, CIDR 만 검사)가 레이아웃 **이름**으로 같은 결과를 얻는다 (Issue115 적대적 검증 2026-10-04 — 기존 결함이라 범위 밖으로 분리)
+* 상세:
+    - `LayoutStorageService` 의 save·load·delete·rename 이 `dataDirectory.appendingPathComponent("\(name).yml")` — 이름 검증이 없다(최초 커밋 48e01d7 부터)
+    - URL 경로는 `/` 로 쪼개 `..` 단독만 들어오지만, JSON body 의 이름(`POST /capture {name}`·`PUT /layouts/{name} {newName}` 등)은 `../../x` 를 그대로 받는다 → `{data}/../../x.yml` 쓰기·이동
+* 구현 명세:
+    - 이름 검증 단일 지점: 빈 값·`/`·`\0`·`..` 구성요소·선행 `.` 거부, 길이 상한. REST 는 400, 저장소 계층도 방어(이중)
+    - red 먼저: `../escape` 이름으로 save·rename 하면 dataDirectory 밖에 파일이 생기지 않는다
+    - openapi_v2 의 name 제약 기술 동기
+* 결과 (2026-10-04, **38898c6** · 후속 **20c9d38** · release/1.1.1 병합 23873c2):
+    - `StorageName` 단일 판정(`LayoutStorageService.swift`): 새 이름(save·rename 대상·REST 생성)은 `rejection`(빈/공백·`/`·NUL·`.`/`..`·255바이트 초과), 기존 항목(load·delete·rename 원본)은 `escapeRejection` 만 + `fileURL` 이 결과 경로가 저장 폴더 밖이면 throw
+    - 범위 확대: 같은 결함이 **Mode 저장소**(`ModeStorageService` — `{base}/{host}/modes/{name}.yml`)에도 있어 함께 수정. REST 400: capture `name` · layout rename `newName` · mode 생성 `name`. openapi_v2 동기
+    - 적대적 검증(우회·회귀 리뷰 + 지적별 반박): 우회 0건 · 회귀 1건(nit — 이전 버전의 공백 이름 항목이 열기·삭제·이름변경 불가) → 20c9d38 에서 기존 항목은 탈출 판정만으로 분리
+    - TDD: 재생목록 23행 red(4테스트 9단언 — 실제로 폴더 밖 쓰기·이동·삭제 재현) + 후속 red(3) → green · jm4·**jma XCTest 124/124**
+    - jma `/run`(brew local) FAIL 0 · REST E2E: `../` 이름 capture·mode 생성·rename 400, 일반 이름 capture→rename→delete 200, 잔여 파일 0. E2E capture 가 비어 있던 `defaultLayoutName` 을 테스트 이름으로 채워 원복(키 제거)함 — capture 의 «기본값 없으면 새 이름 지정»·rename/delete 가 기본값을 따라가지 않는 동작은 기존 동작(범위 밖)
+
+## Issue116: [Bug] 접근성 시작 안내 `show()` 에 중복 표시 가드가 없어, Issue110 이후 안내 창이 겹쳐 뜰 수 있음 (등록: 2026-10-04, 완료: 2026-10-04, Hash: d079be1, fb4cbbd) ✅
+* 목적: Issue110 이 안내를 run loop 블록(`RunLoop.main.perform(inModes: [.common])`)으로 옮기면서, 열린 안내의 모달 루프 안에서 다음 안내가 실행된다 — 예전엔 직렬 메인 큐가 자연히 하나씩만 띄웠다 (ultrareview 2026-10-03 — nit)
+* 상세:
+    - `isPresenting` 가드는 `showPermissionLost()` 에만 있고 `show(windowManager:)` 는 확인·설정 둘 다 안 한다(`AccessibilityGuidePresenter.swift:24-61`)
+    - 결과: `show()` 연속 호출, 또는 시작 안내와 권한 상실 안내가 겹치면 알림이 쌓인다
+* 구현 명세:
+    - 두 안내가 같은 가드를 공유 — 접근성 안내는 한 번에 하나
+    - 테스트 시임: 모달 실행(`runModal`)을 주입 가능하게, 설정 열기 동작을 클로저로 분리
+    - red 먼저: 안내 표시 중(중첩 modal-panel run loop) 다시 `show()` 를 부르면 알림이 1개만 뜬다 — 재생목록 22행
+* 결과 (2026-10-04, **d079be1** · 테스트 보강 **fb4cbbd** · release/1.1.1 병합 805b50a·8e085fd):
+    - `scheduleExclusive`: 시작 안내·권한 상실 안내가 같은 `isPresenting` 가드 — 접근성 안내는 한 번에 하나. 시임 `runModal` 주입 · `show(openSettings:)` 분리
+    - TDD: 재생목록 22행 red(알림 3개 겹침 — 리뷰 지적 실재 확인) → green. 테스트 감사 관찰 반영 fb4cbbd: 중첩 요청 처리 확인 감시 블록(공허한 통과 방지)
+    - 검증: jm4 XCTest 117/117 · jma XCTest 117/117. 실기 E2E 미실시 — jma 접근성 `granted` 라 안내가 뜨지 않음(TCC 리셋은 사람 재승인 필요해 생략)
+
+## Issue115: [Security] `dataDirectoryPath` 가 경로 검증 없이 레이아웃 base 가 됨 — 토큰 없는 REST PATCH 로 임의 폴더 지정·첫 기동 마이그레이션이 그 폴더의 `*.yml` 을 옮김 (등록: 2026-10-04, 완료: 2026-10-04, Hash: f4d83b5, 2d88660) ✅
+* 목적: Issue108 ① 이후 `dataDirectoryPath` 가 실제로 쓰이게 되면서, 검증 없는 경로가 파일시스템 동작(폴더 생성·yml 이동·저장·삭제)으로 이어진다 (ultrareview 2026-10-03, release/1.1.1 `f97926d` — normal)
+* 상세:
+    - `resolveLayoutBaseDirectory()`(`LayoutStorageService.swift:71-86`)는 trim·`~` 확장 뒤 `createDirectory(withIntermediateDirectories: true)` 만 한다 — 홈 밖·시스템 폴더·심볼릭 링크 우회를 거르지 않는다
+    - 값은 `PATCH /api/v2/settings`·`/settings/general` 로 바뀐다(`RESTServer.swift:730`). REST 는 인증 토큰이 없고 CIDR 만 본다 — `allowExternalAccess` 를 켜면 허용 대역 누구나 바꿀 수 있다(기본 false, 127.0.0.1)
+    - 코드 판독 추가 발견: 다음 기동 때 `AppState` 가 그 base 에 `migrateRootDataIfNeeded()` 를 돌려 **루트의 `_` 아닌 `*.yml` 전부를 `<base>/<host>/` 로 옮긴다** — 사용자가 정상 선택한 일반 폴더(ex) 동기화 폴더)에서도 남의 yml 이 옮겨지고, 이후 delete-all 대상이 된다. 레거시 마이그레이션(Issue166_3)은 기본 설정 폴더에만 의미가 있다
+* 구현 명세:
+    - 검증 단일 지점 `YAMLLayoutStorageService.validateDataDirectoryPath` — 절대 경로(`~` 확장 후), `..` 정규화 + 존재하는 조상의 심볼릭 링크 해소 뒤 **홈 디렉토리 또는 `/Volumes` 의 하위**(그 자체는 불가)만 허용
+    - 기동 시: 거부되면 경고 로그 후 설정 폴더 유지(`resolveLayoutBaseDirectory`)
+    - PATCH 시: 거부되면 `400` — 디스크에 저장하지 않는다. openapi_v2 동기
+    - 레거시 루트 마이그레이션은 레이아웃 base 가 설정 폴더일 때만 돈다(`_share` 복사는 fWarrange 소유 하위 폴더라 유지)
+    - red 먼저: ① 허용 루트 밖(`/private/tmp`)·심볼릭 링크 우회 경로가 base 로 채택됨 ② PATCH 검증이 거부 사유를 내지 않음 ③ 사용자 지정 base 의 남의 `*.yml` 이 호스트 폴더로 옮겨짐 — 재생목록 21행
+* 결과 (2026-10-04, **f4d83b5** · 후속 **2d88660** · release/1.1.1 병합 3146b1b·6ba8487):
+    - `validateDataDirectoryPath` 단일 판정: `~` 확장 → 절대 경로 → `..` 정규화 + 존재 조상 `realpath` 뒤 **홈·`/Volumes` 의 엄격한 하위**만. 기동 시 거부 → 설정 폴더 유지 · PATCH `/settings`·`/settings/general` 거부 → 400(일부도 적용 안 함) · openapi_v2 동기
+    - 레거시 루트 마이그레이션은 레이아웃 base == 설정 폴더일 때만(`prepareHostLayoutBase`)
+    - 적대적 검증(관점별 리뷰 4 + 지적별 반박) 후속 2d88660: 실제 쓰기 폴더 `{base}/{host}`·`_share` 가 base 밖(심볼릭 링크)을 가리키면 거부 · `/Users/Shared`(world-writable — 다른 계정이 호스트 폴더를 심을 수 있음) 허용 철회
+    - TDD: 재생목록 21행 red(신규 6테스트 14단언 + 후속 2) → green · jm4 XCTest 117/117 · **jma XCTest 117/117**
+    - jma E2E(실행 중 cliApp, release 트리): 허용 밖 4종(`/private/tmp`·`/Volumes/../etc`·상대·`/`) 400 + 폴더 미생성·`_config.yml` 미기록·동반 필드(`theme`) 미적용 · 허용 경로 200 → 원값(null) 복원
+    - jma `/run`(brew local, 2026-10-04): 1차는 brew install 거부 — jma CLT 26.6 ↔ Xcode 27.0, 배포 중 Homebrew 자동 갱신(8b92a1a)이 CLT 일치를 요구(9/28 은 같은 조합으로 통과). 사람이 CLT 27.0 설치 후 재실행 → `fwarrange-cli 1.1.2` `started` · 정식 서명(Apple Development) · 접근성 granted · PATCH `/private/tmp` **400**
+    - 분리 등록: 레이아웃 이름 `../` 경로 탈출(기존 결함, high) → **Issue117** · paidApp 400 뒤 거부 경로 표시 → **prj16#Issue285** · 기각: 업그레이드 시 저장값 무시(a30f5d0 미출시라 해당 없음)·개행 값(기존 직렬화, 거부 시 설정 폴더로 안전 귀결)
+
+## Issue113: [TDD] 재생목록 풀 재실행 — 전 목표 회귀 (common#Issue108 웨이브) (등록: 2026-09-29, 완료: 2026-09-29, Hash: e7e1685) ✅
+* 목적: 사용자 지시(common#Issue108) — TDD 대상 전 prj 재생목록 풀 실행. 재생목록은 20/20 ✅ 이므로 현 HEAD 가 여전히 green 인지 회귀 확인하고 red 는 고친다
+* 상세:
+    - 대상: [tdd/playlist.md](tdd/playlist.md) ✅ 20행 (⬜ 행 없음) · 러너 전용 스크립트 없음 → 실행 열 그대로
+    - 제약(웨이브 승계): 빌드성은 jma 전용·공용 잠금 `/tmp/jma-xcode.lock` + 300초 워치독 · jm4 는 가벼운 것만 · `pkill -f`·push·worktree 금지
+* 구현 명세:
+    - TDD 해당 없음: 회귀 재실행이며 red 가 나오지 않아 수정 대상 없음
+* 결과 (2026-09-29, HEAD `48167f7`):
+    - jma: HEAD 를 `git bundle` 로 `/tmp/fwc-tdd-src` 에 격리 클론(jma 기존 사본·설치본 무접촉) → GUI tmux 에서 잠금 획득 후 `xcodebuild build-for-testing` rc 0 → `test-without-building -testPlan fWarrangeCli` **108/108 passed, 0 failures** (15 스위트 — TDDPlaylistTests·BrewHandoffTests·OfficialBuildMarkerTests·AccessibilityGuideSchedulingTests 등) · `fwc-deploy-brew-test.sh --summary` PASS 1 (기출고 cli-v1.1.2 에서 빌드 전 중단)·PASS 2 (미실행 4단계 ⏭, 가짜 버전 9.9.354) · 00:45:33~00:46:23
+    - jm4: `fwc-deploy-brew-test.sh` (check 1, xcodebuild 스텁·읽기 전용) PASS 1
+    - 미실행: 9행 `fwc-test.sh` — `kill.sh` 가 `pkill -9 -f "MacOS/fWarrangeCli"` 를 부르고 jma 설치본을 Debug 로 교체한다. 웨이브 제약과 충돌해 돌리지 않았고, 9행 성질(기본값 시드)은 XCTest `testMissingConfigIsSeededWithDefaults` 로 확인
+    - red → fix: 없음 · 로그 `logs/test/tdd-full_issue108_jma_20260929.log` (로컬, gitignored)
+
+## Issue110: [Bug] 접근성 미승인 기동 시 `AccessibilityGuidePresenter` 모달(`NSAlert runModal`)이 메인 스레드를 잡아 REST v2 가 무응답 (등록: 2026-09-28, 완료: 2026-09-28, Hash: 7b56aff) ✅
+* 목적: 데몬의 REST 가 사람이 안내 창을 닫을 때까지 멈춘다 — paidApp·스크립트가 레이아웃 조회부터 막힌다 (1.1.2 출고 R1 2단계 원복 중 발견)
+* 상세:
+    - 재현(jma 2026-09-28): TCC 접근성 리셋 뒤 brew 설치본 cliApp 1.1.1 기동 → `/` ·`/api/v2/health` 는 200, `/api/v2/status/accessibility`·`/api/v2/layouts` 는 8초 타임아웃(000). `sample` 메인 스레드 = `AccessibilityGuidePresenter` → `NSAlert runModal` → `runModalForWindow:`
+    - 증거: `cli/_doc_work/_release/v1.1.2/logs/r1s2_restore_cli_sample_20260928_1606.txt` (1.1.1 바이너리 — 1.1.2 코드 경로도 `AppState` 가 미승인 시 `showAccessibilityGuide()` 호출, 동일 여부 검증 필요)
+    - 영향: R1 4·11행(REST 테스트)은 clear 뒤 첫 기동마다 이 모달을 만난다
+    - 비재현 (2026-09-28, 후보 41d93f8 R1 3행): clear 직후 소스 빌드 `open` 기동에서는 미승인 중에도 `/api/v2/status/accessibility` 가 응답했다(`granted:false`) — 재현 조건이 brew 설치본(launchd) 기동에 한정될 수 있다(검증 필요)
+* 구현 명세:
+    - red 먼저: 미승인 상태에서 안내 표시 중에도 `GET /api/v2/layouts` 가 응답함을 단언
+    - 후보: 모달 대신 비모달 창(또는 `beginSheet`), REST 처리가 메인 액터 대기에 묶이지 않게
+* 결과 (2026-09-28, 8f76dad 테스트 · **7b56aff** 수정 · `fix/issue110-a11y-guide-nonmodal`):
+    - 진짜 원인: 안내를 `DispatchQueue.main.async` 블록 **안에서** `runModal()` 로 띄워, 창이 닫힐 때까지 그 블록이 끝나지 않고 직렬 메인 큐가 비워지지 않았다. REST v2 핸들러는 메인 큐로 넘어가므로 전부 대기. `/`·`/health` 는 메인 큐를 안 거쳐 응답(비재현 조건 차이는 기동 경로의 호출 순서 차이로 봄)
+    - 수정: `AccessibilityGuidePresenter.schedule` = `RunLoop.main.perform(inModes: [.common])` — run loop 블록은 메인 큐 콜아웃 밖이라 모달 루프가 메인 큐를 계속 처리. 시작 시 안내·운영 중 권한 상실 안내 둘 다. 모달 형태·중복 방지 유지
+    - TDD: `AccessibilityGuideSchedulingTests`(중첩 modal-panel run loop 안에서 메인 큐 작업 실행) red → green · 재생목록 20행 · jma XCTest **108/108**
+    - jma E2E (TCC 리셋 → brew 기동): 수정 전 공개본 1.1.2 `layouts=000` · 수정 빌드 `layouts=200`·`granted:false` 응답 — `sample` 로 메인 스레드가 `NSAlert runModal` 안임을 확인. 이후 공개본 1.1.2 로 원복(이 수정은 다음 출고분부터)
+
+## Issue108: `dataDirectoryPath` 설정이 저장만 되고 레이아웃 경로에 반영되지 않음 + 첫 기동 시 `_config.yml` 이 호스트 폴더로 옮겨짐 (등록: 2026-09-28, 완료: 2026-09-28, Hash: d117d12, a30f5d0) ✅
+* 목적: paidApp 설정 › 일반의 데이터 폴더 «변경»이 동작하지 않는다 — App Store 1.1.1 스크린샷 05 캡션(«저장 폴더 직접 선택»)·entitlement `files.user-selected.read-write` 근거와 충돌한다 (prj16#Issue265 위임 A 중 발견)
+* 상세:
+    - 출처: prj16 위임 A(`_doc_work/delegation_2026.09.28_appstore-prefix.md`) — 결정 권한 C 등급(타 repo 이슈 등록)으로 등록만 함. 판단 재료: prj16 `_doc_work/_release/v1.1.1/screenshots/candidates.md` «발견 3»
+    - ① `PATCH /api/v2/settings/general {dataDirectoryPath}` 는 `_config.yml` 에 기록만 된다. 저장소 경로는 `YAMLLayoutStorageService.resolveDefaultBaseDirectory()` 가 `Env.configPath`(환경변수 `fWarrangeCli_config`) → `~/Documents/finfra/fWarrangeData` 로만 정하고 `settings.dataDirectoryPath` 를 읽지 않는다. `init(dataDirectoryURL:)` 호출처는 `fWarrangeCliTests/TDDPlaylistTests.swift` 뿐 (2026-09-28 grep 실측)
+    - ② `AppState.init` 이 `_config.yml` 을 먼저 만들고(기본값 저장) 그 뒤 `migrateRootDataIfNeeded()` 가 **루트의 `*.yml` 전부**를 `<base>/<host>/` 로 옮긴다 — `pathExtension == "yml"` 이라 `_config.yml` 도 대상. 호스트 폴더가 없는 첫 기동(신규 설치·새 `fWarrangeCli_config`)마다 재현 가능성(검증 필요 — 코드 판독만, 실행 미확인)
+    - ② 실측 재현 (2026-09-28, jma clear 직후 1.1.2 후보 45688ee 첫 기동 — Issue107 R1 3행): 로그 `기존 데이터 마이그레이션 완료: jma-2/` 뒤 루트에 `_config.yml` 없음, `jma-2/_config.yml` 만 존재
+    - ② 재재현 + 파급 (2026-09-28, 후보 41d93f8 R1 3·4행): 첫 기동에서 `jma-2/_config.yml` 로 이동한 파일이 레이아웃 **`_config`** 로 목록에 오르고, 4행 API `DELETE /layouts`(delete-all)가 그것까지 지웠다(`deletedCount 1`) — 설정 파일이 레이아웃 삭제에 쓸려 나간다. 호스트 폴더가 생긴 뒤 기동은 루트에 새 `_config.yml` 을 만든다
+    - 우회(촬영용): prj16 `screenshots/demo/setup-demo.sh` 가 호스트 폴더를 미리 만들고 `open --env fWarrangeCli_config=…` 로 기동
+    - ✅ ② 해소 (2026-09-28, **d117d12**, `fix/issue108-config-migration`): `_` 접두 파일을 마이그레이션에서 제외 · 설정 파일만 있는 루트는 호스트 폴더를 만들지 않음. 재생목록 16행 `root-config-stays-at-root` red(4단언) → green. ① 은 정책 결정 대기라 이슈 유지
+* 구현 명세:
+    - ① `dataDirectoryPath` 가 있으면 그것을 base 로 쓰도록 `resolveDefaultBaseDirectory()` 우선순위를 `env > settings.dataDirectoryPath > 기본값` 으로 — 변경 시 재기동 필요 여부·기존 데이터 이전 정책을 함께 정한다. red 먼저: 설정 변경 후 `GET /api/v2/layouts` 가 새 폴더를 보는지
+    - ② 마이그레이션 대상에서 `_config.yml`(및 `_` 접두 파일) 제외. red 먼저: 빈 base 에서 AppState 기동 → 루트 `_config.yml` 존재 단언
+    - 수정 후 prj16 AppStoreDoc·review-notes 의 entitlement 근거와 스크린샷 05 캡션을 재확인
+* 결과 (2026-09-28):
+    - ② d117d12 — `_` 접두 파일 마이그레이션 제외 (재생목록 16행)
+    - ① **a30f5d0** (`fix/issue108-data-directory`) — 사용자 결정 «다음 기동부터 적용»: `resolveLayoutBaseDirectory` 우선순위 환경변수 > `dataDirectoryPath`(`~` 확장·폴더 생성, 실패 시 경고 후 설정 폴더) > 설정 폴더. AppState 의 저장소·마이그레이션·`_share` 복사가 레이아웃 base 를 쓴다. `_config.yml` 은 설정 폴더 유지. 기존 레이아웃은 옮기지 않음. openapi 설명 동기. 재생목록 19행 red(3단언) → green
+    - 검증: jma clean clone XCTest **107/107**. 미검증: paidApp UI 에서 폴더 변경 → cliApp 재기동 → 새 폴더 목록까지의 실기 흐름(테스트는 판정 함수·배선 단위)
+    - 남은 것(prj16 몫): AppStoreDoc·review-notes entitlement 근거·스크린샷 05 캡션 재확인 — 이제 «변경»이 동작하므로 캡션 유지 가능, paidApp 쪽 «재시작 뒤 적용» 안내 문구 필요 여부 판단 → **prj16#Issue282** 로 등록(e2a060f)
+
+## Issue112: [Bug] `fwc-deploy-brew.sh publish --dry-run` 이 태그·release 중복 검사를 건너뛰고, 요약표가 실행 안 한 push·release 를 ✅ 로 찍음 (Issue107 결함 ① 분리) (등록: 2026-09-28, 완료: 2026-09-28, Hash: 12ec148) ✅
+* 목적: 출고 판단자가 dry-run 결과를 믿고 기출고 번호를 다시 내거나, 이미 올라갔다고 오독한다 — dry-run 이 실제 publish 의 위험을 미리 보여 주지 못한다
+* 상세:
+    - 결함 ①(Issue107): Step 0-3 태그·release 중복 검사를 live 에서만 해, 기출고 `cli-v1.1.1` 재출고 계획을 dry-run 이 ALL CLEAR 로 보고했다
+    - 요약표 오표시(1.1.2 R1 3단계 보고 4절): dry-run 인데 «git tag push ✅ · gh release ✅ · tap push ✅» 로 찍힌다 — 실행되지 않은 단계다
+* 구현 명세:
+    - dry-run 에서도 원격 태그·release 존재를 조회해 중복이면 FAIL(또는 경고 + 비 0 종료)
+    - 요약표는 dry-run 단계를 «⏭ 계획(미실행)» 처럼 실행 결과와 구분되는 표기로
+    - red 먼저: 기존 태그 번호로 `publish --dry-run` → ALL CLEAR 가 나오는 것을 재현하는 검사
+* 결과 (2026-09-28, 1e42616 검사 · **12ec148** 수정 · `fix/issue112-dryrun-dup-check`):
+    - Step 0-3 중복 검사를 dry-run 에서도 수행 — 기출고 버전이면 빌드 전 FAIL
+    - dry-run 의 미실행 단계(git tag push·gh release·tap push·검증)는 «⏭ (dry-run 계획, 미실행)» — PASS 개수에서 제외
+    - 검사 `cli/_tool/fwc-deploy-brew-test.sh`: 1) xcodebuild 스텁으로 빌드 없이 중복 정지 확인 — red(jma: 사전조건 통과 후 Step 1 도달) → green · 2) `--summary` 가짜 미출고 버전(9.9.969) dry-run → ⏭ 4건 PASS. 재생목록 18행 `publish-dry-run-truthful`
+
+## Issue106: XCTest 호스트가 BrewServiceSync.onAppStart() 를 그대로 탐 — 테스트 격리 결손·호스트 미종료 (🌱 후보 승격) (등록: 2026-09-28, 완료: 2026-09-28, Hash: 8eba7ff) ✅
+* 목적: 실 brew 서비스 조회(멈춰 있으면 `brew services start` handoff 까지)로 격리(#11) 결손 + 동기 `waitUntilExit` 중첩 런루프 안에서 테스트가 돌면 완료 후 호스트가 종료되지 않음(경쟁, 4/8회) (Issue105 중 발견)
+* 상세:
+    - 출처: prj3 mq `20260928-023246-001` ③ — prj3#Issue756 C 등급: 🌱 후보 → 번호 이슈 승격(후보 줄은 다음 정리 때 삭제)
+    - 진단: `cli/_doc_work/debug_TECH.md`
+* 구현 명세:
+    - `XCTestConfigurationFilePath` 가드 후보 — 재현 테스트 red 먼저(8회 반복 종료 확인)
+* 결과 (2026-09-28, cf32218 테스트 · **8eba7ff** 수정 · `fix/issue106-test-host-brew`):
+    - `BrewServiceSync.StartEnvironment.isTestHost`(live = `XCTestConfigurationFilePath`) 를 `onAppStart` 첫 판정으로 — 테스트 호스트는 launchctl·brew 조회 전에 skip
+    - TDD: `testTestHostSkipsBrewSyncBeforeTouchingBrew` red(jma — `handedOff` · 이벤트 loaded?→brew?→formula?→start→flush→exit) → green · 재생목록 17행 `test-host-skips-brew-sync`
+    - 검증: jma clean clone develop(9194869) XCTest **104/104** · 호스트 정상 종료. «8회 반복» 은 원인(실 brew 경로) 자체를 막아 대체함 — 1.1.2 R1 3단계부터 교착 미재현
+
+## Issue111: [Bug] cliApp 재시작 뒤 `GET /api/v2/paidapp/status` 가 실행 중인 paidApp 을 `not_running` 으로 답함 — 메뉴 모드 판정(PaidAppMonitor)과 status 판정(paidAppRouter) 갈림 (등록: 2026-09-28, 완료: 2026-09-28, Hash: aebef57) ✅
+* 목적: 같은 사실(«paidApp 이 떠 있는가»)을 두 곳이 따로 판정해 cliApp 재시작 뒤 서로 다른 답을 낸다 — status 를 믿는 소비자(스크립트·QA·paidApp 쪽 점검)가 떠 있는 paidApp 을 없는 것으로 본다 (1.1.2 출고 R1 8행 뒤 jma 실측)
+* 상세:
+    - 재현 (2026-09-28 17:25, jma): paidApp 1.1.1 실행 중(PID 91381) 상태에서 cliApp 만 재기동(`brew services` 재설치·start) → `/api/v2/paidapp/status` = `{"state":"not_running"}` 이 90초 넘게 유지. paidApp 은 `applicationDidFinishLaunching` 에서만 register 한다
+    - 원인: `handlePaidAppStatus`(RESTServer.swift) 는 `paidAppRouter.status()` — REST register 기록만 본다. 재시작 복원(`PaidAppMonitor.init` 의 `runningApplications` 검색 → `.paidAppActive`)은 메뉴 모드에만 반영되고 status 에는 닿지 않는다
+    - 규약: `paid_cli_protocol.md` §3.4 «cliApp 재시작 → register 기록 소실 가능 → 실행 중 paidApp 검색으로 복원» — status 가 그 복원을 반영하지 않아 규약과 어긋남
+    - 1.1.2 회귀 아님(관련 코드 무변경). R1 12행은 paidApp 을 cliApp 뒤에 띄워 register 가 일어나는 순서라 드러나지 않았다
+* 구현 명세:
+    - 판정 단일 지점으로 통일: status 도 «register 기록 없음 + `runningApplications` 에 `kr.finfra.fWarrange` 있음» 이면 `running`(pid·출처 표기) — 또는 cliApp 기동 시 복원 경로가 router 에도 기록을 만든다. 어느 쪽이든 PaidAppMonitor 와 router 가 같은 답을 내야 한다
+    - red 먼저: register 기록 없이 paidApp 실행 중인 상태를 주입 → status 가 `not_running` 을 내는 테스트 → 수정 뒤 green
+    - openapi_v2.yaml `paidapp/status` 응답 설명 동기(api-rules)
+* 결과 (2026-09-28, aebef57 · `fix/issue111-paidapp-status`):
+    - `PaidAppRouter.status()`: 등록 기록이 없고 paidApp 프로세스가 실행 중이면 `running`(pid·version·bundlePath, `sessionId`·`registeredAt` 없음). 등록 기록이 있으면 그것이 우선
+    - 실행 중 paidApp 조회를 `RunningPaidAppResolver` 로 주입 — 테스트 호스트 머신에 실제 paidApp 이 떠 있어도 기존 status 테스트가 흔들리지 않게(jm4 실측: paidApp 실행 중)
+    - TDD: `testStatusReportsRunningPaidAppWithoutRegistration` red(4단언) → green · openapi_v2.yaml 설명 동기
+    - 검증: **jma** clean clone XCTest **102/102** (jm4 는 사용자 사용 중이라 jma 에서 실행) · 테스트 호스트 정상 종료
+
+## Issue107: cliApp brew·npm 출고 R1 중단 — 기출고 `cli-v1.1.1` 번호 충돌·jma 화면 잠김 (등록: 2026-09-28, 완료: 2026-09-28, Hash: 8553c40, 41d93f8, c7c8c21, d375c08) ✅
 * 목적: 사용자 결정(2026-09-28, prj3 세션 05cbbead · mq 20260928-120438-001 — H:배포 승인)으로 fWarrangeCli 를 Homebrew tap·npm 으로 출고하려 R1 을 돌렸으나, 1.1.1 은 이미 공개 출고된 번호라 이번 변경(Issue95~105)을 1.1.1 로 낼 수 없다 — 버전 결정 대기
 * report: `../_doc_work/report/cli-release-1.1.1_report.md`, `../_doc_work/report/cli-release-1.1.2-stage1_report.md`, `../_doc_work/report/cli-release-1.1.2-stage2_report.md`, `../_doc_work/report/cli-release-1.1.2-stage3_report.md`
 * 상세:
@@ -45,51 +271,15 @@ date: 2026-04-07
     - ✅ 1단계 완료 (2026-09-28, bump 8553c40): R1 1행 `dev-playlist-green` jm4 **조건부 통과** — XCTest 93/93 passed · 번들 1.1.2 · Issue106 호스트 교착 재현(호스트만 kill → `TEST SUCCEEDED` rc 0) · `fwc-test.sh` 부분은 4행(jma)으로. 증거 `cli/_doc_work/_release/v1.1.2/release-test_1.1.2.md`(`result: partial`, `dirty: yes` — 타 세션 미커밋분) · 보고 `../_doc_work/report/cli-release-1.1.2-stage1_report.md` · 2단계(jma 2~12행) 대기
     - ⛔ 2단계 종료 (2026-09-28, 후보 45688ee — cd2a8eb 뒤 prj16#Issue280 이 manual md·png 만 추가, 빌드 입력 동일): R1 **`result: fail`** — 2행 `jma-clean-state` 통과 · **3행 `source-build-from-readme` 실패** → 위임 규약대로 정지(4~12행 미실행). README 빌드는 성공(1.1.2·Apple Development 유효)하나 `open` 기동 550ms 만에 앱이 스스로 종료 — brew 바이너리만 보고 formula 미설치 상태에서 `brew services start` 위임 후 결과와 무관하게 `exit(0)` (**Issue109**). 부수 발견: 접근성 미승인 기동 시 안내 모달이 REST v2 를 막음(**Issue110**) · 2행 clear 가 TCC 접근성·brew formula trust 를 리셋하므로 4·11행은 사람 승인 단계가 필요 · jma 는 1.1.1 두 앱·데이터·설정으로 원복(접근성 권한만 사람 손 필요). 보고 `../_doc_work/report/cli-release-1.1.2-stage2_report.md`
     - ✅ 3단계 R1 통과 (2026-09-28, 새 후보 **41d93f8** — Issue109 수정): **`result: pass` · `dirty: no`**(모든 빌드가 후보 clean clone) — 1행 jm4 XCTest 98/98(Issue106 교착 미재현) · 2~7·9~12행 jma 통과 · 8행 출고 후. 3행 소스 빌드 60초 생존 · 4행 `fwc-test.sh` ALL CLEAR · 6행 dry-run 외부 상태 전후 동일 · 7행 publish tarball 설치 CDHash 보존 · 10·11행 prj16 0d8e211 `--check` FAIL 0·REST 18/0 · 12행 prj16 v1.1.1 등록·목록 반영. 접근성 재승인은 `say` 뒤 사람이 16:45 처리. R2 `recheck` 사전 확인 ✅. jma 1.1.1 원복 `--check` FAIL 0(접근성 `granted` 유지). 보고 `../_doc_work/report/cli-release-1.1.2-stage3_report.md` — 공개 반영은 prj3 세션 몫
+    - 결함 ② 해소 (c7c8c21): `tdd/release.md` `evidence_dir: cli/_doc_work/_release` — recheck 가 «증거 없음» 대신 실제 증거를 읽는다. 첫 R1 통과에 따라 `r2: warn → block`(recheck ❌ 가 rc 0 으로 통과하던 경고 모드 종료)
+    - ✅ 공개 출고 (2026-09-28 17:2x, 사용자 승인 — prj26 세션 da453e47 · 오케스트레이터 05cbbead 종료로 인계): release/1.1.1 push(c6edbf7) → GitHub clone 에서 main ← release `--no-ff` 병합 **d375c08**(NOTICE add/add 충돌 1건 → release 판, main 판 19줄 전부 포함 확인 · 병합 트리 = release 트리) → 병합 커밋 recheck ✅ → main push → `publish --dry-run` 9/0 → `publish` 9/0: 태그 **`cli-v1.1.2`**(→ d375c08) · GitHub release **Latest** · asset `fWarrangeCli-1.1.2.tar.gz` sha256 `402dbe5e…` = 공개 tap Formula(Finfra/homebrew-tap 8395a11) · 번들 1.1.2 서명 유효. 원 저장소 `main` fast-forward·태그 동기
+    - ✅ R1 8행 `brew-tap-published-install` 통과 (17:25, jma): 공개 tap 동기(로컬 테스트 `fwarrange-cli.rb` 만 되돌리고 ff — `fsnippet-cli.rb` 로컬 수정 무접촉) → formula 단위 클린(데이터·paidApp·TCC 보존, 7행과 같은 방식) → `brew install finfra/tap/fwarrange-cli` → 라벨 1.1.2 = 번들 1.1.2 = REST 1.1.2 = `VERSION` · Homebrew 7 trust 자동 복구 · 접근성 `granted` 승계. jma 최종 = **공개본 1.1.2**(출고 후라 1.1.1 로 되돌리지 않음) + paidApp 1.1.1. 로그 `cli/_doc_work/_release/v1.1.2/logs/r1s4_row08_public_tap.log`
+    - 출고 뒤 정리: `cli/Formula/fwarrange-cli.rb` sha256 0 → 실값 · `cli/version-meta.yml` `formula_version` 1.1.2(`installed_version` 은 jm4 설치 실태 1.1.1 유지). npm 배포 없음(불요 판정 유지)
+    - 분리: 결함 ① + dry-run 요약 «push ✅» 오표시 → **Issue112** · 출고 뒤 발견한 `paidapp/status` 판정 갈림 → **Issue111**
 * 구현 명세:
     - 사용자 결정: 버전 번호 — paidApp·cliApp 락스텝 1.1.2 로 결정됨 (2026-09-28)
     - 결정 후: bump(`version-rules` 절차) → 새 후보 커밋에서 R1 처음부터(jma 잠금 해제 + 스크린샷 촬영과 점유 순서 합의) → R2 recheck → main `--no-ff` 병합 → main 에서 `publish`
-    - 결함 ①: dry-run 에서도 중복을 경고(또는 FAIL)로 내게 — 재현: 현 상태에서 `publish --dry-run` 이 ALL CLEAR
-
-# 📕 중요
-
-# 📙 일반
-
-## Issue110: [Bug] 접근성 미승인 기동 시 `AccessibilityGuidePresenter` 모달(`NSAlert runModal`)이 메인 스레드를 잡아 REST v2 가 무응답 (등록: 2026-09-28)
-* 목적: 데몬의 REST 가 사람이 안내 창을 닫을 때까지 멈춘다 — paidApp·스크립트가 레이아웃 조회부터 막힌다 (1.1.2 출고 R1 2단계 원복 중 발견)
-* 상세:
-    - 재현(jma 2026-09-28): TCC 접근성 리셋 뒤 brew 설치본 cliApp 1.1.1 기동 → `/` ·`/api/v2/health` 는 200, `/api/v2/status/accessibility`·`/api/v2/layouts` 는 8초 타임아웃(000). `sample` 메인 스레드 = `AccessibilityGuidePresenter` → `NSAlert runModal` → `runModalForWindow:`
-    - 증거: `cli/_doc_work/_release/v1.1.2/logs/r1s2_restore_cli_sample_20260928_1606.txt` (1.1.1 바이너리 — 1.1.2 코드 경로도 `AppState` 가 미승인 시 `showAccessibilityGuide()` 호출, 동일 여부 검증 필요)
-    - 영향: R1 4·11행(REST 테스트)은 clear 뒤 첫 기동마다 이 모달을 만난다
-    - 비재현 (2026-09-28, 후보 41d93f8 R1 3행): clear 직후 소스 빌드 `open` 기동에서는 미승인 중에도 `/api/v2/status/accessibility` 가 응답했다(`granted:false`) — 재현 조건이 brew 설치본(launchd) 기동에 한정될 수 있다(검증 필요)
-* 구현 명세:
-    - red 먼저: 미승인 상태에서 안내 표시 중에도 `GET /api/v2/layouts` 가 응답함을 단언
-    - 후보: 모달 대신 비모달 창(또는 `beginSheet`), REST 처리가 메인 액터 대기에 묶이지 않게
-
-## Issue106: XCTest 호스트가 BrewServiceSync.onAppStart() 를 그대로 탐 — 테스트 격리 결손·호스트 미종료 (🌱 후보 승격) (등록: 2026-09-28)
-* 목적: 실 brew 서비스 조회(멈춰 있으면 `brew services start` handoff 까지)로 격리(#11) 결손 + 동기 `waitUntilExit` 중첩 런루프 안에서 테스트가 돌면 완료 후 호스트가 종료되지 않음(경쟁, 4/8회) (Issue105 중 발견)
-* 상세:
-    - 출처: prj3 mq `20260928-023246-001` ③ — prj3#Issue756 C 등급: 🌱 후보 → 번호 이슈 승격(후보 줄은 다음 정리 때 삭제)
-    - 진단: `cli/_doc_work/debug_TECH.md`
-* 구현 명세:
-    - `XCTestConfigurationFilePath` 가드 후보 — 재현 테스트 red 먼저(8회 반복 종료 확인)
-
-## Issue108: `dataDirectoryPath` 설정이 저장만 되고 레이아웃 경로에 반영되지 않음 + 첫 기동 시 `_config.yml` 이 호스트 폴더로 옮겨짐 (등록: 2026-09-28)
-* 목적: paidApp 설정 › 일반의 데이터 폴더 «변경»이 동작하지 않는다 — App Store 1.1.1 스크린샷 05 캡션(«저장 폴더 직접 선택»)·entitlement `files.user-selected.read-write` 근거와 충돌한다 (prj16#Issue265 위임 A 중 발견)
-* 상세:
-    - 출처: prj16 위임 A(`_doc_work/delegation_2026.09.28_appstore-prefix.md`) — 결정 권한 C 등급(타 repo 이슈 등록)으로 등록만 함. 판단 재료: prj16 `_doc_work/_release/v1.1.1/screenshots/candidates.md` «발견 3»
-    - ① `PATCH /api/v2/settings/general {dataDirectoryPath}` 는 `_config.yml` 에 기록만 된다. 저장소 경로는 `YAMLLayoutStorageService.resolveDefaultBaseDirectory()` 가 `Env.configPath`(환경변수 `fWarrangeCli_config`) → `~/Documents/finfra/fWarrangeData` 로만 정하고 `settings.dataDirectoryPath` 를 읽지 않는다. `init(dataDirectoryURL:)` 호출처는 `fWarrangeCliTests/TDDPlaylistTests.swift` 뿐 (2026-09-28 grep 실측)
-    - ② `AppState.init` 이 `_config.yml` 을 먼저 만들고(기본값 저장) 그 뒤 `migrateRootDataIfNeeded()` 가 **루트의 `*.yml` 전부**를 `<base>/<host>/` 로 옮긴다 — `pathExtension == "yml"` 이라 `_config.yml` 도 대상. 호스트 폴더가 없는 첫 기동(신규 설치·새 `fWarrangeCli_config`)마다 재현 가능성(검증 필요 — 코드 판독만, 실행 미확인)
-    - ② 실측 재현 (2026-09-28, jma clear 직후 1.1.2 후보 45688ee 첫 기동 — Issue107 R1 3행): 로그 `기존 데이터 마이그레이션 완료: jma-2/` 뒤 루트에 `_config.yml` 없음, `jma-2/_config.yml` 만 존재
-    - ② 재재현 + 파급 (2026-09-28, 후보 41d93f8 R1 3·4행): 첫 기동에서 `jma-2/_config.yml` 로 이동한 파일이 레이아웃 **`_config`** 로 목록에 오르고, 4행 API `DELETE /layouts`(delete-all)가 그것까지 지웠다(`deletedCount 1`) — 설정 파일이 레이아웃 삭제에 쓸려 나간다. 호스트 폴더가 생긴 뒤 기동은 루트에 새 `_config.yml` 을 만든다
-    - 우회(촬영용): prj16 `screenshots/demo/setup-demo.sh` 가 호스트 폴더를 미리 만들고 `open --env fWarrangeCli_config=…` 로 기동
-* 구현 명세:
-    - ① `dataDirectoryPath` 가 있으면 그것을 base 로 쓰도록 `resolveDefaultBaseDirectory()` 우선순위를 `env > settings.dataDirectoryPath > 기본값` 으로 — 변경 시 재기동 필요 여부·기존 데이터 이전 정책을 함께 정한다. red 먼저: 설정 변경 후 `GET /api/v2/layouts` 가 새 폴더를 보는지
-    - ② 마이그레이션 대상에서 `_config.yml`(및 `_` 접두 파일) 제외. red 먼저: 빈 base 에서 AppState 기동 → 루트 `_config.yml` 존재 단언
-    - 수정 후 prj16 AppStoreDoc·review-notes 의 entitlement 근거와 스크린샷 05 캡션을 재확인
-
-# 📗 선택
-
-# ✅ 완료
+    - 결함 ①: dry-run 에서도 중복을 경고(또는 FAIL)로 내게 — 재현: 현 상태에서 `publish --dry-run` 이 ALL CLEAR → Issue112 로 이관
 
 ## Issue109: [Bug] `open` 기동한 cliApp 이 brew 바이너리만 있으면 formula 미설치여도 `brew services start` 위임 후 `exit(0)` — README 소스 빌드 앱이 기동 직후 사라짐 (등록: 2026-09-28, 완료: 2026-09-28, Hash: 41d93f8) ✅
 * 목적: 출고 R1 3행 `source-build-from-readme` 실패 원인. Homebrew 가 깔린 Mac 에서 README «Build from Source» 로 만든 앱을 `open` 하면 REST 가 한 번 응답한 뒤 1초 안에 종료된다 — 소스 빌드 사용자는 앱을 쓸 수 없다 (1.1.2 출고 R1 2단계 중 발견 · 위임 지시 «코드 수정은 범위 밖 — 이슈후보로» 에 따라 등록만)
@@ -116,8 +306,8 @@ date: 2026-04-07
     - 문서 재동기: `DISTRIBUTION-TERMS.md` → v1.2 전문 교체(자리표 `{{EFFECTIVE_DATE}}` 는 이번 커밋일 — v1.x 판 발효일 이후 빌드는 새 판) · `TRADEMARK.md`·`COMMERCIAL.md`·`NOTICE` → v1.2(`{{MARKS}}` 는 NOTICE·TRADEMARK 동일 값) · `LICENSE_ko.md` 는 Apache 참고 번역이라 변경 없음
     - README(en·ko) **설치 명령 바로 앞**에 약관 2줄(DISTRIBUTION-TERMS §0 요약)을 둔다 — 설치 후 caveats 만으로는 약관규제법상 사전 고지가 약하다(검토 medium)
     - Official Build 구분 표식(2단계 — 코드 변경이라 tdd red 먼저): 공식 빌드에만 들어가는 `resources/official/`(브랜드 배너·아이콘) + 공식 빌드 스크립트 분기 + `--version` 출력에 `Finfra Official Build` 표기. 소스 빌드에는 넣지 않는다. 없으면 약관 §1(b) 가 빈 집합이라 법무가 적용 대상을 구별 못 한다 — 1단계와 한 이슈로 하되 커밋은 나눈다
-    - 근거: 템플릿 `/Users/nowage/_git/___architect/data/template/license/`(v1.2, prj6 `3195f25`) · 검토 처분표 `/Users/nowage/_git/___architect/_doc_work/report/license-hook-review_issue17_report.md` §반영 결과 · 정본 `/Users/nowage/_git/___architect/_doc_arch/license-profiles.md` §3-2·§5
-    - **한국어 약관본 추가** (prj6 템플릿 `/Users/nowage/_git/___architect/data/template/license/DISTRIBUTION-TERMS_ko.md`): 루트 `DISTRIBUTION-TERMS_ko.md` 를 영문 v1.2 와 **같은 커밋**으로 — 약관 §10 이 한국 거주 개인에게 한국어본의 동등 효력을 약속하므로 영문과 어긋나면 안 된다. 자리표 값은 영문과 동일. 확인: `diff <(grep -oE '^## [0-9]+\.' DISTRIBUTION-TERMS.md) <(grep -oE '^## [0-9]+\.' DISTRIBUTION-TERMS_ko.md)` 무출력
+    - 근거: 템플릿 `/Users/nowage/_git/___oracle/data/template/license/`(v1.2, prj6 `3195f25`) · 검토 처분표 `/Users/nowage/_git/___oracle/_doc_work/report/license-hook-review_issue17_report.md` §반영 결과 · 정본 `/Users/nowage/_git/___oracle/_doc_arch/license-profiles.md` §3-2·§5
+    - **한국어 약관본 추가** (prj6 템플릿 `/Users/nowage/_git/___oracle/data/template/license/DISTRIBUTION-TERMS_ko.md`): 루트 `DISTRIBUTION-TERMS_ko.md` 를 영문 v1.2 와 **같은 커밋**으로 — 약관 §10 이 한국 거주 개인에게 한국어본의 동등 효력을 약속하므로 영문과 어긋나면 안 된다. 자리표 값은 영문과 동일. 확인: `diff <(grep -oE '^## [0-9]+\.' DISTRIBUTION-TERMS.md) <(grep -oE '^## [0-9]+\.' DISTRIBUTION-TERMS_ko.md)` 무출력
 * 구현 명세:
     - 검증: 4개 문서 `Version 1.2` · `grep -c '{{' ` 0 · README 설치 명령 앞 약관 2줄 · `mcp/LICENSE` MIT 불변
     - 금지: `git push` · npm publish · `Finfra/homebrew-tap` 수정 · 기존 태그 변경 · 템플릿 frontmatter·`📄 템플릿` 블록 복사
@@ -147,7 +337,7 @@ date: 2026-04-07
     - 현 LICENSE "Notes" 절(`fwarrange-mcp` ≤1.0.2 MIT)은 README 절로 이관 + "1.0.2 이후~이번 커밋 이전은 CC BY-NC 4.0 이중" 한 줄 추가
     - `mcp/` 는 프로파일 C: `mcp/LICENSE` MIT 원문 · `mcp/package.json.license` `(CC-BY-NC-4.0 OR LicenseRef-Commercial)` → `MIT`
     - README(en·kr) 라이선스 절을 `cli/`(Apache-2.0 + 훅 3문서) / `mcp/`(MIT) 표로 교체
-    - 정본 `/Users/nowage/_git/___architect/_doc_arch/license-profiles.md` §4 row 26 · 템플릿 `/Users/nowage/_git/___architect/data/template/license/README.md`(자리표 값 표 포함 — `{{N}}`=250 · `{{LICENSOR}}`=`Finfra Co., Ltd. (https://finfra.kr)` · `{{CONTACT}}`=finfra@gmail.com)
+    - 정본 `/Users/nowage/_git/___oracle/_doc_arch/license-profiles.md` §4 row 26 · 템플릿 `/Users/nowage/_git/___oracle/data/template/license/README.md`(자리표 값 표 포함 — `{{N}}`=250 · `{{LICENSOR}}`=`Finfra Co., Ltd. (https://finfra.kr)` · `{{CONTACT}}`=finfra@gmail.com)
 * 구현 명세:
     - 검증: 위 파일 전부 존재 · README 라이선스 절이 각 파일을 링크 · `grep -rn "All rights reserved" README*` 0건 · 정본 §4 해당 행과 대조
     - 금지: `git push`(공개 라이선스 변경은 사용자가 push) · npm publish · `Finfra/homebrew-tap` 수정(formula `license "Apache-2.0"`·caveats 갱신 명령만 report 에 적는다) · 기존 릴리스 태그 변경

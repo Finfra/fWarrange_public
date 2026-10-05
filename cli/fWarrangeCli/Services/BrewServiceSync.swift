@@ -59,6 +59,8 @@ enum BrewServiceSync {
         var startService: (String) -> (Int32, String)
         var flushLog: () -> Void
         var exitProcess: () -> Void
+        /// XCTest host process — it must never touch the real brew service (Issue106)
+        var isTestHost: () -> Bool = { false }
 
         static let live = StartEnvironment(
             optOut: { UserDefaults.standard.object(forKey: optOutKey) as? Bool },
@@ -68,7 +70,8 @@ enum BrewServiceSync {
             isFormulaInstalled: { BrewServiceSync.isFormulaInstalled(brewPath: $0) },
             startService: { runCommandWithStatus($0, args: ["services", "start", formulaName]) },
             flushLog: { Logger.shared.flush() },
-            exitProcess: { Foundation.exit(0) }
+            exitProcess: { Foundation.exit(0) },
+            isTestHost: { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
         )
     }
 
@@ -110,6 +113,12 @@ enum BrewServiceSync {
     /// 위임이 실패하면 exit 하지 않고 `.keptPrimary` 를 반환한다.
     @discardableResult
     static func onAppStart(_ env: StartEnvironment = .live) -> StartOutcome {
+        // Issue106: the XCTest host runs AppState too — never query or hand off to the real brew service there
+        if env.isTestHost() {
+            logD("[brew-sync] onAppStart skip — XCTest host")
+            return .skipped
+        }
+
         if let optOut = env.optOut(), optOut == false {
             logI("[brew-sync] onAppStart skip — \(optOutKey)=false")
             return .skipped
@@ -139,32 +148,31 @@ enum BrewServiceSync {
         return performHandoffStart(brewPath: brewPath, env: env)
     }
 
-    // MARK: - Restart (Issue96 권한 복구)
+    // MARK: - Restart (Issue96 권한 복구 · Issue119 REST restart)
 
-    /// launchd(brew services) 가 이 프로세스를 관리 중이면 `brew services restart` 로
-    /// 재기동을 위임하고 `true` 를 반환한다. 반환 직후 현재 프로세스는 launchd 에 의해 종료된다.
-    ///
-    /// 종료 훅의 `brew services stop` 이 재시작과 경합해 서비스가 `stopped` 로 수렴하는 것을
-    /// 막기 위해 handoff 플래그를 세운다(`onAppStop` 이 skip 됨).
-    /// launchd 관리가 아니면 `false` — 호출부가 직접 재실행해야 한다.
-    @discardableResult
-    static func requestManagedRestart() -> Bool {
-        guard isServiceLoaded(), let brewPath = findBrewPath() else {
-            logI("[brew-sync] requestManagedRestart — launchd 관리 아님, 호출부 자체 재실행 필요")
-            return false
-        }
+    /// launchd 가 이 프로세스를 띄웠으면 그 서비스 label(`XPC_SERVICE_NAME`), 아니면 nil.
+    /// 재시작 후 같은 label 을 `launchctl kickstart` 로 되살린다 (AppRestarter).
+    static func runningServiceLabel() -> String? {
+        let label = ProcessInfo.processInfo.environment["XPC_SERVICE_NAME"]
+        return isServiceLabel(label) ? label : nil
+    }
+
+    /// 재시작을 위해 종료하는 동안 종료 훅의 `brew services stop` 동기화를 막는다 —
+    /// 서비스는 loaded 로 남아야 재시작 헬퍼의 `launchctl kickstart` 대상이 된다 (Issue119).
+    static func beginManagedRelaunch() {
         handoffInProgress = true
-        logI("[brew-sync] requestManagedRestart — brew services restart \(formulaName)")
-        DispatchQueue.global(qos: .userInitiated).async {
-            let (rc, output) = runCommandWithStatus(brewPath, args: ["services", "restart", formulaName])
-            let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
-            if rc == 0 {
-                logI("[brew-sync] ✅ brew services restart 성공: \(trimmed)")
-            } else {
-                logW("[brew-sync] ⚠️ brew services restart 실패 (rc=\(rc)): \(trimmed)")
-            }
-        }
-        return true
+    }
+
+    /// 재시작 취소(헬퍼 예약 후 종료가 무산된 경우)·테스트용 — 종료 동기화를 다시 허용한다.
+    static func endManagedRelaunch() {
+        handoffInProgress = false
+    }
+
+    /// Issue51 종료 동기화(`applicationWillTerminate`)가 실행할 brew 인자.
+    /// 재시작(handoff) 중이면 nil — `onAppStop` 과 같은 플래그를 본다 (Issue119: 두 종료 경로의 판정 갈림 통일).
+    static func terminateStopArguments(launchAtLogin: Bool) -> [String]? {
+        if handoffInProgress { return nil }
+        return launchAtLogin ? ["services", "stop", formulaName, "--keep"] : ["services", "stop", formulaName]
     }
 
     // MARK: - App Stop → brew=stopped (매트릭스: app stop 행)

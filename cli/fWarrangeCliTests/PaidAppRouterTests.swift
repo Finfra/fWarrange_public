@@ -12,17 +12,21 @@ final class PaidAppRouterTests: XCTestCase {
     private var validSenderBundleId: String?
     private var validBundleIdAtPath: [String: String?] = [:]  // path → bundleId 매핑 (단계 ②)
     private var router: PaidAppRouter!
+    /// Running paidApp seen by the router — nil unless a test sets it (the host machine may run the real paidApp)
+    private var detectedPaidApp: PaidAppRouter.DetectedPaidApp?
 
     override func setUp() {
         super.setUp()
         store = PaidAppStateStore()
         validSenderBundleId = "kr.finfra.fWarrange"
+        detectedPaidApp = nil
         // 기본 bundlePath 검증: /Applications/_nowage_app/fWarrange.app → kr.finfra.fWarrange
         validBundleIdAtPath = ["/Applications/_nowage_app/fWarrange.app": "kr.finfra.fWarrange"]
         router = PaidAppRouter(
             store: store,
             senderBundleIdResolver: { [weak self] _ in self?.validSenderBundleId },
-            bundleIdAtPathResolver: { [weak self] url in self?.validBundleIdAtPath[url.path] ?? nil }
+            bundleIdAtPathResolver: { [weak self] url in self?.validBundleIdAtPath[url.path] ?? nil },
+            runningPaidAppResolver: { [weak self] in self?.detectedPaidApp }
         )
     }
 
@@ -370,6 +374,40 @@ final class PaidAppRouterTests: XCTestCase {
         XCTAssertEqual(resp.state, .running)
         XCTAssertEqual(resp.pid, 12345)
         XCTAssertEqual(resp.version, "1.14.3")
+        XCTAssertEqual(resp.sessionId, reg.sessionId)
+    }
+
+    // MARK: - /paidapp/status after cliApp restart (Issue111)
+
+    /// cliApp restarted while paidApp kept running: the registration is gone, but paidApp is alive.
+    /// status must agree with PaidAppMonitor (protocol §3.4) instead of answering not_running.
+    func testStatusReportsRunningPaidAppWithoutRegistration() {
+        detectedPaidApp = PaidAppRouter.DetectedPaidApp(
+            pid: 4242, version: "1.1.1", bundlePath: "/Applications/_nowage_app/fWarrange.app"
+        )
+
+        let resp = router.status()
+
+        XCTAssertEqual(resp.state, .running)
+        XCTAssertEqual(resp.pid, 4242)
+        XCTAssertEqual(resp.version, "1.1.1")
+        XCTAssertEqual(resp.bundlePath, "/Applications/_nowage_app/fWarrange.app")
+        XCTAssertNil(resp.sessionId, "a detected paidApp has no session — it never registered with this process")
+        XCTAssertNil(resp.registeredAt)
+    }
+
+    /// A registration is the authoritative record; detection only fills the gap when it is missing.
+    func testRegistrationWinsOverDetection() {
+        detectedPaidApp = PaidAppRouter.DetectedPaidApp(pid: 999, version: "0.0.1", bundlePath: "/tmp/Other.app")
+        guard case let .success(reg) = router.register(request: PaidAppRegisterRequest(
+            pid: 12345, version: "1.14.3", bundlePath: "/Applications/_nowage_app/fWarrange.app",
+            startTime: "2026-04-18T09:00:00Z",
+            sessionId: UUID().uuidString
+        )) else { return XCTFail("register 실패") }
+
+        let resp = router.status()
+
+        XCTAssertEqual(resp.pid, 12345)
         XCTAssertEqual(resp.sessionId, reg.sessionId)
     }
 

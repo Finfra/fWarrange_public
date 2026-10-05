@@ -61,10 +61,16 @@ final class AppState {
         // appLanguage 설정 적용 (Issue: appLanguage가 _config.yml에서 로드되지 않는 문제)
         AppState.applyLanguageSetting(settings.appLanguage)
 
+        // Layouts follow settings.dataDirectoryPath (read once at launch); _config.yml stays in baseDir (Issue108 ①)
+        let layoutBaseDir = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: settings.dataDirectoryPath, configBase: baseDir)
+        if layoutBaseDir != baseDir {
+            logI("레이아웃 폴더: dataDirectoryPath → \(layoutBaseDir.path)")
+        }
+
         let storageMode = settings.dataStorageMode ?? .host
         if storageMode == .host {
-            YAMLLayoutStorageService.migrateRootDataIfNeeded()
-            YAMLLayoutStorageService.copyShareDataIfNeeded()
+            YAMLLayoutStorageService.prepareHostLayoutBase(layoutBaseDir, configBase: baseDir)
         }
 
         // Issue72_3 (Phase 3): 타이틀 정규화 서비스 — 캡처·복구가 공유.
@@ -78,7 +84,8 @@ final class AppState {
             areaMatchEnabled: settings.matchAreaMatchEnabled ?? true
         )
         let storageService = YAMLLayoutStorageService(
-            storageMode: storageMode
+            storageMode: storageMode,
+            baseDirectory: layoutBaseDir
         )
         let accessService = SystemAccessibilityService()
 

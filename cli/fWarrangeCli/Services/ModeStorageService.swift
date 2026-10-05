@@ -145,14 +145,14 @@ final class YAMLModeStorageService: ModeStorageService {
     // MARK: - CRUD
 
     func save(_ mode: Mode) throws {
+        let fileURL = try StorageName.fileURL(in: modesDirectory, name: mode.name)
         try FileManager.default.createDirectory(at: modesDirectory, withIntermediateDirectories: true)
-        let fileURL = modesDirectory.appendingPathComponent("\(mode.name).yml")
         let yaml = serializeToYAML(mode)
         try yaml.write(to: fileURL, atomically: true, encoding: .utf8)
     }
 
     func load(name: String) throws -> Mode {
-        let fileURL = modesDirectory.appendingPathComponent("\(name).yml")
+        let fileURL = try StorageName.fileURL(in: modesDirectory, name: name, existing: true)
         let content = try String(contentsOf: fileURL, encoding: .utf8)
 
         guard isV2Schema(content) else {
@@ -209,7 +209,7 @@ final class YAMLModeStorageService: ModeStorageService {
     }
 
     func delete(name: String) throws {
-        let fileURL = modesDirectory.appendingPathComponent("\(name).yml")
+        let fileURL = try StorageName.fileURL(in: modesDirectory, name: name, existing: true)
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             throw ModeStorageError.notFound(name)
         }
@@ -217,7 +217,8 @@ final class YAMLModeStorageService: ModeStorageService {
     }
 
     func rename(oldName: String, newName: String) throws {
-        let oldURL = modesDirectory.appendingPathComponent("\(oldName).yml")
+        let oldURL = try StorageName.fileURL(in: modesDirectory, name: oldName, existing: true)
+        if let reason = StorageName.rejection(newName) { throw StorageName.Invalid(name: newName, reason: reason) }
         guard FileManager.default.fileExists(atPath: oldURL.path) else {
             throw ModeStorageError.notFound(oldName)
         }

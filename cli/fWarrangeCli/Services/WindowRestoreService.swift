@@ -62,6 +62,57 @@ fileprivate func appMatches(_ app: NSRunningApplication, window: WindowInfo) -> 
     appMatches(app, targetApp: window.app, targetBundleId: window.bundleId)
 }
 
+// MARK: - Leftover decision (Issue114 ①)
+
+/// Decides the targets still pending when the retry loop ends.
+/// A target whose window was matched and moved but failed the 3px position check
+/// (ex: TextEdit snaps its height to line units) is a best-effort success with its match
+/// info kept — whether the loop ended at the last attempt or by the early exit. Only
+/// targets with no matched window go on to the Moom fallback / `.noMatch`.
+enum RestoreLeftover {
+    struct VerifyFailure {
+        let target: WindowInfo
+        let title: String
+        let matchType: MatchType
+        let score: Int
+        /// Measured window frame at the failed check (nil = could not be read) — Issue121
+        var actual: CGRect? = nil
+    }
+
+    /// Largest per-edge deviation still accepted as best effort — line-height / grid snapping
+    /// (TextEdit snaps height to text lines, ~14–18px). Beyond this the window was not placed (Issue121).
+    static let nearMissTolerance: CGFloat = 24
+
+    static func isNearMiss(_ target: WindowInfo, actual: CGRect?) -> Bool {
+        guard let a = actual else { return false }   // unknown geometry is not a success
+        let t = nearMissTolerance
+        return abs(a.origin.x - target.pos.x) <= t && abs(a.origin.y - target.pos.y) <= t
+            && abs(a.size.width - target.size.width) <= t && abs(a.size.height - target.size.height) <= t
+    }
+
+    /// Splits pending targets: near-miss verify failures → best-effort success, far-off verify
+    /// failures → failure **with match info kept** (found but not placed), no record → unmatched.
+    static func resolve(pending: [WindowInfo], verifyFailures: [VerifyFailure])
+        -> (bestEffort: [WindowMatchResult], offTarget: [WindowMatchResult], unmatched: [WindowInfo]) {
+        var records = verifyFailures
+        var bestEffort: [WindowMatchResult] = []
+        var offTarget: [WindowMatchResult] = []
+        var unmatched: [WindowInfo] = []
+        for target in pending {
+            if let i = records.firstIndex(where: { $0.target == target }) {
+                let f = records.remove(at: i)
+                let near = isNearMiss(target, actual: f.actual)
+                let result = WindowMatchResult(targetWindow: target, matchedTitle: f.title,
+                                               matchType: f.matchType, score: f.score, success: near)
+                if near { bestEffort.append(result) } else { offTarget.append(result) }
+            } else {
+                unmatched.append(target)
+            }
+        }
+        return (bestEffort, offTarget, unmatched)
+    }
+}
+
 // MARK: - 실패 원인 분류
 
 private enum RestoreFailureReason: Sendable {
@@ -143,6 +194,8 @@ final class AXWindowRestoreService: WindowRestoreService {
         var pendingWindows = windows
         var allResults: [WindowMatchResult] = []
         var currentAttempt = 1
+        // Verify-failed matches of the latest attempt — decided once after the loop (Issue114 ①)
+        var verifyFailures: [RestoreLeftover.VerifyFailure] = []
 
         while !pendingWindows.isEmpty && currentAttempt <= maxRetries {
             let attemptStartTime = CFAbsoluteTimeGetCurrent()
@@ -164,7 +217,7 @@ final class AXWindowRestoreService: WindowRestoreService {
                 NSWorkspace.shared.runningApplications
             }
             var nextPending: [WindowInfo] = []
-            let isLastAttempt = (currentAttempt == maxRetries)
+            var attemptVerifyFailures: [RestoreLeftover.VerifyFailure] = []
 
             if enableParallel {
                 let appGroups = Dictionary(grouping: pendingWindows) { $0.app }
@@ -173,10 +226,10 @@ final class AXWindowRestoreService: WindowRestoreService {
 
                 var parallelResults: [WindowMatchResult] = []
                 var parallelPending: [WindowInfo] = []
+                var parallelVerifyFailures: [RestoreLeftover.VerifyFailure] = []
 
-                await withTaskGroup(of: ([WindowMatchResult], [WindowInfo]).self) { group in
+                await withTaskGroup(of: ([WindowMatchResult], [WindowInfo], [RestoreLeftover.VerifyFailure]).self) { group in
                     for (_, appWindows) in appGroups {
-                        let lastAttempt = isLastAttempt
                         group.addTask { [self] in
                             let appName = appWindows.first?.app ?? "unknown"
                             // 같은 ownerName 그룹은 같은 PID·같은 bundleId 가정 (CGWindow 특성)
@@ -185,6 +238,7 @@ final class AXWindowRestoreService: WindowRestoreService {
 
                             var appResults: [WindowMatchResult] = []
                             var appPending: [WindowInfo] = []
+                            var appVerifyFailures: [RestoreLeftover.VerifyFailure] = []
 
                             // 앱 찾기 (Issue71: bundleId 우선 + 다중 식별자 매칭)
                             let matchedApps = runningApps.filter {
@@ -227,18 +281,16 @@ final class AXWindowRestoreService: WindowRestoreService {
                                                 appResults.append(WindowMatchResult(targetWindow: target, matchedTitle: "(dry-run) \(match.title)", matchType: match.matchType, score: match.score, success: false))
                                                 continue
                                             }
-                                            let (success, _) = self.applyAndVerify(target: target, axWindow: match.axWindow)
+                                            let (success, _, actual) = self.applyAndVerify(target: target, axWindow: match.axWindow)
                                             await usedActor.append(match.axWindow)
 
                                             if success {
                                                 logD("[복구] '\(target.app)'/'\(match.title)' score=\(match.score) \(match.matchType) 성공")
                                                 appResults.append(WindowMatchResult(targetWindow: target, matchedTitle: match.title, matchType: match.matchType, score: match.score, success: true))
-                                            } else if lastAttempt {
-                                                logW("[복구] '\(target.app)' 검증 실패 → 마지막 시도, best-effort 성공 처리")
-                                                appResults.append(WindowMatchResult(targetWindow: target, matchedTitle: match.title, matchType: match.matchType, score: match.score, success: true))
                                             } else {
                                                 logW("[복구] '\(target.app)' 검증 실패 → 재시도 대상 유지 (시도 \(currentAttempt)/\(maxRetries))")
                                                 appPending.append(target)
+                                                appVerifyFailures.append(.init(target: target, title: match.title, matchType: match.matchType, score: match.score, actual: actual))
                                             }
                                         } else {
                                             appPending.append(target)
@@ -249,18 +301,20 @@ final class AXWindowRestoreService: WindowRestoreService {
 
                             let appElapsed = CFAbsoluteTimeGetCurrent() - appTaskStart
                             logI("[복구] '\(appName)' - 성공: \(appResults.count), 대기: \(appPending.count), \(String(format: "%.3f", appElapsed))초")
-                            return (appResults, appPending)
+                            return (appResults, appPending, appVerifyFailures)
                         }
                     }
 
-                    for await (results, pending) in group {
+                    for await (results, pending, failures) in group {
                         parallelResults.append(contentsOf: results)
                         parallelPending.append(contentsOf: pending)
+                        parallelVerifyFailures.append(contentsOf: failures)
                     }
                 }
 
                 allResults.append(contentsOf: parallelResults)
                 nextPending = parallelPending
+                attemptVerifyFailures = parallelVerifyFailures
             } else {
                 var usedWindows: [AXUIElement] = []
 
@@ -311,18 +365,16 @@ final class AXWindowRestoreService: WindowRestoreService {
                                 allResults.append(WindowMatchResult(targetWindow: target, matchedTitle: "(dry-run) \(match.title)", matchType: match.matchType, score: match.score, success: false))
                                 continue
                             }
-                            let (success, _) = applyAndVerify(target: target, axWindow: match.axWindow)
+                            let (success, _, actual) = applyAndVerify(target: target, axWindow: match.axWindow)
                             usedWindows.append(match.axWindow)
 
                             if success {
                                 logD("[복구] '\(target.app)'/'\(match.title)' score=\(match.score) \(match.matchType) 성공")
                                 allResults.append(WindowMatchResult(targetWindow: target, matchedTitle: match.title, matchType: match.matchType, score: match.score, success: true))
-                            } else if isLastAttempt {
-                                logW("[복구] '\(target.app)' 검증 실패 → 마지막 시도, best-effort 성공 처리")
-                                allResults.append(WindowMatchResult(targetWindow: target, matchedTitle: match.title, matchType: match.matchType, score: match.score, success: true))
                             } else {
                                 logW("[복구] '\(target.app)' 검증 실패 → 재시도 대상 유지 (시도 \(currentAttempt)/\(maxRetries))")
                                 nextPending.append(target)
+                                attemptVerifyFailures.append(.init(target: target, title: match.title, matchType: match.matchType, score: match.score, actual: actual))
                             }
                         } else {
                             nextPending.append(target)
@@ -330,6 +382,8 @@ final class AXWindowRestoreService: WindowRestoreService {
                     }
                 }
             }
+
+            verifyFailures = attemptVerifyFailures
 
             let attemptElapsed = CFAbsoluteTimeGetCurrent() - attemptStartTime
             let succeeded = pendingWindows.count - nextPending.count
@@ -363,6 +417,20 @@ final class AXWindowRestoreService: WindowRestoreService {
             currentAttempt += 1
         }
 
+        // Issue114 ①: one decision point for verify-failed matches — last attempt and early exit alike
+        if !dryRun && !verifyFailures.isEmpty {
+            let leftover = RestoreLeftover.resolve(pending: pendingWindows, verifyFailures: verifyFailures)
+            for result in leftover.bestEffort {
+                logW("[복구] '\(result.targetWindow.app)'/'\(result.matchedTitle)' 검증 실패 → 재시도 종료, 근사 일치(±\(Int(RestoreLeftover.nearMissTolerance))px) best-effort 성공 (score=\(result.score) \(result.matchType))")
+            }
+            for result in leftover.offTarget {
+                logW("[복구] '\(result.targetWindow.app)'/'\(result.matchedTitle)' 검증 실패 → 목표와 편차가 커 실패 처리 (Issue121, score=\(result.score) \(result.matchType))")
+            }
+            allResults.append(contentsOf: leftover.bestEffort)
+            allResults.append(contentsOf: leftover.offTarget)   // found but not placed — not a Moom/noMatch case
+            pendingWindows = leftover.unmatched
+        }
+
         // Issue72_5 (Phase 5): Moom 스타일 최후 폴백 (loose 모드 전용)
         // 매칭 실패한 target 들을 앱별로 그룹핑하고, 같은 앱의 살아있는 창 개수가 같으면
         // windowOrder 순으로 위치 배분. "내용은 모르겠지만 자리는 맞춰주기" 시나리오.
@@ -391,7 +459,7 @@ final class AXWindowRestoreService: WindowRestoreService {
                 }
                 for (idx, target) in sortedTargets.enumerated() {
                     let axWindow = axWindows[idx]
-                    let (success, _) = applyAndVerify(target: target, axWindow: axWindow)
+                    let (success, _, _) = applyAndVerify(target: target, axWindow: axWindow)
                     if success {
                         logI("[Moom 폴백] '\(appName)' #\(idx) (windowOrder=\(target.windowOrder ?? -1)) 배분 성공")
                         allResults.append(WindowMatchResult(
@@ -638,7 +706,7 @@ final class AXWindowRestoreService: WindowRestoreService {
     private nonisolated func applyAndVerify(
         target: WindowInfo,
         axWindow: AXUIElement
-    ) -> (success: Bool, failReason: RestoreFailureReason?) {
+    ) -> (success: Bool, failReason: RestoreFailureReason?, actual: CGRect?) {
         // 1차 설정
         var targetPosition = CGPoint(x: target.pos.x, y: target.pos.y)
         var posResult: AXError = .failure
@@ -654,7 +722,7 @@ final class AXWindowRestoreService: WindowRestoreService {
         // AX API 호출 자체가 실패한 경우 (권한 없음, API 비활성 등)
         if posResult != .success && sizeResult != .success {
             logW("[복구] AX API 실패 - '\(target.app)' pos:\(posResult.rawValue), size:\(sizeResult.rawValue)")
-            return (false, .axAPIError)
+            return (false, .axAPIError, nil)
         }
 
         // macOS가 창 위치/크기 변경을 처리할 시간 확보
@@ -662,7 +730,7 @@ final class AXWindowRestoreService: WindowRestoreService {
 
         // 1차 검증
         if verify(target: target, axWindow: axWindow) {
-            return (true, nil)
+            return (true, nil, nil)
         }
 
         // 2차 설정 (위치를 크기 설정 후 다시 설정 - 일부 앱은 크기 변경 시 위치가 밀림)
@@ -678,13 +746,22 @@ final class AXWindowRestoreService: WindowRestoreService {
 
         // 2차 검증
         if verify(target: target, axWindow: axWindow) {
-            return (true, nil)
+            return (true, nil, nil)
         }
 
-        return (false, .verifyFailed)
+        // Issue121: keep the measured frame so the leftover decision can tell a snap from a miss
+        return (false, .verifyFailed, measure(axWindow: axWindow))
     }
 
     private nonisolated func verify(target: WindowInfo, axWindow: AXUIElement) -> Bool {
+        guard let actual = measure(axWindow: axWindow) else { return false }
+        let posMatch = abs(actual.origin.x - target.pos.x) <= 3 && abs(actual.origin.y - target.pos.y) <= 3
+        let sizeMatch = abs(actual.size.width - target.size.width) <= 3 && abs(actual.size.height - target.size.height) <= 3
+        return posMatch && sizeMatch
+    }
+
+    /// Current AX frame of the window, or nil if it can't be read.
+    private nonisolated func measure(axWindow: AXUIElement) -> CGRect? {
         var finalPosValue: CFTypeRef?
         var finalSizeValue: CFTypeRef?
         AXUIElementCopyAttributeValue(axWindow, kAXPositionAttribute as CFString, &finalPosValue)
@@ -692,14 +769,10 @@ final class AXWindowRestoreService: WindowRestoreService {
 
         var actualPos = CGPoint.zero
         var actualSize = CGSize.zero
-        guard let fPos = finalPosValue, CFGetTypeID(fPos) == AXValueGetTypeID() else { return false }
+        guard let fPos = finalPosValue, CFGetTypeID(fPos) == AXValueGetTypeID() else { return nil }
         AXValueGetValue(fPos as! AXValue, .cgPoint, &actualPos)
-        guard let fSize = finalSizeValue, CFGetTypeID(fSize) == AXValueGetTypeID() else { return false }
+        guard let fSize = finalSizeValue, CFGetTypeID(fSize) == AXValueGetTypeID() else { return nil }
         AXValueGetValue(fSize as! AXValue, .cgSize, &actualSize)
-
-        let posMatch = abs(actualPos.x - target.pos.x) <= 3 && abs(actualPos.y - target.pos.y) <= 3
-        let sizeMatch = abs(actualSize.width - target.size.width) <= 3 && abs(actualSize.height - target.size.height) <= 3
-
-        return posMatch && sizeMatch
+        return CGRect(origin: actualPos, size: actualSize)
     }
 }

@@ -227,6 +227,179 @@ final class TDDPlaylistTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(lines.filter { $0.hasPrefix("  - \"") }.count, 2, "excludedApps")
     }
 
+    // MARK: - #16 root-config-stays-at-root (Issue108 ②)
+
+    /// The first launch moves legacy root layouts into the host folder, but `_config.yml`
+    /// (and any `_`-prefixed file) is settings, not a layout — it must stay at the root.
+    /// Moved into the host folder it showed up as a layout named `_config` and was wiped by delete-all.
+    func testMigrationKeepsUnderscoreFilesAtRoot() throws {
+        let fm = FileManager.default
+        try "restServerPort: 3016\n".write(to: tmpDir.appendingPathComponent("_config.yml"), atomically: true, encoding: .utf8)
+        try "- app: A\n".write(to: tmpDir.appendingPathComponent("legacy.yml"), atomically: true, encoding: .utf8)
+
+        YAMLLayoutStorageService.migrateRootDataIfNeeded(baseDir: tmpDir, hostname: "testhost")
+
+        XCTAssertTrue(fm.fileExists(atPath: tmpDir.appendingPathComponent("_config.yml").path), "_config.yml stays at the root")
+        XCTAssertFalse(fm.fileExists(atPath: tmpDir.appendingPathComponent("testhost/_config.yml").path), "_config.yml is not moved")
+        XCTAssertTrue(fm.fileExists(atPath: tmpDir.appendingPathComponent("testhost/legacy.yml").path), "legacy layout is migrated")
+    }
+
+    /// A fresh install has only `_config.yml` at the root — there is nothing to migrate.
+    func testConfigOnlyRootIsNotMigrated() throws {
+        let fm = FileManager.default
+        try "restServerPort: 3016\n".write(to: tmpDir.appendingPathComponent("_config.yml"), atomically: true, encoding: .utf8)
+
+        YAMLLayoutStorageService.migrateRootDataIfNeeded(baseDir: tmpDir, hostname: "testhost")
+
+        XCTAssertTrue(fm.fileExists(atPath: tmpDir.appendingPathComponent("_config.yml").path), "_config.yml stays at the root")
+        XCTAssertFalse(fm.fileExists(atPath: tmpDir.appendingPathComponent("testhost").path), "no host folder is created for a settings-only root")
+    }
+
+    // MARK: - #19 data-directory-setting-applies (Issue108 ①)
+
+    /// `dataDirectoryPath` saved from paidApp settings must become the layout base (from the next start).
+    func testDataDirectorySettingBecomesLayoutBase() {
+        let custom = tmpDir.appendingPathComponent("custom-data")
+        let base = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: custom.path, configBase: tmpDir.appendingPathComponent("cfg"), envPath: nil,
+            allowedRoots: [tmpDir])
+
+        // the base comes back canonical (/var → /private/var) — compare symlink-resolved (Issue115)
+        XCTAssertEqual(base.resolvingSymlinksInPath().path, custom.resolvingSymlinksInPath().path)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: custom.path), "the chosen folder is created")
+    }
+
+    /// `~` in the saved path is the user's home, not a folder named "~".
+    func testDataDirectorySettingExpandsTilde() {
+        let base = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: "~/fwc-tilde-\(UUID().uuidString)", configBase: tmpDir, envPath: nil)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        XCTAssertTrue(base.path.hasPrefix(FileManager.default.homeDirectoryForCurrentUser.path), base.path)
+        XCTAssertFalse(base.path.contains("/~/"))
+    }
+
+    /// The env override (tests, demo setup) wins over the setting; no setting keeps the config base.
+    func testEnvOverrideAndMissingSettingKeepConfigBase() {
+        let cfg = tmpDir.appendingPathComponent("cfg")
+        let env = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: tmpDir.appendingPathComponent("custom").path, configBase: cfg, envPath: cfg.path)
+        let unset = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: nil, configBase: cfg, envPath: nil)
+        let empty = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: "  ", configBase: cfg, envPath: nil)
+
+        XCTAssertEqual(env, cfg)
+        XCTAssertEqual(unset, cfg)
+        XCTAssertEqual(empty, cfg)
+    }
+
+    // MARK: - #21 data-directory-path-guarded (Issue115)
+
+    /// A path outside the allowed roots — or the root itself — must not become the layout base,
+    /// and nothing may be created there.
+    func testDataDirectoryRefusedOutsideAllowedRoots() {
+        let cfg = tmpDir.appendingPathComponent("cfg")
+        let outside = "/private/tmp/fwc-issue115-\(UUID().uuidString)"
+        defer { try? FileManager.default.removeItem(atPath: outside) }
+
+        for raw in [outside, tmpDir.path, "relative/fwc-data", tmpDir.appendingPathComponent("../escape").path] {
+            let base = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+                dataDirectoryPath: raw, configBase: cfg, envPath: nil, allowedRoots: [tmpDir])
+            XCTAssertEqual(base, cfg, "\(raw) must fall back to the config base")
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: outside), "a refused folder is not created")
+    }
+
+    /// A symlink inside an allowed root must not smuggle the base outside of it.
+    func testDataDirectoryRefusedThroughSymlink() throws {
+        let link = tmpDir.appendingPathComponent("link")
+        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: "/private/tmp")
+        let cfg = tmpDir.appendingPathComponent("cfg")
+        let name = "fwc-issue115-\(UUID().uuidString)"
+        let raw = link.appendingPathComponent(name).path
+        // a regression would create the folder through the link — don't leave it behind
+        defer { try? FileManager.default.removeItem(atPath: "/private/tmp/\(name)") }
+
+        let base = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: raw, configBase: cfg, envPath: nil, allowedRoots: [tmpDir])
+        XCTAssertEqual(base, cfg)
+        if case .success = YAMLLayoutStorageService.validateDataDirectoryPath(raw, allowedRoots: [tmpDir]) {
+            XCTFail("symlink escape accepted: \(raw)")
+        }
+    }
+
+    /// Default roots: under home and /Volumes are fine; system folders and home itself are not.
+    func testDataDirectoryDefaultRoots() {
+        func accepted(_ raw: String) -> Bool {
+            if case .success = YAMLLayoutStorageService.validateDataDirectoryPath(raw) { return true }
+            return false
+        }
+        XCTAssertTrue(accepted("~/Documents/finfra/fWarrangeData"))
+        XCTAssertTrue(accepted("/Volumes/fwc-issue115-drive/fWarrangeData"))
+        // world-writable: another local account could plant the host folder (Issue115 verify)
+        XCTAssertFalse(accepted("/Users/Shared/fWarrangeData"))
+        XCTAssertFalse(accepted("/etc/fwc"))
+        XCTAssertFalse(accepted("/"))
+        XCTAssertFalse(accepted("/Volumes/../etc/fwc"))
+        XCTAssertFalse(accepted(FileManager.default.homeDirectoryForCurrentUser.path))
+    }
+
+    /// Files are written into `{base}/{hostname}` (and `_share`), not into the base itself.
+    /// If that subfolder is a symlink leading out of the base, the base must be refused.
+    func testDataDirectoryRefusedWhenHostFolderEscapes() throws {
+        let fm = FileManager.default
+        let base = tmpDir.appendingPathComponent("base")
+        let outside = tmpDir.appendingPathComponent("outside")   // still under the allowed root on purpose
+        try fm.createDirectory(at: base, withIntermediateDirectories: true)
+        try fm.createDirectory(at: outside, withIntermediateDirectories: true)
+        try fm.createSymbolicLink(atPath: base.appendingPathComponent("testhost").path, withDestinationPath: outside.path)
+        let cfg = tmpDir.appendingPathComponent("cfg")
+
+        let resolved = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: base.path, configBase: cfg, envPath: nil, allowedRoots: [tmpDir], hostname: "testhost")
+        XCTAssertEqual(resolved, cfg, "a host folder that leaves the base must not be used")
+
+        // a plain host folder is fine
+        try fm.removeItem(at: base.appendingPathComponent("testhost"))
+        let ok = YAMLLayoutStorageService.resolveLayoutBaseDirectory(
+            dataDirectoryPath: base.path, configBase: cfg, envPath: nil, allowedRoots: [tmpDir], hostname: "testhost")
+        XCTAssertEqual(ok.resolvingSymlinksInPath().path, base.resolvingSymlinksInPath().path)
+    }
+
+    /// REST PATCH must refuse an unsafe `dataDirectoryPath` instead of persisting it.
+    func testSettingsPatchRefusesUnsafeDataDirectory() {
+        XCTAssertNotNil(AppSettings.settingsPatchError(body: ["dataDirectoryPath": "/private/tmp/fwc"]))
+        XCTAssertNotNil(AppSettings.settingsPatchError(body: ["dataDirectoryPath": "/", "theme": "dark"]))
+        XCTAssertNil(AppSettings.settingsPatchError(body: ["dataDirectoryPath": "~/Documents/fwc"]))
+        XCTAssertNil(AppSettings.settingsPatchError(body: ["dataDirectoryPath": ""]), "empty clears the setting")
+        XCTAssertNil(AppSettings.settingsPatchError(body: ["dataDirectoryPath": NSNull()]))
+        XCTAssertNil(AppSettings.settingsPatchError(body: ["theme": "dark"]))
+    }
+
+    /// A user-chosen base may hold foreign yml files — the legacy root migration must leave them alone.
+    func testCustomLayoutBaseKeepsForeignYmlAtRoot() throws {
+        let fm = FileManager.default
+        let custom = tmpDir.appendingPathComponent("custom")
+        try fm.createDirectory(at: custom, withIntermediateDirectories: true)
+        try "services: {}\n".write(to: custom.appendingPathComponent("docker-compose.yml"), atomically: true, encoding: .utf8)
+
+        YAMLLayoutStorageService.prepareHostLayoutBase(custom, configBase: tmpDir.appendingPathComponent("cfg"), hostname: "testhost")
+
+        XCTAssertTrue(fm.fileExists(atPath: custom.appendingPathComponent("docker-compose.yml").path), "foreign yml stays put")
+        XCTAssertFalse(fm.fileExists(atPath: custom.appendingPathComponent("testhost").path), "no host folder is created")
+    }
+
+    /// The config base itself still gets the legacy migration (Issue166_3 behaviour kept).
+    func testConfigBaseStillMigratesLegacyLayouts() throws {
+        let fm = FileManager.default
+        try "- app: \"Safari\"\n".write(to: tmpDir.appendingPathComponent("legacy.yml"), atomically: true, encoding: .utf8)
+
+        YAMLLayoutStorageService.prepareHostLayoutBase(tmpDir, configBase: tmpDir, hostname: "testhost")
+
+        XCTAssertTrue(fm.fileExists(atPath: tmpDir.appendingPathComponent("testhost/legacy.yml").path))
+    }
+
     // MARK: - #10 version-label-match (Issue89, Issue91)
 
     private var repoRoot: URL {
@@ -394,6 +567,90 @@ final class RESTListenerLifecycleTests: XCTestCase {
 
 /// tdd accessibility-boot-listing (Issue104 · prj25 Issue237 이식): 미승인으로 부팅한 새 프로세스는
 /// 시스템 권한 요청을 정확히 1회 보내 손쉬운 사용 목록에 올라간다. 승인 상태면 묻지 않는다.
+// MARK: - a11y-guide-keeps-rest-alive (Issue110)
+
+/// The accessibility guide is an `NSAlert.runModal()` — a nested run loop in modal-panel mode.
+/// REST v2 handlers hop to the main queue (`DispatchQueue.main.async`). If the guide itself is
+/// started from a main-queue block, the serial main queue cannot drain until the alert closes and
+/// every REST v2 request hangs (jma, TCC reset → brew launch: `/api/v2/layouts` 000 for as long as
+/// the guide was up). The presenter must schedule the alert so that main-queue work keeps running.
+final class AccessibilityGuideSchedulingTests: XCTestCase {
+
+    func testMainQueueWorkRunsWhileGuideIsUp() {
+        let done = expectation(description: "guide stand-in finished")
+        var mainQueueRan = false
+
+        AccessibilityGuidePresenter.schedule {
+            // stand-in for a REST v2 handler queued while the guide is shown
+            DispatchQueue.main.async { mainQueueRan = true }
+            // stand-in for NSAlert.runModal(): spin a nested run loop in modal-panel mode
+            let deadline = Date().addingTimeInterval(2)
+            while !mainQueueRan && Date() < deadline {
+                RunLoop.current.run(mode: .modalPanel, before: Date().addingTimeInterval(0.05))
+            }
+            XCTAssertTrue(mainQueueRan, "main-queue work must run while the modal guide is up")
+            done.fulfill()
+        }
+
+        wait(for: [done], timeout: 10)
+    }
+
+    // MARK: - #22 a11y-guide-single-alert (Issue116)
+
+    override func tearDown() {
+        AccessibilityGuidePresenter.runModal = { $0.runModal() }
+        super.tearDown()
+    }
+
+    /// Because guides run as run-loop blocks (Issue110), a guide requested while another is up
+    /// runs inside the open alert's modal loop. It must not stack a second alert.
+    func testGuideIsNotStackedWhileOneIsUp() {
+        let closed = expectation(description: "first guide closed")
+        var presented = 0
+        AccessibilityGuidePresenter.runModal = { _ in
+            presented += 1
+            if presented == 1 {
+                AccessibilityGuidePresenter.show(openSettings: {})
+                AccessibilityGuidePresenter.showPermissionLost()
+                // run-loop blocks run in order — once this one ran, the two requests above were serviced
+                var serviced = false
+                AccessibilityGuidePresenter.schedule { serviced = true }
+                // stand-in for runModal's nested loop — the requests above get serviced in here
+                let deadline = Date().addingTimeInterval(5)
+                while !serviced && Date() < deadline {
+                    RunLoop.current.run(mode: .modalPanel, before: Date().addingTimeInterval(0.05))
+                }
+                XCTAssertTrue(serviced, "the nested requests must have been serviced, or the count proves nothing")
+                closed.fulfill()
+            }
+            return .alertSecondButtonReturn   // "나중에" — no settings, no restart
+        }
+
+        AccessibilityGuidePresenter.show(openSettings: {})
+        wait(for: [closed], timeout: 10)
+
+        XCTAssertEqual(presented, 1, "only one accessibility alert may be up at a time")
+    }
+
+    /// The guard is released when the alert closes — a later request shows again.
+    func testGuideShowsAgainAfterClosing() {
+        let both = expectation(description: "two guides closed")
+        both.expectedFulfillmentCount = 2
+        var presented = 0
+        AccessibilityGuidePresenter.runModal = { _ in
+            presented += 1
+            both.fulfill()
+            return .alertSecondButtonReturn
+        }
+
+        AccessibilityGuidePresenter.show(openSettings: {})
+        AccessibilityGuidePresenter.show(openSettings: {})
+        wait(for: [both], timeout: 10)
+
+        XCTAssertEqual(presented, 2)
+    }
+}
+
 final class AccessibilityBootListingTests: XCTestCase {
 
     func testUngrantedBootRequestsListingOnce() {
@@ -561,6 +818,26 @@ final class BrewHandoffTests: XCTestCase {
         )
     }
 
+    /// Issue106: the XCTest host runs AppState like the real app. It must skip the brew sync before
+    /// asking launchctl or brew anything — a real `brew services start` handoff (or its nested
+    /// `waitUntilExit` run loop) inside the test host broke isolation and left the host hanging.
+    func testTestHostSkipsBrewSyncBeforeTouchingBrew() {
+        var env = environment(formulaInstalled: true, startStatus: 0)
+        env.isServiceLoaded = { [unowned self] in events.append("loaded?"); return false }
+        env.findBrewPath = { [unowned self] in events.append("brew?"); return "/fake/bin/brew" }
+        env.isTestHost = { true }
+
+        let outcome = BrewServiceSync.onAppStart(env)
+
+        XCTAssertEqual(outcome, .skipped)
+        XCTAssertEqual(events, [], "no launchctl / brew query, no start, no exit in the test host")
+    }
+
+    /// The live environment recognises this very process as the test host.
+    func testLiveEnvironmentDetectsTestHost() {
+        XCTAssertTrue(BrewServiceSync.StartEnvironment.live.isTestHost())
+    }
+
     /// jma R1 row 3: brew binary present, formula not installed.
     func testMissingFormulaDoesNotHandOffOrExit() {
         let outcome = BrewServiceSync.onAppStart(environment(formulaInstalled: false, startStatus: 0))
@@ -610,5 +887,286 @@ final class BrewHandoffTests: XCTestCase {
         let path = (Logger.shared.getLogFilePath() as NSString).expandingTildeInPath
         let content = try String(contentsOfFile: path, encoding: .utf8)
         XCTAssertTrue(content.contains(marker))
+    }
+}
+
+// MARK: - #23 storage-name-no-traversal (Issue117)
+
+/// Layout and mode names become file names (`{dir}/{name}.yml`). A name with `/` must not
+/// reach outside the storage folder — REST takes these names without a token.
+final class StorageNameTraversalTests: XCTestCase {
+
+    private var tmpDir: URL!
+    private var dataDir: URL!
+
+    override func setUpWithError() throws {
+        tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("StorageNameTraversalTests_\(UUID().uuidString)")
+        dataDir = tmpDir.appendingPathComponent("data")
+        try FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: tmpDir)
+    }
+
+    private func exists(_ name: String) -> Bool {
+        FileManager.default.fileExists(atPath: tmpDir.appendingPathComponent(name).path)
+    }
+
+    func testLayoutSaveRefusesTraversalName() {
+        let storage = YAMLLayoutStorageService(dataDirectoryURL: dataDir)
+        XCTAssertThrowsError(try storage.save(name: "../escape", windows: []))
+        XCTAssertFalse(exists("escape.yml"), "nothing may be written outside the layout folder")
+    }
+
+    func testLayoutRenameRefusesTraversalName() throws {
+        let storage = YAMLLayoutStorageService(dataDirectoryURL: dataDir)
+        try storage.save(name: "ok", windows: [])
+        XCTAssertThrowsError(try storage.rename(oldName: "ok", newName: "../moved"))
+        XCTAssertFalse(exists("moved.yml"))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: dataDir.appendingPathComponent("ok.yml").path))
+    }
+
+    func testLayoutDeleteRefusesTraversalName() throws {
+        try "- app: \"x\"\n".write(to: tmpDir.appendingPathComponent("victim.yml"), atomically: true, encoding: .utf8)
+        let storage = YAMLLayoutStorageService(dataDirectoryURL: dataDir)
+        XCTAssertThrowsError(try storage.delete(name: "../victim"))
+        XCTAssertTrue(exists("victim.yml"), "a file outside the layout folder must survive")
+    }
+
+    func testModeSaveRefusesTraversalName() {
+        let base = tmpDir.appendingPathComponent("modebase")
+        let storage = YAMLModeStorageService(baseDirectory: base)
+        // modes live in {base}/{host}/modes — three levels up is tmpDir
+        XCTAssertThrowsError(try storage.save(Mode(name: "../../../mode-escape", icon: "x", shortcut: nil, layoutRef: "x")))
+        XCTAssertFalse(exists("mode-escape.yml"))
+    }
+
+    /// The single check REST uses before touching storage (capture name · rename newName · mode name).
+    func testStorageNameRejection() {
+        for bad in ["../x", "a/b", "/abs", "", "  ", ".", "..", "nul\0x", String(repeating: "a", count: 252)] {
+            XCTAssertNotNil(StorageName.rejection(bad), "must refuse: \(bad.prefix(20))")
+        }
+        for good in ["Work Setup", "작업 1", "v1.2 layout", "..hidden-ish", "a:b", String(repeating: "a", count: 251)] {
+            XCTAssertNil(StorageName.rejection(good), "must accept: \(good.prefix(20))")
+        }
+    }
+
+    /// A whitespace-only name saved by an older build must stay openable, deletable and
+    /// renamable — only *new* names get the full rule; existing ones only the escape check.
+    func testLegacyBlankNameStaysManageable() throws {
+        let storage = YAMLLayoutStorageService(dataDirectoryURL: dataDir)
+        try "- app: \"x\"\n".write(to: dataDir.appendingPathComponent(" .yml"), atomically: true, encoding: .utf8)
+
+        XCTAssertNoThrow(try storage.load(name: " "))
+        XCTAssertNoThrow(try storage.rename(oldName: " ", newName: "rescued"))
+        XCTAssertNoThrow(try storage.delete(name: "rescued"))
+        XCTAssertThrowsError(try storage.save(name: " ", windows: []), "a new blank name is still refused")
+        XCTAssertThrowsError(try storage.delete(name: "../victim"), "existing-item paths still refuse escapes")
+    }
+
+    /// Ordinary names keep working (spaces, unicode, dots inside).
+    func testOrdinaryNamesStillWork() throws {
+        let storage = YAMLLayoutStorageService(dataDirectoryURL: dataDir)
+        for name in ["Work Setup", "작업 1", "v1.2 layout", "2026-10-04_001"] {
+            try storage.save(name: name, windows: [])
+            XCTAssertNoThrow(try storage.load(name: name))
+        }
+    }
+}
+
+// MARK: - #24 verify-failed-best-effort (Issue114 ①)
+
+/// A window that was found and moved but failed the 3px position check must keep its
+/// match info when the retry loop ends — at the last attempt *or* by the early exit.
+/// Before the fix the early exit skipped the last-attempt branch, so a single TextEdit
+/// window (height snapped to line units) was reported as `noMatch` → `windowNotFound`.
+final class RestoreLeftoverTests: XCTestCase {
+
+    private func target(_ id: Int, app: String = "TextEdit") -> WindowInfo {
+        WindowInfo(id: id, app: app, window: "Untitled \(id)", layer: 0,
+                   pos: WindowPosition(x: 100, y: 100), size: WindowSize(width: 600, height: 400))
+    }
+
+    func testVerifyFailedTargetIsBestEffortWithMatchKept() {
+        let t = target(1)
+        let r = RestoreLeftover.resolve(
+            pending: [t],
+            verifyFailures: [.init(target: t, title: "Untitled 1", matchType: .exactTitle, score: 90,
+                                   actual: CGRect(x: 100, y: 100, width: 600, height: 390))])  // line-height snap
+
+        XCTAssertEqual(r.bestEffort.count, 1)
+        XCTAssertTrue(r.unmatched.isEmpty)
+        let result = r.bestEffort[0]
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.matchType, .exactTitle)
+        XCTAssertEqual(result.score, 90)
+        XCTAssertEqual(result.matchedTitle, "Untitled 1")
+        XCTAssertEqual(result.targetWindow, t)
+    }
+
+    func testTargetWithoutMatchStaysUnmatched() {
+        let t = target(2)
+        let r = RestoreLeftover.resolve(pending: [t], verifyFailures: [])
+        XCTAssertTrue(r.bestEffort.isEmpty)
+        XCTAssertEqual(r.unmatched, [t])
+    }
+
+    /// Only recorded targets are best-effort; a stale record for a target that is no
+    /// longer pending (it succeeded later) is ignored.
+    func testOnlyPendingRecordedTargetsAreBestEffort() {
+        let failed = target(3), missing = target(4, app: "Notes"), done = target(5)
+        let r = RestoreLeftover.resolve(
+            pending: [failed, missing],
+            verifyFailures: [
+                .init(target: failed, title: "Untitled 3", matchType: .windowID, score: 100,
+                      actual: CGRect(x: 100, y: 100, width: 600, height: 392)),
+                .init(target: done, title: "Untitled 5", matchType: .windowID, score: 100)
+            ])
+        XCTAssertEqual(r.bestEffort.map(\.targetWindow), [failed])
+        XCTAssertEqual(r.unmatched, [missing])
+    }
+}
+
+// MARK: - #26 best-effort-has-a-bound (Issue121)
+
+/// prj16 R1 (jma): a TextEdit window restored to 200,200 800×500 stayed at 200,40 1077×660 and the API
+/// still said `succeeded` — Issue114's best-effort accepted any verify failure. Best effort is for
+/// line-height snapping (a few px), not for a window that never got there.
+final class RestoreBestEffortBoundTests: XCTestCase {
+
+    private let target = WindowInfo(id: 1804, app: "TextEdit", window: "testBoard.txt", layer: 0,
+                                    pos: WindowPosition(x: 200, y: 200), size: WindowSize(width: 800, height: 500))
+
+    func testLargeDeviationIsReportedAsFailureWithMatchKept() {
+        let r = RestoreLeftover.resolve(pending: [target], verifyFailures: [
+            .init(target: target, title: "testBoard.txt", matchType: .windowID, score: 100,
+                  actual: CGRect(x: 200, y: 40, width: 1077, height: 660))])
+
+        XCTAssertTrue(r.bestEffort.isEmpty, "a window 160px / 277px off is not a success")
+        XCTAssertEqual(r.offTarget.count, 1)
+        XCTAssertFalse(r.offTarget[0].success)
+        XCTAssertEqual(r.offTarget[0].matchType, .windowID, "match info is kept — it was found, just not placed")
+        XCTAssertEqual(r.offTarget[0].score, 100)
+        XCTAssertTrue(r.unmatched.isEmpty, "found windows must not fall to the Moom fallback / noMatch")
+        XCTAssertEqual(RESTServer.classifyRestoreFailure(result: r.offTarget[0], minimumScore: 30,
+                                                         runningAppNames: ["TextEdit"], runningBundleIDs: []),
+                       "axOperationFailed")
+    }
+
+    func testLineHeightSnapIsStillBestEffort() {
+        let r = RestoreLeftover.resolve(pending: [target], verifyFailures: [
+            .init(target: target, title: "testBoard.txt", matchType: .windowID, score: 100,
+                  actual: CGRect(x: 200, y: 200, width: 800, height: 486))])
+        XCTAssertEqual(r.bestEffort.count, 1)
+        XCTAssertTrue(r.offTarget.isEmpty)
+    }
+
+    func testUnmeasuredVerifyFailureIsNotASuccess() {
+        let r = RestoreLeftover.resolve(pending: [target], verifyFailures: [
+            .init(target: target, title: "testBoard.txt", matchType: .windowID, score: 100, actual: nil)])
+        XCTAssertTrue(r.bestEffort.isEmpty, "unknown geometry cannot be called a success")
+        XCTAssertEqual(r.offTarget.count, 1)
+    }
+}
+
+// MARK: - #25 restart-comes-back (Issue119)
+
+/// `POST /api/v2/cli/restart` only terminated and relied on launchd KeepAlive — the instance never came
+/// back. jma showed that anything the app spawns dies with it, so the comeback is an independent launchd
+/// job (`launchctl submit`) that waits for this PID, then kickstarts the service or re-opens the bundle.
+final class AppRestarterTests: XCTestCase {
+
+    override func tearDown() {
+        AppRestarter.resetSeams()
+        super.tearDown()
+    }
+
+    func testPlanForBrewServiceKickstartsTheSameLabel() {
+        let p = AppRestarter.plan(pid: 123, uid: 501, bundlePath: "/opt/x.app", serviceLabel: "sh.brew.fwarrange-cli")
+        XCTAssertEqual(p.path, .brewService)
+        XCTAssertEqual(p.jobLabel, "kr.finfra.fWarrangeCli.relaunch.123")
+        XCTAssertTrue(p.script.contains("kill -0 123"), "must wait for this PID to exit: \(p.script)")
+        XCTAssertTrue(p.script.contains("/bin/launchctl kickstart gui/501/sh.brew.fwarrange-cli"), p.script)
+        XCTAssertTrue(p.script.hasSuffix("/bin/launchctl remove kr.finfra.fWarrangeCli.relaunch.123"), "job removes itself")
+        XCTAssertFalse(p.script.contains("/usr/bin/open"))
+    }
+
+    func testPlanForOpenInstanceReopensTheBundle() {
+        let p = AppRestarter.plan(pid: 7, uid: 501, bundlePath: "/Applications/it's here.app", serviceLabel: nil)
+        XCTAssertEqual(p.path, .openRelaunch)
+        XCTAssertTrue(p.script.contains("kill -0 7"))
+        XCTAssertTrue(p.script.contains("/usr/bin/open '/Applications/it'\\''s here.app'"), "bundle path must be shell-quoted: \(p.script)")
+        XCTAssertFalse(p.script.contains("kickstart"))
+    }
+
+    /// The helper must be scheduled before quitting — and a failed schedule must not quit.
+    func testRestartSchedulesHelperThenTerminates() {
+        var events: [String] = []
+        AppRestarter.managedServiceLabel = { nil }
+        AppRestarter.submit = { label, _ in events.append("submit:\(label)"); return true }
+        AppRestarter.terminate = { events.append("terminate") }
+
+        XCTAssertEqual(AppRestarter.restart(reason: "test"), .openRelaunch)
+        XCTAssertEqual(events, ["submit:kr.finfra.fWarrangeCli.relaunch.\(getpid())", "terminate"])
+    }
+
+    func testFailedSchedulingKeepsTheAppRunning() {
+        var terminated = false
+        AppRestarter.managedServiceLabel = { "sh.brew.fwarrange-cli" }
+        AppRestarter.submit = { _, _ in false }
+        AppRestarter.terminate = { terminated = true }
+
+        AppRestarter.restart(reason: "test")
+        XCTAssertFalse(terminated, "without a helper, quitting would be a plain stop")
+    }
+
+    /// jma: the brew-managed restart still came back as `none` — `applicationWillTerminate` ran its own
+    /// `brew services stop` (Issue51) without the handoff guard, unloading the service the helper
+    /// was about to kickstart. Termination sync must have one decision point that honours the restart.
+    func testTerminateSyncSkipsBrewStopDuringRestart() {
+        defer { BrewServiceSync.endManagedRelaunch() }
+        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: true),
+                       ["services", "stop", "fwarrange-cli", "--keep"])
+        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: false),
+                       ["services", "stop", "fwarrange-cli"])
+
+        BrewServiceSync.beginManagedRelaunch()
+        XCTAssertNil(BrewServiceSync.terminateStopArguments(launchAtLogin: true),
+                     "a restarting instance must leave the brew service loaded")
+    }
+
+    /// The REST endpoint must use that path — not a bare terminate.
+    func testRESTRestartGoesThroughAppRestarter() throws {
+        let scheduled = expectation(description: "helper scheduled")
+        AppRestarter.managedServiceLabel = { nil }
+        AppRestarter.submit = { _, script in
+            XCTAssertTrue(script.contains("kill -0 \(getpid())"))
+            scheduled.fulfill(); return true
+        }
+        AppRestarter.terminate = { }   // the test host must survive
+
+        let port = RESTListenerLifecycleTests.freePort()
+        let server = RESTServer(handlers: RESTListenerLifecycleTests.stubHandlers())
+        server.start(port: port)
+        defer { server.stop() }
+        XCTAssertTrue(RESTListenerLifecycleTests.waitUntil {
+            RESTListenerLifecycleTests.get(port: port, path: "/api/v2/health", timeout: 1).status == 200
+        })
+
+        var req = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/api/v2/cli/restart")!)
+        req.httpMethod = "POST"
+        req.setValue("true", forHTTPHeaderField: "X-Confirm")
+        let responded = expectation(description: "200")
+        var body = ""
+        URLSession(configuration: .ephemeral).dataTask(with: req) { data, resp, _ in
+            XCTAssertEqual((resp as? HTTPURLResponse)?.statusCode, 200)
+            body = String(data: data ?? Data(), encoding: .utf8) ?? ""
+            responded.fulfill()
+        }.resume()
+
+        wait(for: [responded, scheduled], timeout: 10)
+        XCTAssertFalse(body.contains("KeepAlive"), "response must not claim launchd KeepAlive: \(body)")
     }
 }

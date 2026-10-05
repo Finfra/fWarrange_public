@@ -39,16 +39,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleBrewServicesOnTerminate(launchAtLogin: Bool) {
+        // launchAtLogin=true → stop --keep (plist 유지, 재부팅 시 자동 시작) / false → stop (plist 제거)
+        // 판정은 BrewServiceSync 단일 지점 (Issue119: 재시작 중이면 nil — 서비스를 unload 하지 않는다)
+        guard let arguments = BrewServiceSync.terminateStopArguments(launchAtLogin: launchAtLogin) else {
+            logI("[brew-sync] applicationWillTerminate — 재시작 중이라 brew services stop 생략")
+            return
+        }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/brew")
-
-        if launchAtLogin {
-            // launchAtLogin=true → brew services stop --keep (daemon plist 유지, 재부팅 시 자동 시작)
-            process.arguments = ["services", "stop", "fwarrange-cli", "--keep"]
-        } else {
-            // launchAtLogin=false → brew services stop (daemon plist 제거, 재부팅 시 미시작)
-            process.arguments = ["services", "stop", "fwarrange-cli"]
-        }
+        process.arguments = arguments
 
         do {
             try process.run()
