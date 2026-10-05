@@ -975,3 +975,54 @@ final class StorageNameTraversalTests: XCTestCase {
         }
     }
 }
+
+// MARK: - #24 verify-failed-best-effort (Issue114 ①)
+
+/// A window that was found and moved but failed the 3px position check must keep its
+/// match info when the retry loop ends — at the last attempt *or* by the early exit.
+/// Before the fix the early exit skipped the last-attempt branch, so a single TextEdit
+/// window (height snapped to line units) was reported as `noMatch` → `windowNotFound`.
+final class RestoreLeftoverTests: XCTestCase {
+
+    private func target(_ id: Int, app: String = "TextEdit") -> WindowInfo {
+        WindowInfo(id: id, app: app, window: "Untitled \(id)", layer: 0,
+                   pos: WindowPosition(x: 100, y: 100), size: WindowSize(width: 600, height: 400))
+    }
+
+    func testVerifyFailedTargetIsBestEffortWithMatchKept() {
+        let t = target(1)
+        let r = RestoreLeftover.resolve(
+            pending: [t],
+            verifyFailures: [.init(target: t, title: "Untitled 1", matchType: .exactTitle, score: 90)])
+
+        XCTAssertEqual(r.bestEffort.count, 1)
+        XCTAssertTrue(r.unmatched.isEmpty)
+        let result = r.bestEffort[0]
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.matchType, .exactTitle)
+        XCTAssertEqual(result.score, 90)
+        XCTAssertEqual(result.matchedTitle, "Untitled 1")
+        XCTAssertEqual(result.targetWindow, t)
+    }
+
+    func testTargetWithoutMatchStaysUnmatched() {
+        let t = target(2)
+        let r = RestoreLeftover.resolve(pending: [t], verifyFailures: [])
+        XCTAssertTrue(r.bestEffort.isEmpty)
+        XCTAssertEqual(r.unmatched, [t])
+    }
+
+    /// Only recorded targets are best-effort; a stale record for a target that is no
+    /// longer pending (it succeeded later) is ignored.
+    func testOnlyPendingRecordedTargetsAreBestEffort() {
+        let failed = target(3), missing = target(4, app: "Notes"), done = target(5)
+        let r = RestoreLeftover.resolve(
+            pending: [failed, missing],
+            verifyFailures: [
+                .init(target: failed, title: "Untitled 3", matchType: .windowID, score: 100),
+                .init(target: done, title: "Untitled 5", matchType: .windowID, score: 100)
+            ])
+        XCTAssertEqual(r.bestEffort.map(\.targetWindow), [failed])
+        XCTAssertEqual(r.unmatched, [missing])
+    }
+}

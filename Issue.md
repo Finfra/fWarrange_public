@@ -63,7 +63,11 @@ date: 2026-04-07
     - ③ `fwc-test.sh` API 단계 `delete-all` 이 실제 사용자 데이터 폴더 레이아웃을 전부 지운다 · API·CMD 단계를 응답 내용이 아니라 실행 건수로 PASS 판정
     - ④ `cli/README.md` 불일치 — v1 «maintained» 인데 실제 410 · «brew services 불필요» 인데 Formula 에 service 정의 · 수동 기동 예시에 개발 경로 `/Applications/_nowage_app/`
     - ⑤ `jma-fwarrange-deploy.sh` 기본값이 jm4→jma rsync 라 jma 의 release 소스를 jm4 develop 으로 덮는다(이번엔 `--no-sync` 로 우회)
-* 증거: `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_jma-2026.09.29.md` · prj16 `_doc_work/_release/v1.1.2/jma-logs_2026.09.29/`
+* 증거: `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_jma-2026.09.29.md` · prj16 `_doc_work/_release/v1.1.3/jma-logs_2026.09.29/`
+* 결과 (2026-10-05, ① 수정 — prj16 세션):
+    - 원인: 창은 매칭·이동했으나 3px 검증 실패(TextEdit 은 높이를 줄 단위로 맞춤) → 재시도 대상 → 2회차도 성공 0 → **조기 종료** `break` 가 마지막 시도 best-effort 분기를 건너뛰어 매칭 정보가 버려지고 `noMatch`/score 0 → REST `windowNotFound`. 다창 레이아웃은 회차마다 성공이 있어 조기 종료에 안 걸림
+    - 수정: 검증 실패 매칭을 회차별로 기록하고 루프 종료 뒤 `RestoreLeftover.resolve` 한 곳에서 판정 — 마지막 시도·조기 종료 모두 matchType·score 유지 best-effort. 기존 `isLastAttempt` 분기 2곳(병렬·순차) 제거
+    - 검증: 재생목록 24행 `verify-failed-best-effort` — red(컴파일 실패) → jma XCTest 127/127 passed. E2E(TextEdit 단일 창 REST 복원)는 1.1.3 R1 6행에서 확인
 
 # 📗 선택
 
