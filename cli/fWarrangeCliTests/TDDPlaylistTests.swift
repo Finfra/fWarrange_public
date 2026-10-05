@@ -1029,7 +1029,7 @@ final class RestoreLeftoverTests: XCTestCase {
     }
 }
 
-// MARK: - #25 best-effort-has-a-bound (Issue121)
+// MARK: - #26 best-effort-has-a-bound (Issue121)
 
 /// prj16 R1 (jma): a TextEdit window restored to 200,200 800×500 stayed at 200,40 1077×660 and the API
 /// still said `succeeded` — Issue114's best-effort accepted any verify failure. Best effort is for
@@ -1071,7 +1071,7 @@ final class RestoreBestEffortBoundTests: XCTestCase {
     }
 }
 
-// MARK: - #24 restart-comes-back (Issue119)
+// MARK: - #25 restart-comes-back (Issue119)
 
 /// `POST /api/v2/cli/restart` only terminated and relied on launchd KeepAlive — the instance never came
 /// back. jma showed that anything the app spawns dies with it, so the comeback is an independent launchd
