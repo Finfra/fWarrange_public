@@ -1078,6 +1078,21 @@ final class AppRestarterTests: XCTestCase {
         XCTAssertFalse(terminated, "without a helper, quitting would be a plain stop")
     }
 
+    /// jma: the brew-managed restart still came back as `none` — `applicationWillTerminate` ran its own
+    /// `brew services stop` (Issue51) without the handoff guard, unloading the service the helper
+    /// was about to kickstart. Termination sync must have one decision point that honours the restart.
+    func testTerminateSyncSkipsBrewStopDuringRestart() {
+        defer { BrewServiceSync.endManagedRelaunch() }
+        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: true),
+                       ["services", "stop", "fwarrange-cli", "--keep"])
+        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: false),
+                       ["services", "stop", "fwarrange-cli"])
+
+        BrewServiceSync.beginManagedRelaunch()
+        XCTAssertNil(BrewServiceSync.terminateStopArguments(launchAtLogin: true),
+                     "a restarting instance must leave the brew service loaded")
+    }
+
     /// The REST endpoint must use that path — not a bare terminate.
     func testRESTRestartGoesThroughAppRestarter() throws {
         let scheduled = expectation(description: "helper scheduled")

@@ -163,6 +163,18 @@ enum BrewServiceSync {
         handoffInProgress = true
     }
 
+    /// 재시작 취소(헬퍼 예약 후 종료가 무산된 경우)·테스트용 — 종료 동기화를 다시 허용한다.
+    static func endManagedRelaunch() {
+        handoffInProgress = false
+    }
+
+    /// Issue51 종료 동기화(`applicationWillTerminate`)가 실행할 brew 인자.
+    /// 재시작(handoff) 중이면 nil — `onAppStop` 과 같은 플래그를 본다 (Issue119: 두 종료 경로의 판정 갈림 통일).
+    static func terminateStopArguments(launchAtLogin: Bool) -> [String]? {
+        if handoffInProgress { return nil }
+        return launchAtLogin ? ["services", "stop", formulaName, "--keep"] : ["services", "stop", formulaName]
+    }
+
     // MARK: - App Stop → brew=stopped (매트릭스: app stop 행)
 
     /// 메뉴바 "종료" 진입점에서 동기 호출. brew 가 `started` 이면 `brew services stop` 으로 동기화.
