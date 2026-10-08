@@ -28,11 +28,30 @@ date: 2026-04-07
    - 장애: 타 prj memory 경로에 대한 쓰기 권한 제약(위임 범위) — Issue.md 에 이슈 등록만 수행, memory 파일 작성은 사용자 몫으로 미룸
 
 # 🚧 진행중
+## Issue118: [Test] `fwc-run-xcode.sh` 가 Xcode 에 열린 문서가 없는 차가운 상태에서 workspace 로드 60s 대기를 넘겨 `fwc-test.sh` 가 빌드 전에 실패 (등록: 2026-10-04)
+* 목적: R1 4행(`app-bundle-all-clear`)이 코드와 무관하게 환경 상태로 실패한다 — 출고 테스트마다 재현 가능
+* 상세:
+    - 재현(jma 2026-10-04 R1 사전 점검): Xcode 실행 중·열린 문서 0 → `fwc-test.sh` Step 2 `[open] fWarrangeCli.xcodeproj 오픈 중...` → `execution error: Xcode workspace did not finish loading within 60s (-2700)` → `❌ 빌드 실패 — 중단`
+    - 우회: 대상 프로젝트를 Xcode 에 미리 열고 로드 완료 후 실행 → ALL CLEAR 6/0 (`cli/_doc_work/_release/v1.1.2/release-test_1.1.2_r1pre-2026.10.04.md` 4행)
+    - 연관: Issue114 ③(`fwc-test.sh` delete-all 이 실 데이터 폴더를 지움)
+* 구현 명세:
+    - 로드 대기를 문서 유무·Xcode 기동 직후 여부에 따라 연장하거나, `loaded` 폴링 상한을 설정값으로
+    - red 먼저: Xcode 문서 0 상태에서 `fwc-run-xcode.sh build-deploy` 가 성공하는지(jma)
+* 진행 (2026-10-08, 구현 `81aef54` · **jma 검증 대기**):
+    - 원인 단서: 실패 회차(r1pre row04)는 직전 문서 조회도 비어 있던 차가운 Xcode, 2분 뒤 재실행(row04b)은 `OK` 즉시 통과 → 기동+첫 로드가 60초를 넘긴 것으로 추정. 어느 단계(앱 기동·문서 이벤트 유실·모달)에서 막혔는지는 미실측
+    - 수정: 단일 osascript 60초 → bash 폴링, 상한 `FWC_XCODE_LOAD_TIMEOUT`(기본 300초) · 문서가 `FWC_XCODE_REOPEN_AFTER`(기본 20초) 동안 없으면 open 1회 재요청 · 시간 초과 시 프로세스·열린 문서(loaded)·창 이름 덤프 · 같은 이름 다른 경로 사본 경고
+    - jm4 개발 확인(증거 아님): Xcode 미실행 → `open` 4~12초 로드 완료 · 재호출 «이미 로드됨» · 이름 불일치 강제 시 재요청→시간 초과→진단 덤프→rc=1
+    - 남은 일: jma 에서 Xcode 문서 0 상태 `fwc-run-xcode.sh build-deploy`(red→green). jma 는 2026-10-08 현재 `release/1.1.1` 미커밋 작업과 다른 프로젝트 Xcode 문서가 있어 이번 세션은 손대지 않음
+
 # 📕 중요
 
 # 📙 일반
 
-## Issue114: 1.1.2 공개본 출고 테스트 발견 결함 — 단일 창 복원 판정·테스트 도구 위험·README 불일치 (등록: 2026-09-29)
+# 📗 선택
+
+# ✅ 완료
+
+## Issue114: 1.1.2 공개본 출고 테스트 발견 결함 — 단일 창 복원 판정·테스트 도구 위험·README 불일치 (등록: 2026-09-29, 완료: 2026-10-08, Hash: 430a2ea, 779b6fe) ✅
 * 목적: prj5#Issue107 jma 출고 테스트(2026-09-29, release/1.1.1 `af8537b` = 공개 1.1.2) 결과 기록 — 증거 result: partial
 * 상세:
     - ① 단일 창 레이아웃을 다른 위치에서 복원하면 `noMatch`/`windowNotFound`·succeeded 0 보고, 실제로는 근사 이동 — 3회 재현(prj16#Issue283 ②). 1.1.1 부터인지는 미확인
@@ -45,20 +64,13 @@ date: 2026-04-07
     - 원인: 창은 매칭·이동했으나 3px 검증 실패(TextEdit 은 높이를 줄 단위로 맞춤) → 재시도 대상 → 2회차도 성공 0 → **조기 종료** `break` 가 마지막 시도 best-effort 분기를 건너뛰어 매칭 정보가 버려지고 `noMatch`/score 0 → REST `windowNotFound`. 다창 레이아웃은 회차마다 성공이 있어 조기 종료에 안 걸림
     - 수정: 검증 실패 매칭을 회차별로 기록하고 루프 종료 뒤 `RestoreLeftover.resolve` 한 곳에서 판정 — 마지막 시도·조기 종료 모두 matchType·score 유지 best-effort. 기존 `isLastAttempt` 분기 2곳(병렬·순차) 제거
     - 검증: 재생목록 24행 `verify-failed-best-effort` — red(컴파일 실패) → jma XCTest 127/127 passed. E2E(TextEdit 단일 창 REST 복원)는 1.1.3 R1 6행에서 확인
-
-# 📗 선택
-
-## Issue118: [Test] `fwc-run-xcode.sh` 가 Xcode 에 열린 문서가 없는 차가운 상태에서 workspace 로드 60s 대기를 넘겨 `fwc-test.sh` 가 빌드 전에 실패 (등록: 2026-10-04)
-* 목적: R1 4행(`app-bundle-all-clear`)이 코드와 무관하게 환경 상태로 실패한다 — 출고 테스트마다 재현 가능
-* 상세:
-    - 재현(jma 2026-10-04 R1 사전 점검): Xcode 실행 중·열린 문서 0 → `fwc-test.sh` Step 2 `[open] fWarrangeCli.xcodeproj 오픈 중...` → `execution error: Xcode workspace did not finish loading within 60s (-2700)` → `❌ 빌드 실패 — 중단`
-    - 우회: 대상 프로젝트를 Xcode 에 미리 열고 로드 완료 후 실행 → ALL CLEAR 6/0 (`cli/_doc_work/_release/v1.1.2/release-test_1.1.2_r1pre-2026.10.04.md` 4행)
-    - 연관: Issue114 ③(`fwc-test.sh` delete-all 이 실 데이터 폴더를 지움)
-* 구현 명세:
-    - 로드 대기를 문서 유무·Xcode 기동 직후 여부에 따라 연장하거나, `loaded` 폴링 상한을 설정값으로
-    - red 먼저: Xcode 문서 0 상태에서 `fwc-run-xcode.sh build-deploy` 가 성공하는지(jma)
-
-# ✅ 완료
+* 결과 (2026-10-08, ②~⑤):
+    - ② 조치 불요 — Issue108②·111·112 수정 커밋 `d117d12`·`a30f5d0`·`aebef57`·`12ec148` 이 모두 `cli-v1.1.3` 의 조상(1.1.3 출고로 해소)
+    - ③ `fwc-test.sh` — Step 1 이 데이터 폴더 전체(logs 제외)를 스냅샷, EXIT trap 이 앱 정지 뒤 `rsync --checksum --delete` 로 복원(중도 실패·Ctrl-C 포함). `--checksum` 은 같은 크기·같은 초 수정이 quick-check 를 빠져나가는 것을 스텁 실험으로 확인해 넣음. delete-all 테스트 3종(api v1/06·v2/23, cmd v2/29)은 `FORCE=1` 또는 `FWC_DATA_SNAPSHOT=1`(fwc-test 가 스냅샷 뒤 설정) 일 때만 실행
+    - ③ 판정 — 신설 `cli/_tool/fwc-verdict.py` 가 테스트별 응답 내용으로 PASS/FAIL/SKIP. 1.1.3 R1 4행 로그(기존 판정 ALL CLEAR)에 적용하자 숨은 실패 3건이 드러남: v2 `37 restore-modes`·`38 restore-dryrun` jq 우선순위 버그(`.status, .data | {…}` → 문자열에 `.total`) → 수정 · v1 `03 layout-detail` 순서 의존 실패 → `apiTestDo.sh all` 을 v2 전용으로(v1 디렉토리 25개는 모두 `/api/v2` 를 부르는 중복본)
+    - ④ `cli/README.md`·`README_kr.md` — v2 only·`410 Gone`, `brew services` 운영(Formula `service do` 와 일치), 개발 경로 예시 삭제, 설정 저장소 UserDefaults → `_config.yml`, 래퍼 관계·매뉴얼 링크
+    - ⑤ `.claude/skills/jma-fwarrange-deploy` (gitignored, 로컬 전용 — `.agents` 사본 동일 반영) — 동기화 기본값을 끄고 `--sync` opt-in, `--sync` 여도 jma 쪽이 실제 체크아웃이면서 브랜치 불일치·미커밋이면 중단. 2026-10-08 실측: jma 는 `release/1.1.1`(미커밋 paidApp 8·public 1), jm4 는 `release/1.2.0` — 옛 기본값이면 지금 실행만으로 jma 작업물이 덮였을 상태. `tdd/release.md` 실행 환경에 명시
+    - 검증 한계: ③ 은 jm4 에서 로그 재생(red: 3 FAIL 검출)·trap 스텁(빌드 실패 경로 복원) 까지. **jma 전체 `fwc-test.sh` 실행은 미실행** — 다음 R1 4행이 첫 실측
 
 ## Issue123: [Docs] 매뉴얼을 fWarrangeCli 전용으로 분리 — fWarrange(GUI)는 fWarrangeCli 의 래퍼임을 명시하고 두 매뉴얼을 서로 링크 (등록: 2026-10-08, 완료: 2026-10-08, Hash: 68afa62) ✅
 * 목적: `manual/` 에 paidApp(fWarrange) GUI 사용법(`04_GUI_Usage.md`·`img/` 9장)이 섞여 있어 두 제품의 경계가 흐리다. 두 앱은 별개 프로젝트(prj26 cliApp·prj16 paidApp)이므로 매뉴얼도 각 레포에 둔다
