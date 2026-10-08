@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 118
+* Issue HWM: 123
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -20,9 +20,14 @@ date: 2026-04-07
 | Issue72_6 — cliApp(non-sandbox)에서 CGS 계열 비공개 API 사용 합의 (2026-05-16)        | Issue72_6 본문                                                             |
 
 # 🌱 이슈후보
+1. `manual/FunctionalSpecification.md`·`Glossary.md`·`ReferenceAgenda.md` v2 정비 — v1 엔드포인트 표·`/locale`·`lib/wArrange_core`·«fWarrange 앱» 서술 잔존 (Issue123 범위 밖으로 남김)
+1. `cli/README.md` «brew services 불필요» 서술이 루트 README·앱 안내(brew services 권장)와 어긋남 — 한쪽으로 통일
+1. **[Observer 패턴] 배포 workflow 에 3+ dry-run 검증 단계 반복 패턴 — instinct 파일 생성 대기** (session d2d223aa-dfa6-4be8-9b7b-dd59c70126d2 관찰)
+   - 패턴: `fwc-deploy-brew.sh` 와 `fpm-deploy-record.sh` 모두 `--dry-run` 플래그 사용 + 다단계 Step 0~8 검증 반복
+   - 의도: `_public` 의 instinct_deploy-dry-run-validation-gate.md + instinct_deploy-multistage-validation.md 작성
+   - 장애: 타 prj memory 경로에 대한 쓰기 권한 제약(위임 범위) — Issue.md 에 이슈 등록만 수행, memory 파일 작성은 사용자 몫으로 미룸
 
 # 🚧 진행중
-
 # 📕 중요
 
 # 📙 일반
@@ -35,7 +40,11 @@ date: 2026-04-07
     - ③ `fwc-test.sh` API 단계 `delete-all` 이 실제 사용자 데이터 폴더 레이아웃을 전부 지운다 · API·CMD 단계를 응답 내용이 아니라 실행 건수로 PASS 판정
     - ④ `cli/README.md` 불일치 — v1 «maintained» 인데 실제 410 · «brew services 불필요» 인데 Formula 에 service 정의 · 수동 기동 예시에 개발 경로 `/Applications/_nowage_app/`
     - ⑤ `jma-fwarrange-deploy.sh` 기본값이 jm4→jma rsync 라 jma 의 release 소스를 jm4 develop 으로 덮는다(이번엔 `--no-sync` 로 우회)
-* 증거: `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_jma-2026.09.29.md` · prj16 `_doc_work/_release/v1.1.2/jma-logs_2026.09.29/`
+* 증거: `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_jma-2026.09.29.md` · prj16 `_doc_work/_release/v1.1.3/jma-logs_2026.09.29/`
+* 결과 (2026-10-05, ① 수정 — prj16 세션):
+    - 원인: 창은 매칭·이동했으나 3px 검증 실패(TextEdit 은 높이를 줄 단위로 맞춤) → 재시도 대상 → 2회차도 성공 0 → **조기 종료** `break` 가 마지막 시도 best-effort 분기를 건너뛰어 매칭 정보가 버려지고 `noMatch`/score 0 → REST `windowNotFound`. 다창 레이아웃은 회차마다 성공이 있어 조기 종료에 안 걸림
+    - 수정: 검증 실패 매칭을 회차별로 기록하고 루프 종료 뒤 `RestoreLeftover.resolve` 한 곳에서 판정 — 마지막 시도·조기 종료 모두 matchType·score 유지 best-effort. 기존 `isLastAttempt` 분기 2곳(병렬·순차) 제거
+    - 검증: 재생목록 24행 `verify-failed-best-effort` — red(컴파일 실패) → jma XCTest 127/127 passed. E2E(TextEdit 단일 창 REST 복원)는 1.1.3 R1 6행에서 확인
 
 # 📗 선택
 
@@ -50,6 +59,99 @@ date: 2026-04-07
     - red 먼저: Xcode 문서 0 상태에서 `fwc-run-xcode.sh build-deploy` 가 성공하는지(jma)
 
 # ✅ 완료
+
+## Issue123: [Docs] 매뉴얼을 fWarrangeCli 전용으로 분리 — fWarrange(GUI)는 fWarrangeCli 의 래퍼임을 명시하고 두 매뉴얼을 서로 링크 (등록: 2026-10-08, 완료: 2026-10-08, Hash: 68afa62) ✅
+* 목적: `manual/` 에 paidApp(fWarrange) GUI 사용법(`04_GUI_Usage.md`·`img/` 9장)이 섞여 있어 두 제품의 경계가 흐리다. 두 앱은 별개 프로젝트(prj26 cliApp·prj16 paidApp)이므로 매뉴얼도 각 레포에 둔다
+* depends: prj16#Issue287 (paidApp 쪽 짝 이슈 — GUI 매뉴얼 신설)
+* 상세:
+    - 사용자 지적(2026-10-08): «fWarrange와 fWarrangeCli는 다른 프로젝트. 각각 폴더에 manual 이 있어야 하고, fWarrange는 fWarrangeCli 의 래퍼임을 확실히 명시, 매뉴얼 링크도 확실히»
+    - 현행 `01_Overview` 는 «SwiftUI GUI(메뉴바 앱) → `lib/wArrange_core` 스크립트» 구조를 그려 두 앱 관계가 틀렸고, `02`·`03` 은 paidApp 설치·`lib/wArrange_core` 스크립트·v1 API 로 안내한다
+* 구현 명세:
+    - `manual/kr|en/04_GUI_Usage.md`·`manual/img/` → paidApp 레포 `manual/` 로 이관(prj16#Issue287), 이 레포에서는 제거
+    - `04_MenuBar_Usage.md` 신설 — cliApp 메뉴바 항목·전역 단축키·명령행(`fWarrangeCli status|list|capture|restore …`)·`_config.yml` (소스 `MenuBarManager.swift`·`CLIHandler.swift`·`LocalizedStringManager.swift` 기준)
+    - `01_Overview`·`02_Install`·`03_QuickStart` 재작성 — 엔진(fWarrangeCli)과 GUI 래퍼(fWarrange) 관계도, brew 설치·권한은 fWarrangeCli 에 부여, v2 API 예시
+    - `manual/README.md`·루트 `README.md`·`README_kr.md` 에 «fWarrange = fWarrangeCli 의 GUI 래퍼» 문장과 GUI 매뉴얼 링크
+    - 05~08 의 `04_GUI_Usage` 링크 갱신
+* 검증: 두 레포 manual 의 상대 링크·이미지 참조 전부 실파일 · 공개 문서의 `_public/` 접두사 0 · `04_GUI_Usage`·`img/` 참조 잔존 0
+* 결과:
+    - `04_GUI_Usage`·`img/` 9장 제거(paidApp `manual/` 로 이관), `04_MenuBar_Usage` 신설, 01~03·08 재작성, 05~07 v2 경로·호칭 정정(locale 절 삭제, Skill 설치처 f-claude-plugins, MCP 도구 13개 실측 반영)
+    - `manual/README.md`·루트 `README.md`·`README_kr.md` 에 «fWarrange = fWarrangeCli 의 GUI 래퍼» 문장 + 매뉴얼 링크
+    - 링크 방향: 공개 → GUI 는 finfra.kr 안내 페이지(paidApp 레포가 비공개라 매뉴얼 직링크 불가), paidApp → 엔진은 `Finfra/fWarrange_public/blob/main/manual/...`
+    - 검증: 두 레포 매뉴얼·README 링크 309개(이미지·앵커 포함) 실파일 대조 0 오류 · `@@` 플레이스홀더 0 · `04_GUI_Usage`·`img/`·`_public/` 접두사 잔존 0
+    - 주의: 공개 레포 main 에 반영(push·merge)되기 전까지 paidApp 매뉴얼의 신규 파일(`04_MenuBar_Usage` 등) 링크는 404
+
+
+## Issue122: [Docs] 한영 매뉴얼 GUI 사용법을 1.1.3 화면 기준으로 갱신 — jma 캡처 9장 (등록: 2026-10-08, 완료: 2026-10-08, Hash: 335392c) ✅
+* 목적: `manual/{kr,en}/04_GUI_Usage.md` 가 «메뉴바 앱»·옛 설정 항목·외부 URL 이미지(단축키·고급 탭)로 남아 있어 실제 1.1.3 화면과 어긋난다
+* 상세:
+    - 이미지: 기존 4장(01·02·04·05, prj16#Issue280)에 더해 03 저장 시트·06 헬퍼 안내(prj16 `_doc_work/_release/v1.1.3/screenshots/raw/`, jma 2026-09-28 촬영) + 07 단축키·08 API·09 고급 탭(jma 2026-10-08 신규 촬영, 1.1.3 en) — 모두 1/2 축소해 `manual/img/`
+    - 신규 촬영: jma GUI tmux · 공용 잠금 `/tmp/jma-xcode.lock` 획득 · 배포본 paidApp 을 `-AppleLanguages (en)` 인자로 재기동 → `fwarrange://command?action=settings` → 분산 알림 `fWarrangeChangeTab` 으로 탭 전환 → `screencapture -l`. 끝나고 인자 없이 재기동해 원복, 임시 tmux·파일 삭제, 잠금 해제
+* 구현 명세:
+    - 04 한영 전면 개편: 헬퍼 연결 · 메인 화면(툴바 Default/Restore Selected/New Save/Clean Up, 우클릭 메뉴, 선택 복원, 새 저장) · 설정 5탭 표를 소스 기본값(`cli/fWarrangeCli/_config.yml`·`AppSettings.defaults`)과 화면 실측으로 교체
+    - 02·03·05 한영: «메뉴바 아이콘 > 설정 > 서버 활성화 토글» 절차 → 툴바 ⚙️ › API 탭 확인 + `_config.yml` 키(REST 서버는 기본 켜짐)
+    - `manual/README.md` 탭 표·`img/` 구조 갱신
+    - 검증: 두 문서 이미지 참조 18건 전부 실파일 · `finfra.kr/product` 외부 참조 0 · `_public/` 접두사 0
+* 후속(미처리): `01_Overview` 아키텍처 그림(«메뉴바 앱»·`lib/wArrange_core` 스크립트)과 03·05 의 v1 API·CLI 스크립트 예시는 현행(v2·cliApp)과 다르다 — 별도 이슈 대상 · 고급 탭 en 라벨 잘림(`Auto-save on sle...`·`Max auto-save c...`)은 paidApp 결함(prj16)
+
+## Issue120: [Version] cliApp 1.1.2 → 1.1.3 bump + R1 전 행 — Issue115·116·117 출고 (등록: 2026-10-05, 완료: 2026-10-05, Hash: c899fab, c597152) ✅
+* 목적: `cli-v1.1.2` 출고 뒤 수정(Issue115 경로 검증·116 안내 중복·117 이름 탈출)을 Homebrew 로 내보낸다 — 기출고 번호 재사용 불가라 1.1.3
+* depends: prj16#Issue286
+* 상세:
+    - 사용자 결정(2026-10-05): paidApp 1.1.2 미제출 → 1.1.3 락스텝 진행. 공개 출고(태그·release·tap push)는 직전에 재확인
+    - R1 사전 점검(1.1.2, `527fa22`) 7행 통과 — `cli/_doc_work/_release/v1.1.2/release-test_1.1.2_r1pre-2026.10.04.md`
+* 구현 명세:
+    - bump(8553c40 선례): `vm_bump_patch` · pbxproj `MARKETING_VERSION` ×2 · `cli/project.yml` · `cli/version-meta.yml` · Formula url 1.1.3 + sha256 자리표시
+    - R1(`tdd/release.md`) 1~7·9~12행 jma · 8행은 출고 후 · 증거 `cli/_doc_work/_release/v1.1.3/release-test_1.1.3.md`(peers prj16@Issue286 hash)
+    - R2·출고: release → main `--no-ff` · `recheck` · `publish` — 사용자 재확인 후
+* 결과 (2026-10-05):
+    - bump **c899fab**(prj16 세션) — paidApp 락스텝 prj16#Issue286(5a75e3f). 사용자 결정으로 범위 확대: Issue119(restart 복귀) · Issue121(복원 성공 오보, prj16 R1 발견) 포함 — 1.1.3 cliApp 수정 = Issue114·115·116·117·119·121
+    - R1(`cli/_doc_work/_release/v1.1.3/release-test_1.1.3.md`, 후보 **d4a531e** · peers prj16@29da246, jma): **1~12행 전부 통과** — 1 XCTest 136/136 · 2 clear · 3 소스 빌드 60s · 4 fwc-test ALL CLEAR(Issue118 우회: Xcode 선로드) · 5 brew local 12/0 · 6 dry-run 5/0·외부 불변 · 7 tarball CDHash 보존 · 8 공개 tap 설치(출고 후) · 9 버전 4곳 1.1.3 · 10 prj16 후보 FAIL 0 · 11 REST 18/0 · 12 App Store 현행 v1.1.1 paidApp 연동. 접근성 재승인 1회(16:04)
+    - R2: `recheck` d4a531e 유효 — release HEAD · 병합 커밋 양쪽
+    - 출고(사용자 승인 «전부 진행»): release/1.1.1 push(af8537b..d4a531e) → 공개 clone 에서 main ← release `--no-ff` **c597152**(충돌 0 · 병합 트리 = release 트리) → main push → jma `publish --dry-run` 5/0 → `publish` **9/0**: 태그 **`cli-v1.1.3`**(→ c597152) · GitHub release(asset sha256 `e8f1d5d6…`) · 공개 tap **`22d6a02`** · brew audit 통과
+    - 8행 1차는 jma 로컬 tap 환경 실패(publish 검증의 Homebrew 자동 업데이트 autostash → pop 충돌 `UU` → Formula 파싱 실패) — Formula 를 공개본으로 되돌리고 `HOMEBREW_NO_AUTO_UPDATE=1` 로 재실행 통과. jma 최종 = **공개본 1.1.3** started · 접근성 granted · paidApp 1.1.3 running
+    - repo Formula sha256 실값(`e8f1d5d6…`) · `cli/version-meta.yml` brew 상태 1.1.3 반영
+    - 공유 jma·작업트리: prj16 세션(fwarrange-3c)과 `/tmp/jma-xcode.lock` mkdir 잠금·경로 지정 커밋으로 교대
+* 결과 (2026-10-05, bump — prj16 세션): VERSION·pbxproj `MARKETING_VERSION` ×2·`cli/project.yml`·`cli/version-meta.yml`·Formula url 1.1.3 + sha256 자리표시 — 8553c40 와 같은 범위. 선행 수정 Issue114 ①(430a2ea) 포함. R1 은 jma 에서 이어 진행
+
+
+## Issue121: [Bug] 복원 응답이 목표에 크게 못 미친 창도 `succeeded` 로 보고 — Issue114 best-effort 판정에 편차 상한이 없음 (등록: 2026-10-05, 완료: 2026-10-05, Hash: 4d0da35) ✅
+* 목적: 사용자·paidApp 이 «복원 성공» 을 믿었는데 창은 엉뚱한 위치·크기에 있다 — 1.1.2 는 같은 경로를 failed 로 보고했으므로 1.1.3 에서 보고가 거짓 쪽으로 바뀌었다 (prj16 R1 6행, fwarrange-3c 2026-10-05 발견 · peers prj26@32b054c)
+* 상세:
+    - 재현(jma): TextEdit 같은 제목 창 2개 중 1개(id 1804) 단일 창 레이아웃을 200,200 800×500 으로 복원 → 응답 `succeeded=1, matchType windowID 100`, CGWindowList 실측 200,40 1077×660 · 200,105 987×595 등 — 8초 관찰 동안 고정. Finder 창은 정확
+    - 증거(jma): `~/tdd-logs/16-r113-R6.txt` · `16-r113-R6-diag.txt` · `16-r113-R6-diag-finder.txt`
+    - 판정: `430a2ea`(Issue114 ①) `RestoreLeftover.resolve` 가 검증(3px) 실패 매칭을 편차 크기와 무관하게 `success: true` 로 확정 — 의도는 TextEdit 줄 단위 높이 스냅(수 px). 여기선 y 160px·크기 수백 px 차이
+    - 별개 원인 후보: 창이 왜 목표에 도달하지 못하는가(같은 제목 2창 · TextEdit 최소/줄단위 크기 · 위치→크기 적용 순서)
+* 구현 명세:
+    - best-effort 성공에 편차 상한(ex) 위치 ±N px·크기 ±줄 높이 수준) — 넘으면 `success: false` + 실패 사유 `verifyFailed`(actual 기하 포함)
+    - 도달 실패 원인 조사(AX set 순서·재시도 간 기하 변화)
+    - red 먼저: 목표와 큰 편차로 끝난 검증 실패는 성공으로 보고되지 않는다 · TextEdit 수 px 스냅은 여전히 성공
+* 결과 (2026-10-05, **4d0da35** · 재생목록 번호 정리 c4c23a7):
+    - 검증(3px) 실패 시 실측 프레임 기록(`measure`) · `RestoreLeftover.isNearMiss`(±24px, 줄 단위 스냅)만 best-effort 성공 · 그 밖·측정 불가는 매칭 정보 유지한 실패 → REST `failures[].reason = axOperationFailed`(enum 무변경), Moom/noMatch 로 떨어지지 않음
+    - TDD: 재생목록 26행 RestoreBestEffortBoundTests red(큰 편차·측정 불가 성공 처리) → green · Issue114 테스트는 스냅 기하 명시 · jm4·**jma XCTest 136/136**
+    - jma E2E(prj16 R1 6행 재실행, fwarrange-3c, 15:32, c4c23a7 정식 서명 brew): Finder 4/4 succeeded·편차 0 · TextEdit moved 2회 `succeeded=0`·`axOperationFailed`·windowID 100 유지(실측 편차 45·235) · orig 2회 succeeded(편차 15·21 = 근사 기준 내) → **8/8 응답이 실측과 일치, 성공 오보 0**. 로그 jma `~/tdd-logs/16-r121-*.txt`
+    - 남은 것(별도): TextEdit 이 목표 기하에 도달하지 못하는 원인 — 같은 제목 2창·줄 단위 크기·적용 순서 조사
+
+## Issue119: `POST /api/v2/cli/restart` 가 종료만 하고 재기동하지 않음 — «launchd KeepAlive 의존» 전제 불성립 (등록: 2026-10-05, 완료: 2026-10-05, Hash: a36ef70, 9b842b3, 32b054c) ✅
+* 목적: paidApp 의 «지금 재시작»(prj16#Issue282)·Daemon 재시작이 cliApp 을 되살리지 못해 «재시작» 이 사실상 «종료» 가 된다. paidApp 은 우회(종료 확인 후 `/usr/bin/open -a` 재기동)를 넣었지만 API 자체 계약이 거짓이다
+* 상세:
+    - `RESTServer.handleCLIRestart` 는 응답 후 `NSApplication.terminate` 만 한다 — 주석·응답 메시지가 «launchd KeepAlive 의존» 을 전제
+    - 실측(jma, 2026-10-04): `open` 기동 인스턴스는 restart 후 프로세스 부재(8초 대기) — launchd 관리 밖이라 당연
+    - brew 서비스: Formula `keep_alive successful_exit: false` 라 정상 종료(exit 0)는 재기동 대상이 아닐 수 있다(검증 필요)
+    - 대조: 접근성 재시작은 `AccessibilityGuidePresenter.restart()` 가 brew 위임/`open` 자가 재실행을 갈라 처리한다 — 같은 판정을 쓰지 않아 갈라진 상태
+* 구현 명세:
+    - restart 경로를 `AccessibilityGuidePresenter.restart()` 와 같은 판정(BrewServiceSync 위임 → 아니면 relaunchViaOpen)으로 통일
+    - 검증: `open` 기동·brew 서비스 기동 각각 restart 후 새 PID·REST 응답 확인 · 응답 메시지에서 «launchd KeepAlive 의존» 제거
+    - paidApp 우회(prj16 `CLIAutoLaunchService.restartCLI`)는 cliApp 이 스스로 되살아나면 `autoStartIfNeeded` 가 생략하므로 그대로 둬도 무해
+* 진행 (2026-10-05, prj26 세션 — 사용자 결정 «1.1.3 에 포함»):
+    - 수정 **a36ef70**: `AppRestarter` 단일 판정(brew 서비스 → `brew services restart` 위임 / 아니면 `open` 자가 재실행) — REST `cli/restart` 와 접근성 권한 상실 재시작이 공유. 응답 메시지·openapi_v2 의 KeepAlive 전제 제거. 재생목록 24행(AppRestarterTests 3)
+    - jma red(수정 전 c899fab 바이너리): brew 관리 인스턴스 restart → 20s 프로세스 없음 + **brew 서비스까지 `none`**(`onAppStop` 이 stop 동기화) · open 기동 인스턴스 → 새 프로세스 없음. 로그 `logs/test/issue119_jma_red.log`
+* 결과 (2026-10-05, **a36ef70** → **9b842b3** → **32b054c**):
+    - 1차 a36ef70(in-app 판정 통일)은 jma green **실패** — 진단: 앱이 띄운 자식(`brew services restart`·`sh` 재실행 헬퍼)이 앱/서비스 종료와 함께 정리됨(`issue119_jma_diag.log`)
+    - 9b842b3: 재기동을 앱 job 밖 독립 launchd job(`launchctl submit`)에 위임 — 현재 PID 종료 대기 → brew 관리면 `launchctl kickstart gui/<uid>/<XPC_SERVICE_NAME>`, 아니면 `open <bundle>` → job 자기 제거. 헬퍼 예약 실패 시 종료하지 않음. jma: open 기동 PASS · brew 관리 여전히 FAIL(svc none)
+    - 32b054c: **진짜 원인 — 종료 시 brew stop 판정 갈림**. `AppDelegate.applicationWillTerminate`(Issue51)가 handoff 가드 없이 `brew services stop --keep` 로 서비스를 unload → `BrewServiceSync.terminateStopArguments` 단일 판정(재시작 중 nil)으로 통일. 접근성 «지금 재시작»(Issue96)도 같은 경로라 함께 해소
+    - TDD: 재생목록 24행 AppRestarterTests 6(계획 스크립트 2 · 예약→종료 순서 · 예약 실패 시 생존 · 종료 동기화 가드 red→green · REST 경로) · jm4 개발 확인 133/133
+    - jma E2E(32b054c 정식 서명): brew 관리 restart 2회 1s·9s 새 PID·REST 200·svc started·XPC 유지 · open 기동 2s 새 PID · 헬퍼 job 잔존 0 · 원복(started·granted·opt-out 키 없음). red(c899fab): 두 방식 모두 미복귀 + svc none — 로그 `cli/_doc_work/_release/v1.1.3/logs/r1_2026.10.05/issue119_*`
+    - 공유 jma 는 prj16 R1(fwarrange-3c)과 `/tmp/jma-xcode.lock` mkdir 잠금으로 교대 사용
 
 ## Issue117: [Security] 레이아웃 이름에 `../` 가 들어가면 base 밖에 `*.yml` 쓰기·삭제·이름변경 가능 — 이름 검증 부재 (등록: 2026-10-04, 완료: 2026-10-04, Hash: 38898c6, 20c9d38) ✅
 * 목적: Issue115 가 `dataDirectoryPath` 로 base 를 옮기는 길을 막았지만, 같은 공격자(토큰 없는 REST, CIDR 만 검사)가 레이아웃 **이름**으로 같은 결과를 얻는다 (Issue115 적대적 검증 2026-10-04 — 기존 결함이라 범위 밖으로 분리)

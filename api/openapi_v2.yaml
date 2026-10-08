@@ -1184,8 +1184,9 @@ paths:
     post:
       summary: Restart CLI helper (Issue229_4)
       description: |
-        Restarts the fWarrangeCli helper app. The app terminates itself and relies on
-        launchd (`KeepAlive` policy) to bring it back up. Requires `X-Confirm: true` header.
+        Restarts the fWarrangeCli helper app the way it was launched (Issue119): a brew-services
+        (launchd) instance delegates to `brew services restart`; an `open`-launched instance relaunches
+        itself after it exits. The 200 response is sent first. Requires `X-Confirm: true` header.
       operationId: restartCLIV2
       tags: [CLI]
       parameters:

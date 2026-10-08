@@ -1,100 +1,77 @@
 ---
-title: fWarrange 설치 가이드
-description: fWarrange 설치 및 초기 설정 가이드 (한국어)
-date: 2026-03-26
+title: fWarrangeCli 설치
+description: fWarrangeCli 설치 · 손쉬운 사용 권한 · REST API 확인 (한국어)
+date: 2026.10.08
 ---
 # 설치 및 권한 설정
 
 ## 1. 시스템 요구사항
 
-| 항목   | 최소 요구           |
-| ------ | ------------------- |
-| macOS  | 15.0 (Sequoia) 이상 |
-| Swift  | 5.10 이상           |
-| Xcode  | 16.0 이상 (빌드 시) |
-| 디스크 | 약 50MB             |
+| 항목  | 요구                                 |
+| ----- | ------------------------------------ |
+| macOS | 14.0 이상                            |
+| 설치  | Homebrew                             |
+| 권한  | 손쉬운 사용(Accessibility) 권한 필수 |
+| 빌드  | Xcode 15.0 이상 (소스 빌드 시만)     |
 
-## 2. 설치 방법
-
-### 2.1. 배포 앱 설치 (권장)
-
-1. `fWarrange.app`을 `/Applications/` 또는 원하는 폴더에 복사
-2. 처음 실행 시 macOS Gatekeeper 경고가 나타나면 "열기" 선택
-
-### 2.2. 소스에서 빌드
+## 2. Homebrew 로 설치 (권장)
 
 ```bash
-# 리포지토리 클론
-git clone https://github.com/nowage/fWarrange.git
-cd fWarrange
-
-# Xcode 빌드
-cd fWarrange
-xcodebuild -scheme fWarrange -configuration Debug build
+brew tap finfra/tap
+brew install finfra/tap/fwarrange-cli
+brew services start fwarrange-cli     # 시작 + 로그인 시 자동 시작
 ```
 
-빌드 결과물은 DerivedData 경로에 생성됩니다:
-```
-~/Library/Developer/Xcode/DerivedData/fWarrange-*/Build/Products/Debug/fWarrange.app
-```
+앱은 `/opt/homebrew/opt/fwarrange-cli/fWarrangeCli.app` 에 설치되고, 실행되면 메뉴바에 아이콘이 나타납니다.
 
-## 2.3. CLI 전용 사용 (GUI 없이)
+| 작업     | 명령                                                                |
+| -------- | ------------------------------------------------------------------- |
+| 중지     | `brew services stop fwarrange-cli`                                  |
+| 재시작   | `brew services restart fwarrange-cli`                               |
+| 업데이트 | `brew upgrade fwarrange-cli`                                        |
+| 삭제     | `brew services stop fwarrange-cli` → `brew uninstall fwarrange-cli` |
 
-GUI 앱 없이 코어 스크립트만 사용할 수도 있습니다:
+삭제해도 `~/Documents/finfra/fWarrangeData/` 의 레이아웃·설정은 남습니다. 완전히 지우려면 이 폴더를 직접 삭제하세요.
+
+## 3. 소스에서 빌드
 
 ```bash
-cd lib/wArrange_core/
-swift saveWindowsInfo.swift    # 캡처
-swift setWindows.swift         # 복원
+git clone https://github.com/Finfra/fWarrange_public.git
+cd fWarrange_public/cli
+xcodebuild -scheme fWarrangeCli -configuration Release build
 ```
 
-## 3. 손쉬운 사용(Accessibility) 권한 설정
+결과물: `~/Library/Developer/Xcode/DerivedData/fWarrangeCli-*/Build/Products/Release/fWarrangeCli.app`
 
-창의 위치와 크기를 제어하려면 반드시 **손쉬운 사용** 권한이 필요합니다.
+## 4. 손쉬운 사용 권한
 
-### 3.1. 권한 부여 절차
+창의 위치·크기를 바꾸려면 **fWarrangeCli** 에 손쉬운 사용 권한이 있어야 합니다.
 
-1. **시스템 설정** 열기
-2. **개인정보 보호 및 보안** > **손쉬운 사용** 이동
-3. 좌측 하단 자물쇠 아이콘 클릭하여 잠금 해제
-4. `+` 버튼으로 다음 앱 추가:
-   - **GUI 앱 사용 시**: `fWarrange.app`
-   - **CLI 스크립트 사용 시**: `Terminal.app` 또는 `iTerm2.app`
+1. **시스템 설정** › **개인정보 보호 및 보안** › **손쉬운 사용**
+2. **fWarrangeCli** 를 켭니다 (없으면 `+` 로 `/opt/homebrew/opt/fwarrange-cli/fWarrangeCli.app` 추가)
+3. 확인: `curl -s http://localhost:3016/api/v2/status/accessibility`
 
-### 3.2. 권한 확인
+| 증상                               | 해결                                                       |
+| ---------------------------------- | ---------------------------------------------------------- |
+| 목록에 켜져 있는데 창이 안 움직임  | 끄고 다시 켜거나, `-` 로 지운 뒤 다시 추가                 |
+| 소스 빌드 후 권한이 풀림           | 빌드마다 서명이 달라져 다시 등록해야 함                    |
+| 단축키는 반응하는데 창이 안 움직임 | 권한이 꺼진 상태 — 위 1~2 를 다시 하고 fWarrangeCli 재시작 |
+
+## 5. REST API 확인
+
+REST 서버는 **기본으로 켜져 있습니다**(포트 3016).
 
 ```bash
-# CLI로 확인
-cd lib/wArrange_core/
-swift list_apps.swift
+curl -s http://localhost:3016/api/v2/status
 ```
 
-정상 출력되면 권한이 올바르게 설정된 것입니다. "권한이 필요합니다" 메시지가 나타나면 위 절차를 다시 확인하세요.
+`"status" : "ok"` 가 나오면 정상입니다. 서버 끄기 · 포트 · 외부 접속 허용은 `_config.yml` 에서 바꿉니다 — [메뉴바 사용법 › 설정 파일](04_MenuBar_Usage.md#설정-파일-_configyml).
 
-REST API로도 확인 가능합니다:
-```bash
-curl -s http://localhost:3016/api/v1/status/accessibility | python3 -m json.tool
-```
+## 6. (선택) GUI 래퍼 fWarrange
 
-## 3.3. 권한 문제 해결
-
-| 증상                                  | 해결 방법                                               |
-| ------------------------------------- | ------------------------------------------------------- |
-| 권한 목록에 앱이 있지만 작동하지 않음 | 체크박스 해제 후 재체크, 또는 앱 삭제 후 재등록         |
-| 권한 창이 열리지 않음                 | 터미널에서 `tccutil reset Accessibility` 실행 후 재설정 |
-| 빌드 후 권한이 풀림                   | 새 빌드마다 바이너리 서명이 달라지므로 재등록 필요      |
-
-## 4. REST API 서버 활성화
-
-기본적으로 REST API 서버는 **비활성** 상태입니다.
-
-1. fWarrange 앱 실행
-2. 메뉴바 아이콘 클릭 > **설정**
-3. **API** 탭 이동
-4. **서버 활성화** 토글 ON
-5. 포트 확인 (기본: 3016)
+레이아웃 목록 · 미니맵 · 설정 창을 GUI 로 쓰려면 App Store 앱 **fWarrange** 를 추가로 설치합니다. fWarrange 는 이 fWarrangeCli 를 통해 동작합니다 — [fWarrange 안내 페이지](https://finfra.kr/product/fWarrange/kr/index.html).
 
 ## 다음 단계
 
 * [빠른 시작](03_QuickStart.md)
-* [GUI 사용법](04_GUI_Usage.md)
+* [메뉴바 사용법](04_MenuBar_Usage.md)

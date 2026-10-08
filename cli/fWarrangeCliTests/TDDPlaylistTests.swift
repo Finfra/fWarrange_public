@@ -975,3 +975,198 @@ final class StorageNameTraversalTests: XCTestCase {
         }
     }
 }
+
+// MARK: - #24 verify-failed-best-effort (Issue114 ①)
+
+/// A window that was found and moved but failed the 3px position check must keep its
+/// match info when the retry loop ends — at the last attempt *or* by the early exit.
+/// Before the fix the early exit skipped the last-attempt branch, so a single TextEdit
+/// window (height snapped to line units) was reported as `noMatch` → `windowNotFound`.
+final class RestoreLeftoverTests: XCTestCase {
+
+    private func target(_ id: Int, app: String = "TextEdit") -> WindowInfo {
+        WindowInfo(id: id, app: app, window: "Untitled \(id)", layer: 0,
+                   pos: WindowPosition(x: 100, y: 100), size: WindowSize(width: 600, height: 400))
+    }
+
+    func testVerifyFailedTargetIsBestEffortWithMatchKept() {
+        let t = target(1)
+        let r = RestoreLeftover.resolve(
+            pending: [t],
+            verifyFailures: [.init(target: t, title: "Untitled 1", matchType: .exactTitle, score: 90,
+                                   actual: CGRect(x: 100, y: 100, width: 600, height: 390))])  // line-height snap
+
+        XCTAssertEqual(r.bestEffort.count, 1)
+        XCTAssertTrue(r.unmatched.isEmpty)
+        let result = r.bestEffort[0]
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.matchType, .exactTitle)
+        XCTAssertEqual(result.score, 90)
+        XCTAssertEqual(result.matchedTitle, "Untitled 1")
+        XCTAssertEqual(result.targetWindow, t)
+    }
+
+    func testTargetWithoutMatchStaysUnmatched() {
+        let t = target(2)
+        let r = RestoreLeftover.resolve(pending: [t], verifyFailures: [])
+        XCTAssertTrue(r.bestEffort.isEmpty)
+        XCTAssertEqual(r.unmatched, [t])
+    }
+
+    /// Only recorded targets are best-effort; a stale record for a target that is no
+    /// longer pending (it succeeded later) is ignored.
+    func testOnlyPendingRecordedTargetsAreBestEffort() {
+        let failed = target(3), missing = target(4, app: "Notes"), done = target(5)
+        let r = RestoreLeftover.resolve(
+            pending: [failed, missing],
+            verifyFailures: [
+                .init(target: failed, title: "Untitled 3", matchType: .windowID, score: 100,
+                      actual: CGRect(x: 100, y: 100, width: 600, height: 392)),
+                .init(target: done, title: "Untitled 5", matchType: .windowID, score: 100)
+            ])
+        XCTAssertEqual(r.bestEffort.map(\.targetWindow), [failed])
+        XCTAssertEqual(r.unmatched, [missing])
+    }
+}
+
+// MARK: - #26 best-effort-has-a-bound (Issue121)
+
+/// prj16 R1 (jma): a TextEdit window restored to 200,200 800×500 stayed at 200,40 1077×660 and the API
+/// still said `succeeded` — Issue114's best-effort accepted any verify failure. Best effort is for
+/// line-height snapping (a few px), not for a window that never got there.
+final class RestoreBestEffortBoundTests: XCTestCase {
+
+    private let target = WindowInfo(id: 1804, app: "TextEdit", window: "testBoard.txt", layer: 0,
+                                    pos: WindowPosition(x: 200, y: 200), size: WindowSize(width: 800, height: 500))
+
+    func testLargeDeviationIsReportedAsFailureWithMatchKept() {
+        let r = RestoreLeftover.resolve(pending: [target], verifyFailures: [
+            .init(target: target, title: "testBoard.txt", matchType: .windowID, score: 100,
+                  actual: CGRect(x: 200, y: 40, width: 1077, height: 660))])
+
+        XCTAssertTrue(r.bestEffort.isEmpty, "a window 160px / 277px off is not a success")
+        XCTAssertEqual(r.offTarget.count, 1)
+        XCTAssertFalse(r.offTarget[0].success)
+        XCTAssertEqual(r.offTarget[0].matchType, .windowID, "match info is kept — it was found, just not placed")
+        XCTAssertEqual(r.offTarget[0].score, 100)
+        XCTAssertTrue(r.unmatched.isEmpty, "found windows must not fall to the Moom fallback / noMatch")
+        XCTAssertEqual(RESTServer.classifyRestoreFailure(result: r.offTarget[0], minimumScore: 30,
+                                                         runningAppNames: ["TextEdit"], runningBundleIDs: []),
+                       "axOperationFailed")
+    }
+
+    func testLineHeightSnapIsStillBestEffort() {
+        let r = RestoreLeftover.resolve(pending: [target], verifyFailures: [
+            .init(target: target, title: "testBoard.txt", matchType: .windowID, score: 100,
+                  actual: CGRect(x: 200, y: 200, width: 800, height: 486))])
+        XCTAssertEqual(r.bestEffort.count, 1)
+        XCTAssertTrue(r.offTarget.isEmpty)
+    }
+
+    func testUnmeasuredVerifyFailureIsNotASuccess() {
+        let r = RestoreLeftover.resolve(pending: [target], verifyFailures: [
+            .init(target: target, title: "testBoard.txt", matchType: .windowID, score: 100, actual: nil)])
+        XCTAssertTrue(r.bestEffort.isEmpty, "unknown geometry cannot be called a success")
+        XCTAssertEqual(r.offTarget.count, 1)
+    }
+}
+
+// MARK: - #25 restart-comes-back (Issue119)
+
+/// `POST /api/v2/cli/restart` only terminated and relied on launchd KeepAlive — the instance never came
+/// back. jma showed that anything the app spawns dies with it, so the comeback is an independent launchd
+/// job (`launchctl submit`) that waits for this PID, then kickstarts the service or re-opens the bundle.
+final class AppRestarterTests: XCTestCase {
+
+    override func tearDown() {
+        AppRestarter.resetSeams()
+        super.tearDown()
+    }
+
+    func testPlanForBrewServiceKickstartsTheSameLabel() {
+        let p = AppRestarter.plan(pid: 123, uid: 501, bundlePath: "/opt/x.app", serviceLabel: "sh.brew.fwarrange-cli")
+        XCTAssertEqual(p.path, .brewService)
+        XCTAssertEqual(p.jobLabel, "kr.finfra.fWarrangeCli.relaunch.123")
+        XCTAssertTrue(p.script.contains("kill -0 123"), "must wait for this PID to exit: \(p.script)")
+        XCTAssertTrue(p.script.contains("/bin/launchctl kickstart gui/501/sh.brew.fwarrange-cli"), p.script)
+        XCTAssertTrue(p.script.hasSuffix("/bin/launchctl remove kr.finfra.fWarrangeCli.relaunch.123"), "job removes itself")
+        XCTAssertFalse(p.script.contains("/usr/bin/open"))
+    }
+
+    func testPlanForOpenInstanceReopensTheBundle() {
+        let p = AppRestarter.plan(pid: 7, uid: 501, bundlePath: "/Applications/it's here.app", serviceLabel: nil)
+        XCTAssertEqual(p.path, .openRelaunch)
+        XCTAssertTrue(p.script.contains("kill -0 7"))
+        XCTAssertTrue(p.script.contains("/usr/bin/open '/Applications/it'\\''s here.app'"), "bundle path must be shell-quoted: \(p.script)")
+        XCTAssertFalse(p.script.contains("kickstart"))
+    }
+
+    /// The helper must be scheduled before quitting — and a failed schedule must not quit.
+    func testRestartSchedulesHelperThenTerminates() {
+        var events: [String] = []
+        AppRestarter.managedServiceLabel = { nil }
+        AppRestarter.submit = { label, _ in events.append("submit:\(label)"); return true }
+        AppRestarter.terminate = { events.append("terminate") }
+
+        XCTAssertEqual(AppRestarter.restart(reason: "test"), .openRelaunch)
+        XCTAssertEqual(events, ["submit:kr.finfra.fWarrangeCli.relaunch.\(getpid())", "terminate"])
+    }
+
+    func testFailedSchedulingKeepsTheAppRunning() {
+        var terminated = false
+        AppRestarter.managedServiceLabel = { "sh.brew.fwarrange-cli" }
+        AppRestarter.submit = { _, _ in false }
+        AppRestarter.terminate = { terminated = true }
+
+        AppRestarter.restart(reason: "test")
+        XCTAssertFalse(terminated, "without a helper, quitting would be a plain stop")
+    }
+
+    /// jma: the brew-managed restart still came back as `none` — `applicationWillTerminate` ran its own
+    /// `brew services stop` (Issue51) without the handoff guard, unloading the service the helper
+    /// was about to kickstart. Termination sync must have one decision point that honours the restart.
+    func testTerminateSyncSkipsBrewStopDuringRestart() {
+        defer { BrewServiceSync.endManagedRelaunch() }
+        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: true),
+                       ["services", "stop", "fwarrange-cli", "--keep"])
+        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: false),
+                       ["services", "stop", "fwarrange-cli"])
+
+        BrewServiceSync.beginManagedRelaunch()
+        XCTAssertNil(BrewServiceSync.terminateStopArguments(launchAtLogin: true),
+                     "a restarting instance must leave the brew service loaded")
+    }
+
+    /// The REST endpoint must use that path — not a bare terminate.
+    func testRESTRestartGoesThroughAppRestarter() throws {
+        let scheduled = expectation(description: "helper scheduled")
+        AppRestarter.managedServiceLabel = { nil }
+        AppRestarter.submit = { _, script in
+            XCTAssertTrue(script.contains("kill -0 \(getpid())"))
+            scheduled.fulfill(); return true
+        }
+        AppRestarter.terminate = { }   // the test host must survive
+
+        let port = RESTListenerLifecycleTests.freePort()
+        let server = RESTServer(handlers: RESTListenerLifecycleTests.stubHandlers())
+        server.start(port: port)
+        defer { server.stop() }
+        XCTAssertTrue(RESTListenerLifecycleTests.waitUntil {
+            RESTListenerLifecycleTests.get(port: port, path: "/api/v2/health", timeout: 1).status == 200
+        })
+
+        var req = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/api/v2/cli/restart")!)
+        req.httpMethod = "POST"
+        req.setValue("true", forHTTPHeaderField: "X-Confirm")
+        let responded = expectation(description: "200")
+        var body = ""
+        URLSession(configuration: .ephemeral).dataTask(with: req) { data, resp, _ in
+            XCTAssertEqual((resp as? HTTPURLResponse)?.statusCode, 200)
+            body = String(data: data ?? Data(), encoding: .utf8) ?? ""
+            responded.fulfill()
+        }.resume()
+
+        wait(for: [responded, scheduled], timeout: 10)
+        XCTAssertFalse(body.contains("KeepAlive"), "response must not claim launchd KeepAlive: \(body)")
+    }
+}

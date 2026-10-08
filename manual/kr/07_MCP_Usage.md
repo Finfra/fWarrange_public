@@ -1,11 +1,11 @@
 ---
-title: fWarrange MCP 사용법
-description: fWarrange MCP 서버 사용 방법 (한국어)
-date: 2026-03-26
+title: fWarrangeCli MCP 사용법
+description: fWarrangeCli MCP 서버 사용 방법 (한국어)
+date: 2026.10.08
 ---
 # MCP 서버 사용법
 
-fWarrange는 **MCP (Model Context Protocol)** 서버를 제공하여, Claude Desktop, Claude Code 등 AI 도구에서 fWarrange의 기능을 네이티브 도구(Tool)로 직접 호출할 수 있습니다.
+fWarrangeCli 는 **MCP (Model Context Protocol)** 서버(`fwarrange-mcp`)를 제공하여, Claude Desktop, Claude Code 등 AI 도구에서 fWarrangeCli 의 기능을 네이티브 도구(Tool)로 직접 호출할 수 있습니다. MCP 서버는 fWarrangeCli 의 REST API 만 쓰므로 GUI 래퍼 fWarrange 는 필요 없습니다.
 
 ## MCP란?
 
@@ -23,7 +23,7 @@ MCP(Model Context Protocol)는 AI 모델이 외부 도구와 상호작용하기 
 
 ## 전제 조건
 
-1. **fWarrange 앱 실행 중** (REST API 서버 활성화 상태)
+1. **fWarrangeCli 실행 중** (REST API 서버는 기본으로 켜져 있음 — [설치](02_Install.md#5-rest-api-확인))
 2. **Node.js** 18 이상 설치
 3. **npm** 설치
 
@@ -116,9 +116,9 @@ npm install -g fwarrange-mcp
 
 | 변수                | 기본값                  | 설명                         |
 | ------------------- | ----------------------- | ---------------------------- |
-| `FWARRANGE_API_URL` | `http://localhost:3016` | fWarrange REST API 서버 주소 |
+| `FWARRANGE_API_URL` | `http://localhost:3016` | fWarrangeCli REST API 서버 주소 |
 
-## 제공 도구 (14개)
+## 제공 도구 (13개)
 
 MCP 서버는 다음 도구(Tool)를 AI에게 제공합니다:
 
@@ -149,12 +149,11 @@ MCP 서버는 다음 도구(Tool)를 AI에게 제공합니다:
 | `get_current_windows` | 현재 화면의 창 목록 (저장 없이) | `filterApps?` |
 | `get_running_apps`    | 실행 중인 앱 목록               | -             |
 
-### 시스템 설정
+### UI 상태
 
-| 도구         | 설명                | 매개변수   |
-| ------------ | ------------------- | ---------- |
-| `get_locale` | 현재 언어 설정 조회 | -          |
-| `set_locale` | 앱 언어 변경        | `language` |
+| 도구           | 설명                                              | 매개변수                     |
+| -------------- | ------------------------------------------------- | ---------------------------- |
+| `set_ui_state` | fWarrange(GUI) 화면 상태 제어 (캡처 자동화용)     | `hideWindows?`, `selectApps?` |
 
 ## 사용 예시
 
@@ -183,12 +182,12 @@ Claude가 `capture_layout(filterApps: ["Safari"])` 후 `restore_layout(name: "me
 ## 통신 프로토콜
 
 ```
-Claude Desktop/Code  <--stdio-->  fwarrange-mcp  <--HTTP-->  fWarrange App
+Claude Desktop/Code  <--stdio-->  fwarrange-mcp  <--HTTP-->  fWarrangeCli
                                    (Node.js)                  (REST API :3016)
 ```
 
 * AI 클라이언트와 MCP 서버 사이: **stdio** (표준 입출력)
-* MCP 서버와 fWarrange 앱 사이: **HTTP** (REST API)
+* MCP 서버와 fWarrangeCli 사이: **HTTP** (REST API v2)
 
 ## 디버깅
 
@@ -203,8 +202,8 @@ npx @modelcontextprotocol/inspector npx fwarrange-mcp
 ### 서버 연결 확인
 
 ```bash
-# fWarrange REST API 서버 동작 확인
-curl http://localhost:3016/
+# fWarrangeCli REST API 서버 동작 확인
+curl -s http://localhost:3016/api/v2/status
 ```
 
 ## 트러블슈팅
@@ -212,7 +211,7 @@ curl http://localhost:3016/
 | 문제                     | 해결                                                                    |
 | ------------------------ | ----------------------------------------------------------------------- |
 | MCP 서버가 연결되지 않음 | `claude_desktop_config.json` 경로 및 JSON 문법 확인                     |
-| "서버 응답 없음"         | fWarrange 앱 실행 및 REST API 활성화 확인                               |
+| "서버 응답 없음"         | fWarrangeCli 실행 여부와 `_config.yml` 의 `restServerEnabled` 확인      |
 | 도구가 목록에 안 보임    | Claude Desktop 재시작, 또는 `npx fwarrange-mcp` 직접 실행하여 오류 확인 |
 | 권한 오류                | 손쉬운 사용 권한 확인 (`check_accessibility` 도구 사용)                 |
 | 포트 충돌                | `--server=` 옵션 또는 `FWARRANGE_API_URL` 환경 변수로 포트 변경         |

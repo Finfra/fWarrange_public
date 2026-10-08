@@ -1,105 +1,103 @@
 ---
-title: fWarrange FAQ
-description: fWarrange 자주 묻는 질문 (English)
-date: 2026-03-26
+title: fWarrangeCli FAQ
+description: fWarrangeCli frequently asked questions (English)
+date: 2026.10.08
 ---
 # Frequently Asked Questions (FAQ)
 
-## General
+## fWarrangeCli and fWarrange
 
-### Q: Is fWarrange free?
-A: The source code in this repository is open source under Apache-2.0 (the `mcp/` package is MIT) — you can build and use it without limit. Official builds (Homebrew `finfra/tap`, GitHub Releases) are free for personal use, education, non-profits, open-source projects, and other organizations up to 250 concurrent copies; beyond that, or for resale / bundling / hosting, see [COMMERCIAL.md](../../COMMERCIAL.md). Details: [DISTRIBUTION-TERMS.md](../../DISTRIBUTION-TERMS.md) · [TRADEMARK.md](../../TRADEMARK.md).
+### Q: How do fWarrangeCli and fWarrange differ?
+A: **fWarrangeCli** is the engine that captures and restores windows and runs the shortcuts and REST API (Homebrew, free). **fWarrange** is the **GUI wrapper** on top of it that adds a layout list, minimap, and settings window (App Store, paid). fWarrange works through the fWarrangeCli REST API — see [Overview](01_Overview.md#fwarrangecli-and-fwarrange-gui-wrapper).
+
+### Q: Can I use fWarrangeCli alone, without fWarrange?
+A: Yes. The menu bar, global shortcuts, command line, REST API, Skill, and MCP all work with fWarrangeCli alone. The reverse is not true: fWarrange does not work without fWarrangeCli.
+
+### Q: Where is the fWarrange (GUI) guide?
+A: See the [fWarrange product page](https://finfra.kr/product/fWarrange/en/index.html). The menu bar items **Open Main Window** and **Settings…** open fWarrange.
+
+### Q: Is fWarrangeCli free?
+A: The source code in this repository is open source under Apache-2.0 (the `mcp/` package is MIT) — you can build and use it without limit. Official builds (Homebrew `finfra/tap`, GitHub Releases) are free for personal use, education, non-profits, open-source projects, and other organizations up to 250 concurrent copies; beyond that, or for resale / bundling / hosting, see [COMMERCIAL.md](../../COMMERCIAL.md). Details: [DISTRIBUTION-TERMS.md](../../DISTRIBUTION-TERMS.md) · [TRADEMARK.md](../../TRADEMARK.md). The GUI wrapper fWarrange is a paid App Store app.
 
 ### Q: Which macOS versions are supported?
-A: macOS 15.0 (Sequoia) and later.
-
-### Q: Does it support Apple Silicon (M1/M2/M3/M4)?
-A: Yes, natively supported.
+A: fWarrangeCli needs macOS 14.0 or later, fWarrange needs 15.6 or later. Both Apple Silicon and Intel are supported.
 
 ## Permissions
 
 ### Q: I get an "Accessibility permission required" error.
-A: Go to System Settings > Privacy & Security > Accessibility and add fWarrange (or your terminal app). See the [Installation Guide](02_Install.md#3-accessibility-permission-setup) for details.
+A: Turn on **fWarrangeCli** in System Settings › Privacy & Security › Accessibility. fWarrange itself needs no permission — see [Installation › Accessibility Permission](02_Install.md#4-accessibility-permission).
 
-### Q: Can I use CLI scripts only, without the GUI?
-A: Yes. You can run the Swift scripts directly from the `lib/wArrange_core/` directory. Use `swift saveWindowsInfo.swift` to capture and `swift setWindows.swift` to restore. CLI options include `--name=<name>`, `--app=<appList>`, and `-v` for verbose output.
+### Q: Shortcuts respond but windows don't move.
+A: Shortcuts register regardless of the permission, but moving windows requires it. Turn the permission on again and restart fWarrangeCli.
 
-### Q: Permissions are lost after each rebuild.
-A: Xcode generates a different binary signature with each build, so macOS treats it as a new app. During development, re-registration is needed each time. Release builds with stable signing resolve this.
-
-### Q: What does `tccutil reset Accessibility` do?
-A: It resets all Accessibility permissions for all apps. You'll need to re-register required apps afterward.
+### Q: Permissions are lost after each source build.
+A: A new build has a different signature, so macOS treats it as a different app. Register it again after each build. Official Homebrew builds keep a stable signature.
 
 ## Layout Save/Restore
 
 ### Q: Window restore fails.
 A: Check the following:
-1. Accessibility permission is granted
-2. The app you're trying to restore is running
-3. Use the `-v` option to check matching scores and identify failing windows
+1. fWarrangeCli has the Accessibility permission
+2. The apps you want to restore are running
+3. The per-window results in the restore response (REST or command line) show which windows were not matched
 
 ### Q: Window positions are slightly off after restore.
-A: Restore verification allows a 3px tolerance. Some apps (especially Electron-based) may not support exact positioning due to system constraints.
+A: Restore verification allows a 3px tolerance. Some apps (especially Electron-based ones) cannot be positioned precisely due to system constraints.
 
 ### Q: Negative coordinates appear in multi-monitor setups.
-A: This is normal. In macOS coordinates, secondary monitors placed to the left of the main monitor have negative coordinates. These are handled correctly during save and restore.
+A: This is normal. In the macOS coordinate system, secondary monitors placed left of or above the main monitor have negative coordinates.
 
-### Q: What happens if I change display arrangement?
-A: Changing monitor arrangement in System Settings may cause previously saved coordinates to point to incorrect positions. Re-saving layouts after arrangement changes is recommended.
+### Q: What happens if I change the display arrangement?
+A: Previously saved coordinates may point to the wrong place. Save your layouts again after rearranging displays.
 
-### Q: Can I save/restore only specific app windows?
-A: Yes, use the `--app=Safari,iTerm2` CLI option or the `filterApps` API field.
+### Q: Can I save only specific app windows?
+A: Yes, use the `filterApps` field of the REST API `capture` — see [Quick Start › Save Specific Apps Only](03_QuickStart.md#save-specific-apps-only).
 
 ### Q: Are full-screen apps restored?
-A: Full-screen apps run in separate Spaces, so coordinate-based restoration does not apply to them.
+A: Full-screen apps run in their own Space, so coordinate-based restore does not apply to them.
 
 ## REST API
 
-### Q: Why is the API server disabled by default?
-A: For security. Opening an HTTP server exposes it to local network attacks, so it's designed to be manually activated only when needed.
+### Q: Is the API server on?
+A: It is on by default (`restServerEnabled: true`, port 3016, `127.0.0.1` only). fWarrange also works through this server, so turning it off stops fWarrange. To block it temporarily, use **Daemon ▸ Pause REST API** in the menu bar.
 
-### Q: Can I access from an external network?
-A: Enable external access in Settings > API tab and configure the CIDR whitelist. LAN access is possible, but direct internet exposure is not recommended.
+### Q: Can I access it from an external network?
+A: Set `allowExternalAccess: true` and `allowedCIDR` (default `192.168.0.0/16`) in `_config.yml` to allow LAN access. Exposing it directly to the internet is not recommended.
 
 ### Q: Can I change the port?
-A: Yes, via Settings > API tab. Default is 3016.
+A: Change `restServerPort` in `_config.yml` and restart fWarrangeCli — see [Menu Bar Usage › Configuration File](04_MenuBar_Usage.md#configuration-file-_configyml).
 
-### Q: How do I call from Apple Shortcuts?
-A: Use the "Get Contents of URL" action in Shortcuts with `http://localhost:3016/api/v1/layouts/myLayout/restore` as a POST request. See [API Usage](05_API_Usage.md#apple-shortcuts-integration) for details.
+### Q: How do I call it from Apple Shortcuts?
+A: Use the Shortcuts "Get Contents of URL" action to POST `http://localhost:3016/api/v2/layouts/myLayout/restore` — see [API Usage](05_API_Usage.md#apple-shortcuts-integration).
 
 ## Skill / MCP
 
 ### Q: What's the difference between Skill and MCP?
 A:
-* **Skill**: Invoked via `/fwarrange:fwarrange` slash command in Claude Code. Internally executes curl commands.
-* **MCP**: AI automatically selects and invokes the appropriate tool in Claude Desktop/Code. Full natural language support.
+* **Skill**: Invoked in Claude Code with the `/fwarrange:fwarrange` slash command. Runs curl internally
+* **MCP**: In Claude Desktop/Code, the AI picks and calls the right tool. Natural-language support
 
-### Q: Can I use Skill and MCP simultaneously?
-A: Yes, they operate independently. Skill uses explicit commands, MCP uses natural language.
+### Q: The MCP server won't connect.
+A: Check the following:
+1. fWarrangeCli is running and `curl -s http://localhost:3016/api/v2/status` responds
+2. The JSON syntax of `claude_desktop_config.json` is valid
+3. Node.js 18 or later is installed
+4. Run `npx fwarrange-mcp` directly to see the error message
 
-### Q: MCP server won't connect.
-A: Check:
-1. fWarrange app is running with REST API enabled
-2. `claude_desktop_config.json` has valid JSON syntax
-3. Node.js 18+ is installed
-4. Run `npx fwarrange-mcp` directly to see error messages
-
-### Q: Can I use Skill/MCP without the fWarrange app?
-A: No. Both Skill and MCP work through fWarrange's REST API server. The app must be running.
+### Q: Do Skill/MCP need fWarrange (GUI)?
+A: No. Skill and MCP work through the fWarrangeCli REST API, so fWarrangeCli running is enough.
 
 ## Performance
 
 ### Q: Is restore slow with many windows?
-A: Per-app parallel restore (`enableParallel: true`) is enabled by default, so 20-30 windows are restored within seconds.
-
-### Q: Will YAML files get too large?
-A: In typical use, YAML files are under a few dozen KB. Periodically deleting unused layouts is recommended.
+A: Per-app parallel restore (`enableParallelRestore: true`) is the default, so 20–30 windows are restored within a few seconds.
 
 ## Related Documents
 
-* [Product Overview](01_Overview.md)
-* [Installation Guide](02_Install.md)
-* [GUI Usage](04_GUI_Usage.md)
+* [Overview](01_Overview.md)
+* [Installation](02_Install.md)
+* [Menu Bar Usage](04_MenuBar_Usage.md)
 * [REST API Usage](05_API_Usage.md)
 * [Skill Usage](06_Skill_Usage.md)
 * [MCP Server Usage](07_MCP_Usage.md)
+* [fWarrange (GUI) product page](https://finfra.kr/product/fWarrange/en/index.html)
