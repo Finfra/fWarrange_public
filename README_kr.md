@@ -15,12 +15,14 @@ macOS 창 관리 및 레이아웃 도구. 단축키 하나로 창 위치와 크�
 
 | 에디션                 | 인터페이스        | 가격                | 설치                                                           | 버전   | 소스             |
 | ---------------------- | ----------------- | ------------------- | -------------------------------------------------------------- | ------ | ---------------- |
-| **fWarrange** (GUI)    | 풀 GUI + 메뉴바   | 유료 (App Store)    | [App Store](https://finfra.kr/product/fWarrange/kr/index.html) | 최신   | 비공개           |
+| **fWarrange** (GUI)    | fWarrangeCli 의 GUI 래퍼 (레이아웃 목록 · 미니맵 · 설정) | 유료 (App Store)    | [App Store](https://finfra.kr/product/fWarrange/kr/index.html) | 최신   | 비공개           |
 | **fWarrangeCli** (CLI) | 메뉴바 + REST API | **무료 & 오픈소스** | `brew install finfra/tap/fwarrange-cli`                        | 1.1.2  | [`cli/`](./cli/) |
 
+> **fWarrange 는 fWarrangeCli 의 GUI 래퍼입니다.** fWarrangeCli 가 엔진(메뉴바 · 전역 단축키 · REST API · 창 캡처/복원)이고, fWarrange 는 그 위에 GUI 를 얹어 모든 캡처·복원을 fWarrangeCli 의 REST API 로 수행합니다. 그래서 fWarrange 를 쓰려면 fWarrangeCli 가 설치되어 있어야 합니다.
+
 이 레포지터리는 다음 두 가지 역할을 합니다:
-* 유료 GUI 버전 (App Store)의 **사용자 지원 및 문서**
-* 무료 CLI 버전의 **오픈소스 코드 저장소**
+* fWarrangeCli(무료 · 오픈소스)의 **소스 코드와 매뉴얼** — [fWarrangeCli 매뉴얼](./manual/)
+* 유료 GUI 래퍼 fWarrange(App Store)의 **사용자 지원** — [fWarrange 안내 페이지](https://finfra.kr/product/fWarrange/kr/index.html)
 
 # 주요 기능
 
@@ -110,10 +112,11 @@ brew untap finfra/tap                 # (선택) tap 제거
 
 | 문서                                 | 설명                              |
 | ------------------------------------ | --------------------------------- |
-| [매뉴얼](./manual/)                  | 사용자 매뉴얼 (KR/EN)             |
+| [fWarrangeCli 매뉴얼](./manual/)     | fWarrangeCli 사용자 매뉴얼 (KR/EN) |
+| [fWarrange 안내 페이지](https://finfra.kr/product/fWarrange/kr/index.html) | GUI 래퍼 fWarrange 매뉴얼 (KR/EN) |
 | [REST API](./api/)                   | REST API 레퍼런스 및 OpenAPI 명세 |
 | [MCP 서버](./mcp/)                   | Model Context Protocol 서버       |
-| [Claude Code 스킬](./agents/claude/) | Claude Code 플러그인              |
+| [Claude Code 스킬](./agents/claude/) | Claude Code 플러그인 ([Finfra/f-claude-plugins](https://github.com/Finfra/f-claude-plugins) 로 이전) |
 | [다국어 리소스](./localization/)     | 다국어 문자열 리소스              |
 
 # 커뮤니티 및 지원

@@ -1,49 +1,42 @@
 ---
-title: fWarrange Skill 사용법
-description: fWarrange Skill 사용 방법 (한국어)
-date: 2026-03-26
+title: fWarrangeCli Skill 사용법
+description: fWarrangeCli Skill 사용 방법 (한국어)
+date: 2026.10.08
 ---
 # Claude Code Skill 사용법
 
-fWarrange는 Claude Code의 Skill(스킬) 시스템과 연동되어, AI 에이전트에서 자연어로 윈도우 레이아웃을 관리할 수 있습니다.
+fWarrangeCli 는 Claude Code 의 Skill(스킬) 시스템과 연동되어, AI 에이전트에서 자연어로 윈도우 레이아웃을 관리할 수 있습니다. Skill 은 fWarrangeCli 의 REST API 만 쓰므로 GUI 래퍼 fWarrange 는 필요 없습니다.
 
 ## 개요
 
-Claude Code Skill은 `/fwarrange:fwarrange` 슬래시 커맨드를 통해 fWarrange REST API를 호출합니다. 사용자는 터미널에서 curl 명령어를 직접 입력할 필요 없이, 자연어 기반으로 레이아웃을 캡처하고 복원할 수 있습니다.
+Claude Code Skill은 `/fwarrange:fwarrange` 슬래시 커맨드를 통해 fWarrangeCli REST API(v2)를 호출합니다. 사용자는 터미널에서 curl 명령어를 직접 입력할 필요 없이, 자연어 기반으로 레이아웃을 캡처하고 복원할 수 있습니다.
 
 ## 전제 조건
 
-1. **fWarrange 앱 실행 중** (REST API 서버 활성화 상태)
+1. **fWarrangeCli 실행 중** (REST API 서버는 기본으로 켜져 있음 — [설치](02_Install.md#5-rest-api-확인))
 2. **Claude Code** 설치 및 실행
 3. **fwarrange Skill** 설치 완료
 
 ## 설치 방법
 
-### 방법 1: Claude Code Plugin 설치 (권장)
+Skill 은 통합 플러그인 레포 [Finfra/f-claude-plugins](https://github.com/Finfra/f-claude-plugins) 의 `fWarrange/` 에서 배포합니다.
 
-```bash
-claude plugin install --from https://github.com/nowage/fWarrange --path agents/claude
+### 방법 1: 플러그인 마켓플레이스 (권장)
+
+Claude Code 에서:
+
 ```
-
-설치 후 `.claude-plugin/plugin.json`이 참조되어 Skill이 자동 등록됩니다.
+/plugin marketplace add Finfra/f-claude-plugins
+/plugin install fwarrange@f-claude-plugins
+```
 
 ### 방법 2: 수동 복사
 
-Skill 파일을 프로젝트의 `.claude/commands/skills/` 디렉토리에 복사합니다:
-
 ```bash
-# fWarrange 리포지토리에서
-cp agents/claude/skills/fwarrange/SKILL.md \
-   <YOUR_PROJECT>/.claude/commands/skills/fwarrange.md
-```
-
-## 방법 3: 글로벌 설치
-
-모든 프로젝트에서 사용하려면 글로벌 커맨드 디렉토리에 복사합니다:
-
-```bash
-cp agents/claude/skills/fwarrange/SKILL.md \
-   ~/.claude/commands/fwarrange.md
+git clone https://github.com/Finfra/f-claude-plugins.git
+mkdir -p .claude-plugin .claude
+cp f-claude-plugins/fWarrange/plugin.json .claude-plugin/plugin.json
+cp -r f-claude-plugins/fWarrange/skills .claude/skills
 ```
 
 ## 사용 예제
@@ -153,9 +146,9 @@ Claude가 현재 화면의 모든 창 배치를 저장합니다.
          |
 Claude Code: 서버 상태 확인 (GET /)
          |
-         +-- 서버 미응답 시 --> "fWarrange 앱을 실행해주세요" 안내
+         +-- 서버 미응답 시 --> fWarrangeCli 시작 명령 안내
          |
-         +-- 서버 정상 시 --> POST /api/v1/capture 호출
+         +-- 서버 정상 시 --> POST /api/v2/capture 호출
          |
          +-- 결과 보고: "dev 레이아웃으로 12개 창 저장 완료"
 ```
@@ -164,9 +157,9 @@ Claude Code: 서버 상태 확인 (GET /)
 
 서버가 응답하지 않으면 Claude는 다음과 같이 안내합니다:
 
-> "fWarrange REST API 서버가 실행 중이 아닙니다. 다음 명령으로 앱을 실행해주세요:"
+> "fWarrange REST API 서버(fWarrangeCli)가 실행 중이 아닙니다. Homebrew 로 시작해 주세요:"
 > ```bash
-> open -a "fWarrange"
+> brew services start finfra/tap/fwarrange-cli
 > ```
 > "준비되면 알려주세요."
 
@@ -178,18 +171,18 @@ Skill 내부에서 호출하는 REST API 엔드포인트:
 
 | 커맨드                           | API 호출                                     |
 | -------------------------------- | -------------------------------------------- |
-| `capture`                        | POST `/api/v1/capture`                       |
-| `restore <name>`                 | POST `/api/v1/layouts/{name}/restore`        |
-| `list`                           | GET `/api/v1/layouts`                        |
-| `detail <name>`                  | GET `/api/v1/layouts/{name}`                 |
-| `rename <name> <newName>`        | PUT `/api/v1/layouts/{name}`                 |
-| `delete <name>`                  | DELETE `/api/v1/layouts/{name}`              |
-| `delete-all`                     | DELETE `/api/v1/layouts`                     |
-| `remove-windows <name> <ids...>` | POST `/api/v1/layouts/{name}/windows/remove` |
-| `status`                         | GET `/api/v1/status/accessibility`           |
-| `windows`                        | GET `/api/v1/windows/current`                |
-| `apps`                           | GET `/api/v1/windows/apps`                   |
-| `locale`                         | GET `/api/v1/locale`                         |
+| `capture`                        | POST `/api/v2/capture`                       |
+| `restore <name>`                 | POST `/api/v2/layouts/{name}/restore`        |
+| `list`                           | GET `/api/v2/layouts`                        |
+| `detail <name>`                  | GET `/api/v2/layouts/{name}`                 |
+| `rename <name> <newName>`        | PUT `/api/v2/layouts/{name}`                 |
+| `delete <name>`                  | DELETE `/api/v2/layouts/{name}`              |
+| `delete-all`                     | DELETE `/api/v2/layouts`                     |
+| `remove-windows <name> <ids...>` | POST `/api/v2/layouts/{name}/windows/remove` |
+| `status`                         | GET `/api/v2/status/accessibility`           |
+| `windows`                        | GET `/api/v2/windows/current`                |
+| `apps`                           | GET `/api/v2/windows/apps`                   |
+| `locale`                         | GET `/api/v2/settings/general`               |
 
 ## 옵션
 
@@ -202,8 +195,8 @@ Skill 내부에서 호출하는 REST API 엔드포인트:
 
 | 문제                       | 해결                                                            |
 | -------------------------- | --------------------------------------------------------------- |
-| "서버가 응답하지 않습니다" | fWarrange 앱 실행 및 API 서버 활성화 확인                       |
-| Skill을 찾을 수 없음       | 설치 경로 확인 (`~/.claude/commands/` 또는 프로젝트 `.claude/`) |
+| "서버가 응답하지 않습니다" | fWarrangeCli 실행 여부와 `_config.yml` 의 `restServerEnabled` 확인 |
+| Skill을 찾을 수 없음       | `/plugin` 목록에서 `fwarrange` 설치 여부 확인                   |
 | 복원 실패                  | 손쉬운 사용 권한 확인 (`/fwarrange:fwarrange status`)           |
 
 ## 다음 단계

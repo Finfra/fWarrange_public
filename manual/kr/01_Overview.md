@@ -1,103 +1,72 @@
 ---
-title: fWarrange 제품 개요
-description: fWarrange 제품 개요 및 핵심 기능 소개 (한국어)
-date: 2026-03-26
+title: fWarrangeCli 개요
+description: fWarrangeCli(무료 · 오픈소스 창 레이아웃 엔진) 개요와 GUI 래퍼 fWarrange 와의 관계 (한국어)
+date: 2026.10.08
 ---
+# fWarrangeCli 란?
 
-# fWarrange란?
+fWarrangeCli 는 macOS 의 창 위치·크기를 저장하고, 한 번의 조작으로 되돌려 놓는 **창 레이아웃 엔진**입니다. 메뉴바에 상주하며 전역 단축키·REST API·명령행으로 동작합니다. Homebrew 로 배포되는 무료 · 오픈소스(Apache-2.0) 앱입니다.
 
-fWarrange는 macOS 사용자의 작업 환경을 기억하고, 단 한 번의 조작으로 수많은 창들의 위치와 크기를 완벽하게 되돌려 놓는 **윈도우 레이아웃 복원 도구**입니다.
+다중 모니터 환경이나 목적별(개발·회의·디자인) 작업에서 흩어진 창을 매번 다시 배치할 필요 없이, 저장해 둔 배치를 즉시 복원합니다.
 
-다중 모니터 환경이나 복잡한 개발/디자인 작업 시 흩어지는 창들을 매번 다시 배치할 필요 없이, 지정된 목적(개발, 회의, 디자인 등)에 맞는 앱 창 배열을 즉시 복원합니다.
+# fWarrangeCli 와 fWarrange (GUI 래퍼)
+
+> **fWarrange(App Store 유료 앱)는 fWarrangeCli 의 GUI 래퍼입니다.**
+> fWarrange 는 창을 직접 다루지 않고 fWarrangeCli 의 REST API(`localhost:3016`)를 호출해 레이아웃 목록·미니맵·설정 창을 보여 줍니다. 그래서 fWarrange 는 fWarrangeCli 없이는 동작하지 않고, fWarrangeCli 는 fWarrange 없이도 모든 핵심 기능이 동작합니다.
+
+```mermaid
+flowchart LR
+  U[사용자] --> C["fWarrangeCli<br>(엔진 · 이 매뉴얼)"]
+  U --> P["fWarrange<br>(GUI 래퍼 · App Store)"]
+  P -- "REST API<br>localhost:3016" --> C
+  C -- "URL Scheme<br>fwarrange://" --> P
+  A["curl · Shortcuts ·<br>Skill · MCP"] -- "REST API" --> C
+  C --> AX["macOS<br>손쉬운 사용 API"]
+  C --> Y[("레이아웃 YAML<br>_config.yml")]
+```
+
+| 구분   | fWarrangeCli (이 매뉴얼)                                                   | fWarrange                                               |
+| ------ | -------------------------------------------------------------------------- | ------------------------------------------------------- |
+| 역할   | 엔진(헬퍼 데몬)                                                            | GUI 래퍼                                                |
+| 배포   | Homebrew (무료 · 오픈소스)                                                 | App Store (유료)                                        |
+| 화면   | 메뉴바 아이콘과 메뉴                                                       | 메인 창(레이아웃 목록 · 미니맵 · 창 목록) · 설정 창 5탭 |
+| 기능   | 창 캡처·복원 · YAML 저장 · 전역 단축키 · REST API · 명령행 · `_config.yml` | 레이아웃 보기·선택 복원·이름 변경·삭제 · 설정 GUI 편집  |
+| 매뉴얼 | 이 문서                                                                    | [fWarrange 안내 페이지](https://finfra.kr/product/fWarrange/kr/index.html)                         |
+
+메뉴바의 **메인 창 열기** · **환경설정…** 은 fWarrange 를 여는 메뉴입니다. fWarrange 가 설치되어 있지 않으면 App Store 안내가 나타납니다.
 
 # 핵심 기능
 
-| 기능              | 설명                                                         |
-| ----------------- | ------------------------------------------------------------ |
-| 레이아웃 캡처     | CoreGraphics 기반으로 모든 활성 창의 위치/크기를 YAML로 저장 |
-| 스마트 복원       | 점수 기반 매칭 알고리즘으로 창 ID가 바뀌어도 정확히 복원     |
-| 다중 레이아웃     | 목적별(개발, 회의, 디자인) 복수 프로필 관리                  |
-| 다중 모니터       | 보조 모니터 포함 전체 디스플레이 환경 지원                   |
-| REST API          | HTTP 기반 원격 제어 (자동화, Apple Shortcuts 연동)           |
-| Claude Code Skill | AI 에이전트에서 자연어로 레이아웃 관리                       |
-| MCP 서버          | AI 도구(Claude Desktop 등)에서 직접 호출 가능                |
+| 기능              | 설명                                                                 |
+| ----------------- | -------------------------------------------------------------------- |
+| 레이아웃 캡처     | CoreGraphics + 손쉬운 사용 API 로 모든 창의 위치·크기를 YAML 로 저장 |
+| 스마트 복원       | 점수 기반 매칭으로 창 ID 가 바뀌어도 맞는 창을 찾아 복원             |
+| 다중 레이아웃     | 목적별 레이아웃 여러 개 · 기본 레이아웃 지정                         |
+| 다중 모니터       | 보조 모니터를 포함한 전체 디스플레이 지원                            |
+| 전역 단축키       | 저장·기본 복원·최근 복원·되돌리기 (앱이 비활성이어도 동작)           |
+| 자동 저장         | 슬립·로그아웃 시 현재 배치를 자동 저장                               |
+| REST API          | `localhost:3016/api/v2` — curl · Apple Shortcuts · 스크립트 연동     |
+| Claude Code Skill | AI 에이전트에서 자연어로 레이아웃 관리                               |
+| MCP 서버          | Claude Desktop 등 AI 도구에서 도구(Tool)로 호출                      |
 
-# 아키텍처
+창 매칭 점수: 창 ID 일치 100 · 제목 완전 일치 90 · 정규식 80 · 포함 70 · 크기·비율·면적 유사도 60~30. 최소 점수(기본 30) 미만은 무시합니다.
 
-fWarrange는 두 가지 컴포넌트로 구성됩니다:
+# 사용 방법 4가지
 
-```
-+----------------------------------+
-|  SwiftUI GUI (메뉴바 앱)          |
-|  - 5탭 설정 (일반/단축키/복구/API/고급) |
-|  - REST API 내장 서버              |
-+----------------------------------+
-          |  호출
-+----------------------------------+
-|  Swift 코어 스크립트               |
-|  lib/wArrange_core/              |
-|  - saveWindowsInfo.swift (캡처)   |
-|  - setWindows.swift (복원)        |
-+----------------------------------+
-          |  사용
-+----------------------------------+
-|  macOS 시스템 API                 |
-|  - CoreGraphics (창 정보 읽기)     |
-|  - Accessibility API (창 제어)     |
-+----------------------------------+
-```
+1. **메뉴바 · 전역 단축키** — [메뉴바 사용법](04_MenuBar_Usage.md)
+2. **명령행** — `fWarrangeCli status|list|capture|restore …` ([메뉴바 사용법 › 명령행](04_MenuBar_Usage.md#명령행-cli))
+3. **REST API** — [REST API 사용법](05_API_Usage.md)
+4. **AI 연동** — [Claude Code Skill](06_Skill_Usage.md) · [MCP 서버](07_MCP_Usage.md)
 
-# 데이터 흐름
+GUI 로 다루고 싶으면 래퍼 앱 fWarrange 를 함께 설치합니다 — [fWarrange 안내 페이지](https://finfra.kr/product/fWarrange/kr/index.html).
 
-```
-[CoreGraphics] CGWindowListCopyWindowInfo()
-      | 창 정보 수집 (id, pos, size, layer)
-      v
-[saveWindowsInfo.swift] --> YAML 직렬화 --> data/*.yml
-      |
-      v
-[setWindows.swift] YAML 파싱 --> 앱/창 매칭 --> AXUIElement 설정
-```
+# 데이터 위치
 
-# 지원 환경
-
-| 항목       | 요구사항                             |
-| ---------- | ------------------------------------ |
-| OS         | macOS 15.0 (Sequoia) 이상            |
-| Swift      | 5.10 이상                            |
-| 프레임워크 | SwiftUI, AppKit, CoreGraphics        |
-| 권한       | 손쉬운 사용(Accessibility) 권한 필수 |
-
-# 인터페이스 개요
-
-fWarrange는 4가지 방식으로 사용할 수 있습니다:
-
-1. **GUI 앱** - 메뉴바 상주 앱으로 클릭 한 번에 캡처/복원
-2. **CLI 스크립트** - 터미널에서 직접 Swift 스크립트 실행
-3. **REST API** - curl, Apple Shortcuts, 자동화 스크립트로 HTTP 호출
-4. **AI 연동** - Claude Code Skill 또는 MCP 서버로 AI 에이전트에서 제어
-
-## CLI 스크립트 빠른 참조
-
-GUI 앱 없이 `lib/wArrange_core/` 디렉토리의 Swift 스크립트로 직접 사용할 수 있습니다:
-
-```bash
-# 캡처
-swift saveWindowsInfo.swift                     # 기본 파일(windowInfo.yml)로 저장
-swift saveWindowsInfo.swift --name=myLayout     # 이름 지정 저장
-swift saveWindowsInfo.swift --app=Safari,iTerm2 # 특정 앱만 캡처
-swift saveWindowsInfo.swift -v                  # 상세 출력
-
-# 복원
-swift setWindows.swift                          # 기본 파일에서 복원
-swift setWindows.swift --name=myLayout          # 이름 지정 복원
-swift setWindows.swift -v                       # 매칭 점수 등 상세 출력
-
-# 진단
-swift list_apps.swift                           # Accessibility API 기반 창 목록
-swift list_all_apps.swift                       # 실행 중 앱 목록
-swift list_cg.swift                             # CoreGraphics 기반 창 목록
-```
+| 항목          | 경로                                                                   |
+| ------------- | ---------------------------------------------------------------------- |
+| 설정 파일     | `~/Documents/finfra/fWarrangeData/_config.yml`                         |
+| 레이아웃 YAML | `~/Documents/finfra/fWarrangeData/<호스트명>/*.yml` (`host` 모드 기본) |
+| 로그          | `~/Documents/finfra/fWarrangeData/logs/wlog_cliApp.log`                |
 
 # 다음 단계
 
