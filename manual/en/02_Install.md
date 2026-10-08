@@ -1,99 +1,77 @@
 ---
-title: fWarrange Installation Guide
-description: fWarrange 설치 및 초기 설정 가이드 (English)
-date: 2026-03-26
+title: fWarrangeCli Installation
+description: fWarrangeCli installation · Accessibility permission · REST API check (English)
+date: 2026.10.08
 ---
-# Installation & Permission Setup
+# Installation & Permissions
 
 ## 1. System Requirements
 
-| Item  | Minimum                      |
-| ----- | ---------------------------- |
-| macOS | 15.0 (Sequoia) or later      |
-| Swift | 5.10 or later                |
-| Xcode | 16.0 or later (for building) |
-| Disk  | Approximately 50MB           |
+| Item        | Requirement                             |
+| ----------- | --------------------------------------- |
+| macOS       | 14.0 or later                           |
+| Install     | Homebrew                                |
+| Permissions | Accessibility permission (required)     |
+| Build       | Xcode 15.0 or later (source build only) |
 
-## 2. Installation Methods
-
-### 2.1. Pre-built App (Recommended)
-
-1. Copy `fWarrange.app` to `/Applications/` or your preferred folder
-2. On first launch, click "Open" if macOS Gatekeeper warning appears
-
-### 2.2. Build from Source
+## 2. Install with Homebrew (recommended)
 
 ```bash
-# Clone repository
-git clone https://github.com/nowage/fWarrange.git
-cd fWarrange
-
-# Build with Xcode
-cd fWarrange
-xcodebuild -scheme fWarrange -configuration Debug build
+brew tap finfra/tap
+brew install finfra/tap/fwarrange-cli
+brew services start fwarrange-cli     # start + auto-start at login
 ```
 
-Build output is generated at the DerivedData path:
-```
-~/Library/Developer/Xcode/DerivedData/fWarrange-*/Build/Products/Debug/fWarrange.app
-```
+The app is installed at `/opt/homebrew/opt/fwarrange-cli/fWarrangeCli.app`; once running, its icon appears in the menu bar.
 
-## 2.3. CLI-only Usage (Without GUI)
+| Task      | Command                                                             |
+| --------- | ------------------------------------------------------------------- |
+| Stop      | `brew services stop fwarrange-cli`                                  |
+| Restart   | `brew services restart fwarrange-cli`                               |
+| Update    | `brew upgrade fwarrange-cli`                                        |
+| Uninstall | `brew services stop fwarrange-cli` → `brew uninstall fwarrange-cli` |
 
-You can use the core scripts without the GUI app:
+Layouts and settings in `~/Documents/finfra/fWarrangeData/` are kept after uninstalling. Delete that folder manually to remove them.
+
+## 3. Build from Source
 
 ```bash
-cd lib/wArrange_core/
-swift saveWindowsInfo.swift    # Capture
-swift setWindows.swift         # Restore
+git clone https://github.com/Finfra/fWarrange_public.git
+cd fWarrange_public/cli
+xcodebuild -scheme fWarrangeCli -configuration Release build
 ```
 
-## 3. Accessibility Permission Setup
+Output: `~/Library/Developer/Xcode/DerivedData/fWarrangeCli-*/Build/Products/Release/fWarrangeCli.app`
 
-Accessibility permission is **required** to control window positions and sizes.
+## 4. Accessibility Permission
 
-### 3.1. Granting Permission
+**fWarrangeCli** needs the Accessibility permission to change window positions and sizes.
 
-1. Open **System Settings**
-2. Navigate to **Privacy & Security** > **Accessibility**
-3. Click the lock icon at the bottom-left to unlock
-4. Click `+` to add:
-   - **For GUI app**: `fWarrange.app`
-   - **For CLI scripts**: `Terminal.app` or `iTerm2.app`
+1. **System Settings** › **Privacy & Security** › **Accessibility**
+2. Turn on **fWarrangeCli** (if missing, add `/opt/homebrew/opt/fwarrange-cli/fWarrangeCli.app` with `+`)
+3. Check: `curl -s http://localhost:3016/api/v2/status/accessibility`
 
-### 3.2. Verifying Permission
+| Symptom                                    | Fix                                                               |
+| ------------------------------------------ | ----------------------------------------------------------------- |
+| Enabled in the list but windows don't move | Toggle it off and on, or remove it with `-` and add it again      |
+| Permission lost after a source build       | Each build has a different signature — register it again          |
+| Shortcuts respond but windows don't move   | The permission is off — repeat steps 1–2 and restart fWarrangeCli |
+
+## 5. Check the REST API
+
+The REST server is **enabled by default** (port 3016).
 
 ```bash
-# Verify via CLI
-cd lib/wArrange_core/
-swift list_apps.swift
+curl -s http://localhost:3016/api/v2/status
 ```
 
-If output appears normally, permissions are correctly configured.
+`"status" : "ok"` means it is working. Turning the server off, the port, and external access are set in `_config.yml` — see [Menu Bar Usage › Configuration File](04_MenuBar_Usage.md#configuration-file-_configyml).
 
-You can also verify via REST API:
-```bash
-curl -s http://localhost:3016/api/v1/status/accessibility | python3 -m json.tool
-```
+## 6. (Optional) GUI Wrapper fWarrange
 
-## 3.3. Troubleshooting Permissions
-
-| Symptom                          | Solution                                                          |
-| -------------------------------- | ----------------------------------------------------------------- |
-| App is listed but doesn't work   | Uncheck and recheck, or remove and re-add the app                 |
-| Permission dialog doesn't appear | Run `tccutil reset Accessibility` in terminal, then reconfigure   |
-| Permission lost after rebuild    | Each build has a different binary signature; re-register required |
-
-## 4. Checking the REST API Server
-
-The REST API server is built into fWarrangeCli and is **enabled by default**.
-
-1. Launch fWarrange app
-2. Toolbar ⚙️ button (or ⌘,) > **API** tab (⌘4)
-3. Confirm that Status shows `Connected` and check the port (default: 3016)
-4. To turn the server off or allow external access, edit `restServerEnabled` · `allowExternalAccess` · `allowedCIDR` in `~/Documents/finfra/fWarrangeData/_config.yml` ([GUI Usage › API tab](04_GUI_Usage.md#tab-4-api))
+To use a layout list, minimap, and settings window, also install the App Store app **fWarrange**. fWarrange works through this fWarrangeCli — see the [fWarrange product page](https://finfra.kr/product/fWarrange/en/index.html).
 
 ## Next Steps
 
 * [Quick Start](03_QuickStart.md)
-* [GUI Usage](04_GUI_Usage.md)
+* [Menu Bar Usage](04_MenuBar_Usage.md)

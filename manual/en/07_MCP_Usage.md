@@ -1,11 +1,11 @@
 ---
-title: fWarrange MCP Usage
-description: fWarrange MCP 서버 사용 방법 (English)
-date: 2026-03-26
+title: fWarrangeCli MCP Usage
+description: fWarrangeCli MCP server usage (English)
+date: 2026.10.08
 ---
 # MCP Server Usage
 
-fWarrange provides an **MCP (Model Context Protocol)** server, enabling AI tools like Claude Desktop and Claude Code to invoke fWarrange features as native tools.
+fWarrangeCli provides an **MCP (Model Context Protocol)** server (`fwarrange-mcp`), enabling AI tools like Claude Desktop and Claude Code to invoke fWarrangeCli features as native tools. The MCP server only uses the fWarrangeCli REST API, so the GUI wrapper fWarrange is not required.
 
 ## What is MCP?
 
@@ -23,7 +23,7 @@ MCP (Model Context Protocol) is a standard protocol for AI models to interact wi
 
 ## Prerequisites
 
-1. **fWarrange app running** (REST API server enabled)
+1. **fWarrangeCli running** (the REST API server is enabled by default — [Installation](02_Install.md#5-check-the-rest-api))
 2. **Node.js** 18 or later
 3. **npm** installed
 
@@ -116,9 +116,9 @@ npm install -g fwarrange-mcp
 
 | Variable            | Default                 | Description                       |
 | ------------------- | ----------------------- | --------------------------------- |
-| `FWARRANGE_API_URL` | `http://localhost:3016` | fWarrange REST API server address |
+| `FWARRANGE_API_URL` | `http://localhost:3016` | fWarrangeCli REST API server address |
 
-## Available Tools (14)
+## Available Tools (13)
 
 The MCP server provides the following tools to AI:
 
@@ -149,12 +149,11 @@ The MCP server provides the following tools to AI:
 | `get_current_windows` | List current windows (without saving) | `filterApps?` |
 | `get_running_apps`    | List running applications             | -             |
 
-### System Settings
+### UI State
 
-| Tool         | Description                  | Parameters |
-| ------------ | ---------------------------- | ---------- |
-| `get_locale` | Get current language setting | -          |
-| `set_locale` | Change app language          | `language` |
+| Tool           | Description                                                | Parameters                    |
+| -------------- | ---------------------------------------------------------- | ----------------------------- |
+| `set_ui_state` | Control the fWarrange (GUI) screen state (for capture automation) | `hideWindows?`, `selectApps?` |
 
 ## Usage Examples
 
@@ -183,12 +182,12 @@ Claude calls `capture_layout(filterApps: ["Safari"])` then `restore_layout(name:
 ## Communication Protocol
 
 ```
-Claude Desktop/Code  <--stdio-->  fwarrange-mcp  <--HTTP-->  fWarrange App
+Claude Desktop/Code  <--stdio-->  fwarrange-mcp  <--HTTP-->  fWarrangeCli
                                    (Node.js)                  (REST API :3016)
 ```
 
 * AI client to MCP server: **stdio** (standard I/O)
-* MCP server to fWarrange app: **HTTP** (REST API)
+* MCP server to fWarrangeCli: **HTTP** (REST API v2)
 
 ## Debugging
 
@@ -203,8 +202,8 @@ npx @modelcontextprotocol/inspector npx fwarrange-mcp
 ### Verify Server Connection
 
 ```bash
-# Check if the fWarrange REST API server is running
-curl http://localhost:3016/
+# Check if the fWarrangeCli REST API server is running
+curl -s http://localhost:3016/api/v2/status
 ```
 
 ## Troubleshooting
@@ -212,7 +211,7 @@ curl http://localhost:3016/
 | Issue                     | Solution                                                                       |
 | ------------------------- | ------------------------------------------------------------------------------ |
 | MCP server not connecting | Check `claude_desktop_config.json` path and JSON syntax                        |
-| "Server not responding"   | Verify fWarrange app is running with REST API enabled                          |
+| "Server not responding"   | Check that fWarrangeCli is running and `restServerEnabled` in `_config.yml`    |
 | Tools not appearing       | Restart Claude Desktop, or run `npx fwarrange-mcp` directly to check errors    |
 | Permission errors         | Check Accessibility permission (use `check_accessibility` tool)                |
 | Port conflict             | Change port via `--server=` option or `FWARRANGE_API_URL` environment variable |

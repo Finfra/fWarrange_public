@@ -15,12 +15,14 @@ macOS Window Management & Layout Tool. Save and restore window positions and siz
 
 | Edition | Interface | Price | Install | Version | Source |
 | ------- | --------- | ----- | ------- | ------- | ------ |
-| **fWarrange** (GUI) | Full GUI with menu bar | Paid (App Store) | [App Store](https://finfra.kr/product/fWarrange/en/index.html) | Latest | Closed |
+| **fWarrange** (GUI) | GUI wrapper for fWarrangeCli (layout list · minimap · settings) | Paid (App Store) | [App Store](https://finfra.kr/product/fWarrange/en/index.html) | Latest | Closed |
 | **fWarrangeCli** (CLI) | Menu bar + REST API | **Free & Open Source** | `brew install finfra/tap/fwarrange-cli` | 1.1.2 | [`cli/`](./cli/) |
 
+> **fWarrange is a GUI wrapper for fWarrangeCli.** fWarrangeCli is the engine (menu bar, global shortcuts, REST API, window capture/restore). fWarrange adds a GUI on top of it and performs every capture and restore through the fWarrangeCli REST API, so it requires fWarrangeCli to be installed.
+
 This repository serves as:
-* **User support & documentation** for the paid GUI version (App Store)
-* **Source code repository** for the free CLI version (open source)
+* **Source code & manual** for fWarrangeCli (free, open source) — [fWarrangeCli Manual](./manual/)
+* **User support** for the paid GUI wrapper fWarrange (App Store) — [fWarrange product page](https://finfra.kr/product/fWarrange/en/index.html)
 
 # Features
 
@@ -110,10 +112,11 @@ See [`cli/README.md`](./cli/README.md) for build-from-source and full details.
 
 | Document                              | Description                       |
 | ------------------------------------- | --------------------------------- |
-| [Manual](./manual/)                   | User manual (KR/EN)               |
+| [fWarrangeCli Manual](./manual/)      | fWarrangeCli user manual (KR/EN)  |
+| [fWarrange product page](https://finfra.kr/product/fWarrange/en/index.html) | GUI wrapper fWarrange manual (KR/EN) |
 | [REST API](./api/)                    | REST API reference & OpenAPI spec |
 | [MCP Server](./mcp/)                  | Model Context Protocol server     |
-| [Claude Code Skill](./agents/claude/) | Claude Code plugin                |
+| [Claude Code Skill](./agents/claude/) | Claude Code plugin (moved to [Finfra/f-claude-plugins](https://github.com/Finfra/f-claude-plugins)) |
 | [Localization](./localization/)       | Multi-language string resources   |
 
 # Community & Support

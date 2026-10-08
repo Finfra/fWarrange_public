@@ -1,103 +1,72 @@
 ---
-title: fWarrange Product Overview
-description: fWarrange 제품 개요 및 핵심 기능 소개 (English)
-date: 2026-03-26
+title: fWarrangeCli Overview
+description: fWarrangeCli (free · open-source window layout engine) overview and its relation to the GUI wrapper fWarrange (English)
+date: 2026.10.08
 ---
+# What is fWarrangeCli?
 
-# What is fWarrange?
+fWarrangeCli is a **window layout engine** for macOS that saves window positions and sizes and puts them back with a single action. It lives in the menu bar and works through global shortcuts, a REST API, and a command line. It is a free, open-source (Apache-2.0) app distributed via Homebrew.
 
-fWarrange is a **window layout restoration tool** that remembers your macOS working environment and restores all window positions and sizes with a single action.
+Instead of rearranging scattered windows every time on multi-monitor setups or task-specific workflows (coding, meetings, design), you restore a saved arrangement instantly.
 
-When working with multiple monitors or complex development/design setups, you no longer need to manually rearrange scattered windows. Instantly restore app window arrangements for specific purposes (development, meetings, design, etc.).
+# fWarrangeCli and fWarrange (GUI Wrapper)
+
+> **fWarrange (a paid App Store app) is a GUI wrapper for fWarrangeCli.**
+> fWarrange does not handle windows itself; it calls the fWarrangeCli REST API (`localhost:3016`) and shows a layout list, minimap, and settings window. So fWarrange does not work without fWarrangeCli, while fWarrangeCli runs all core features without fWarrange.
+
+```mermaid
+flowchart LR
+  U[User] --> C["fWarrangeCli<br>(engine · this manual)"]
+  U --> P["fWarrange<br>(GUI wrapper · App Store)"]
+  P -- "REST API<br>localhost:3016" --> C
+  C -- "URL Scheme<br>fwarrange://" --> P
+  A["curl · Shortcuts ·<br>Skill · MCP"] -- "REST API" --> C
+  C --> AX["macOS<br>Accessibility API"]
+  C --> Y[("Layout YAML<br>_config.yml")]
+```
+
+| Item         | fWarrangeCli (this manual)                                                                | fWarrange                                                          |
+| ------------ | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Role         | Engine (helper daemon)                                                                    | GUI wrapper                                                        |
+| Distribution | Homebrew (free · open source)                                                             | App Store (paid)                                                   |
+| UI           | Menu bar icon and menu                                                                    | Main window (layout list · minimap · window list) · 5-tab settings |
+| Features     | Window capture/restore · YAML storage · global shortcuts · REST API · CLI · `_config.yml` | View layouts · selective restore · rename · delete · settings GUI  |
+| Manual       | This document                                                                             | [fWarrange product page](https://finfra.kr/product/fWarrange/en/index.html)                                    |
+
+**Open Main Window** and **Settings…** in the menu bar open fWarrange. If fWarrange is not installed, an App Store prompt appears.
 
 # Key Features
 
-| Feature           | Description                                                          |
-| ----------------- | -------------------------------------------------------------------- |
-| Layout Capture    | Saves all active window positions/sizes as YAML using CoreGraphics   |
-| Smart Restore     | Score-based matching algorithm restores windows even when IDs change |
-| Multiple Layouts  | Manage multiple profiles for different purposes                      |
-| Multi-Monitor     | Full support for secondary monitors                                  |
-| REST API          | HTTP-based remote control (automation, Apple Shortcuts integration)  |
-| Claude Code Skill | Manage layouts via natural language in AI agents                     |
-| MCP Server        | Direct tool invocation from AI tools (Claude Desktop, etc.)          |
+| Feature           | Description                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| Layout capture    | Save every window's position and size to YAML via CoreGraphics + Accessibility API |
+| Smart restore     | Score-based matching finds the right window even when window IDs change            |
+| Multiple layouts  | Several task-specific layouts · set a default layout                               |
+| Multi-display     | Works across all displays, including secondary monitors                            |
+| Global shortcuts  | Save · restore default · restore last · undo (work even when inactive)             |
+| Auto-save         | Automatically save the current arrangement on sleep/logout                         |
+| REST API          | `localhost:3016/api/v2` — curl · Apple Shortcuts · scripts                         |
+| Claude Code Skill | Manage layouts in natural language from an AI agent                                |
+| MCP server        | Call as a tool from AI apps such as Claude Desktop                                 |
 
-# Architecture
+Window match scores: window ID 100 · exact title 90 · regex 80 · contains 70 · size/ratio/area similarity 60–30. Matches below the minimum score (default 30) are ignored.
 
-fWarrange consists of two components:
+# Four Ways to Use It
 
-```
-+----------------------------------+
-|  SwiftUI GUI (Menu Bar App)      |
-|  - 5-tab settings                |
-|  - Built-in REST API server      |
-+----------------------------------+
-          |  calls
-+----------------------------------+
-|  Swift Core Scripts              |
-|  lib/wArrange_core/              |
-|  - saveWindowsInfo.swift (capture)|
-|  - setWindows.swift (restore)     |
-+----------------------------------+
-          |  uses
-+----------------------------------+
-|  macOS System APIs               |
-|  - CoreGraphics (read windows)    |
-|  - Accessibility API (control)    |
-+----------------------------------+
-```
+1. **Menu bar · global shortcuts** — [Menu Bar Usage](04_MenuBar_Usage.md)
+2. **Command line** — `fWarrangeCli status|list|capture|restore …` ([Menu Bar Usage › Command Line](04_MenuBar_Usage.md#command-line-cli))
+3. **REST API** — [REST API Usage](05_API_Usage.md)
+4. **AI integration** — [Claude Code Skill](06_Skill_Usage.md) · [MCP Server](07_MCP_Usage.md)
 
-# Data Flow
+For a GUI, install the wrapper app fWarrange as well — see the [fWarrange product page](https://finfra.kr/product/fWarrange/en/index.html).
 
-```
-[CoreGraphics] CGWindowListCopyWindowInfo()
-      | Collect window info (id, pos, size, layer)
-      v
-[saveWindowsInfo.swift] --> YAML serialization --> data/*.yml
-      |
-      v
-[setWindows.swift] YAML parse --> app/window matching --> AXUIElement set
-```
+# Data Locations
 
-# System Requirements
-
-| Item       | Requirement                       |
-| ---------- | --------------------------------- |
-| OS         | macOS 15.0 (Sequoia) or later     |
-| Swift      | 5.10 or later                     |
-| Frameworks | SwiftUI, AppKit, CoreGraphics     |
-| Permission | Accessibility permission required |
-
-# Interface Options
-
-fWarrange can be used in 4 ways:
-
-1. **GUI App** - Menu bar resident app for one-click capture/restore
-2. **CLI Scripts** - Run Swift scripts directly from terminal
-3. **REST API** - HTTP calls via curl, Apple Shortcuts, automation scripts
-4. **AI Integration** - Control via Claude Code Skill or MCP server
-
-## CLI Quick Reference
-
-You can use the Swift scripts directly from `lib/wArrange_core/` without the GUI app:
-
-```bash
-# Capture
-swift saveWindowsInfo.swift                     # Save to default file (windowInfo.yml)
-swift saveWindowsInfo.swift --name=myLayout     # Save with a specific name
-swift saveWindowsInfo.swift --app=Safari,iTerm2 # Capture specific apps only
-swift saveWindowsInfo.swift -v                  # Verbose output
-
-# Restore
-swift setWindows.swift                          # Restore from default file
-swift setWindows.swift --name=myLayout          # Restore by name
-swift setWindows.swift -v                       # Verbose (matching scores, etc.)
-
-# Diagnostics
-swift list_apps.swift                           # Window list via Accessibility API
-swift list_all_apps.swift                       # Running apps list
-swift list_cg.swift                             # Window list via CoreGraphics
-```
+| Item        | Path                                                                      |
+| ----------- | ------------------------------------------------------------------------- |
+| Config file | `~/Documents/finfra/fWarrangeData/_config.yml`                            |
+| Layout YAML | `~/Documents/finfra/fWarrangeData/<hostname>/*.yml` (default `host` mode) |
+| Logs        | `~/Documents/finfra/fWarrangeData/logs/wlog_cliApp.log`                   |
 
 # Next Steps
 

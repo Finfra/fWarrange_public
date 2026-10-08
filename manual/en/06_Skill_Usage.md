@@ -1,48 +1,42 @@
 ---
-title: fWarrange Skill Usage
-description: fWarrange Skill 사용 방법 (English)
-date: 2026-03-26
+title: fWarrangeCli Skill Usage
+description: fWarrangeCli Skill usage (English)
+date: 2026.10.08
 ---
 # Claude Code Skill Usage
 
-fWarrange integrates with the Claude Code Skill system, enabling AI agents to manage window layouts via natural language.
+fWarrangeCli integrates with the Claude Code Skill system, enabling AI agents to manage window layouts via natural language. The Skill only uses the fWarrangeCli REST API, so the GUI wrapper fWarrange is not required.
 
 ## Overview
 
-The Claude Code Skill uses the `/fwarrange:fwarrange` slash command to invoke the fWarrange REST API. Users can capture and restore layouts without typing curl commands directly.
+The Claude Code Skill uses the `/fwarrange:fwarrange` slash command to invoke the fWarrangeCli REST API (v2). Users can capture and restore layouts without typing curl commands directly.
 
 ## Prerequisites
 
-1. **fWarrange app running** (REST API server enabled)
+1. **fWarrangeCli running** (the REST API server is enabled by default — [Installation](02_Install.md#5-check-the-rest-api))
 2. **Claude Code** installed and running
 3. **fwarrange Skill** installed
 
 ## Installation
 
-### Method 1: Claude Code Plugin Install (Recommended)
+The Skill is distributed from `fWarrange/` in the unified plugin repository [Finfra/f-claude-plugins](https://github.com/Finfra/f-claude-plugins).
 
-```bash
-claude plugin install --from https://github.com/nowage/fWarrange --path agents/claude
+### Method 1: Plugin Marketplace (Recommended)
+
+In Claude Code:
+
 ```
-
-After installation, the skill is auto-registered via `.claude-plugin/plugin.json`.
+/plugin marketplace add Finfra/f-claude-plugins
+/plugin install fwarrange@f-claude-plugins
+```
 
 ### Method 2: Manual Copy
 
-Copy the Skill file to your project's `.claude/commands/skills/` directory:
-
 ```bash
-cp agents/claude/skills/fwarrange/SKILL.md \
-   <YOUR_PROJECT>/.claude/commands/skills/fwarrange.md
-```
-
-### Method 3: Global Install
-
-To use across all projects, copy to the global commands directory:
-
-```bash
-cp agents/claude/skills/fwarrange/SKILL.md \
-   ~/.claude/commands/fwarrange.md
+git clone https://github.com/Finfra/f-claude-plugins.git
+mkdir -p .claude-plugin .claude
+cp f-claude-plugins/fWarrange/plugin.json .claude-plugin/plugin.json
+cp -r f-claude-plugins/fWarrange/skills .claude/skills
 ```
 
 ## Usage Examples
@@ -152,9 +146,9 @@ User: /fwarrange:fwarrange capture --name=dev
          |
 Claude Code: Check server status (GET /)
          |
-         +-- Server not responding --> "Please launch fWarrange app" message
+         +-- Server not responding --> fWarrangeCli start command message
          |
-         +-- Server OK --> POST /api/v1/capture call
+         +-- Server OK --> POST /api/v2/capture call
          |
          +-- Report: "Saved 12 windows as 'dev' layout"
 ```
@@ -163,9 +157,9 @@ Claude Code: Check server status (GET /)
 
 If the server doesn't respond, Claude will display:
 
-> "fWarrange REST API server is not running. Launch the app with:"
+> "fWarrange REST API server (fWarrangeCli) is not running. Start it via Homebrew:"
 > ```bash
-> open -a "fWarrange"
+> brew services start finfra/tap/fwarrange-cli
 > ```
 > "Let me know when ready."
 
@@ -177,18 +171,18 @@ REST API endpoints called internally by the Skill:
 
 | Command                          | API Call                                     |
 | -------------------------------- | -------------------------------------------- |
-| `capture`                        | POST `/api/v1/capture`                       |
-| `restore <name>`                 | POST `/api/v1/layouts/{name}/restore`        |
-| `list`                           | GET `/api/v1/layouts`                        |
-| `detail <name>`                  | GET `/api/v1/layouts/{name}`                 |
-| `rename <name> <newName>`        | PUT `/api/v1/layouts/{name}`                 |
-| `delete <name>`                  | DELETE `/api/v1/layouts/{name}`              |
-| `delete-all`                     | DELETE `/api/v1/layouts`                     |
-| `remove-windows <name> <ids...>` | POST `/api/v1/layouts/{name}/windows/remove` |
-| `status`                         | GET `/api/v1/status/accessibility`           |
-| `windows`                        | GET `/api/v1/windows/current`                |
-| `apps`                           | GET `/api/v1/windows/apps`                   |
-| `locale`                         | GET `/api/v1/locale`                         |
+| `capture`                        | POST `/api/v2/capture`                       |
+| `restore <name>`                 | POST `/api/v2/layouts/{name}/restore`        |
+| `list`                           | GET `/api/v2/layouts`                        |
+| `detail <name>`                  | GET `/api/v2/layouts/{name}`                 |
+| `rename <name> <newName>`        | PUT `/api/v2/layouts/{name}`                 |
+| `delete <name>`                  | DELETE `/api/v2/layouts/{name}`              |
+| `delete-all`                     | DELETE `/api/v2/layouts`                     |
+| `remove-windows <name> <ids...>` | POST `/api/v2/layouts/{name}/windows/remove` |
+| `status`                         | GET `/api/v2/status/accessibility`           |
+| `windows`                        | GET `/api/v2/windows/current`                |
+| `apps`                           | GET `/api/v2/windows/apps`                   |
+| `locale`                         | GET `/api/v2/settings/general`               |
 
 ## Options
 
@@ -201,7 +195,7 @@ REST API endpoints called internally by the Skill:
 
 | Issue                   | Solution                                                         |
 | ----------------------- | ---------------------------------------------------------------- |
-| "Server not responding" | Verify fWarrange app is running with API server enabled          |
+| "Server not responding" | Check that fWarrangeCli is running and `restServerEnabled` in `_config.yml` |
 | Skill not found         | Check install path (`~/.claude/commands/` or project `.claude/`) |
 | Restore failure         | Check Accessibility permission (`/fwarrange:fwarrange status`)   |
 
