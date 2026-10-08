@@ -14,7 +14,7 @@ The core workflow of fWarrange is a simple **Save -> Move -> Restore** 3-step pr
 Arrange your apps as desired, then save the state.
 
 **GUI:**
-* Menu bar icon > Click "Capture" button
+* Main window toolbar **New Save** > enter a name > **Save** (or the global shortcut ⌘F7)
 
 **CLI:**
 ```bash
@@ -38,7 +38,7 @@ Your windows change positions during work, or you switch to a different layout.
 Bring all windows back to their saved positions.
 
 **GUI:**
-* Menu bar icon > Select layout from list > Click "Restore"
+* Select a layout in the sidebar > click **Restore** on the minimap (or **Restore Selected** in the toolbar)
 
 **CLI:**
 ```bash

@@ -22,11 +22,12 @@ manual/
 │   ├── 01_Overview.md           # 제품 개요
 │   ├── 02_Install.md            # 설치 및 권한 설정
 │   ├── 03_QuickStart.md         # 빠른 시작 (저장->복원 3단계)
-│   ├── 04_GUI_Usage.md          # GUI 사용법 (5탭 설정)
+│   ├── 04_GUI_Usage.md          # GUI 사용법 (헬퍼 연결·메인 화면·5탭 설정)
 │   ├── 05_API_Usage.md          # REST API 사용법 (14개 엔드포인트)
 │   ├── 06_Skill_Usage.md        # Claude Code Skill 사용법
 │   ├── 07_MCP_Usage.md          # MCP 서버 사용법
 │   └── 08_FAQ.md                # 자주 묻는 질문
+├── img/                         # GUI 스크린샷 (en·kr 공유, 01~09)
 └── en/                          # English Manual
     ├── 01_Overview.md           # Product Overview
     ├── 02_Install.md            # Installation & Permissions
@@ -40,13 +41,15 @@ manual/
 
 # GUI 설정 탭 구성 (5탭)
 
-| 탭     | 주요 항목                                              |
-| ------ | ------------------------------------------------------ |
-| 일반   | 언어, 데이터 경로, 권한 상태, 자동실행, 테마           |
-| 단축키 | 캡처/복구/목록 등 5개 단축키 설정                      |
-| 복구   | 재시도 횟수, 간격, 매칭 점수 기준, 제외 앱 목록        |
-| API    | REST 서버 활성화, 포트 설정, 외부 접속 허용, CIDR 필터 |
-| 고급   | 로그 설정, 기타 옵션, Dangerous Zone                   |
+| 탭     | 주요 항목                                                                  |
+| ------ | -------------------------------------------------------------------------- |
+| 일반   | 언어, 저장 모드(Host/Share)·데이터 경로, 권한 상태, 자동 실행, 테마, ⌘Tab 표시 |
+| 단축키 | 전역 5개(저장·기본 복원·마지막 복원·메인 창·Undo) + 로컬 1개(선택 복원)     |
+| 복구   | 재시도 횟수·간격, 최소 매칭 점수, 기본 제외 앱 목록                         |
+| API    | fWarrangeCli 연결 상태, 포트 (서버 on/off·외부 접속은 `_config.yml`)        |
+| 고급   | 로그, 툴바 버튼 스타일·삭제 확인·우클릭 전환, 자동 저장, Dangerous Zone     |
+
+스크린샷은 `img/` 에 있으며 en·kr 문서가 공유합니다(1.1.3 영어 UI, jma 촬영 — 원본 대비 1/2 축소).
 
 # 빠른 시작(요약)
 * **캡처 (CLI)**: `cd lib/wArrange_core/ && swift saveWindowsInfo.swift`

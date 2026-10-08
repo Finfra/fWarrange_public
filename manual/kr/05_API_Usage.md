@@ -16,12 +16,14 @@ fWarrange는 내장 HTTP 서버를 통해 REST API를 제공합니다. curl, App
 | 외부 의존성  | 없음 (순수 Swift 구현)               |
 | Content-Type | `application/json; charset=utf-8`    |
 
-## 서버 활성화
+## 서버 확인
+
+REST API 서버는 fWarrangeCli에 내장되어 **기본으로 켜져 있습니다**.
 
 1. fWarrange 앱 실행
-2. 메뉴바 아이콘 > 설정 > **API** 탭
-3. **서버 활성화** 토글 ON
-4. 포트 확인 (기본: 3016)
+2. 툴바 ⚙️ 버튼(또는 ⌘,) > **API** 탭 (⌘4)
+3. Status 와 포트(기본: 3016) 확인
+4. 서버 끄기·외부 접속 허용은 `~/Documents/finfra/fWarrangeData/_config.yml` 의 `restServerEnabled`·`allowExternalAccess`·`allowedCIDR` 로 지정
 
 ## 응답 형식
 

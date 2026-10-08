@@ -16,12 +16,14 @@ fWarrange provides a REST API through its built-in HTTP server. You can remotely
 | External Dependencies | None (pure Swift implementation)     |
 | Content-Type          | `application/json; charset=utf-8`    |
 
-## Activating the Server
+## Checking the Server
+
+The REST API server is built into fWarrangeCli and is **enabled by default**.
 
 1. Launch fWarrange app
-2. Menu bar icon > Settings > **API** tab
-3. Toggle **Enable Server** ON
-4. Confirm port (default: 3016)
+2. Toolbar ⚙️ button (or ⌘,) > **API** tab (⌘4)
+3. Check Status and the port (default: 3016)
+4. Turning the server off or allowing external access is set with `restServerEnabled` · `allowExternalAccess` · `allowedCIDR` in `~/Documents/finfra/fWarrangeData/_config.yml`
 
 ## Response Format
 

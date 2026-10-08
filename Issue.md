@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 121
+* Issue HWM: 122
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -58,6 +58,18 @@ date: 2026-04-07
     - red 먼저: Xcode 문서 0 상태에서 `fwc-run-xcode.sh build-deploy` 가 성공하는지(jma)
 
 # ✅ 완료
+
+## Issue122: [Docs] 한영 매뉴얼 GUI 사용법을 1.1.3 화면 기준으로 갱신 — jma 캡처 9장 (등록: 2026-10-08, 완료: 2026-10-08, Hash: 커밋 후 기록) ✅
+* 목적: `manual/{kr,en}/04_GUI_Usage.md` 가 «메뉴바 앱»·옛 설정 항목·외부 URL 이미지(단축키·고급 탭)로 남아 있어 실제 1.1.3 화면과 어긋난다
+* 상세:
+    - 이미지: 기존 4장(01·02·04·05, prj16#Issue280)에 더해 03 저장 시트·06 헬퍼 안내(prj16 `_doc_work/_release/v1.1.3/screenshots/raw/`, jma 2026-09-28 촬영) + 07 단축키·08 API·09 고급 탭(jma 2026-10-08 신규 촬영, 1.1.3 en) — 모두 1/2 축소해 `manual/img/`
+    - 신규 촬영: jma GUI tmux · 공용 잠금 `/tmp/jma-xcode.lock` 획득 · 배포본 paidApp 을 `-AppleLanguages (en)` 인자로 재기동 → `fwarrange://command?action=settings` → 분산 알림 `fWarrangeChangeTab` 으로 탭 전환 → `screencapture -l`. 끝나고 인자 없이 재기동해 원복, 임시 tmux·파일 삭제, 잠금 해제
+* 구현 명세:
+    - 04 한영 전면 개편: 헬퍼 연결 · 메인 화면(툴바 Default/Restore Selected/New Save/Clean Up, 우클릭 메뉴, 선택 복원, 새 저장) · 설정 5탭 표를 소스 기본값(`cli/fWarrangeCli/_config.yml`·`AppSettings.defaults`)과 화면 실측으로 교체
+    - 02·03·05 한영: «메뉴바 아이콘 > 설정 > 서버 활성화 토글» 절차 → 툴바 ⚙️ › API 탭 확인 + `_config.yml` 키(REST 서버는 기본 켜짐)
+    - `manual/README.md` 탭 표·`img/` 구조 갱신
+    - 검증: 두 문서 이미지 참조 18건 전부 실파일 · `finfra.kr/product` 외부 참조 0 · `_public/` 접두사 0
+* 후속(미처리): `01_Overview` 아키텍처 그림(«메뉴바 앱»·`lib/wArrange_core` 스크립트)과 03·05 의 v1 API·CLI 스크립트 예시는 현행(v2·cliApp)과 다르다 — 별도 이슈 대상 · 고급 탭 en 라벨 잘림(`Auto-save on sle...`·`Max auto-save c...`)은 paidApp 결함(prj16)
 
 ## Issue120: [Version] cliApp 1.1.2 → 1.1.3 bump + R1 전 행 — Issue115·116·117 출고 (등록: 2026-10-05, 완료: 2026-10-05, Hash: c899fab, c597152) ✅
 * 목적: `cli-v1.1.2` 출고 뒤 수정(Issue115 경로 검증·116 안내 중복·117 이름 탈출)을 Homebrew 로 내보낸다 — 기출고 번호 재사용 불가라 1.1.3

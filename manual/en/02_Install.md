@@ -84,15 +84,14 @@ curl -s http://localhost:3016/api/v1/status/accessibility | python3 -m json.tool
 | Permission dialog doesn't appear | Run `tccutil reset Accessibility` in terminal, then reconfigure   |
 | Permission lost after rebuild    | Each build has a different binary signature; re-register required |
 
-## 4. Activating REST API Server
+## 4. Checking the REST API Server
 
-The REST API server is **disabled** by default.
+The REST API server is built into fWarrangeCli and is **enabled by default**.
 
 1. Launch fWarrange app
-2. Click menu bar icon > **Settings**
-3. Go to **API** tab
-4. Toggle **Enable Server** ON
-5. Confirm port (default: 3016)
+2. Toolbar ⚙️ button (or ⌘,) > **API** tab (⌘4)
+3. Confirm that Status shows `Connected` and check the port (default: 3016)
+4. To turn the server off or allow external access, edit `restServerEnabled` · `allowExternalAccess` · `allowedCIDR` in `~/Documents/finfra/fWarrangeData/_config.yml` ([GUI Usage › API tab](04_GUI_Usage.md#tab-4-api))
 
 ## Next Steps
 

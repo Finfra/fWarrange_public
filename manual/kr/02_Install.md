@@ -84,15 +84,14 @@ curl -s http://localhost:3016/api/v1/status/accessibility | python3 -m json.tool
 | 권한 창이 열리지 않음                 | 터미널에서 `tccutil reset Accessibility` 실행 후 재설정 |
 | 빌드 후 권한이 풀림                   | 새 빌드마다 바이너리 서명이 달라지므로 재등록 필요      |
 
-## 4. REST API 서버 활성화
+## 4. REST API 서버 확인
 
-기본적으로 REST API 서버는 **비활성** 상태입니다.
+REST API 서버는 fWarrangeCli에 내장되어 **기본으로 켜져 있습니다**.
 
 1. fWarrange 앱 실행
-2. 메뉴바 아이콘 클릭 > **설정**
-3. **API** 탭 이동
-4. **서버 활성화** 토글 ON
-5. 포트 확인 (기본: 3016)
+2. 툴바 ⚙️ 버튼(또는 ⌘,) > **API** 탭 (⌘4)
+3. Status 가 `Connected` 인지, 포트(기본: 3016)를 확인
+4. 서버를 끄거나 외부 접속을 허용하려면 `~/Documents/finfra/fWarrangeData/_config.yml` 의 `restServerEnabled`·`allowExternalAccess`·`allowedCIDR` 를 수정 ([GUI 사용법 › API 탭](04_GUI_Usage.md#탭-4-api))
 
 ## 다음 단계
 
