@@ -1,279 +1,191 @@
 ---
-title: fWarrange 사용자 매뉴얼 및 기능 명세서 (User Manual & Functional Specification)
-description: 본 문서는 fWarrange의 핵심 기술인 **CoreGraphics 기반 고정밀 레이아웃 캡처**, 지능적인 **Score 기반 스마트 창 매칭 복원 알고리즘**, **REST API**, **Claude Code Skill**, **MCP 서버 연동**에 대한 포괄적인 가이드를 제공합니다.
-date: 2026.03.18
-tags: [매뉴얼, 사용자 가이드, 윈도우 제어, 기능 명세, Skill, MCP]
+title: fWarrangeCli 기능 명세서 (Functional Specification)
+description: fWarrangeCli 의 창 캡처 · 점수 기반 복원 · 매칭 모드 · 제목 정규화 · 모드 · 자동 저장 · REST API v2 · 보안 · 저장 위치를 기능 단위로 정리한 명세
+date: 2026.10.08
+tags: [매뉴얼, 기능 명세, 윈도우 제어, REST API, Skill, MCP]
 ---
 
-# fWarrange란? (Overview)
+# 개요
 
-fWarrange는 macOS 사용자의 작업 환경을 기억하고 단 한 번의 조작으로 수많은 창들의 위치와 크기를 완벽하게 되돌려 놓는 **윈도우 레이아웃 복원 도구**입니다.
-다중 모니터 환경이나 복잡한 개발/디자인 작업 시 흩어지는 창들을 매번 다시 배치할 필요 없이, 지정된 목적(개발, 회의, 디자인 등)에 맞는 앱 창 배열을 즉시 복원합니다.
-순수 Swift 코어 스크립트 기반 모터 구동과 사용자 친화적인 SwiftUI GUI 래퍼를 모두 지원하여, 파워유저부터 일반 타겟까지 아우르는 생산성 소프트웨어입니다.
+fWarrangeCli 는 macOS 의 창 위치·크기를 YAML 로 저장하고, 앱이 다시 실행되어 창 ID 가 바뀌어도 점수 기반 매칭으로 원래 자리를 찾아 되돌리는 **창 레이아웃 엔진**입니다. 메뉴바에 상주하는 헬퍼 데몬이며 메뉴바 · 전역 단축키 · 명령행 · REST API(`/api/v2`) · Skill · MCP 로 조작합니다.
 
----
+> **fWarrange 는 fWarrangeCli 의 GUI 래퍼입니다.** App Store 앱 fWarrange 는 창을 직접 다루지 않고 이 문서의 REST API 를 호출해 레이아웃 목록 · 미니맵 · 설정 창을 보여 줍니다. GUI 사용법은 [fWarrange 안내 페이지](https://finfra.kr/product/fWarrange/kr/index.html)에 있습니다.
 
-# 1. 고정밀 레이아웃 캡처 (Layout Capture System)
+이 문서는 기능 단위 명세입니다. 사용 절차는 [kr/](kr/01_Overview.md) · [en/](en/01_Overview.md) 매뉴얼을, 엔드포인트의 정확한 계약은 [`api/openapi_v2.yaml`](../api/openapi_v2.yaml) 을 따릅니다.
 
-현재 눈에 보이는 화면의 상태와 모든 애플리케이션의 윈도우 크기를 그대로 복제해 내는 정보 수집 코어입니다.
-
-## 1.1. CoreGraphics 기반의 윈도우 스캔 (`saveWindowsInfo.swift`)
-
-### 1.1.1. 안전한 정보 추출
-`appKit`에 의존하지 않고 시스템 하부의 `CGWindowListCopyWindowInfo` API를 사용하여 윈도우 객체들을 탐색합니다. 불필요한 백그라운드 데몬, 투명 툴팁 바, 혹은 상단 메뉴바 등을 걸러내고 유효한(Interactive) 앱 창 데이터만 추출합니다.
-
-### 1.1.2. 구조화된 YAML 직렬화 보관
-수집된 각각의 윈도우 데이터는 다음과 같은 형태의 YAML 텍스트(`data/windowInfo.yml`) 포맷으로 영구 저장됩니다:
-* `app`: 프로세스 내 애플리케이션 이름 (예: Safari)
-* `window`: 활성화된 탭 혹은 창의 타이틀 명
-* `layer`: Z-Index 레이어 뎁스(0번이 일반적인 창)
-* `pos`, `size`: `x`, `y` 좌표 및 `width`, `height` 절대 픽셀 값
-
----
-
-# 2. 스마트 창 복원 엔진 (Smart Restoration Engine)
-
-가장 복잡하고 강력한 컴포넌트입니다. 앱이 재실행되거나 탭이 변경되어 **과거 저장 시점의 윈도우 ID와 현재의 윈도우 ID가 달라지더라도** 원래 위치를 유추해 찾아가는 퍼지 매칭 시스템입니다.
-
-## 2.1. 동적 매칭 스코어 시스템 (Dynamic Score Matching)
-
-`setWindows.swift` 작동 시, 단순히 앱 이름만 보지 않고 화면상 떠 있는 앱 창과 YAML 저장 기록을 다각도로 교차 점검하여 **가장 높은 점수(Score)**를 획득한 창끼리 결합시킵니다:
-
-* **100점 (Perfect Match)**: 앱과 창의 Window ID(PID)가 정확히 동일한 경우 (가장 확실함)
-* **90점 (Title Match)**: Window ID는 변했지만 창의 전체 텍스트 제목(Title)이 과거 저장 기록과 글자 하나 안 틀리고 똑같은 경우.
-* **80점 (Regex/Pattern Match)**: 약간의 변형이 생긴 경우. 설정된 정규표현식이나 동적 제목 생성 패턴과 일치하는지 분석합니다.
-* **70점 (Keyword Match)**: 웹브라우저 등에서 제목이 일부 바뀌었으나(예: `[Google - 검색]`), 핵심 도메인 키워드가 일치하는 경우.
-* **60~30점 (Geometry Fallback)**: 제목마저 완전히 바뀌었다면(가령 빈 문서가 다른 프로젝트 문서로 변함), 최후의 수단으로 화면에서의 유사한 위치 비율, 면적 사이즈 등을 분석하여 가장 과거 이력과 흡사했던 창을 도출합니다.
-
-## 2.2. AppKit Accessibility(`AXUIElement`) 강제 제어
-
-점수가 매겨져 짝(Pair) 지어진 윈도우는 macOS의 **손쉬운 사용(Accessibility)** 권한을 활용해 즉시 목표 좌표와 사이즈로 강제 이동 및 리사이즈됩니다. 이 방식은 애니메이션 딜레이 없이 즉각적이고 정확하게 창을 옮길 수 있게 합니다.
-
----
-
-# 3. 유연도 높은 CLI 및 진단 편의성
-
-GUI가 없어도 동작하는 가벼운 독립형 툴킷(lib/wArrange_core)을 근간으로 삼기 때문에 자동화(Automator, Alfred, 쉘 스크립트 등) 접목이 탁월합니다.
-
-## 3.1. CLI 래핑 커맨드
-
-* `-v` (Verbose): 모든 매칭 계산의 스코어 로그와 진행 상태를 터미널로 상세 출력하여 디버깅을 돕습니다.
-* `--name=profileName`: 기본 `windowInfo.yml` 대신 사용자가 지정한 `profileName.yml` (예: `dev_mode.yml`, `design_mode.yml`)에서 데이터를 읽거나 저장할 수 있습니다.
-* `--app=AppA,AppB`: 화면의 수많은 앱 중 특정 앱 배열 상태만 부분 저장/복구하고 싶을 때 사용 가능합니다.
-
-### 3.2. 진단 전용 스크립트 묶음
-
-* `list_apps.swift`: 손쉬운 사용 권한 도달이 정상적인지 체크합니다.
-* `list_cg.swift`: CoreGraphics 단에서 창이 제대로 인지되고 있는지 확인합니다.
-* 복원 실패 시, 이 두 스크립트 출력 결과를 비교하는 것으로 트러블슈팅을 직관적으로 끝낼 수 있습니다.
-
----
-
-# 4. SwiftUI GUI 연동 아키텍처
-
-GUI 애플리케이션은 뒷단의 코어 스크립트들을 간편하게 조작할 수 있도록 래핑(Wrapping)된 컨트롤 레이어로 작동합니다.
-상단 메뉴바 트레이(Tray) 앱 형태로 상주하며, 클릭 한 방에 CLI 명령어(`swift setWindows.swift --name=xxx`)를 쉘 아웃으로 대신 실행해 주어 파워유저의 강력함과 일반 사용자의 편의성을 동시에 잡았습니다.
-
----
-
-# 5. REST API 서버 (Remote Control Interface)
-
-외부 클라이언트(curl, Apple Shortcuts, 자동화 스크립트)에서 fWarrange의 핵심 기능을 HTTP로 원격 호출할 수 있는 내장 서버입니다.
-
-## 5.1. 서버 아키텍처
-* **프레임워크**: Apple Network.framework (NWListener + NWConnection)
-* **외부 의존성 없음**: 순수 Swift 구현, 추가 패키지 불필요
-* **Manager 직접 호출**: REST 핸들러 → WindowManager/LayoutManager (ViewModel 우회)
-* **Notification 연동**: 캡처/복구/삭제/이름변경 완료 시 GUI 자동 갱신
-
-## 5.2. 엔드포인트 (14개)
-
-| Method | Path                                  | 설명                                                                    |
-| ------ | ------------------------------------- | ----------------------------------------------------------------------- |
-| GET    | /                                     | Health Check (버전, 포트)                                               |
-| GET    | /api/v1/layouts                       | 레이아웃 목록                                                           |
-| GET    | /api/v1/layouts/{name}                | 레이아웃 상세 (모든 WindowInfo)                                         |
-| POST   | /api/v1/capture                       | 창 캡처 후 저장 (name, filterApps)                                      |
-| POST   | /api/v1/layouts/{name}/restore        | 레이아웃 복구 (maxRetries, retryInterval, minimumScore, enableParallel) |
-| PUT    | /api/v1/layouts/{name}                | 이름 변경 (newName)                                                     |
-| DELETE | /api/v1/layouts/{name}                | 삭제                                                                    |
-| DELETE | /api/v1/layouts                       | 전체 삭제 (X-Confirm-Delete-All 헤더 필수)                              |
-| POST   | /api/v1/layouts/{name}/windows/remove | 특정 창 제거 (windowIds)                                                |
-| GET    | /api/v1/windows/current               | 현재 창 목록 (저장 없이, filterApps 쿼리)                               |
-| GET    | /api/v1/windows/apps                  | 실행 중 앱 목록                                                         |
-| GET    | /api/v1/status/accessibility          | Accessibility 권한 상태                                                 |
-| GET    | /api/v1/locale                        | 현재 언어 설정                                                          |
-| PUT    | /api/v1/locale                        | 언어 변경 (language)                                                    |
-
-## 5.3. 응답 형식
-* 성공: `{"status": "ok", "data": {...}}`
-* 에러: `{"status": "error", "error": "메시지"}`
-* Content-Type: application/json; charset=utf-8
-
-## 5.4. 보안
-* **기본 비활성**: 사용자가 설정 → API 탭에서 수동 활성화
-* **localhost only**: 기본 바인딩 127.0.0.1 (외부 접근 불가)
-* **외부 접속**: allowExternal 활성화 시 0.0.0.0 바인딩 + CIDR 화이트리스트
-* **CIDR**: 기본 192.168.0.0/16, 쉼표로 복수 대역 지정 가능
-* **localhost 항상 허용**: 127.0.0.1, ::1은 CIDR 무관하게 허용
-* **비허용 IP**: 403 Forbidden 응답
-
-## 5.5. 설정 항목
-
-| 항목        | 기본값         | 설명                    |
-| ----------- | -------------- | ----------------------- |
-| 서버 활성화 | false          | REST API 서버 시작/중지 |
-| 포트        | 3016           | HTTP 수신 포트          |
-| 외부 접속   | false          | LAN/WAN 접근 허용       |
-| 허용 CIDR   | 192.168.0.0/16 | IP 화이트리스트         |
-
-## 5.6. 활용 예시
-
-### 캡처 후 복구 (자동화)
-```bash
-# 현재 레이아웃 저장
-curl -X POST http://localhost:3016/api/v1/capture \
-  -H "Content-Type: application/json" \
-  -d '{"name":"autoSaved"}'
-
-# 저장된 레이아웃 복구
-curl -X POST http://localhost:3016/api/v1/layouts/autoSaved/restore
+```mermaid
+flowchart LR
+  subgraph IN["조작 경로"]
+    M[메뉴바 · 단축키]
+    CLI[명령행]
+    R["REST API v2<br>:3016"]
+  end
+  K["curl · Shortcuts"] --> R
+  S["Skill · MCP"] --> R
+  P["fWarrange<br>(GUI 래퍼)"] --> R
+  CLI -- "REST 요청" --> R
+  M --> WM
+  R --> WM["WindowManager<br>캡처 · 복원"]
+  R --> LM["LayoutManager<br>레이아웃 CRUD"]
+  WM --> CAP["CGWindowList + AX<br>캡처"]
+  WM --> RES["점수 매칭 · AX 이동<br>복원"]
+  LM --> Y[("레이아웃 YAML")]
 ```
 
-## Apple Shortcuts 연동
-Shortcuts 앱에서 "URL 내용 가져오기" 액션으로 REST API 호출 가능
+# 1. 레이아웃 캡처
 
----
+## 1.1. 창 열거 — CGWindowList + 손쉬운 사용 API 하이브리드
 
-# 6. Claude Code Skill 연동 (AI Agent Integration - Skill)
+* `CGWindowListCopyWindowInfo` 로 화면의 창을 빠르게 열거합니다. 레이어 0(일반 창)만 대상이며, 메뉴바·툴팁 같은 비대화형 요소는 빠집니다
+* 창 제목은 손쉬운 사용(Accessibility) API 로 다시 읽어 정확한 값을 씁니다. 창 ID ↔ `AXUIElement` 대응은 비공개 API `_AXUIElementGetWindow` 로 구합니다
+* 제외 앱(`excludedApps`, 기본 `Activity Monitor` · `System Settings`)은 캡처·복원 모두에서 빠집니다
+* 요청에 `filterApps` 를 주면 그 앱의 창만 저장합니다
 
-Claude Code의 Skill 시스템을 통해 AI 에이전트에서 fWarrange를 자연어 기반으로 제어할 수 있습니다.
+## 1.2. 레이아웃 이름
 
-## 6.1. Skill 개요
+* 생략하면 `default` (메뉴바 저장은 `YYYY-MM-DD-N` 자동 이름)
+* 경로 구성요소 하나여야 합니다 — `/` 포함 · 빈 문자열 · `.` · `..` · `이름.yml` 이 255바이트 초과면 `400` 으로 거부합니다
 
-fWarrange Skill은 `/fwarrange:fwarrange` 슬래시 커맨드로 fWarrange REST API를 호출합니다. curl 명령어 없이도 Claude Code 대화 중에 레이아웃을 관리할 수 있습니다.
+## 1.3. YAML 형식
 
-**전제 조건**: fWarrange 앱이 실행 중이고 REST API 서버가 활성화되어 있어야 합니다.
+레이아웃 파일은 창 정보 배열 하나입니다. 이름·저장 시각은 파일 이름·파일 시스템에서 얻습니다.
 
-## 6.2. 설치 방법
-
-### 방법 1: Plugin 설치 (권장)
-```bash
-claude plugin install --from https://github.com/nowage/fWarrange --path agents/claude
+```yaml
+- app: "Safari"                 # 창 소유 앱 이름
+  bundleId: "com.apple.Safari"  # 선택 — 없으면 app 이름으로 매칭
+  window: "Start Page"          # 창 제목
+  layer: 0
+  id: 14205                     # 시스템 창 ID
+  pos:  { x: -1707.0, y: 99.0 } # 음수 좌표 = 주 모니터 왼쪽·위의 보조 모니터
+  size: { width: 1707.0, height: 1280.0 }
 ```
 
-### 방법 2: 수동 복사 (프로젝트별)
-```bash
-cp agents/claude/skills/fwarrange/SKILL.md \
-   <PROJECT>/.claude/commands/skills/fwarrange.md
-```
+# 2. 복원
 
-### 방법 3: 글로벌 설치
-```bash
-cp agents/claude/skills/fwarrange/SKILL.md \
-   ~/.claude/commands/fwarrange.md
-```
+## 2.1. 점수 기반 창 매칭
 
-## 6.3. 사용 예제
+저장된 창마다 현재 열린 창 후보에 점수를 매기고, 전체 점수가 가장 높은 조합으로 짝을 짓습니다(한 창이 두 대상에 중복 배정되지 않음).
 
-| 커맨드                                                | 동작                          |
-| ----------------------------------------------------- | ----------------------------- |
-| `/fwarrange:fwarrange capture`                        | 현재 창 배치 저장 (자동 이름) |
-| `/fwarrange:fwarrange capture --name=dev`             | "dev" 이름으로 캡처           |
-| `/fwarrange:fwarrange restore my-workspace`           | "my-workspace" 레이아웃 복원  |
-| `/fwarrange:fwarrange list`                           | 저장된 레이아웃 목록          |
-| `/fwarrange:fwarrange detail my-workspace`            | 레이아웃 상세 정보 조회       |
-| `/fwarrange:fwarrange rename old-name new-name`       | 레이아웃 이름 변경            |
-| `/fwarrange:fwarrange delete my-workspace`            | 레이아웃 삭제                 |
-| `/fwarrange:fwarrange delete-all`                     | 전체 레이아웃 삭제            |
-| `/fwarrange:fwarrange remove-windows name 14205 5032` | 레이아웃에서 특정 창 제거     |
-| `/fwarrange:fwarrange status`                         | Accessibility 권한 확인       |
-| `/fwarrange:fwarrange windows`                        | 현재 창 목록                  |
-| `/fwarrange:fwarrange apps`                           | 실행 중 앱 목록               |
-| `/fwarrange:fwarrange locale`                         | 언어 설정 조회                |
-| `/fwarrange:fwarrange locale --set=en`                | 언어 변경                     |
+| 점수  | `matchType`                           | 조건                                          |
+| :---- | :------------------------------------ | :-------------------------------------------- |
+| 100   | `ID`                                  | 창 ID 일치                                    |
+| 90    | `Title(Exact)`                        | 창 제목 완전 일치                             |
+| 80    | `Regex`                               | 저장된 제목이 현재 제목에 정규식 매칭         |
+| 70    | `Title(Contains)`                     | 현재 제목이 저장된 제목을 포함                |
+| 60~30 | `Width` · `Height` · `Ratio` · `Area` | 크기 · 가로세로 비율 · 면적 유사도(기하 폴백) |
 
-## 6.4. 서버 미실행 시 동작
+`minimumMatchScore`(기본 30) 미만은 매칭으로 보지 않습니다. 제목 비교 전에 [제목 정규화](#3-제목-정규화)가 적용됩니다.
 
-서버가 응답하지 않으면 Claude는 다음과 같이 안내합니다:
-> "fWarrange REST API 서버가 실행 중이 아닙니다. `open -a "fWarrange"` 명령으로 앱을 실행해주세요."
+## 2.2. 매칭 모드 (`mode`)
 
-Claude는 자동으로 서버를 시작하지 **않으며**, 사용자 확인 후 작업을 계속합니다.
+| 모드            | 하한                        | 기하 폴백 | 1:N 매칭 · Moom 폴백 |
+| :-------------- | :-------------------------- | :-------: | :------------------: |
+| `strict`        | 70 (`Title(Contains)` 이상) |     ✗     |          ✗           |
+| `normal` (기본) | `minimumMatchScore`         |     ✓     |          ✗           |
+| `loose`         | 30                          |     ✓     |          ✓           |
 
----
+* `loose` 의 Moom 폴백 — 모든 매칭이 실패했을 때 앱별 창 개수가 같으면 창 순서대로 배분합니다
+* 창 하나 단위로 `matchMode` 를 지정해 레이아웃 모드를 덮어쓸 수 있습니다
 
-# 7. MCP 서버 (AI Agent Integration - MCP)
+## 2.3. 이동 · 검증 · 재시도
 
-MCP(Model Context Protocol) 서버를 통해 Claude Desktop, Claude Code 등 AI 도구에서 fWarrange 기능을 네이티브 도구(Tool)로 직접 호출할 수 있습니다.
+* 짝이 지어진 창은 손쉬운 사용 API 로 위치·크기를 바로 설정합니다. 앱별 병렬 복원이 기본입니다(`enableParallel`)
+* 설정 뒤 실제 위치를 다시 읽어 **3px 허용 오차**로 검증하고, 실패한 창은 `maxRetries`(기본 5) · `retryInterval`(기본 0.5초)로 재시도합니다
+* 끝까지 검증을 통과하지 못한 창도 매칭 정보(`matchType` · `score`)를 유지한 **최선 결과**로 보고합니다 — 줄 단위로 높이를 맞추는 앱(TextEdit 등)이 여기에 해당합니다
 
-## 7.1. MCP 개요
+## 2.4. 선택 복원 · 시험 실행
 
-MCP는 AI 모델이 외부 도구와 상호작용하기 위한 표준 프로토콜입니다. Skill이 명시적 슬래시 커맨드를 사용하는 반면, MCP는 AI가 자동으로 적절한 도구를 판단하여 호출합니다.
+| 요청 필드                  | 동작                                                                                                   |
+| :------------------------- | :----------------------------------------------------------------------------------------------------- |
+| `windowIds`                | 레이아웃 중 지정한 창 ID 만 복원. 생략·빈 배열이면 전체                                                |
+| `dryRun` (= `interactive`) | 매칭만 계산하고 창은 움직이지 않음. 결과 `success` 는 항상 `false`, `matchedTitle` 은 `(dry-run) 원본` |
 
-## 7.2. 설치 및 설정
+응답은 창별 `app` · `window` · `matchedTitle` · `matchType` · `score` · `success` 를 돌려줍니다.
 
-### npm 패키지 설치
-```bash
-npm install -g fwarrange-mcp
-```
+# 3. 제목 정규화
 
-### Claude Desktop 설정
-`~/Library/Application Support/Claude/claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "fwarrange": {
-      "command": "npx",
-      "args": ["-y", "fwarrange-mcp"],
-      "env": {
-        "FWARRANGE_API_URL": "http://localhost:3016"
-      }
-    }
-  }
-}
-```
+웹 브라우저·편집기처럼 제목에 앱 이름·상태 표시가 붙는 경우, 비교 전에 제목에서 군더더기를 지웁니다.
 
-### Claude Code 설정
-프로젝트 루트 `.mcp.json`:
-```json
-{
-  "mcpServers": {
-    "fwarrange": {
-      "command": "npx",
-      "args": ["-y", "fwarrange-mcp"],
-      "env": {
-        "FWARRANGE_API_URL": "http://localhost:3016"
-      }
-    }
-  }
-}
-```
+* 룰 키: `bundleId` 정확 일치 > `app` 정확 일치
+* 적용 순서: `stripPrefix` → `stripSuffix` → `stripPattern`(ICU 정규식) → 공백 정리
+* 빌트인 룰셋이 기본이며 `PUT /normalize-rules` 로 교체, `DELETE` 로 빌트인 복귀합니다
 
-## 7.3. 제공 도구 (14개)
+# 4. 복원 통계
 
-| 도구                  | 설명                      | 매개변수                                                 |
-| --------------------- | ------------------------- | -------------------------------------------------------- |
-| `health_check`        | 서버 상태 확인            | -                                                        |
-| `check_accessibility` | Accessibility 권한 확인   | -                                                        |
-| `list_layouts`        | 레이아웃 목록             | -                                                        |
-| `get_layout`          | 레이아웃 상세             | `name`                                                   |
-| `capture_layout`      | 캡처 및 저장              | `name?`, `filterApps?`                                   |
-| `restore_layout`      | 레이아웃 복원             | `name`, `maxRetries?`, `retryInterval?`, `minimumScore?` |
-| `rename_layout`       | 이름 변경                 | `name`, `newName`                                        |
-| `delete_layout`       | 삭제                      | `name`                                                   |
-| `delete_all_layouts`  | 전체 레이아웃 삭제        | -                                                        |
-| `remove_windows`      | 레이아웃에서 특정 창 제거 | `name`, `windowIds`                                      |
-| `get_current_windows` | 현재 창 목록              | `filterApps?`                                            |
-| `get_running_apps`    | 실행 중 앱 목록           | -                                                        |
-| `get_locale`          | 언어 설정 조회            | -                                                        |
-| `set_locale`          | 언어 변경                 | `language`                                               |
+복원할 때마다 매칭 유형·점수 분포를 누적합니다. `GET /restore-stats` 로 조회하고 `DELETE` 로 초기화(새 기준선)합니다. 매칭 품질 개선 전후 비교용입니다.
 
-## 7.4. 통신 구조
+# 5. 모드 (Mode)
 
-```
-Claude Desktop/Code  <--stdio-->  fwarrange-mcp  <--HTTP-->  fWarrange App
-                                   (Node.js)                  (REST API :3016)
-```
+모드는 «레이아웃 + 필요한 앱» 묶음입니다.
 
-* AI 클라이언트 ↔ MCP 서버: **stdio** (표준 입출력)
-* MCP 서버 ↔ fWarrange 앱: **HTTP** (REST API)
+| 필드            | 설명                                                                |
+| :-------------- | :------------------------------------------------------------------ |
+| `name` · `icon` | 이름 · SF Symbol                                                    |
+| `layoutRef`     | 복원할 레이아웃 이름                                                |
+| `requiredApps`  | `bundleId` 별 동작 — `launch`(실행) · `hide`(숨김) · `ignore`(무시) |
+| `shortcut`      | 모드 전환 단축키                                                    |
+
+`POST /modes/{name}/activate` 는 레이아웃을 `normal` 모드로 복원한 뒤 `requiredApps` 동작(실행·숨김)을 적용하고, 그 모드를 활성 모드로 기록합니다(`GET /status` 에 표시). 활성화가 진행 중이면 다음 요청은 거부됩니다. 명령행은 `mode list|create|show|edit|delete` · `switch <이름>` 입니다.
+
+# 6. 자동 저장
+
+`autoSaveOnSleep: true`(기본)이면 시스템 슬립·화면 잠금 직전에 현재 배치를 자동 저장합니다. 자동 저장본은 `maxAutoSaves`(기본 5)개 · `retentionDays`(기본 7)일까지 보관합니다.
+
+# 7. 조작 경로
+
+| 경로        | 내용                                                                          | 상세                                                   |
+| :---------- | :---------------------------------------------------------------------------- | :----------------------------------------------------- |
+| 메뉴바      | 저장 · 레이아웃 클릭 복원 · 최근/기본 복원 · 설정 파일 열기 · 데몬 제어       | [04 메뉴바 사용법](kr/04_MenuBar_Usage.md)             |
+| 전역 단축키 | ⌘F7 저장 · ⌥⌘F7 최근 · ⇧⌘F7 기본 · ⌃⇧⌘F7 fWarrange 메인 창 · 되돌리기(미지정) | [04 › 전역 단축키](kr/04_MenuBar_Usage.md#전역-단축키) |
+| 명령행      | 실행 파일에 인자를 주면 실행 중인 데몬에 REST 요청                            | [04 › 명령행](kr/04_MenuBar_Usage.md#명령행-cli)       |
+| REST API    | 아래 8장                                                                      | [05 REST API](kr/05_API_Usage.md)                      |
+| Skill       | Claude Code `/fwarrange:fwarrange`                                            | [06 Skill](kr/06_Skill_Usage.md)                       |
+| MCP         | `fwarrange-mcp` — AI 가 도구를 골라 호출                                      | [07 MCP](kr/07_MCP_Usage.md)                           |
+
+# 8. REST API v2
+
+* 서비스 루트 `http://localhost:3016/api/v2`. **v1(`/api/v1/*`)은 폐기되어 `410 Gone`** 을 돌려줍니다
+* 응답 형식: 성공 `{"status":"ok","data":{…}}` · 실패 `{"status":"error","error":"메시지"}`
+* 정본: [`api/openapi_v2.yaml`](../api/openapi_v2.yaml) — 아래 표는 범주 요약입니다
+
+| 범주        | 경로                                                                                                                                                                                         | 내용                                                                 |
+| :---------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------- |
+| 레이아웃    | `GET/DELETE /layouts` · `GET/PUT/DELETE /layouts/{name}` · `POST /layouts/{name}/windows/remove`                                                                                             | 목록 · 상세 · 이름 변경 · 삭제 · 전체 삭제(확인 헤더 필수) · 창 제거 |
+| 캡처 · 복원 | `POST /capture` · `POST /layouts/{name}/restore`                                                                                                                                             | 1장 · 2장                                                            |
+| 창 조회     | `GET /windows/current` · `GET /windows/apps`                                                                                                                                                 | 저장 없이 현재 창 · 실행 중 앱                                       |
+| 매칭 품질   | `GET/PUT/DELETE /normalize-rules` · `GET/DELETE /restore-stats`                                                                                                                              | 3장 · 4장                                                            |
+| 모드        | `GET/POST /modes` · `GET/PATCH/DELETE /modes/{name}` · `POST /modes/{name}/activate`                                                                                                         | 5장                                                                  |
+| 설정        | `GET/PATCH /settings` · `/settings/{general,restore,api,advanced}` · `/settings/shortcuts` · `/settings/default-layout` · `/settings/restore/excluded-apps` · `POST /settings/factory-reset` | `_config.yml` 읽기·쓰기                                              |
+| 상태        | `GET /health` · `GET /status` · `GET /status/accessibility` · `GET /operations`                                                                                                              | 생존 · 활성 모드 · 권한 · 진행 중 장기 작업                          |
+| 데몬 제어   | `GET /cli/status` · `GET /cli/version` · `POST /cli/{quit,restart,pause,resume}` · `POST /shutdown`                                                                                          | 종료 · 재시작 · REST 일시 중지/재개                                  |
+| 변경 감지   | `GET /changes?since=N`                                                                                                                                                                       | 아래                                                                 |
+| GUI 연동    | `POST /paidapp/{register,unregister}` · `GET /paidapp/status` · `PUT /ui/state`                                                                                                              | fWarrange 라이프사이클 · UI 상태 (fWarrange 전용)                    |
+
+## 8.1. 변경 감지 (적응형 폴링)
+
+레이아웃·설정·단축키가 바뀔 때마다 단조 증가 시퀀스 번호를 붙여 최근 100건을 보관합니다(재시작 시 0). 클라이언트는 `GET /changes?since=<마지막 번호>` 로 이후 변경만 받습니다. 이벤트는 `layout.*`(created · updated · deleted) · `settings.changed` · `shortcuts.changed` · `mode.*`(created · updated · deleted · activated) · `op.*`(started · finished · failed — 장기 작업) 이며, 받은 번호가 알던 번호보다 작으면 데몬이 재시작된 것이므로 전체를 다시 읽습니다. fWarrange 는 이 API 를 3초/30초 간격으로 조회합니다.
+
+## 8.2. 보안
+
+* 서버는 기본으로 켜져 있고(`restServerEnabled: true`) `127.0.0.1` 에만 바인딩합니다. fWarrange 가 이 서버로 동작하므로 끄면 fWarrange 도 멈춥니다
+* `allowExternalAccess: true` 이면 외부 접속을 받되 `allowedCIDR`(기본 `192.168.0.0/16`, 쉼표로 여러 대역) 밖의 IP 는 `403 Forbidden`
+* `127.0.0.1` · `::1` 은 CIDR 과 무관하게 항상 허용합니다
+* 잠시 막으려면 메뉴바 **데몬 ▸ REST API 일시 정지** 또는 `POST /cli/pause`
+
+# 9. 설정과 저장 위치
+
+| 대상                                | 위치                                                                                                                     |
+| :---------------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
+| 설정 (단일 파일)                    | `~/Documents/finfra/fWarrangeData/_config.yml` — 키 목록은 [04 › 설정 파일](kr/04_MenuBar_Usage.md#설정-파일-_configyml) |
+| 레이아웃 (`dataStorageMode: host`)  | `~/Documents/finfra/fWarrangeData/{호스트 이름}/{이름}.yml`                                                              |
+| 레이아웃 (`dataStorageMode: share`) | `~/Documents/finfra/fWarrangeData/_share/{이름}.yml` — 여러 컴퓨터가 공유                                                |
+| 모드                                | `~/Documents/finfra/fWarrangeData/{호스트 이름}/modes/{이름}.yml`                                                        |
+| 로그                                | `~/Documents/finfra/fWarrangeData/logs/`                                                                                 |
+| 복원 통계 · 제목 정규화 룰          | `~/Library/Application Support/fWarrangeCli/` `restore-stats.json` · `title_normalize.yml`                               |
+
+# 관련 문서
+
+* [매뉴얼 목차](README.md) · [용어 사전](Glossary.md) · [참조 목록](ReferenceAgenda.md)
+* API 정본: [api/openapi_v2.yaml](../api/openapi_v2.yaml)
+* MCP 서버 소스: [mcp/](../mcp/)
+* fWarrange(GUI): [안내 페이지](https://finfra.kr/product/fWarrange/kr/index.html)
