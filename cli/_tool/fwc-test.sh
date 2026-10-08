@@ -13,9 +13,10 @@
 #   Step 7: 로그 파일 ERROR/CRITICAL 검사
 #   Step 8: 데이터 폴더 복원 & 원본 설정 재시작
 #
-# 데이터 보호 (Issue114): API·CMD 테스트는 레이아웃 전체 삭제·설정 변경·통계 초기화를
-# 실제 데이터 폴더에 가한다. Step 1 에서 폴더 전체를 스냅샷하고, 정상 종료·중도 실패·
-# Ctrl-C 어느 경우든 EXIT trap 이 앱을 멈춘 뒤 스냅샷으로 되돌린다.
+# 데이터 보호 (Issue114): API·CMD 테스트는 레이아웃 전체 삭제·설정 변경·통계·정규화 룰
+# 초기화를 실제 데이터에 가한다. Step 1 에서 데이터 폴더(logs 제외)와 앱 상태 폴더
+# (Application Support)를 스냅샷하고, 정상 종료·중도 실패·Ctrl-C 어느 경우든 EXIT trap 이
+# 앱을 멈춘 뒤 스냅샷으로 되돌린다.
 #
 # 빌드 구성: Debug (fwc-run-xcode.sh 통해 — TCC 회피 일관성)
 # 설계 근거: Issue.md Issue32 (pairApp fsc-test.sh 패턴 이식)
@@ -27,6 +28,8 @@ RUN_XCODE="$SCRIPT_DIR/fwc-run-xcode.sh"
 DATA_DIR="$HOME/Documents/finfra/fWarrangeData"
 CONFIG_FILE="$DATA_DIR/_config.yml"
 LOG_FILE="$DATA_DIR/logs/wlog_cliApp.log"
+# restore-stats.json · title_normalize.yml live here (tests 34·36 reset them)
+STATE_DIR="$HOME/Library/Application Support/fWarrangeCli"
 
 TOTAL_PASS=0
 TOTAL_FAIL=0
@@ -57,6 +60,7 @@ echo ""
 echo "=== Step 1: 데이터 폴더 스냅샷 & _config.yml 삭제 ==="
 SNAPSHOT_DIR=""
 DATA_RESTORED=0
+STATE_EXISTED=0
 
 # Stop the app, then roll the data folder back to the snapshot (logs/ untouched).
 # Idempotent: Step 8 calls it explicitly, the EXIT trap covers every early exit.
@@ -65,12 +69,19 @@ restore_data() {
     DATA_RESTORED=1
     [ -z "$SNAPSHOT_DIR" ] && return 0
     bash "$SCRIPT_DIR/kill.sh" >/dev/null 2>&1
+    local ok=1
     # --checksum: same-size edits within the same second would pass rsync's quick check
-    if rsync -a --checksum --delete --exclude 'logs/' "$SNAPSHOT_DIR/" "$DATA_DIR/"; then
+    rsync -a --checksum --delete --exclude 'logs/' "$SNAPSHOT_DIR/data/" "$DATA_DIR/" || ok=0
+    if [ "$STATE_EXISTED" -eq 1 ]; then
+        rsync -a --checksum --delete "$SNAPSHOT_DIR/state/" "$STATE_DIR/" || ok=0
+    elif [ -d "$STATE_DIR" ]; then
+        rm -rf "$STATE_DIR"   # did not exist before the run — created by the tests
+    fi
+    if [ "$ok" -eq 1 ]; then
         rm -rf "$SNAPSHOT_DIR"
-        echo "데이터 폴더 복원 완료 (스냅샷 → $DATA_DIR)"
+        echo "데이터·상태 폴더 복원 완료 (스냅샷 → $DATA_DIR, $STATE_DIR)"
     else
-        echo "⚠️  데이터 폴더 복원 실패 — 스냅샷 보존: $SNAPSHOT_DIR" >&2
+        echo "⚠️  복원 실패 — 스냅샷 보존: $SNAPSHOT_DIR (data/ → $DATA_DIR, state/ → $STATE_DIR)" >&2
     fi
 }
 trap restore_data EXIT
@@ -78,12 +89,18 @@ trap 'exit 130' INT TERM
 
 mkdir -p "$DATA_DIR"
 SNAPSHOT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/fwc-test-data.XXXXXX") || { echo "❌ 스냅샷 폴더 생성 실패 — 중단"; exit 1; }
-if ! rsync -a --exclude 'logs/' "$DATA_DIR/" "$SNAPSHOT_DIR/"; then
+SNAP_OK=1
+rsync -a --exclude 'logs/' "$DATA_DIR/" "$SNAPSHOT_DIR/data/" || SNAP_OK=0
+if [ -d "$STATE_DIR" ]; then
+    STATE_EXISTED=1
+    rsync -a "$STATE_DIR/" "$SNAPSHOT_DIR/state/" || SNAP_OK=0
+fi
+if [ "$SNAP_OK" -ne 1 ]; then
     rm -rf "$SNAPSHOT_DIR"; SNAPSHOT_DIR=""
-    echo "❌ 데이터 폴더 스냅샷 실패 — 실데이터 보호 불가로 중단"
+    echo "❌ 스냅샷 실패 — 실데이터 보호 불가로 중단"
     exit 1
 fi
-echo "데이터 폴더 스냅샷: $SNAPSHOT_DIR ($(du -sh "$SNAPSHOT_DIR" | cut -f1))"
+echo "데이터·상태 폴더 스냅샷: $SNAPSHOT_DIR ($(du -sh "$SNAPSHOT_DIR" | cut -f1))"
 # Destructive tests (delete-all) check this flag; the snapshot makes them safe here
 export FWC_DATA_SNAPSHOT=1
 
