@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 122
+* Issue HWM: 123
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -20,13 +20,14 @@ date: 2026-04-07
 | Issue72_6 — cliApp(non-sandbox)에서 CGS 계열 비공개 API 사용 합의 (2026-05-16)        | Issue72_6 본문                                                             |
 
 # 🌱 이슈후보
+1. `manual/FunctionalSpecification.md`·`Glossary.md`·`ReferenceAgenda.md` v2 정비 — v1 엔드포인트 표·`/locale`·`lib/wArrange_core`·«fWarrange 앱» 서술 잔존 (Issue123 범위 밖으로 남김)
+1. `cli/README.md` «brew services 불필요» 서술이 루트 README·앱 안내(brew services 권장)와 어긋남 — 한쪽으로 통일
 1. **[Observer 패턴] 배포 workflow 에 3+ dry-run 검증 단계 반복 패턴 — instinct 파일 생성 대기** (session d2d223aa-dfa6-4be8-9b7b-dd59c70126d2 관찰)
    - 패턴: `fwc-deploy-brew.sh` 와 `fpm-deploy-record.sh` 모두 `--dry-run` 플래그 사용 + 다단계 Step 0~8 검증 반복
    - 의도: `_public` 의 instinct_deploy-dry-run-validation-gate.md + instinct_deploy-multistage-validation.md 작성
    - 장애: 타 prj memory 경로에 대한 쓰기 권한 제약(위임 범위) — Issue.md 에 이슈 등록만 수행, memory 파일 작성은 사용자 몫으로 미룸
 
 # 🚧 진행중
-
 # 📕 중요
 
 # 📙 일반
@@ -58,6 +59,27 @@ date: 2026-04-07
     - red 먼저: Xcode 문서 0 상태에서 `fwc-run-xcode.sh build-deploy` 가 성공하는지(jma)
 
 # ✅ 완료
+
+## Issue123: [Docs] 매뉴얼을 fWarrangeCli 전용으로 분리 — fWarrange(GUI)는 fWarrangeCli 의 래퍼임을 명시하고 두 매뉴얼을 서로 링크 (등록: 2026-10-08, 완료: 2026-10-08, Hash: 68afa62) ✅
+* 목적: `manual/` 에 paidApp(fWarrange) GUI 사용법(`04_GUI_Usage.md`·`img/` 9장)이 섞여 있어 두 제품의 경계가 흐리다. 두 앱은 별개 프로젝트(prj26 cliApp·prj16 paidApp)이므로 매뉴얼도 각 레포에 둔다
+* depends: prj16#Issue287 (paidApp 쪽 짝 이슈 — GUI 매뉴얼 신설)
+* 상세:
+    - 사용자 지적(2026-10-08): «fWarrange와 fWarrangeCli는 다른 프로젝트. 각각 폴더에 manual 이 있어야 하고, fWarrange는 fWarrangeCli 의 래퍼임을 확실히 명시, 매뉴얼 링크도 확실히»
+    - 현행 `01_Overview` 는 «SwiftUI GUI(메뉴바 앱) → `lib/wArrange_core` 스크립트» 구조를 그려 두 앱 관계가 틀렸고, `02`·`03` 은 paidApp 설치·`lib/wArrange_core` 스크립트·v1 API 로 안내한다
+* 구현 명세:
+    - `manual/kr|en/04_GUI_Usage.md`·`manual/img/` → paidApp 레포 `manual/` 로 이관(prj16#Issue287), 이 레포에서는 제거
+    - `04_MenuBar_Usage.md` 신설 — cliApp 메뉴바 항목·전역 단축키·명령행(`fWarrangeCli status|list|capture|restore …`)·`_config.yml` (소스 `MenuBarManager.swift`·`CLIHandler.swift`·`LocalizedStringManager.swift` 기준)
+    - `01_Overview`·`02_Install`·`03_QuickStart` 재작성 — 엔진(fWarrangeCli)과 GUI 래퍼(fWarrange) 관계도, brew 설치·권한은 fWarrangeCli 에 부여, v2 API 예시
+    - `manual/README.md`·루트 `README.md`·`README_kr.md` 에 «fWarrange = fWarrangeCli 의 GUI 래퍼» 문장과 GUI 매뉴얼 링크
+    - 05~08 의 `04_GUI_Usage` 링크 갱신
+* 검증: 두 레포 manual 의 상대 링크·이미지 참조 전부 실파일 · 공개 문서의 `_public/` 접두사 0 · `04_GUI_Usage`·`img/` 참조 잔존 0
+* 결과:
+    - `04_GUI_Usage`·`img/` 9장 제거(paidApp `manual/` 로 이관), `04_MenuBar_Usage` 신설, 01~03·08 재작성, 05~07 v2 경로·호칭 정정(locale 절 삭제, Skill 설치처 f-claude-plugins, MCP 도구 13개 실측 반영)
+    - `manual/README.md`·루트 `README.md`·`README_kr.md` 에 «fWarrange = fWarrangeCli 의 GUI 래퍼» 문장 + 매뉴얼 링크
+    - 링크 방향: 공개 → GUI 는 finfra.kr 안내 페이지(paidApp 레포가 비공개라 매뉴얼 직링크 불가), paidApp → 엔진은 `Finfra/fWarrange_public/blob/main/manual/...`
+    - 검증: 두 레포 매뉴얼·README 링크 309개(이미지·앵커 포함) 실파일 대조 0 오류 · `@@` 플레이스홀더 0 · `04_GUI_Usage`·`img/`·`_public/` 접두사 잔존 0
+    - 주의: 공개 레포 main 에 반영(push·merge)되기 전까지 paidApp 매뉴얼의 신규 파일(`04_MenuBar_Usage` 등) 링크는 404
+
 
 ## Issue122: [Docs] 한영 매뉴얼 GUI 사용법을 1.1.3 화면 기준으로 갱신 — jma 캡처 9장 (등록: 2026-10-08, 완료: 2026-10-08, Hash: 335392c) ✅
 * 목적: `manual/{kr,en}/04_GUI_Usage.md` 가 «메뉴바 앱»·옛 설정 항목·외부 URL 이미지(단축키·고급 탭)로 남아 있어 실제 1.1.3 화면과 어긋난다
