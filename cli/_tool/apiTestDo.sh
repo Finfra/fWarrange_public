@@ -8,7 +8,7 @@
 #   bash cli/_tool/apiTestDo.sh v2 15                    # v2 15번
 #   bash cli/_tool/apiTestDo.sh v1 E                     # v1 에러 전체
 #   bash cli/_tool/apiTestDo.sh v2 E01                   # v2 E01번
-#   bash cli/_tool/apiTestDo.sh all                      # v1 + v2 정상 + 에러 전체
+#   bash cli/_tool/apiTestDo.sh all                      # v2 정상 + 에러 전체 (v1 디렉토리 제외)
 #   bash cli/_tool/apiTestDo.sh --run all                # fwc-run-xcode.sh 실행 후 전체 테스트
 #   bash cli/_tool/apiTestDo.sh --log all                # 테스트 후 로그 확인
 #   bash cli/_tool/apiTestDo.sh --report all             # 테스트 결과 저장
@@ -167,15 +167,14 @@ case "${1:-}" in
         shift
         ;;
     all)
-        append_report "# v1 테스트"
-        for v in v1 v2; do
-            echo "======== $v NORMAL ========"
-            append_report "## $v NORMAL"
-            run_normal "$ROOT_DIR/$v"
-            echo "======== $v ERROR ========"
-            append_report "## $v ERROR"
-            run_error  "$ROOT_DIR/$v"
-        done
+        # v2 only (Issue114): apiTest/v1/ is a legacy duplicate set that already calls
+        # /api/v2 (v1 itself answers 410 Gone); run it explicitly with "v1" if needed
+        echo "======== v2 NORMAL ========"
+        append_report "## v2 NORMAL"
+        run_normal "$ROOT_DIR/v2"
+        echo "======== v2 ERROR ========"
+        append_report "## v2 ERROR"
+        run_error  "$ROOT_DIR/v2"
         [ "$OPT_LOG" -eq 1 ] && check_logs
         [ "$OPT_REPORT" -eq 1 ] && save_report "apiTest"
         return 0 2>/dev/null || exit 0

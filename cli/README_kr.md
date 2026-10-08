@@ -1,12 +1,14 @@
 ---
 title: fWarrangeCli
 description: fWarrange companion helper daemon — 창 캡처/복구를 위한 REST API 서버
-date: 2026-04-07
+date: 2026.10.08
 ---
 
-[fWarrange](https://github.com/Finfra/fWarrange_public)의 companion helper daemon. 메뉴바 에이전트 앱으로 실행되며, 창 캡처 및 복구를 위한 REST API를 제공함.
+fWarrangeCli 는 macOS 창 배치를 저장·복원하는 엔진임. 메뉴바 에이전트 앱으로 실행되며 전역 단축키·명령행·REST API 를 제공함.
 
-fWarrange (App Store 버전)는 Sandbox 규정 준수를 위해 모든 Accessibility API 작업을 이 데몬에 위임함.
+> **fWarrange 는 fWarrangeCli 의 GUI 래퍼임.** App Store 앱 fWarrange(Sandbox)는 레이아웃 목록·미니맵·설정 창을 얹고, 모든 캡처·복원을 REST API 로 이 데몬에 맡김. fWarrangeCli 는 fWarrange 없이 단독으로 동작함.
+
+사용자 매뉴얼: [manual/](../manual/README.md) · fWarrange(GUI): [안내 페이지](https://finfra.kr/product/fWarrange/kr/index.html)
 
 # 아키텍처
 
@@ -48,20 +50,22 @@ xcodebuild -scheme fWarrangeCli -configuration Release build
 
 # 서비스 관리
 
-로그인 시 자동 시작은 앱 내 설정(macOS Login Items)으로 관리됨.
-Homebrew는 설치만 담당 — `brew services` 불필요.
+Homebrew 로 설치했다면 `brew services`(launchd) 서비스로 실행함 — 지금 시작하고 로그인할 때마다 자동 시작하며, 비정상 종료 시 launchd 가 다시 띄움.
 
 ```bash
-# 수동 실행
-open /Applications/_nowage_app/fWarrangeCli.app
+brew services start fwarrange-cli      # 시작 + 로그인 시 자동 시작
+brew services restart fwarrange-cli    # 재시작 (ex) _config.yml 수정 뒤)
+brew services stop fwarrange-cli       # 중지
 ```
+
+메뉴바 **🚀 로그인 시 자동 시작**(`_config.yml` 의 `launchAtLogin`)은 `brew services` 없이 띄운 빌드의 로그인 항목을 다룸. [설치](../manual/kr/02_Install.md) 참조.
 
 # REST API
 
 * **기본 포트**: `3016`
-* **API 버전**: `v2` (현행), `v1` (레거시, 유지)
+* **API 버전**: `v2` 단일 — `v1` 은 폐기되어 모든 `/api/v1/*` 요청이 `410 Gone` 을 돌려줌
 * **서비스 루트**: `http://localhost:3016/api/v2`
-* **OpenAPI 명세**: [`api/openapi_v2.yaml`](../api/openapi_v2.yaml) · [`api/openapi_v1.yaml`](../api/openapi_v1.yaml) (레거시)
+* **OpenAPI 명세**: [`api/openapi_v2.yaml`](../api/openapi_v2.yaml)
 
 ## 엔드포인트
 
@@ -127,20 +131,20 @@ open /Applications/_nowage_app/fWarrangeCli.app
 curl http://localhost:3016/
 
 # 현재 창 캡처
-curl -X POST http://localhost:3016/api/v1/capture \
+curl -X POST http://localhost:3016/api/v2/capture \
   -H "Content-Type: application/json" \
   -d '{"name": "my-layout"}'
 
 # 레이아웃 복구
-curl -X POST http://localhost:3016/api/v1/layouts/my-layout/restore
+curl -X POST http://localhost:3016/api/v2/layouts/my-layout/restore
 
 # 상태 확인
-curl http://localhost:3016/api/v1/cli/status
+curl http://localhost:3016/api/v2/cli/status
 ```
 
 # 설정
 
-설정은 UserDefaults에 저장됨:
+설정은 `~/Documents/finfra/fWarrangeData/_config.yml` 에 저장됨(메뉴 **설정 ▸ 설정 파일 열기**). fWarrange 설정 창도 같은 파일을 고침. 주요 키:
 
 | Key                   | 기본값 | 설명                    |
 | :-------------------- | :----- | :---------------------- |
@@ -159,7 +163,7 @@ curl http://localhost:3016/api/v1/cli/status
 ~/Documents/finfra/fWarrangeData/{hostname}/*.yml
 ```
 
-fWarrange GUI 앱과 공유됨.
+fWarrange(GUI)는 REST API 를 거쳐 같은 폴더를 읽음.
 
 # Accessibility 권한
 

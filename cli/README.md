@@ -1,12 +1,14 @@
 ---
 title: fWarrangeCli
 description: fWarrange companion helper daemon — REST API server for window capture/restore
-date: 2026-04-07
+date: 2026.10.08
 ---
 
-A companion helper daemon for [fWarrange](https://github.com/Finfra/fWarrange_public). Runs as a menu bar agent app and provides a REST API for window capture and restore operations.
+fWarrangeCli is the engine that saves and restores macOS window layouts. It runs as a menu bar agent app and offers global shortcuts, a command line, and a REST API.
 
-fWarrange (App Store version) delegates all Accessibility API operations to this daemon, enabling Sandbox compliance.
+> **fWarrange is a GUI wrapper for fWarrangeCli.** The App Store app fWarrange (Sandbox) adds a layout list, minimap, and settings window, and delegates every capture and restore to this daemon over the REST API. fWarrangeCli works on its own without fWarrange.
+
+User manual: [manual/](../manual/README.md) · fWarrange (GUI): [product page](https://finfra.kr/product/fWarrange/en/index.html)
 
 # Architecture
 
@@ -47,20 +49,22 @@ xcodebuild -scheme fWarrangeCli -configuration Release build
 
 # Service Management
 
-Auto-start at login is managed within the app (via macOS Login Items).
-Homebrew handles installation only — no `brew services` needed.
+With Homebrew, run fWarrangeCli as a `brew services` service (launchd) — it starts now and at every login, and launchd restarts it if it crashes.
 
 ```bash
-# Manual launch
-open /Applications/_nowage_app/fWarrangeCli.app
+brew services start fwarrange-cli      # start + auto-start at login
+brew services restart fwarrange-cli    # restart (e.g. after editing _config.yml)
+brew services stop fwarrange-cli       # stop
 ```
+
+The menu bar item **🚀 Launch at Login** (`launchAtLogin` in `_config.yml`) controls the login item for builds launched without `brew services`. See [Installation](../manual/en/02_Install.md).
 
 # REST API
 
 * **Default port**: `3016`
-* **API version**: `v2` (current), `v1` (legacy, maintained)
+* **API version**: `v2` only — `v1` is retired and every `/api/v1/*` request returns `410 Gone`
 * **Service root**: `http://localhost:3016/api/v2`
-* **OpenAPI spec**: [`api/openapi_v2.yaml`](../api/openapi_v2.yaml) · [`api/openapi_v1.yaml`](../api/openapi_v1.yaml) (legacy)
+* **OpenAPI spec**: [`api/openapi_v2.yaml`](../api/openapi_v2.yaml)
 
 ## Endpoints
 
@@ -126,20 +130,20 @@ All endpoints are relative to service root `/api/v2`. Full spec: [`api/openapi_v
 curl http://localhost:3016/
 
 # Capture current windows
-curl -X POST http://localhost:3016/api/v1/capture \
+curl -X POST http://localhost:3016/api/v2/capture \
   -H "Content-Type: application/json" \
   -d '{"name": "my-layout"}'
 
 # Restore layout
-curl -X POST http://localhost:3016/api/v1/layouts/my-layout/restore
+curl -X POST http://localhost:3016/api/v2/layouts/my-layout/restore
 
 # Check status
-curl http://localhost:3016/api/v1/cli/status
+curl http://localhost:3016/api/v2/cli/status
 ```
 
 # Configuration
 
-Settings are stored in UserDefaults:
+Settings are stored in `~/Documents/finfra/fWarrangeData/_config.yml` (menu **Configuration ▸ Open Config File**). The fWarrange settings window edits the same file. Main keys:
 
 | Key                   | Default | Description              |
 | :-------------------- | :------ | :----------------------- |
@@ -158,7 +162,7 @@ Layout files (YAML) are stored in:
 ~/Documents/finfra/fWarrangeData/{hostname}/*.yml
 ```
 
-Shared with fWarrange GUI app.
+fWarrange (GUI) reads the same folder through the REST API.
 
 # Accessibility Permission
 
