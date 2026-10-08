@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 123
+* Issue HWM: 124
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -20,8 +20,6 @@ date: 2026-04-07
 | Issue72_6 — cliApp(non-sandbox)에서 CGS 계열 비공개 API 사용 합의 (2026-05-16)        | Issue72_6 본문                                                             |
 
 # 🌱 이슈후보
-1. `manual/FunctionalSpecification.md`·`Glossary.md`·`ReferenceAgenda.md` v2 정비 — v1 엔드포인트 표·`/locale`·`lib/wArrange_core`·«fWarrange 앱» 서술 잔존 (Issue123 범위 밖으로 남김)
-1. `cli/README.md` «brew services 불필요» 서술이 루트 README·앱 안내(brew services 권장)와 어긋남 — 한쪽으로 통일
 1. **[Observer 패턴] 배포 workflow 에 3+ dry-run 검증 단계 반복 패턴 — instinct 파일 생성 대기** (session d2d223aa-dfa6-4be8-9b7b-dd59c70126d2 관찰)
    - 패턴: `fwc-deploy-brew.sh` 와 `fpm-deploy-record.sh` 모두 `--dry-run` 플래그 사용 + 다단계 Step 0~8 검증 반복
    - 의도: `_public` 의 instinct_deploy-dry-run-validation-gate.md + instinct_deploy-multistage-validation.md 작성
@@ -51,7 +49,18 @@ date: 2026-04-07
 
 # ✅ 완료
 
-## Issue114: 1.1.2 공개본 출고 테스트 발견 결함 — 단일 창 복원 판정·테스트 도구 위험·README 불일치 (등록: 2026-09-29, 완료: 2026-10-08, Hash: 430a2ea, 779b6fe) ✅
+## Issue124: [Docs] 매뉴얼 공통 문서 3종 v2 정비 — 기능 명세·용어 사전·참조 목록 (등록: 2026-10-08, 완료: 2026-10-08, Hash: 4d545d4) ✅
+* 목적: Issue123 이 범위 밖으로 남긴 `manual/` 공통 문서가 옛 구조(`lib/wArrange_core`·`setWindows.swift`)·v1 엔드포인트 14개 표·`/locale`·«REST 기본 비활성» 을 그대로 안내함 — 실제와 어긋나는 공개 문서
+* 구현 명세:
+    - `FunctionalSpecification.md` 재작성 — 실구현 기준: CGWindowList+AX 캡처, 점수 표(`matchType` 명칭), mode `strict/normal/loose`·Moom 폴백, 3px 검증·재시도·최선 결과, `windowIds`·`dryRun`, 제목 정규화, 복원 통계, 모드(`requiredApps`), 자동 저장, REST v2 범주 표(계약은 `api/openapi_v2.yaml` 링크), 변경 감지, 보안, 저장 위치
+    - `Glossary.md` — fWarrangeCli·GUI 래퍼 기준, Notification → 적응형 폴링, 엔진·GUI 래퍼·매칭 모드·시험 실행·제목 정규화·모드·저장 모드 용어 추가
+    - `ReferenceAgenda.md` — 주제별 정본 링크 목록으로 재구성(같은 내용 재서술 금지)
+* 결과 (2026-10-08):
+    - 서술은 소스 실측으로 확인 — 모드 활성화는 «normal 복원 → `requiredApps` 적용» 순서(`AppState.swift` activateMode), 변경 이벤트에 `mode.*`·`op.*` 포함, 모드 저장 `{data}/{host}/modes/`, 통계·정규화 룰은 Application Support
+    - 덤: kr/en `05_API_Usage.md` 엔드포인트 제목 단계(`##`·`###`·`####` 혼재) 통일
+    - 검증: 매뉴얼·README 링크·앵커 314개 실파일 대조 오류 0, `lib/wArrange_core`·`setWindows`·`get_locale` 잔존 0
+
+## Issue114: 1.1.2 공개본 출고 테스트 발견 결함 — 단일 창 복원 판정·테스트 도구 위험·README 불일치 (등록: 2026-09-29, 완료: 2026-10-08, Hash: 430a2ea, 779b6fe, 5dab80e) ✅
 * 목적: prj5#Issue107 jma 출고 테스트(2026-09-29, release/1.1.1 `af8537b` = 공개 1.1.2) 결과 기록 — 증거 result: partial
 * 상세:
     - ① 단일 창 레이아웃을 다른 위치에서 복원하면 `noMatch`/`windowNotFound`·succeeded 0 보고, 실제로는 근사 이동 — 3회 재현(prj16#Issue283 ②). 1.1.1 부터인지는 미확인
@@ -71,6 +80,7 @@ date: 2026-04-07
     - ④ `cli/README.md`·`README_kr.md` — v2 only·`410 Gone`, `brew services` 운영(Formula `service do` 와 일치), 개발 경로 예시 삭제, 설정 저장소 UserDefaults → `_config.yml`, 래퍼 관계·매뉴얼 링크
     - ⑤ `.claude/skills/jma-fwarrange-deploy` (gitignored, 로컬 전용 — `.agents` 사본 동일 반영) — 동기화 기본값을 끄고 `--sync` opt-in, `--sync` 여도 jma 쪽이 실제 체크아웃이면서 브랜치 불일치·미커밋이면 중단. 2026-10-08 실측: jma 는 `release/1.1.1`(미커밋 paidApp 8·public 1), jm4 는 `release/1.2.0` — 옛 기본값이면 지금 실행만으로 jma 작업물이 덮였을 상태. `tdd/release.md` 실행 환경에 명시
     - 검증 한계: ③ 은 jm4 에서 로그 재생(red: 3 FAIL 검출)·trap 스텁(빌드 실패 경로 복원) 까지. **jma 전체 `fwc-test.sh` 실행은 미실행** — 다음 R1 4행이 첫 실측
+    - ③ 보강 (`5dab80e`) — 테스트 34·36 이 초기화하는 `restore-stats.json`·`title_normalize.yml` 은 데이터 폴더가 아닌 `~/Library/Application Support/fWarrangeCli/` 에 있어 스냅샷 밖이었음(소스 `RestoreStatsCollector.swift`·`TitleNormalizer.swift` 실측). 상태 폴더도 스냅샷·복원, 실행 전 없던 폴더는 제거 — 스텁 2경우 확인
 
 ## Issue123: [Docs] 매뉴얼을 fWarrangeCli 전용으로 분리 — fWarrange(GUI)는 fWarrangeCli 의 래퍼임을 명시하고 두 매뉴얼을 서로 링크 (등록: 2026-10-08, 완료: 2026-10-08, Hash: 68afa62) ✅
 * 목적: `manual/` 에 paidApp(fWarrange) GUI 사용법(`04_GUI_Usage.md`·`img/` 9장)이 섞여 있어 두 제품의 경계가 흐리다. 두 앱은 별개 프로젝트(prj26 cliApp·prj16 paidApp)이므로 매뉴얼도 각 레포에 둔다
