@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 127
+* Issue HWM: 128
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -30,6 +30,16 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+
+## Issue128: CONTRIBUTING.md 추가 — 외부 PR 은 Finfra CLA 전자 서명 후 수락 (등록: 2026-10-09)
+* 목적: 상업 라이선스 판매에 필요한 외부 기여분 재라이선스 권한을 CLA Assistant 전자 서명으로 확보한다(외부 기여 0건인 지금 설치)
+* 상세:
+    - 출처: prj6#Issue32 (사용자 지시 2026-10-09 «진행») · 정본 `~/_git/___oracle/_doc_arch/license-profiles.md` §5 «CLA 게이트»
+    - 착수 조건: prj6#Issue32 ②③ 완료(gist 게시·cla-assistant.io 연결) — 그 전에 push 하면 CONTRIBUTING 의 CLA 링크가 빈 페이지다
+* 구현 명세:
+    - 루트 `CONTRIBUTING.md` = `~/_git/___oracle/data/template/license/CONTRIBUTING.md` 복사 — frontmatter·📄 블록 제거, `{{REPO}}` → `fWarrange_public`
+    - README 에 기여 절이 있으면 `CONTRIBUTING.md` 링크 1줄
+    - 검증: `grep -c '{{' CONTRIBUTING.md` = 0 · 링크 `https://cla-assistant.io/Finfra/fWarrange_public` 가 CLA 페이지를 연다
 ## Issue126: [Bug] 번들 시드 `_config.yml` 의 `showMainWindowShortcut` 줄 끝 주석 때문에 새 설치에서 ⌃⇧⌘F7 이 등록되지 않음 (등록: 2026-10-09)
 * 목적: 시드 `cli/fWarrangeCli/_config.yml` 37행 `showMainWindowShortcut: "⌃⇧⌘F7" # {showMain}     Open Main Window` — 파서(`parseStringValue`)가 줄 끝 `#` 주석을 떼지 않아 값 전체가 `KeyboardShortcutConfig.from` 에 들어가 `nil`. 매뉴얼은 기본값을 ⌃⇧⌘F7 로 안내함
 * 상세:
