@@ -47,7 +47,6 @@ date: 2026-04-07
     - 수정 방향: 초기화는 번들 시드 `_config.yml` 을 다시 복사하는 경로로(시드가 단일 기준) — Issue126 과 같은 파일이라 함께 처리 권장
     - 검증: jma XCTest + REST `POST /settings/factory-reset` 실측
 
-
 # 📗 선택
 
 # ✅ 완료
