@@ -28,7 +28,7 @@ A: fWarrangeCli needs macOS 14.0 or later, fWarrange needs 15.6 or later. Both A
 A: Turn on **fWarrangeCli** in System Settings › Privacy & Security › Accessibility. fWarrange itself needs no permission — see [Installation › Accessibility Permission](02_Install.md#4-accessibility-permission).
 
 ### Q: Shortcuts respond but windows don't move.
-A: Shortcuts register regardless of the permission, but moving windows requires it. Turn the permission on again and restart fWarrangeCli.
+A: Shortcuts register regardless of the permission, but moving windows requires it. Turn the permission on again and restart fWarrangeCli. For other shortcut problems see [Shortcut Usage › Troubleshooting](09_Shortcut_Usage.md#troubleshooting).
 
 ### Q: Permissions are lost after each source build.
 A: A new build has a different signature, so macOS treats it as a different app. Register it again after each build. Official Homebrew builds keep a stable signature.

@@ -34,7 +34,7 @@ fWarrangeCli 매뉴얼이 다루는(또는 다룰) 주제 목록입니다. 각 �
 # 5. 메뉴바 · 단축키 · 명령행
 
 ## 5-1. 메뉴 구성과 데몬 제어(재시작 · REST 일시 정지) — [04 메뉴바 사용법](kr/04_MenuBar_Usage.md#메뉴-구성)
-## 5-2. 전역 단축키 5종과 `_config.yml` 편집 — [04 › 전역 단축키](kr/04_MenuBar_Usage.md#전역-단축키)
+## 5-2. 전역 단축키 5종 · 바꾸는 방법(`_config.yml` · REST · 명령행 · fWarrange) · 표기 규칙 · 되돌리기 범위 · 문제 해결 — [09 단축키 사용법](kr/09_Shortcut_Usage.md)
 ## 5-3. 명령행 명령과 옵션(`--port` · `--host` · `--pretty` · `-q`) — [04 › 명령행](kr/04_MenuBar_Usage.md#명령행-cli)
 
 # 6. REST API v2

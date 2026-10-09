@@ -42,7 +42,7 @@ fWarrangeCli lives in the menu bar as a single icon. Saving and restoring window
 | `showMainWindowShortcut` | `⌃⇧⌘F7` | fWarrange main window                     |
 | `undoShortcut`           | (none)  | Return to the previous window arrangement |
 
-Symbols: `⌃`=Control · `⌥`=Option · `⇧`=Shift · `⌘`=Command. Removing a line unregisters that shortcut. With fWarrange you can also change them in Settings › Shortcuts.
+Symbols: `⌃`=Control · `⌥`=Option · `⇧`=Shift · `⌘`=Command. Removing a line unregisters that shortcut. With fWarrange you can also change them in Settings › Shortcuts. Behavior details, ways to change them, notation, and troubleshooting are in [Shortcut Usage](09_Shortcut_Usage.md).
 
 ## Configuration File `_config.yml`
 
@@ -80,6 +80,7 @@ Options: `--port <port>` (default 3016) · `--host <host>` · `--pretty` (pretty
 
 ## Next Steps
 
+* [Shortcut Usage](09_Shortcut_Usage.md)
 * [REST API Usage](05_API_Usage.md)
 * [Claude Code Skill Usage](06_Skill_Usage.md)
 * [MCP Server Usage](07_MCP_Usage.md)

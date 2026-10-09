@@ -53,7 +53,7 @@ flowchart LR
 
 # 사용 방법 4가지
 
-1. **메뉴바 · 전역 단축키** — [메뉴바 사용법](04_MenuBar_Usage.md)
+1. **메뉴바 · 전역 단축키** — [메뉴바 사용법](04_MenuBar_Usage.md) · [단축키 사용법](09_Shortcut_Usage.md)
 2. **명령행** — `fWarrangeCli status|list|capture|restore …` ([메뉴바 사용법 › 명령행](04_MenuBar_Usage.md#명령행-cli))
 3. **REST API** — [REST API 사용법](05_API_Usage.md)
 4. **AI 연동** — [Claude Code Skill](06_Skill_Usage.md) · [MCP 서버](07_MCP_Usage.md)

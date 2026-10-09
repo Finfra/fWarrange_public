@@ -123,7 +123,7 @@ flowchart LR
 | `name` · `icon` | 이름 · SF Symbol                                                    |
 | `layoutRef`     | 복원할 레이아웃 이름                                                |
 | `requiredApps`  | `bundleId` 별 동작 — `launch`(실행) · `hide`(숨김) · `ignore`(무시) |
-| `shortcut`      | 모드 전환 단축키                                                    |
+| `shortcut`      | 단축키 문자열(저장만 됨 — 전역 단축키로 등록되지 않음)              |
 
 `POST /modes/{name}/activate` 는 레이아웃을 `normal` 모드로 복원한 뒤 `requiredApps` 동작(실행·숨김)을 적용하고, 그 모드를 활성 모드로 기록합니다(`GET /status` 에 표시). 활성화가 진행 중이면 다음 요청은 거부됩니다. 명령행은 `mode list|create|show|edit|delete` · `switch <이름>` 입니다.
 
@@ -136,7 +136,7 @@ flowchart LR
 | 경로        | 내용                                                                          | 상세                                                   |
 | :---------- | :---------------------------------------------------------------------------- | :----------------------------------------------------- |
 | 메뉴바      | 저장 · 레이아웃 클릭 복원 · 최근/기본 복원 · 설정 파일 열기 · 데몬 제어       | [04 메뉴바 사용법](kr/04_MenuBar_Usage.md)             |
-| 전역 단축키 | ⌘F7 저장 · ⌥⌘F7 최근 · ⇧⌘F7 기본 · ⌃⇧⌘F7 fWarrange 메인 창 · 되돌리기(미지정) | [04 › 전역 단축키](kr/04_MenuBar_Usage.md#전역-단축키) |
+| 전역 단축키 | ⌘F7 저장 · ⌥⌘F7 최근 · ⇧⌘F7 기본 · ⌃⇧⌘F7 fWarrange 메인 창 · 되돌리기(미지정) | [09 단축키 사용법](kr/09_Shortcut_Usage.md) |
 | 명령행      | 실행 파일에 인자를 주면 실행 중인 데몬에 REST 요청                            | [04 › 명령행](kr/04_MenuBar_Usage.md#명령행-cli)       |
 | REST API    | 아래 8장                                                                      | [05 REST API](kr/05_API_Usage.md)                      |
 | Skill       | Claude Code `/fwarrange:fwarrange`                                            | [06 Skill](kr/06_Skill_Usage.md)                       |
