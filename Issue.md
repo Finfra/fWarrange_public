@@ -26,7 +26,15 @@ date: 2026-04-07
    - 장애: 타 prj memory 경로에 대한 쓰기 권한 제약(위임 범위) — Issue.md 에 이슈 등록만 수행, memory 파일 작성은 사용자 몫으로 미룸
 
 # 🚧 진행중
-## Issue118: [Test] `fwc-run-xcode.sh` 가 Xcode 에 열린 문서가 없는 차가운 상태에서 workspace 로드 60s 대기를 넘겨 `fwc-test.sh` 가 빌드 전에 실패 (등록: 2026-10-04)
+# 📕 중요
+
+# 📙 일반
+
+# 📗 선택
+
+# ✅ 완료
+
+## Issue118: [Test] `fwc-run-xcode.sh` 가 Xcode 에 열린 문서가 없는 차가운 상태에서 workspace 로드 60s 대기를 넘겨 `fwc-test.sh` 가 빌드 전에 실패 (등록: 2026-10-04, 완료: 2026-10-09, Hash: 81aef54, 4a98625) ✅
 * 목적: R1 4행(`app-bundle-all-clear`)이 코드와 무관하게 환경 상태로 실패한다 — 출고 테스트마다 재현 가능
 * 상세:
     - 재현(jma 2026-10-04 R1 사전 점검): Xcode 실행 중·열린 문서 0 → `fwc-test.sh` Step 2 `[open] fWarrangeCli.xcodeproj 오픈 중...` → `execution error: Xcode workspace did not finish loading within 60s (-2700)` → `❌ 빌드 실패 — 중단`
@@ -40,14 +48,11 @@ date: 2026-04-07
     - 수정: 단일 osascript 60초 → bash 폴링, 상한 `FWC_XCODE_LOAD_TIMEOUT`(기본 300초) · 문서가 `FWC_XCODE_REOPEN_AFTER`(기본 20초) 동안 없으면 open 1회 재요청 · 시간 초과 시 프로세스·열린 문서(loaded)·창 이름 덤프 · 같은 이름 다른 경로 사본 경고
     - jm4 개발 확인(증거 아님): Xcode 미실행 → `open` 4~12초 로드 완료 · 재호출 «이미 로드됨» · 이름 불일치 강제 시 재요청→시간 초과→진단 덤프→rc=1
     - 남은 일: jma 에서 Xcode 문서 0 상태 `fwc-run-xcode.sh build-deploy`(red→green). jma 는 2026-10-08 현재 `release/1.1.1` 미커밋 작업과 다른 프로젝트 Xcode 문서가 있어 이번 세션은 손대지 않음
-
-# 📕 중요
-
-# 📙 일반
-
-# 📗 선택
-
-# ✅ 완료
+* 결과 (2026-10-09, jma 실측 — 사용자 승인으로 jma Xcode 종료·재기동, 종료 후 fSnippetCli 문서 원복):
+    - 방법: jm4 `release/1.2.0` bundle → jma `/tmp/fwc118/{old,new}` 격리 클론(jma 체크아웃·brew 설치본 무변경). `build`·`build-deploy` 는 stop 성공 시 `pkill -f MacOS/fWarrangeCli` 로 jma brew 설치본까지 죽이므로 결함 지점인 `open` 하위 명령만 실측
+    - 원 결함 red **재현 안 됨**: 구버전(`81aef54^`) 차가운 Xcode 9s · 문서 0 2s 통과. 신버전 7s · 1s. 60s 초과 원인은 미확정 — 신버전의 상한 300s·재요청·시간 초과 진단 덤프가 다음 실패의 단계를 남긴다
+    - **새 결함 발견·수정** (`4a98625`): Xcode 재기동 시 상태 복원으로 직전 클론의 같은 이름 문서가 다시 열리고, 스크립트가 이름으로 찾아 그 사본을 «로드 완료» rc=0 (red, 위 신버전 cold 회차) → 같은 이름 다른 경로면 rc=1 중단. green: 다른 사본 rc=1 · `/private/tmp` 별칭 경로 rc=0 · 재기동 후 자기 사본 rc=0
+    - 기록: `cli/_doc_work/debug_TECH.md` (계측 함정 3건 — pkill 범위·osascript 가 Xcode 를 기동함·재기동 ≠ 문서 0)
 
 ## Issue124: [Docs] 매뉴얼 공통 문서 3종 v2 정비 — 기능 명세·용어 사전·참조 목록 (등록: 2026-10-08, 완료: 2026-10-08, Hash: 4d545d4) ✅
 * 목적: Issue123 이 범위 밖으로 남긴 `manual/` 공통 문서가 옛 구조(`lib/wArrange_core`·`setWindows.swift`)·v1 엔드포인트 14개 표·`/locale`·«REST 기본 비활성» 을 그대로 안내함 — 실제와 어긋나는 공개 문서
