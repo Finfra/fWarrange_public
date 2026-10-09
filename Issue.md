@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 124
+* Issue HWM: 127
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -29,10 +29,40 @@ date: 2026-04-07
 # 📕 중요
 
 # 📙 일반
+## Issue126: [Bug] 번들 시드 `_config.yml` 의 `showMainWindowShortcut` 줄 끝 주석 때문에 새 설치에서 ⌃⇧⌘F7 이 등록되지 않음 (등록: 2026-10-09)
+* 목적: 시드 `cli/fWarrangeCli/_config.yml` 37행 `showMainWindowShortcut: "⌃⇧⌘F7" # {showMain}     Open Main Window` — 파서(`parseStringValue`)가 줄 끝 `#` 주석을 떼지 않아 값 전체가 `KeyboardShortcutConfig.from` 에 들어가 `nil`. 매뉴얼은 기본값을 ⌃⇧⌘F7 로 안내함
+* 상세:
+    - 실측(2026-10-09, jm4 스크립트 — `AppSettings.swift` 13~118행 발췌): `"⌃⇧⌘F7" # {showMain} …` → nil · `"⌃⇧⌘F7"` → ⌃⇧⌘F7
+    - 영향: 새 설치(시드 복사)에서 메인 창 단축키 미등록·메뉴 표시 없음. 설정을 한 번이라도 저장하면 그 줄이 파일에서 사라짐(직렬화가 nil 을 생략)
+    - jm4 실사용 `_config.yml` 은 주석 없는 `⌥⇧⌘F7` 이라 재현 안 됨 — 새 설치 경로로만 드러남
+* 구현 명세:
+    - red 먼저: 시드 파일을 `YAMLSettingsService` 로 읽어 `showMainWindowShortcut` 이 nil 인 XCTest
+    - 수정 후보 ① 시드에서 주석 제거 ② 파서가 따옴표 밖 ` #` 이후를 버림 — ②가 사용자 편집 주석까지 막음
+    - 검증: jma XCTest
+## Issue127: [Bug] 설정 공장 초기화가 단축키 4종을 지우고 되돌리기 ⌃⌘F7 만 남김 (등록: 2026-10-09)
+* 목적: `resetToDefaults()` 가 `AppSettings.defaults` 를 저장하는데, 그 기본값은 save·restoreDefault·restoreLast·showMainWindow 가 `nil`(Issue61 «yml 에 적힌 것만 등록») · undo 만 `⌃⌘F7`(Issue98). 그래서 초기화 후 단축키가 시드(⌘F7 계열)와 정반대가 됨
+* 상세: 코드 판독 근거 — `AppSettings.swift` `defaults`(4종 nil, undo ⌃⌘F7) · `SettingsService.swift` `resetToDefaults` → `save(defaults)` → 직렬화가 nil 줄 생략. 앱 실측 전
+* 구현 명세:
+    - red 먼저: `factoryResetSettings` 후 `getShortcutsDisplay` 가 시드 값과 같은지 XCTest
+    - 수정 방향: 초기화는 번들 시드 `_config.yml` 을 다시 복사하는 경로로(시드가 단일 기준) — Issue126 과 같은 파일이라 함께 처리 권장
+    - 검증: jma XCTest + REST `POST /settings/factory-reset` 실측
+
 
 # 📗 선택
 
 # ✅ 완료
+
+## Issue125: [Docs] 단축키 사용 매뉴얼 추가 — kr/en `09_Shortcut_Usage.md` (등록: 2026-10-09, 완료: 2026-10-09, Hash: 70494f8) ✅
+* 목적: 전역 단축키 서술이 `04_MenuBar_Usage.md` 의 표 1개뿐 — 바꾸는 법(파일·REST·명령행·fWarrange)·반영 시점·동작 세부(저장 이름·기본 복원 대체·되돌리기 범위)·충돌·문제 해결이 없음
+* 구현 명세:
+    - `manual/kr/09_Shortcut_Usage.md` · `manual/en/09_Shortcut_Usage.md` 신설 — 소스 실측 기준(`HotKeyService.swift`·`AppState.handleHotKeyAction`·`SettingsService.parseShortcut`·`KeyboardShortcutConfig`)
+    - 목차·링크 갱신: `manual/README.md`, kr/en `01`·`03`·`04`·`08`, `ReferenceAgenda.md` 5-2, `FunctionalSpecification.md` 모드 `shortcut` 행(전역 등록 안 됨)
+    - 검증: 표기 문자열 파싱을 소스 발췌 스크립트로 실측, 링크·앵커 실파일 대조
+* 결과 (2026-10-09):
+    - 신설 kr/en `09_Shortcut_Usage.md` — 단축키 5종 표, 동작 세부(저장 이름 `YYYY-MM-DD-N`·첫 저장이 기본 레이아웃·기본 복구의 최근 대체·«최근» = 최근 저장·되돌리기는 1단계·메모리·단축키/메뉴 복원만), 바꾸는 방법 4가지와 반영 시점(파일 편집은 재시작 필요 — «데몬 재시작» 은 REST 서버만), 표기 규칙(지원 키 표), 권한·충돌, 문제 해결 표
+    - 소스 실측 중 결함 2건 발견 → Issue126(시드 줄 끝 주석으로 ⌃⇧⌘F7 미등록, 파서 발췌 스크립트로 확인) · Issue127(공장 초기화가 단축키 4종 삭제, 코드 판독). 매뉴얼 문제 해결 표에 사용자 조치로 반영 — 수정되면 그 두 행을 뺀다
+    - 연결: `README.md` 목차·트리, kr/en `01`·`03`·`04`·`08`, `ReferenceAgenda.md` 5-2, `FunctionalSpecification.md`(모드 `shortcut` 은 전역 등록 안 됨 · 전역 단축키 행 링크)
+    - 검증: 매뉴얼 링크·앵커 230개 실파일 대조 오류 0. REST PUT 동작은 코드 판독 기준(jm4 실사용 설정을 바꾸지 않으려고 실호출 안 함)
 
 ## Issue118: [Test] `fwc-run-xcode.sh` 가 Xcode 에 열린 문서가 없는 차가운 상태에서 workspace 로드 60s 대기를 넘겨 `fwc-test.sh` 가 빌드 전에 실패 (등록: 2026-10-04, 완료: 2026-10-09, Hash: 81aef54, 4a98625) ✅
 * 목적: R1 4행(`app-bundle-all-clear`)이 코드와 무관하게 환경 상태로 실패한다 — 출고 테스트마다 재현 가능
