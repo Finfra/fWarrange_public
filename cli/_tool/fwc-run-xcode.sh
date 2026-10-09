@@ -76,13 +76,19 @@ end tell
 APPLESCRIPT
 }
 
-# 같은 이름의 다른 경로 사본이 열려 있으면 build·stop 이 그 사본을 잡는다 (이름으로 찾기 때문)
-warn_if_other_copy() {
+# 같은 이름의 다른 경로 사본이 열려 있으면 build·stop 이 그 사본을 잡는다 (이름으로 찾기 때문).
+# 경고만 하고 넘어가면 의도와 다른 소스를 빌드·테스트하므로 중단한다 (Issue118, jma 실측:
+# Xcode 재기동 시 상태 복원으로 직전 클론의 문서가 다시 열림).
+# /tmp ↔ /private/tmp 같은 별칭은 실경로로 풀어 비교한다.
+real_dir_path() { (cd "$1" 2>/dev/null && pwd -P) || echo "$1"; }
+require_this_copy() {
     local doc_path="$1"
-    if [[ -n "$doc_path" && "$doc_path" != "$XCODEPROJ" ]]; then
-        echo "[open] ⚠️ Xcode 가 연 $XCODEPROJ_NAME 경로가 다름: $doc_path"
-        echo "[open] ⚠️ 이 스크립트 위치($XCODEPROJ)가 아닌 그 사본이 빌드됨 — 의도와 다르면 그 문서를 닫고 재실행"
-    fi
+    [[ -z "$doc_path" ]] && return 0
+    [[ "$(real_dir_path "$doc_path")" == "$(real_dir_path "$XCODEPROJ")" ]] && return 0
+    echo "[open] ❌ Xcode 에 같은 이름의 다른 사본이 열려 있음: $doc_path"
+    echo "[open] ❌ 이 스크립트의 대상은 $XCODEPROJ — 그대로 진행하면 저 사본을 빌드함"
+    echo "[open] 조치: Xcode 에서 그 문서를 닫고 재실행"
+    return 1
 }
 
 open_project() {
@@ -92,8 +98,8 @@ open_project() {
         probe=$(xcode_probe)
         state="${probe%%|*}"; doc_path="${probe#*|}"
         if [[ "$state" == "true" ]]; then
+            require_this_copy "$doc_path" || return 1
             echo "[open] $XCODEPROJ_NAME 이미 로드됨"
-            warn_if_other_copy "$doc_path"
             return 0
         fi
     else
@@ -109,8 +115,8 @@ open_project() {
         state="${probe%%|*}"; doc_path="${probe#*|}"
         elapsed=$(( SECONDS - started ))
         if [[ "$state" == "true" ]]; then
+            require_this_copy "$doc_path" || return 1
             echo "[open] 로드 완료 (${elapsed}s)"
-            warn_if_other_copy "$doc_path"
             return 0
         fi
         if [[ "$state" == "absent" && $reopened -eq 0 && $elapsed -ge $FWC_XCODE_REOPEN_AFTER ]]; then
