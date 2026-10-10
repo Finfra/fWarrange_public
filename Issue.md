@@ -35,7 +35,8 @@ date: 2026-04-07
 * 목적: 상업 라이선스 판매에 필요한 외부 기여분 재라이선스 권한을 CLA Assistant 전자 서명으로 확보한다(외부 기여 0건인 지금 설치)
 * 상세:
     - 출처: prj6#Issue32 (사용자 지시 2026-10-09 «진행») · 정본 `~/_git/___oracle/_doc_arch/license-profiles.md` §5 «CLA 게이트»
-    - 착수 조건: prj6#Issue32 ②③ 완료(gist 게시·cla-assistant.io 연결) — 그 전에 push 하면 CONTRIBUTING 의 CLA 링크가 빈 페이지다
+    - 착수 조건: prj6#Issue32 ③ 완료(cla-assistant.io 연결) — 그 전에 push 하면 CONTRIBUTING 의 CLA 링크가 빈 페이지다. ② gist 는 게시 완료(https://gist.github.com/nowage/f429eb57e61ca7ad3e34a1481251682e)
+    - ⏸️ 대기 (2026-10-10 사용자 결정): prj6#Issue32 보류 — 트리거 = **이 repo 에 첫 외부 PR 도착**. 그때까지 착수하지 않고, 외부 PR 은 CLA 서명 전 머지 금지
 * 구현 명세:
     - 루트 `CONTRIBUTING.md` = `~/_git/___oracle/data/template/license/CONTRIBUTING.md` 복사 — frontmatter·📄 블록 제거, `{{REPO}}` → `fWarrange_public`
     - README 에 기여 절이 있으면 `CONTRIBUTING.md` 링크 1줄
