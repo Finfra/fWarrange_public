@@ -1271,4 +1271,41 @@ final class SingleInstanceRecheckTests: XCTestCase {
         SingleInstanceGuard.scheduleRechecks(delays: [0.01, 0.05], environment: env)
         wait(for: [done], timeout: 2.0)
     }
+
+    // MARK: - modal-blocks-terminate (Issue131 ②)
+
+    /// Fake process table: who is alive, who was force-terminated.
+    private final class Box {
+        var alive: Set<pid_t>
+        var forced: [pid_t] = []
+        init(alive: Set<pid_t>) { self.alive = alive }
+    }
+
+    /// jma E2E 0/10: an instance showing the accessibility alert (`runModal`) accepts the terminate
+    /// request (`terminate()` → true) but never quits, so both instances stayed and the loser kept
+    /// port 3016. A process still alive after the polite wait must be force-terminated.
+    func testInstanceIgnoringTerminateIsForceTerminated() {
+        let box = Box(alive: [100, 101])
+        let ops = SingleInstanceGuard.TerminationOps(
+            terminate: { pid in if pid == 101 { box.alive.remove(pid) }; return true },
+            forceTerminate: { pid in box.forced.append(pid); box.alive.remove(pid) },
+            isAlive: { box.alive.contains($0) },
+            sleep: { _ in }
+        )
+        let survivors = SingleInstanceGuard.terminateAndWait([100, 101], politeTimeout: 3, ops: ops)
+        XCTAssertEqual(box.forced, [100], "only the instance that ignored the request is forced")
+        XCTAssertEqual(survivors, [])
+    }
+
+    func testPoliteInstancesAreNotForced() {
+        let box = Box(alive: [100])
+        let ops = SingleInstanceGuard.TerminationOps(
+            terminate: { pid in box.alive.remove(pid); return true },
+            forceTerminate: { pid in box.forced.append(pid) },
+            isAlive: { box.alive.contains($0) },
+            sleep: { _ in }
+        )
+        XCTAssertEqual(SingleInstanceGuard.terminateAndWait([100], politeTimeout: 3, ops: ops), [])
+        XCTAssertEqual(box.forced, [])
+    }
 }

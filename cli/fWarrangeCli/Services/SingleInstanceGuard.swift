@@ -53,7 +53,7 @@ enum SingleInstanceGuard {
         case .terminateOthers:
             // 승자 경로: 기존 open-기동 프로세스들을 terminate 하고 자신이 survive.
             logW("[single-instance] launchd-spawned (PID \(myPID)) — 기존 인스턴스 terminate (PIDs: \(pids))")
-            terminate(others, bundleID: bundleID, myPID: myPID)
+            terminate(others)
             return false
         case .exitSelf:
             // 패자 경로: 기존 인스턴스 유지, 자신 exit.
@@ -85,7 +85,7 @@ enum SingleInstanceGuard {
                 terminateOthers: { pids in
                     let others = otherInstances(bundleID: bundleID, myPID: myPID)
                         .filter { pids.contains($0.processIdentifier) }
-                    terminate(others, bundleID: bundleID, myPID: myPID)
+                    terminate(others)
                 },
                 exitSelf: {
                     Logger.shared.flush()
@@ -131,35 +131,66 @@ enum SingleInstanceGuard {
             .filter { $0.processIdentifier != myPID }
     }
 
-    private static func terminate(_ others: [NSRunningApplication], bundleID: String, myPID: pid_t) {
-        for other in others {
-            if !other.terminate() {
-                logW("[single-instance] ⚠️ terminate 요청 실패 PID \(other.processIdentifier) — forceTerminate 시도")
-                other.forceTerminate()
+    private static func terminate(_ others: [NSRunningApplication]) {
+        let apps = Dictionary(others.map { ($0.processIdentifier, $0) }, uniquingKeysWith: { a, _ in a })
+        let ops = TerminationOps(
+            terminate: { apps[$0]?.terminate() ?? true },
+            forceTerminate: { pid in
+                logW("[single-instance] ⚠️ PID \(pid) 가 종료 요청에 응답하지 않음(모달 표시 중 등) — forceTerminate")
+                apps[pid]?.forceTerminate()
+            },
+            // kill(0), not isTerminated — that flag is updated on the run loop, which this wait blocks
+            isAlive: { kill($0, 0) == 0 },
+            sleep: { Thread.sleep(forTimeInterval: $0) }
+        )
+        // REST 포트 3016 bind 경합 방지 — 기존 프로세스가 실제 종료될 때까지 대기 (요청 3초 + 강제 2초).
+        let survivors = terminateAndWait(Array(apps.keys), politeTimeout: 3.0, ops: ops)
+        if survivors.isEmpty {
+            logI("[single-instance] 기존 인스턴스 종료 확인")
+        } else {
+            logW("[single-instance] ⚠️ 강제 종료 뒤에도 남은 인스턴스 (PIDs: \(survivors)) — 포트 충돌 가능")
+        }
+    }
+
+    // MARK: - Termination escalation (Issue131 ②)
+
+    /// Seams for `terminateAndWait` — production wraps NSRunningApplication.
+    struct TerminationOps {
+        var terminate: (pid_t) -> Bool
+        var forceTerminate: (pid_t) -> Void
+        var isAlive: (pid_t) -> Bool
+        var sleep: (TimeInterval) -> Void
+    }
+
+    /// Asks each instance to quit, then force-terminates whoever is still alive after `politeTimeout`.
+    ///
+    /// An instance running a modal alert (the accessibility guide's `runModal`) accepts the request —
+    /// `terminate()` returns true — but does not quit until the alert closes. Relying on the return
+    /// value alone left both instances up (jma E2E 0/10). Returns the PIDs still alive at the end.
+    @discardableResult
+    static func terminateAndWait(_ pids: [pid_t], politeTimeout: TimeInterval, ops: TerminationOps) -> [pid_t] {
+        for pid in pids where !ops.terminate(pid) {
+            ops.forceTerminate(pid)
+        }
+        let step: TimeInterval = 0.1
+        func waitAll(_ timeout: TimeInterval) -> [pid_t] {
+            var waited: TimeInterval = 0
+            while true {
+                let alive = pids.filter(ops.isAlive)
+                if alive.isEmpty || waited >= timeout { return alive }
+                ops.sleep(step)
+                waited += step
             }
         }
-        // REST 포트 3016 bind 경합 방지 — 기존 프로세스가 실제 종료될 때까지 대기 (최대 3초).
-        waitForOthersToExit(bundleID: bundleID, myPID: myPID, timeout: 3.0)
+        let stubborn = waitAll(politeTimeout)
+        guard !stubborn.isEmpty else { return [] }
+        stubborn.forEach(ops.forceTerminate)
+        return waitAll(2.0)
     }
 
     /// Issue95: label 규약(`homebrew.mxcl.*` / `sh.brew.*`)을 여기서 다시 판정하지 않는다.
     /// 규약이 바뀌면 이 판정만 빗나가 중복 인스턴스 승패가 뒤집히므로 단일 지점에 위임한다.
     private static func isLaunchedByLaunchd() -> Bool {
         return BrewServiceSync.isLaunchedByLaunchd()
-    }
-
-    /// 기존 인스턴스들이 실제 사라질 때까지 폴링. 100ms 간격, 최대 `timeout` 초.
-    private static func waitForOthersToExit(bundleID: String, myPID: pid_t, timeout: TimeInterval) {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            let remaining = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
-                .filter { $0.processIdentifier != myPID }
-            if remaining.isEmpty {
-                logI("[single-instance] 기존 인스턴스 종료 확인")
-                return
-            }
-            Thread.sleep(forTimeInterval: 0.1)
-        }
-        logW("[single-instance] ⚠️ 기존 인스턴스 종료 대기 타임아웃 (\(timeout)s) — 포트 충돌 가능")
     }
 }

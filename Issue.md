@@ -81,7 +81,10 @@ date: 2026-04-07
 * 진행 (2026-10-15):
     - ① 재확인 구현 ✅ — `SingleInstanceGuard.decide(…atLaunch:)` 단일 판정(기동·재확인 공용) + `recheck`·`scheduleRechecks`. `AppState` 가 REST 시작 뒤 1·3초에 재확인(테스트 호스트 제외), launchd 승자는 형제 terminate 후 REST 미가동이면 재bind · 재확인 시 open 기동끼리는 더 오래된 PID 에만 양보(둘 다 exit 방지)
     - red: `SingleInstanceRecheckTests` 6건 미구현 컴파일 실패 → green: jma `tdd/run.sh --only unit` 148/148 · 재생목록 #30
-    - ② ⏳ jma 동시 발화 10회 E2E — jma 에 prj16#Issue289 실측용 brew 1.2.0·paidApp 이 떠 있어 설치본 교체 보류(prj16 조율 뒤)
+    - ② E2E 첫 실행(jma, ① 반영 brew local) **0/10** — 매회 2개 공존, 3016 은 open 기동분. 실측: 두 인스턴스 모두 접근성 안내 모달(layer 8) 표시 중이었고, 모달 중인 인스턴스에 `NSRunningApplication.terminate()` 를 보내면 **true 를 돌려주고도 3초 넘게 안 죽음**. 기존 코드는 false 일 때만 `forceTerminate` 해서 launchd 승자의 정리가 무력했다 — 재확인 시점(TOCTOU)보다 이쪽이 주원인
+    - ② 수정: `terminateAndWait(_:politeTimeout:ops:)` — 요청 3초 대기 뒤 살아 있으면 강제 종료(+2초 대기). 생존 판정은 `kill(pid,0)`(`isTerminated` 는 이 대기가 막는 run loop 에서 갱신됨). 기동 판정·재확인 공용 · red(미구현 컴파일 실패) → jma unit 150/150
+    - ② E2E 재실행(jma, `launchctl bootstrap` + `open -n` 동시 발화 10회): **10/10** — 매회 1개 생존·launchd PID 가 3016 LISTEN·brew started. 하네스를 첫 실행(`pkill` TERM + `kickstart -k`)에서 바꿨다: TERM 이 `applicationWillTerminate` 의 `brew services stop` 을 불러 launchd 쪽이 ~9초 늦게 떠 «동시» 가 성립하지 않았음. 새 하네스로 수정 전 빌드를 돌린 기준선은 없음
+    - 끝 상태: `brew services start fwarrange-cli` 로 복원(PID 8655) · 접근성은 재설치로 다시 미승인
 
 # 📗 선택
 
