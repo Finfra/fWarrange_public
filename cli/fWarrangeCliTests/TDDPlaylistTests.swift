@@ -1198,3 +1198,77 @@ final class AppRestarterTests: XCTestCase {
         XCTAssertFalse(body.contains("KeepAlive"), "response must not claim launchd KeepAlive: \(body)")
     }
 }
+
+// MARK: - same-instant-duplicate-recheck (Issue131)
+
+/// Issue131: two launch paths that fire in the same instant (`launchctl kickstart` + `open -a`)
+/// both pass the launch-time check because neither is registered in NSRunningApplication yet
+/// (TOCTOU). A delayed recheck runs the same rule again: the launchd-spawned instance terminates
+/// the others and rebinds REST; a non-launchd instance yields only to an older one so two `open`
+/// launches never both exit.
+final class SingleInstanceRecheckTests: XCTestCase {
+
+    private var events: [String] = []
+
+    override func setUp() {
+        events = []
+    }
+
+    private func environment(launchd: Bool, myPID: pid_t, others: [pid_t]) -> SingleInstanceGuard.RecheckEnvironment {
+        SingleInstanceGuard.RecheckEnvironment(
+            isLaunchedByLaunchd: { launchd },
+            myPID: myPID,
+            otherPIDs: { others },
+            terminateOthers: { [unowned self] pids in events.append("terminate \(pids.map(String.init).joined(separator: ","))") },
+            exitSelf: { [unowned self] in events.append("exit") },
+            rebindREST: { [unowned self] in events.append("rebind") }
+        )
+    }
+
+    /// The launch-time rule is unchanged: others seen at launch are older, so a non-launchd
+    /// instance always yields and a launchd one always wins.
+    func testLaunchDecisionKeepsExistingRule() {
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: false, myPID: 50, otherPIDs: [], atLaunch: true), .stay)
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: true, myPID: 50, otherPIDs: [], atLaunch: true), .stay)
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: true, myPID: 50, otherPIDs: [60, 70], atLaunch: true), .terminateOthers)
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: false, myPID: 50, otherPIDs: [60], atLaunch: true), .exitSelf)
+    }
+
+    /// On recheck a non-launchd instance yields only to an older PID — of two same-instant `open`
+    /// launches exactly one survives, never zero.
+    func testRecheckNonLaunchdYieldsOnlyToOlderInstance() {
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: false, myPID: 200, otherPIDs: [100], atLaunch: false), .exitSelf)
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: false, myPID: 100, otherPIDs: [200], atLaunch: false), .stay)
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: true, myPID: 300, otherPIDs: [100, 200], atLaunch: false), .terminateOthers)
+    }
+
+    /// The launchd winner terminates the duplicates first, then rebinds REST — the loser may have
+    /// held port 3016 (jma repro: launchd instance alive without REST).
+    func testRecheckWinnerTerminatesOthersThenRebindsREST() {
+        let decision = SingleInstanceGuard.recheck(environment(launchd: true, myPID: 300, others: [100, 101]))
+        XCTAssertEqual(decision, .terminateOthers)
+        XCTAssertEqual(events, ["terminate 100,101", "rebind"])
+    }
+
+    func testRecheckLoserExitsWithoutTouchingOthers() {
+        let decision = SingleInstanceGuard.recheck(environment(launchd: false, myPID: 200, others: [100]))
+        XCTAssertEqual(decision, .exitSelf)
+        XCTAssertEqual(events, ["exit"])
+    }
+
+    func testRecheckAloneDoesNothing() {
+        let decision = SingleInstanceGuard.recheck(environment(launchd: true, myPID: 300, others: []))
+        XCTAssertEqual(decision, .stay)
+        XCTAssertEqual(events, [])
+    }
+
+    /// One recheck runs per delay (a late registration is still caught by the later one).
+    func testScheduledRechecksRunOncePerDelay() {
+        let done = expectation(description: "two rechecks")
+        done.expectedFulfillmentCount = 2
+        var env = environment(launchd: true, myPID: 300, others: [])
+        env.otherPIDs = { done.fulfill(); return [] }
+        SingleInstanceGuard.scheduleRechecks(delays: [0.01, 0.05], environment: env)
+        wait(for: [done], timeout: 2.0)
+    }
+}

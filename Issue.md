@@ -20,13 +20,10 @@ date: 2026-04-07
 | Issue72_6 — cliApp(non-sandbox)에서 CGS 계열 비공개 API 사용 합의 (2026-05-16)        | Issue72_6 본문                                                             |
 
 # 🌱 이슈후보
-1. **[Observer 패턴] 배포 workflow 에 3+ dry-run 검증 단계 반복 패턴 — instinct 파일 생성 대기** (session d2d223aa-dfa6-4be8-9b7b-dd59c70126d2 관찰)
-   - 패턴: `fwc-deploy-brew.sh` 와 `fpm-deploy-record.sh` 모두 `--dry-run` 플래그 사용 + 다단계 Step 0~8 검증 반복
-   - 의도: `_public` 의 instinct_deploy-dry-run-validation-gate.md + instinct_deploy-multistage-validation.md 작성
-   - 장애: 타 prj memory 경로에 대한 쓰기 권한 제약(위임 범위) — Issue.md 에 이슈 등록만 수행, memory 파일 작성은 사용자 몫으로 미룸
 1. [L10n] 접근성 안내 alert(`AccessibilityGuidePresenter.show`) 문구가 한국어 하드코딩 — en 시스템(jma)에서도 «Accessibility 권한 필요» 한국어 본문. paidApp 1.2.0 부터 권한 안내를 cliApp 만 하므로(prj16#Issue289) 노출 빈도가 오른다 (prj16#Issue289 4단계 실측, 캡처 `prj16 _doc_work/_release/v1.2.0/ax-guidance-check/02_en_cliapp-own-guide.png`)
 
 # 🚧 진행중
+
 # 📕 중요
 
 ## Issue129: [Version] cliApp 1.2.0 출고 — paidApp 1.2.0 App Store 재제출 락스텝 (등록: 2026-10-15, 출처: prj16#Issue289 사용자 지시)
@@ -49,17 +46,6 @@ date: 2026-04-07
     - ⚠️ 128 의 CLA 링크는 prj6#Issue32 ③(cla-assistant.io 연결) 미완이라 아직 빈 페이지일 수 있다 — ③ push 전 확인
 
 # 📙 일반
-## Issue133: [Test] XCTest 호스트가 실제 접근성 안내 모달을 띄워 `AccessibilityGuideSchedulingTests` 2건이 환경 따라 red (등록: 2026-10-15, 출처: Issue132 러너 jma 실행)
-* 목적: 테스트 결과가 jma 의 TCC 상태에 좌우되지 않게 한다 — 접근성 미승인 상태(prj16 실측용 TCC 리셋)에서 unit 단계가 4 failures 로 떨어졌다
-* 상세:
-    - 증상: jma `tdd/run.sh --quick` unit 139 중 4 failures — `testGuideIsNotStackedWhileOneIsUp`·`testGuideShowsAgainAfterClosing` 의 `presented` 가 0. 같은 날 12:28 Issue130 실행(승인 상태)은 139/139
-    - 실측: 단독 실행(`-only-testing:…/AccessibilityGuideSchedulingTests`) 중 CGWindowList 에 테스트 호스트 PID 소유 layer 8(modal panel)·260×301 창 — 실제 «Accessibility 권한 필요» NSAlert
-    - 원인: `AppState` 가 미승인이면 XCTest 호스트에서도 `showAccessibilityGuide()` 를 부른다(목록 등록 요청만 XCTest 가드). 진짜 alert 가 `isPresenting` 을 쥔 채 modal loop 를 돌고, 테스트의 `show()` 는 그 안에서 «중복 억제» 로 버려진다
-* 구현 명세:
-    - 미승인 기동 판정을 `AccessibilityBootListing.boot(isGranted:isTestHost:requestListing:showGuide:)` 한 곳으로 모은다 — 테스트 호스트면 목록 요청·안내 모두 하지 않음
-    - XCTest 호스트 판정은 `Env.isTestHost` 단일 지점(`XCTestConfigurationFilePath` 문자열 산재 3곳 통일)
-    - 검증: 판정 단위 테스트 red→green · jma 미승인 상태에서 unit green
-
 ## Issue132: [TDD] 통합 test 러너 신설 — `jexec test` 가 재생목록을 한 번에 돌게 (등록: 2026-10-15, 출처: prj5#Issue127 · 이슈후보 승격)
 * 목적: `data/exec.yml` 에 `test:` 명령이 없어 `jexec test` 가 rc 2 로 거부되고 `status: draft` 에 머문다 — `tdd/playlist.md` 를 한 번에 도는 러너를 만들어 등록한다
 * 상세:
@@ -71,6 +57,10 @@ date: 2026-04-07
     - `--quick` = 설치본을 건드리지 않는 단계만(셀프테스트·XCTest·publish dry-run 회귀). `fwc-test.sh` 는 full 에서만
     - red 먼저: 러너 selftest 가 실패 단계 전파·워치독·stdin 격리를 잡는지(변이로 red 확인)
     - `data/exec.yml`(로컬 전용) `test: bash tdd/run.sh` · `lock: self` 등록 → jma 실 `jexec test` green 확인 뒤 `status: active`
+* 진행 (2026-10-15):
+    - ① 러너 ✅ `cc6a2e2` — selftest 20건(변이 4종 red 확인) · `data/exec.yml` `test:`·`lock: self`·`timeout: 4500` 등록(status draft 유지)
+    - ② jma `--quick` 첫 실행이 실회귀를 잡음 → Issue133(테스트 호스트가 실제 접근성 안내 모달을 띄움, `eed1015`) 분리·해결 → 재실행 `PLAYLIST RESULT: all green (3/3)` (unit 148/148)
+    - ③ ⏳ full `jexec test`(all-clear-e2e = `fwc-test.sh`, 설치본 교체) — prj16#Issue289 가 jma 설치본을 쓰는 중이라 보류. green 뒤 `status: active`
 
 ## Issue131: [Lifecycle] 같은 순간 뜬 두 인스턴스를 `SingleInstanceGuard` 가 못 걸러 둘 다 생존 — launchd 쪽은 3016 미점유 (등록: 2026-10-15, 출처: prj16#Issue290 jma 실측 — prj16 세션 등록)
 * 목적: 두 기동 경로가 같은 초에 겹치면 인스턴스 2개가 공존한다 — 메뉴바 아이콘·접근성 안내가 2벌, launchd 승자는 REST 없이 살아 있고 패자가 포트를 쥐어 «하나 정리하면 REST 사망»
@@ -81,10 +71,28 @@ date: 2026-04-07
 * 구현 명세:
     - launchd 승자 판정을 REST bind 전·후로 재확인(ex) 기동 후 짧은 지연 재검사, 또는 3016 bind 실패 시 «포트 보유자가 같은 Bundle ID 면 terminate 후 재bind») — 판정 단일 지점은 `SingleInstanceGuard` 유지
     - 검증(jma): `open` 과 `launchctl kickstart` 를 같은 순간 발화 10회 — 매회 1개 생존·launchd 쪽이 3016 LISTEN·brew started
+* 진행 (2026-10-15):
+    - ① 재확인 구현 ✅ — `SingleInstanceGuard.decide(…atLaunch:)` 단일 판정(기동·재확인 공용) + `recheck`·`scheduleRechecks`. `AppState` 가 REST 시작 뒤 1·3초에 재확인(테스트 호스트 제외), launchd 승자는 형제 terminate 후 REST 미가동이면 재bind · 재확인 시 open 기동끼리는 더 오래된 PID 에만 양보(둘 다 exit 방지)
+    - red: `SingleInstanceRecheckTests` 6건 미구현 컴파일 실패 → green: jma `tdd/run.sh --only unit` 148/148 · 재생목록 #30
+    - ② ⏳ jma 동시 발화 10회 E2E — jma 에 prj16#Issue289 실측용 brew 1.2.0·paidApp 이 떠 있어 설치본 교체 보류(prj16 조율 뒤)
 
 # 📗 선택
 
 # ✅ 완료
+
+## Issue133: [Test] XCTest 호스트가 실제 접근성 안내 모달을 띄워 `AccessibilityGuideSchedulingTests` 2건이 환경 따라 red (등록: 2026-10-15, 완료: 2026-10-15, Hash: eed1015, 출처: Issue132 러너 jma 실행) ✅
+* 목적: 테스트 결과가 jma 의 TCC 상태에 좌우되지 않게 한다 — 접근성 미승인 상태(prj16 실측용 TCC 리셋)에서 unit 단계가 4 failures 로 떨어졌다
+* 상세:
+    - 증상: jma `tdd/run.sh --quick` unit 139 중 4 failures — `testGuideIsNotStackedWhileOneIsUp`·`testGuideShowsAgainAfterClosing` 의 `presented` 가 0. 같은 날 12:28 Issue130 실행(승인 상태)은 139/139
+    - 실측: 단독 실행(`-only-testing:…/AccessibilityGuideSchedulingTests`) 중 CGWindowList 에 테스트 호스트 PID 소유 layer 8(modal panel)·260×301 창 — 실제 «Accessibility 권한 필요» NSAlert
+    - 원인: `AppState` 가 미승인이면 XCTest 호스트에서도 `showAccessibilityGuide()` 를 부른다(목록 등록 요청만 XCTest 가드). 진짜 alert 가 `isPresenting` 을 쥔 채 modal loop 를 돌고, 테스트의 `show()` 는 그 안에서 «중복 억제» 로 버려진다
+* 구현 명세:
+    - 미승인 기동 판정을 `AccessibilityBootListing.boot(isGranted:isTestHost:requestListing:showGuide:)` 한 곳으로 모은다 — 테스트 호스트면 목록 요청·안내 모두 하지 않음
+    - XCTest 호스트 판정은 `Env.isTestHost` 단일 지점(`XCTestConfigurationFilePath` 문자열 산재 3곳 통일)
+    - 검증: 판정 단위 테스트 red→green · jma 미승인 상태에서 unit green
+* 결과:
+    - red: `AccessibilityBootListing.boot` 미구현 컴파일 실패 → green: jma(접근성 미승인 유지) `tdd/run.sh --only unit` 142/142, `AccessibilityGuideSchedulingTests` 2건 포함 통과
+    - 판정 3곳(`fWarrangeCliApp`·`AppState`·`BrewServiceSync`)이 `Env.isTestHost` 하나를 본다 · 재생목록 #29 ✅ jma
 
 ## Issue127: [Bug] 설정 공장 초기화가 단축키 4종을 지우고 되돌리기 ⌃⌘F7 만 남김 (등록: 2026-10-09, 완료: 2026-10-15, Hash: b4fc29e) ✅
 * 목적: `resetToDefaults()` 가 `AppSettings.defaults` 를 저장하는데, 그 기본값은 save·restoreDefault·restoreLast·showMainWindow 가 `nil`(Issue61 «yml 에 적힌 것만 등록») · undo 만 `⌃⌘F7`(Issue98). 그래서 초기화 후 단축키가 시드(⌘F7 계열)와 정반대가 됨

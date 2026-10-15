@@ -491,9 +491,23 @@ final class AppState {
         self.autoCaptureCoordinator = coordinator
 
         // REST 서버 시작 (항상 활성화, FWARRANGE_PORT env 우선)
-        restServer.start(port: Env.port ?? UInt16(settings.restServerPort ?? 3016))
+        let restPort = Env.port ?? UInt16(settings.restServerPort ?? 3016)
+        restServer.start(port: restPort)
         isRunning = true
         startTime = Date()
+
+        // Issue131: 같은 순간 뜬 형제 인스턴스는 기동 판정(SingleInstanceGuard) 때 아직 안 보인다(TOCTOU).
+        // 1·3초 뒤 같은 규칙으로 재확인 — launchd 승자는 형제를 정리하고 REST 를 다시 bind 한다.
+        if !Env.isTestHost {
+            SingleInstanceGuard.scheduleRechecks(
+                delays: [1.0, 3.0],
+                environment: .live(rebindREST: { [weak self] in
+                    guard let self, !self.restServer.isRunning else { return }
+                    logI("[single-instance] REST 재bind — 포트 \(restPort)")
+                    self.restServer.start(port: restPort)
+                })
+            )
+        }
 
         // Issue39 매트릭스: app start × brew=stopped → brew services start 호출.
         // launchd 기동 / 옵트아웃 / 이미 로드 / brew·formula 미설치는 내부에서 skip.
