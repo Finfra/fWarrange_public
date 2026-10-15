@@ -24,22 +24,6 @@ date: 2026-04-07
 
 # 🚧 진행중
 
-## Issue135: [Lifecycle] 재부팅 뒤 cliApp 이 하나도 안 뜸 — 중복으로 종료되는 형제가 종료 훅에서 `brew services stop` 을 불러 승자(launchd 인스턴스)까지 내림 (등록: 2026-10-15, 출처: jma 재부팅 실측)
-* 목적: 재부팅·로그인 직후 paidApp 이 띄운 cliApp 과 launchd 인스턴스가 겹쳐도 서비스 하나가 살아남게 한다. 지금은 매 재부팅마다 cliApp 이 사라질 수 있다
-* 상세:
-    - jma 재부팅(20:51) 실측. paidApp(로그인 항목) 이 먼저 떠 cliApp 을 `open` 으로 띄운다(957, 20:52:04). 이때 서비스는 loaded(pending spawn) 라 `onAppStart` 가 handoff 를 skip 하고 primary 로 남는다
-    - 20:52:48 launchd 가 RunAtLoad 인스턴스(2565) spawn → Issue131 규칙대로 형제 957 종료 → 957 의 `applicationWillTerminate` 가 `brew services stop fwarrange-cli --keep`(Issue51) → 20:52:57 `removing service: sh.brew.fwarrange-cli` — 승자까지 내려가 **cliApp 0개·brew none·REST 000**. plist 는 남아 있다
-    - 종료 훅은 «사용자가 앱을 끄면 brew 도 끈다» 는 동기화인데, 형제 정리로 종료되는 경우를 구분하지 않는다
-    - 재현(jma, 869d6e6 설치본): handoff 를 opt-out 키로만 끈 `open` 인스턴스 → `launchctl bootstrap` → 25초 뒤 프로세스 0·`Could not find service`·brew none·REST 000
-* 구현 명세:
-    - 종료 시 brew 동기화 판정을 한 곳으로 모은다 — 다른 cliApp 인스턴스가 살아 있으면(=형제 정리로 종료되는 쪽) `brew services stop` 을 하지 않는다. `applicationWillTerminate`·메뉴 «종료»(`onAppStop`) 두 경로가 같은 판정을 쓴다
-    - 검증: XCTest(형제 생존 시 nil·단독 종료 시 기존 인자) red→green · jma 재현 스크립트 수정본 green(launchd 인스턴스 1개·started·REST 200) · 메뉴 종료 단독 시 brew stop 유지 확인
-* 결과:
-    - 판정 단일 지점 `BrewServiceSync.shouldSyncStopOnTerminate(siblingAlive:)` — `terminateStopArguments`(종료 훅)·`onAppStop`(메뉴 «종료») 가 같이 쓴다
-    - 1차 수정(`NSRunningApplication` 으로 형제 판정)은 jma green **실패** — 승자가 spawn 50ms 뒤에 형제를 종료해 LaunchServices 가 승자를 아직 목록에 올리지 않았다. 통합 로그 `bootout initiated by: launchctl ← ruby ← fWarrangeCli[open pid]` 로 확인. 2차: `launchctl list` 의 서비스 PID ≠ 나 도 형제로 본다(`isSiblingAlive`·`servicePID(fromLaunchctlList:)`)
-    - jma: unit 154/154 · `fwc-deploy-brew.sh local` ALL CLEAR · 재현 6회(1회 + 반복 5회) 모두 launchd 인스턴스 1개·started·REST 200 · REST `cli/quit` 단독 종료 → brew none·plist 유지(Issue51 `--keep` 동작 보존) · 끝 상태 `brew services start` 로 복원
-    - 재생목록 #31 `retired-duplicate-keeps-brew` ✅ jma
-
 # 📕 중요
 
 ## Issue129: [Version] cliApp 1.2.0 출고 — paidApp 1.2.0 App Store 재제출 락스텝 (등록: 2026-10-15, 출처: prj16#Issue289 사용자 지시)
@@ -84,6 +68,22 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue135: [Lifecycle] 재부팅 뒤 cliApp 이 하나도 안 뜸 — 중복으로 종료되는 형제가 종료 훅에서 `brew services stop` 을 불러 승자(launchd 인스턴스)까지 내림 (등록: 2026-10-15, 완료: 2026-10-15, Hash: 89297bf, 출처: jma 재부팅 실측) ✅
+* 목적: 재부팅·로그인 직후 paidApp 이 띄운 cliApp 과 launchd 인스턴스가 겹쳐도 서비스 하나가 살아남게 한다. 지금은 매 재부팅마다 cliApp 이 사라질 수 있다
+* 상세:
+    - jma 재부팅(20:51) 실측. paidApp(로그인 항목) 이 먼저 떠 cliApp 을 `open` 으로 띄운다(957, 20:52:04). 이때 서비스는 loaded(pending spawn) 라 `onAppStart` 가 handoff 를 skip 하고 primary 로 남는다
+    - 20:52:48 launchd 가 RunAtLoad 인스턴스(2565) spawn → Issue131 규칙대로 형제 957 종료 → 957 의 `applicationWillTerminate` 가 `brew services stop fwarrange-cli --keep`(Issue51) → 20:52:57 `removing service: sh.brew.fwarrange-cli` — 승자까지 내려가 **cliApp 0개·brew none·REST 000**. plist 는 남아 있다
+    - 종료 훅은 «사용자가 앱을 끄면 brew 도 끈다» 는 동기화인데, 형제 정리로 종료되는 경우를 구분하지 않는다
+    - 재현(jma, 869d6e6 설치본): handoff 를 opt-out 키로만 끈 `open` 인스턴스 → `launchctl bootstrap` → 25초 뒤 프로세스 0·`Could not find service`·brew none·REST 000
+* 구현 명세:
+    - 종료 시 brew 동기화 판정을 한 곳으로 모은다 — 다른 cliApp 인스턴스가 살아 있으면(=형제 정리로 종료되는 쪽) `brew services stop` 을 하지 않는다. `applicationWillTerminate`·메뉴 «종료»(`onAppStop`) 두 경로가 같은 판정을 쓴다
+    - 검증: XCTest(형제 생존 시 nil·단독 종료 시 기존 인자) red→green · jma 재현 스크립트 수정본 green(launchd 인스턴스 1개·started·REST 200) · 메뉴 종료 단독 시 brew stop 유지 확인
+* 결과:
+    - 판정 단일 지점 `BrewServiceSync.shouldSyncStopOnTerminate(siblingAlive:)` — `terminateStopArguments`(종료 훅)·`onAppStop`(메뉴 «종료») 가 같이 쓴다
+    - 1차 수정(`NSRunningApplication` 으로 형제 판정)은 jma green **실패** — 승자가 spawn 50ms 뒤에 형제를 종료해 LaunchServices 가 승자를 아직 목록에 올리지 않았다. 통합 로그 `bootout initiated by: launchctl ← ruby ← fWarrangeCli[open pid]` 로 확인. 2차: `launchctl list` 의 서비스 PID ≠ 나 도 형제로 본다(`isSiblingAlive`·`servicePID(fromLaunchctlList:)`)
+    - jma: unit 154/154 · `fwc-deploy-brew.sh local` ALL CLEAR · 재현 6회(1회 + 반복 5회) 모두 launchd 인스턴스 1개·started·REST 200 · REST `cli/quit` 단독 종료 → brew none·plist 유지(Issue51 `--keep` 동작 보존) · 끝 상태 `brew services start` 로 복원
+    - 재생목록 #31 `retired-duplicate-keeps-brew` ✅ jma
 
 ## Issue131: [Lifecycle] 같은 순간 뜬 두 인스턴스를 `SingleInstanceGuard` 가 못 걸러 둘 다 생존 — launchd 쪽은 3016 미점유 (등록: 2026-10-15, 완료: 2026-10-15, Hash: fc7ea29, 869d6e6, 출처: prj16#Issue290 jma 실측 — prj16 세션 등록) ✅
 * 목적: 두 기동 경로가 같은 초에 겹치면 인스턴스 2개가 공존한다 — 메뉴바 아이콘·접근성 안내가 2벌, launchd 승자는 REST 없이 살아 있고 패자가 포트를 쥐어 «하나 정리하면 REST 사망»
