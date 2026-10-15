@@ -874,6 +874,40 @@ final class BrewHandoffTests: XCTestCase {
         XCTAssertFalse(events.contains("exit"))
     }
 
+    /// Issue137: a Debug build run from DerivedData (all-clear, /run) handed itself off to the brew
+    /// service — launchd then ran the installed Release binary, so the suite tested the wrong app and
+    /// REST went silent during the swap (jma full run: API 19-25 empty). Hand off only when launchd
+    /// would run this very binary.
+    func testForeignBinaryDoesNotHandOff() {
+        var env = environment(formulaInstalled: true, startStatus: 0)
+        env.isServiceBinary = { [unowned self] _ in events.append("same-binary?"); return false }
+
+        let outcome = BrewServiceSync.onAppStart(env)
+
+        XCTAssertEqual(outcome, .skipped)
+        XCTAssertEqual(events, ["formula?", "same-binary?"], "no brew services start, no exit")
+    }
+
+    /// The installed app reached through a symlink (/Applications/_nowage_app → brew opt → Cellar)
+    /// is the service binary; another copy of the bundle is not.
+    func testServiceBinaryComparesResolvedBundlePaths() throws {
+        let cellar = tmpDir.appendingPathComponent("Cellar/fwarrange-cli/1.2.0/fWarrangeCli.app")
+        let other = tmpDir.appendingPathComponent("DerivedData/Debug/fWarrangeCli.app")
+        try FileManager.default.createDirectory(at: cellar, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: other, withIntermediateDirectories: true)
+        let opt = tmpDir.appendingPathComponent("opt/fwarrange-cli")
+        try FileManager.default.createDirectory(at: opt.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: opt, withDestinationURL: cellar.deletingLastPathComponent())
+        let appLink = tmpDir.appendingPathComponent("Applications/fWarrangeCli.app")
+        try FileManager.default.createDirectory(at: appLink.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: appLink, withDestinationURL: opt.appendingPathComponent("fWarrangeCli.app"))
+
+        let service = opt.appendingPathComponent("fWarrangeCli.app").path
+        XCTAssertTrue(BrewServiceSync.isSameBundle(cellar.path, service))
+        XCTAssertTrue(BrewServiceSync.isSameBundle(appLink.path, service))
+        XCTAssertFalse(BrewServiceSync.isSameBundle(other.path, service))
+    }
+
     /// Formula present but `brew services start` fails (e.g. untrusted tap).
     func testFailedServiceStartKeepsProcessAsPrimary() {
         let outcome = BrewServiceSync.onAppStart(environment(formulaInstalled: true, startStatus: 1))

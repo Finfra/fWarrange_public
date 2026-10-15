@@ -61,6 +61,8 @@ enum BrewServiceSync {
         var exitProcess: () -> Void
         /// XCTest host process — it must never touch the real brew service (Issue106)
         var isTestHost: () -> Bool = { false }
+        /// True when launchd would run this very binary for the service (Issue137)
+        var isServiceBinary: (String) -> Bool = { _ in true }
 
         static let live = StartEnvironment(
             optOut: { UserDefaults.standard.object(forKey: optOutKey) as? Bool },
@@ -71,7 +73,8 @@ enum BrewServiceSync {
             startService: { runCommandWithStatus($0, args: ["services", "start", formulaName]) },
             flushLog: { Logger.shared.flush() },
             exitProcess: { Foundation.exit(0) },
-            isTestHost: { Env.isTestHost }
+            isTestHost: { Env.isTestHost },
+            isServiceBinary: { BrewServiceSync.isSameBundle(Bundle.main.bundlePath, serviceAppPath(brewPath: $0)) }
         )
     }
 
@@ -108,6 +111,8 @@ enum BrewServiceSync {
     /// 3. `launchctl list` 에 이미 로드됨 — brew state 이미 `started`
     /// 4. brew 바이너리 미존재
     /// 5. formula 미설치 — launchd 가 띄울 서비스 실행 파일이 없다 (Issue109: README 소스 빌드)
+    /// 6. this is not the service binary — a Debug build (DerivedData) handing off would make launchd
+    ///    run the installed Release app instead (Issue137: all-clear tested Release, REST silent mid-swap)
     ///
     /// open/심링크 경로에서 brew=stopped 이면 `performHandoffStart()` 로 위임 후 exit.
     /// 위임이 실패하면 exit 하지 않고 `.keptPrimary` 를 반환한다.
@@ -141,6 +146,11 @@ enum BrewServiceSync {
 
         guard env.isFormulaInstalled(brewPath) else {
             logI("[brew-sync] onAppStart skip — \(formulaName) formula 미설치 (brew 서비스로 승계 불가)")
+            return .skipped
+        }
+
+        guard env.isServiceBinary(brewPath) else {
+            logI("[brew-sync] onAppStart skip — 이 실행 파일은 \(formulaName) 서비스 바이너리가 아님 (Debug 빌드 등, 위임하면 다른 앱이 뜸)")
             return .skipped
         }
 
@@ -301,12 +311,26 @@ enum BrewServiceSync {
     /// Formula `service` 블록의 `run` 경로(`{prefix}/opt/{formula}/fWarrangeCli.app/...`)를 그대로 본다.
     /// `brew list` 는 기동 경로의 메인 스레드에서 Ruby 를 한 번 더 띄우므로 파일 판정으로 대신한다.
     static func isFormulaInstalled(brewPath: String) -> Bool {
-        let prefix = URL(fileURLWithPath: brewPath)
+        let executable = URL(fileURLWithPath: serviceAppPath(brewPath: brewPath))
+            .appendingPathComponent("Contents/MacOS/fWarrangeCli")
+        return FileManager.default.isExecutableFile(atPath: executable.path)
+    }
+
+    /// `{prefix}/opt/fwarrange-cli/fWarrangeCli.app` — the bundle launchd runs for the service.
+    static func serviceAppPath(brewPath: String) -> String {
+        URL(fileURLWithPath: brewPath)
             .deletingLastPathComponent()   // bin
             .deletingLastPathComponent()   // {prefix}
-        let executable = prefix
-            .appendingPathComponent("opt/\(formulaName)/fWarrangeCli.app/Contents/MacOS/fWarrangeCli")
-        return FileManager.default.isExecutableFile(atPath: executable.path)
+            .appendingPathComponent("opt/\(formulaName)/fWarrangeCli.app")
+            .path
+    }
+
+    /// Same bundle on disk once symlinks are followed (/Applications link → opt → Cellar) (Issue137).
+    static func isSameBundle(_ a: String, _ b: String) -> Bool {
+        func resolved(_ path: String) -> String {
+            URL(fileURLWithPath: path).resolvingSymlinksInPath().standardizedFileURL.path
+        }
+        return resolved(a) == resolved(b)
     }
 
     static func findBrewPath() -> String? {
