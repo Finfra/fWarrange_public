@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 133
+* Issue HWM: 134
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -46,6 +46,13 @@ date: 2026-04-07
     - ⚠️ 128 의 CLA 링크는 prj6#Issue32 ③(cla-assistant.io 연결) 미완이라 아직 빈 페이지일 수 있다 — ③ push 전 확인
 
 # 📙 일반
+## Issue134: [Test] API 테스트 20(layout-detail)이 앞선 실행이 남긴 `testCapture` 에 기대 — 깨끗한 데이터 폴더(jma)에서 404 (등록: 2026-10-15, 출처: Issue132 full `jexec test` jma)
+* 목적: all-clear-e2e 가 머신의 과거 데이터에 좌우되지 않게 한다
+* 상세:
+    - 20 은 24(capture)보다 먼저 돈다. `testCapture` 는 24 가 만들고 `fwc-test.sh` Step 8 스냅샷 복원이 되돌리므로, 그 레이아웃이 원래 데이터에 없던 머신에서는 매번 404 — jm4 는 과거 수동 캡처가 남아 있어 가려졌다
+* 구현 명세:
+    - 인자 없으면 21·22 처럼 자체 픽스처(`_apitest_detail`) 캡처 → 조회 → 삭제. 인자 주면 기존처럼 그 이름 조회
+    - 검증(jma): 기존 호출 404 재현 → 수정본 `data.name=_apitest_detail` · 정리 후 잔존 0
 ## Issue132: [TDD] 통합 test 러너 신설 — `jexec test` 가 재생목록을 한 번에 돌게 (등록: 2026-10-15, 출처: prj5#Issue127 · 이슈후보 승격)
 * 목적: `data/exec.yml` 에 `test:` 명령이 없어 `jexec test` 가 rc 2 로 거부되고 `status: draft` 에 머문다 — `tdd/playlist.md` 를 한 번에 도는 러너를 만들어 등록한다
 * 상세:
