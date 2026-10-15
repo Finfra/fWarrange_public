@@ -71,7 +71,7 @@ enum BrewServiceSync {
             startService: { runCommandWithStatus($0, args: ["services", "start", formulaName]) },
             flushLog: { Logger.shared.flush() },
             exitProcess: { Foundation.exit(0) },
-            isTestHost: { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
+            isTestHost: { Env.isTestHost }
         )
     }
 

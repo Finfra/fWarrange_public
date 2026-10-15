@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 132
+* Issue HWM: 133
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -49,6 +49,17 @@ date: 2026-04-07
     - ⚠️ 128 의 CLA 링크는 prj6#Issue32 ③(cla-assistant.io 연결) 미완이라 아직 빈 페이지일 수 있다 — ③ push 전 확인
 
 # 📙 일반
+## Issue133: [Test] XCTest 호스트가 실제 접근성 안내 모달을 띄워 `AccessibilityGuideSchedulingTests` 2건이 환경 따라 red (등록: 2026-10-15, 출처: Issue132 러너 jma 실행)
+* 목적: 테스트 결과가 jma 의 TCC 상태에 좌우되지 않게 한다 — 접근성 미승인 상태(prj16 실측용 TCC 리셋)에서 unit 단계가 4 failures 로 떨어졌다
+* 상세:
+    - 증상: jma `tdd/run.sh --quick` unit 139 중 4 failures — `testGuideIsNotStackedWhileOneIsUp`·`testGuideShowsAgainAfterClosing` 의 `presented` 가 0. 같은 날 12:28 Issue130 실행(승인 상태)은 139/139
+    - 실측: 단독 실행(`-only-testing:…/AccessibilityGuideSchedulingTests`) 중 CGWindowList 에 테스트 호스트 PID 소유 layer 8(modal panel)·260×301 창 — 실제 «Accessibility 권한 필요» NSAlert
+    - 원인: `AppState` 가 미승인이면 XCTest 호스트에서도 `showAccessibilityGuide()` 를 부른다(목록 등록 요청만 XCTest 가드). 진짜 alert 가 `isPresenting` 을 쥔 채 modal loop 를 돌고, 테스트의 `show()` 는 그 안에서 «중복 억제» 로 버려진다
+* 구현 명세:
+    - 미승인 기동 판정을 `AccessibilityBootListing.boot(isGranted:isTestHost:requestListing:showGuide:)` 한 곳으로 모은다 — 테스트 호스트면 목록 요청·안내 모두 하지 않음
+    - XCTest 호스트 판정은 `Env.isTestHost` 단일 지점(`XCTestConfigurationFilePath` 문자열 산재 3곳 통일)
+    - 검증: 판정 단위 테스트 red→green · jma 미승인 상태에서 unit green
+
 ## Issue132: [TDD] 통합 test 러너 신설 — `jexec test` 가 재생목록을 한 번에 돌게 (등록: 2026-10-15, 출처: prj5#Issue127 · 이슈후보 승격)
 * 목적: `data/exec.yml` 에 `test:` 명령이 없어 `jexec test` 가 rc 2 로 거부되고 `status: draft` 에 머문다 — `tdd/playlist.md` 를 한 번에 도는 러너를 만들어 등록한다
 * 상세:

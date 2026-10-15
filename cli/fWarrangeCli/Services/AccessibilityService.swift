@@ -34,6 +34,16 @@ enum AccessibilityBootListing {
         return true
     }
 
+    /// Ungranted-boot decision in one place (Issue133): ask for listing, then show the guide.
+    /// The XCTest host does neither — a real modal guide holds `AccessibilityGuidePresenter`'s
+    /// guard and swallows the guide tests' own `show()` calls.
+    static func boot(isGranted: () -> Bool, isTestHost: Bool,
+                     requestListing: () -> Void, showGuide: () -> Void) {
+        guard !isTestHost, !isGranted() else { return }
+        requestListing()
+        showGuide()
+    }
+
     /// 시스템 권한 요청 — macOS 가 앱을 목록에 추가하고 안내 창을 띄운다.
     static func requestSystemListing() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]

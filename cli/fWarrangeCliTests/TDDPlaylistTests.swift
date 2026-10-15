@@ -672,6 +672,34 @@ final class AccessibilityBootListingTests: XCTestCase {
         XCTAssertFalse(requested)
         XCTAssertEqual(requests, 0)
     }
+
+    // MARK: - #29 test-host-no-a11y-guide (Issue133)
+
+    private func bootEvents(granted: Bool, testHost: Bool) -> [String] {
+        var events: [String] = []
+        AccessibilityBootListing.boot(
+            isGranted: { granted },
+            isTestHost: testHost,
+            requestListing: { events.append("listing") },
+            showGuide: { events.append("guide") }
+        )
+        return events
+    }
+
+    /// An ungranted boot asks for listing and shows the guide — in a real launch.
+    func testUngrantedRealBootListsAndGuides() {
+        XCTAssertEqual(bootEvents(granted: false, testHost: false), ["listing", "guide"])
+    }
+
+    /// The XCTest host must not raise a real modal guide: it holds the presenter's guard and
+    /// swallows the guide tests' own `show()` calls (jma, TCC reset → 4 failures).
+    func testTestHostBootRaisesNothing() {
+        XCTAssertEqual(bootEvents(granted: false, testHost: true), [])
+    }
+
+    func testGrantedBootRaisesNothing() {
+        XCTAssertEqual(bootEvents(granted: true, testHost: false), [])
+    }
 }
 
 // MARK: - official-build-marker (Issue105)

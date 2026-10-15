@@ -8,7 +8,7 @@ struct AppEntry {
         // XCTest 환경에서는 CLI 처리·중복차단을 건너뛰되 GUI RunLoop(fWarrangeCliApp.main)는 유지한다.
         // return 으로 조기 종료하거나 SingleInstanceGuard(brew 실행 중 = 중복)를 그대로 타면
         // exit 되어 test runner 연결 전에 host app 이 죽는다("Early unexpected exit"). (Issue99 테스트 인프라)
-        let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        let isRunningTests = Env.isTestHost
         if !isRunningTests {
             if CLIHandler.handleIfNeeded() {
                 return
