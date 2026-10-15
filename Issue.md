@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 128
+* Issue HWM: 129
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -28,6 +28,19 @@ date: 2026-04-07
 
 # 🚧 진행중
 # 📕 중요
+
+## Issue129: [Version] cliApp 1.2.0 출고 — paidApp 1.2.0 App Store 재제출 락스텝 (등록: 2026-10-15, 출처: prj16#Issue289 사용자 지시)
+* 목적: paidApp 1.1.3 (4) 리젝(2.4.5) 뒤 1.2.0 으로 재제출한다 — 심사·사용자 환경의 헬퍼도 1.2.0 으로 맞춘다(Issue120 락스텝 선례)
+* depends: prj16#Issue289
+* 상세:
+    - 소스 버전 4곳은 이미 1.2.0 — `VERSION`·pbxproj `MARKETING_VERSION` ×2·`cli/project.yml`·Formula url(95817c2). `cli/version-meta.yml` brew 는 아직 1.1.3(formula·installed)
+    - `cli-v1.1.3` 이후 cliApp `*.swift` 변경 0건(2026-10-15 실측) — 출고분은 버전 값만 다르다. 남은 버그 Issue126·127 을 1.2.0 에 넣을지는 착수 때 판정
+    - paidApp 쪽 수정(prj16#Issue289)은 접근성 안내 UI 제거뿐이라 cliApp REST 계약 변경 없음 — `GET /api/v2/status/accessibility` 그대로 사용
+* 구현 명세:
+    - ① 범위 판정: Issue126·127 포함 여부 결정(포함 시 그 이슈 먼저 해결)
+    - ② R1(`tdd/release.md`) 전 행 jma — 증거 `cli/_doc_work/_release/v1.2.0/release-test_1.2.0.md`(peers prj16@Issue289 hash)
+    - ③ R2 `recheck` → 출고(사용자 승인 뒤): release/1.2.0 push → main `--no-ff` → `fwc-deploy-brew.sh publish`(태그 `cli-v1.2.0`·GitHub release·공개 tap) → Formula sha256 실값·`cli/version-meta.yml` brew 1.2.0 반영
+    - ④ 검증: jma 공개 tap 설치본이 1.2.0 을 보고(`GET /api/v2/status` version) + paidApp 1.2.0 연동
 
 # 📙 일반
 
