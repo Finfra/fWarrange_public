@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 130
+* Issue HWM: 131
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -49,6 +49,16 @@ date: 2026-04-07
     - ⚠️ 128 의 CLA 링크는 prj6#Issue32 ③(cla-assistant.io 연결) 미완이라 아직 빈 페이지일 수 있다 — ③ push 전 확인
 
 # 📙 일반
+
+## Issue131: [Lifecycle] 같은 순간 뜬 두 인스턴스를 `SingleInstanceGuard` 가 못 걸러 둘 다 생존 — launchd 쪽은 3016 미점유 (등록: 2026-10-15, 출처: prj16#Issue290 jma 실측 — prj16 세션 등록)
+* 목적: 두 기동 경로가 같은 초에 겹치면 인스턴스 2개가 공존한다 — 메뉴바 아이콘·접근성 안내가 2벌, launchd 승자는 REST 없이 살아 있고 패자가 포트를 쥐어 «하나 정리하면 REST 사망»
+* 상세:
+    - 재현(jma, cliApp 1.2.0 brew 로컬): paidApp [다시 시작] → `AppRestarter` 헬퍼의 `launchctl kickstart`(`XPC_SERVICE_NAME=sh.brew.fwarrange-cli`) 와 paidApp `open -a`(`application.kr.finfra.fWarrangeCli.*`) 가 같은 초 기동 → 2/2 공존, 25초 뒤에도 유지 · 3016 LISTEN 은 open 기동분
+    - 1차 원인은 paidApp 의 중복 재기동(prj16#Issue290 에서 수정) — 이 이슈는 겹쳤을 때의 방어선
+    - `shouldTerminateAsDuplicate()` 는 기동 직후 1회 `NSRunningApplication` 조회 — 상대가 아직 등록 전이면 둘 다 «혼자» 로 판정(TOCTOU). 판정 규칙(launchd 승자)은 맞지만 시점이 1회뿐
+* 구현 명세:
+    - launchd 승자 판정을 REST bind 전·후로 재확인(ex) 기동 후 짧은 지연 재검사, 또는 3016 bind 실패 시 «포트 보유자가 같은 Bundle ID 면 terminate 후 재bind») — 판정 단일 지점은 `SingleInstanceGuard` 유지
+    - 검증(jma): `open` 과 `launchctl kickstart` 를 같은 순간 발화 10회 — 매회 1개 생존·launchd 쪽이 3016 LISTEN·brew started
 
 # 📗 선택
 
