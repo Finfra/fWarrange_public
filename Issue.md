@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 129
+* Issue HWM: 130
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -42,6 +42,31 @@ date: 2026-04-07
     - ② R1(`tdd/release.md`) 전 행 jma — 증거 `cli/_doc_work/_release/v1.2.0/release-test_1.2.0.md`(peers prj16@Issue289 hash)
     - ③ R2 `recheck` → 출고(사용자 승인 뒤): release/1.2.0 push → main `--no-ff` → `fwc-deploy-brew.sh publish`(태그 `cli-v1.2.0`·GitHub release·공개 tap) → Formula sha256 실값·`cli/version-meta.yml` brew 1.2.0 반영
     - ④ 검증: jma 공개 tap 설치본이 1.2.0 을 보고(`GET /api/v2/status` version) + paidApp 1.2.0 연동
+
+## Issue130: [Settings] 기본 단축키를 jm4 실설정으로 정렬 — 번들 시드 `showMainWindowShortcut` ⌃⇧⌘F7 → ⌥⇧⌘F7, 되돌리기 기본 미지정 (등록: 2026-10-15, 출처: prj16#Issue289 사용자 지시 «기본 단축키 jm4의 셋팅으로»)
+* 목적: 새로 설치한 사용자가 받는 기본 단축키를 개발자가 실제로 쓰는 jm4 설정과 같게 맞춘다 — 지금은 시드·코드 기본값·매뉴얼·paidApp 문서가 서로 다른 값을 말한다
+* depends: Issue129 (1.2.0 출고에 포함)
+* 상세:
+    - jm4 실측(2026-10-15, `GET /api/v2/settings/shortcuts` + `~/Documents/finfra/fWarrangeData/_config.yml`): save `⌘F7` · restoreDefault `⇧⌘F7` · restoreLast `⌥⌘F7` · showMainWindow **`⌥⇧⌘F7`** · undo **미지정(`""`)**
+    - 어긋난 자리:
+
+        | 자리                                                    | 현재                   | jm4 기준     |
+        | :------------------------------------------------------ | :--------------------- | :----------- |
+        | `cli/fWarrangeCli/_config.yml:37` (번들 시드)           | `⌃⇧⌘F7`                | `⌥⇧⌘F7`      |
+        | `cli/fWarrangeCli/Models/AppSettings.swift:201` defaults | undo `⌃⌘F7`            | undo `nil`   |
+        | `cli/fWarrangeCliTests/UndoShortcutTests.swift:8-12`    | undo 기본 `⌃⌘F7` 단언  | `nil` 단언   |
+        | `manual/{kr,en}/04_MenuBar_Usage.md:18·42`              | `⌃⇧⌘F7`                | `⌥⇧⌘F7`      |
+        | `manual/{kr,en}/09_Shortcut_Usage.md:17·81·82·163`      | `⌃⇧⌘F7`·undo `⌃⌘F7`    | 위 기준      |
+        | `manual/FunctionalSpecification.md:139`                 | `⌃⇧⌘F7`                | `⌥⇧⌘F7`      |
+
+    - paidApp `AppSettings.defaults` 는 이미 jm4 와 같다(`⌥⇧⌘F7`·undo nil) — 엔진만 갈려 있다. paidApp 문서 쪽 정리는 prj16#Issue289 ⑤
+    - 확인 필요: 공장 초기화(`factoryReset`)가 단축키 4종을 비우고 undo 만 `⌃⌘F7` 로 두는 현 동작(09 매뉴얼 163행) — jm4 기준이면 «4종은 시드값으로 복원·undo 비움» 이 자연스럽다. Issue61(«yml 에 적힌 것만 등록») 원칙과 충돌하지 않게 «초기화 = 번들 시드 재복사» 로 갈지 착수 때 판정
+* 구현 명세:
+    - ① 시드 `_config.yml` `showMainWindowShortcut: "⌥⇧⌘F7"` (주석 `{showMain}` 유지) · undo 라인은 넣지 않음(미지정)
+    - ② `AppSettings.defaults.undoShortcut = nil` + 주석 갱신, `UndoShortcutTests` 기대값 수정 — TDD red 먼저
+    - ③ 매뉴얼 kr·en 04·09·FunctionalSpecification 표기 정렬 (09 의 «되돌리기 지정 예시 `⌃⌘F7`» 는 예시로 남겨도 됨)
+    - ④ 검증: 빈 데이터 폴더로 첫 기동 → `GET /api/v2/settings/shortcuts` 가 jm4 실측 5값과 일치 · 메뉴바 «Open Main Window» 라벨 `⌥⇧⌘F7` · ⌥⇧⌘F7 로 paidApp 메인 창 열림(jma)
+    - 기존 사용자 `_config.yml` 은 건드리지 않는다(마이그레이션 없음) — 시드는 파일이 없을 때만 복사됨
 
 # 📙 일반
 
