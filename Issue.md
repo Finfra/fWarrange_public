@@ -43,31 +43,6 @@ date: 2026-04-07
     - ③ R2 `recheck` → 출고(사용자 승인 뒤): release/1.2.0 push → main `--no-ff` → `fwc-deploy-brew.sh publish`(태그 `cli-v1.2.0`·GitHub release·공개 tap) → Formula sha256 실값·`cli/version-meta.yml` brew 1.2.0 반영
     - ④ 검증: jma 공개 tap 설치본이 1.2.0 을 보고(`GET /api/v2/status` version) + paidApp 1.2.0 연동
 
-## Issue130: [Settings] 기본 단축키를 jm4 실설정으로 정렬 — 번들 시드 `showMainWindowShortcut` ⌃⇧⌘F7 → ⌥⇧⌘F7, 되돌리기 기본 미지정 (등록: 2026-10-15, 출처: prj16#Issue289 사용자 지시 «기본 단축키 jm4의 셋팅으로»)
-* 목적: 새로 설치한 사용자가 받는 기본 단축키를 개발자가 실제로 쓰는 jm4 설정과 같게 맞춘다 — 지금은 시드·코드 기본값·매뉴얼·paidApp 문서가 서로 다른 값을 말한다
-* depends: Issue129 (1.2.0 출고에 포함)
-* 상세:
-    - jm4 실측(2026-10-15, `GET /api/v2/settings/shortcuts` + `~/Documents/finfra/fWarrangeData/_config.yml`): save `⌘F7` · restoreDefault `⇧⌘F7` · restoreLast `⌥⌘F7` · showMainWindow **`⌥⇧⌘F7`** · undo **미지정(`""`)**
-    - 어긋난 자리:
-
-        | 자리                                                    | 현재                   | jm4 기준     |
-        | :------------------------------------------------------ | :--------------------- | :----------- |
-        | `cli/fWarrangeCli/_config.yml:37` (번들 시드)           | `⌃⇧⌘F7`                | `⌥⇧⌘F7`      |
-        | `cli/fWarrangeCli/Models/AppSettings.swift:201` defaults | undo `⌃⌘F7`            | undo `nil`   |
-        | `cli/fWarrangeCliTests/UndoShortcutTests.swift:8-12`    | undo 기본 `⌃⌘F7` 단언  | `nil` 단언   |
-        | `manual/{kr,en}/04_MenuBar_Usage.md:18·42`              | `⌃⇧⌘F7`                | `⌥⇧⌘F7`      |
-        | `manual/{kr,en}/09_Shortcut_Usage.md:17·81·82·163`      | `⌃⇧⌘F7`·undo `⌃⌘F7`    | 위 기준      |
-        | `manual/FunctionalSpecification.md:139`                 | `⌃⇧⌘F7`                | `⌥⇧⌘F7`      |
-
-    - paidApp `AppSettings.defaults` 는 이미 jm4 와 같다(`⌥⇧⌘F7`·undo nil) — 엔진만 갈려 있다. paidApp 문서 쪽 정리는 prj16#Issue289 ⑤
-    - 확인 필요: 공장 초기화(`factoryReset`)가 단축키 4종을 비우고 undo 만 `⌃⌘F7` 로 두는 현 동작(09 매뉴얼 163행) — jm4 기준이면 «4종은 시드값으로 복원·undo 비움» 이 자연스럽다. Issue61(«yml 에 적힌 것만 등록») 원칙과 충돌하지 않게 «초기화 = 번들 시드 재복사» 로 갈지 착수 때 판정
-* 구현 명세:
-    - ① 시드 `_config.yml` `showMainWindowShortcut: "⌥⇧⌘F7"` (주석 `{showMain}` 유지) · undo 라인은 넣지 않음(미지정)
-    - ② `AppSettings.defaults.undoShortcut = nil` + 주석 갱신, `UndoShortcutTests` 기대값 수정 — TDD red 먼저
-    - ③ 매뉴얼 kr·en 04·09·FunctionalSpecification 표기 정렬 (09 의 «되돌리기 지정 예시 `⌃⌘F7`» 는 예시로 남겨도 됨)
-    - ④ 검증: 빈 데이터 폴더로 첫 기동 → `GET /api/v2/settings/shortcuts` 가 jm4 실측 5값과 일치 · 메뉴바 «Open Main Window» 라벨 `⌥⇧⌘F7` · ⌥⇧⌘F7 로 paidApp 메인 창 열림(jma)
-    - 기존 사용자 `_config.yml` 은 건드리지 않는다(마이그레이션 없음) — 시드는 파일이 없을 때만 복사됨
-
 # 📙 일반
 
 ## Issue128: CONTRIBUTING.md 추가 — 외부 PR 은 Finfra CLA 전자 서명 후 수락 (등록: 2026-10-09)
@@ -101,6 +76,39 @@ date: 2026-04-07
 # 📗 선택
 
 # ✅ 완료
+
+## Issue130: [Settings] 기본 단축키를 jm4 실설정으로 정렬 — 번들 시드 `showMainWindowShortcut` ⌃⇧⌘F7 → ⌥⇧⌘F7, 되돌리기 기본 미지정 (등록: 2026-10-15, 완료: 2026-10-15, Hash: b4fc29e, 출처: prj16#Issue289 사용자 지시 «기본 단축키 jm4의 셋팅으로») ✅
+* 목적: 새로 설치한 사용자가 받는 기본 단축키를 개발자가 실제로 쓰는 jm4 설정과 같게 맞춘다 — 지금은 시드·코드 기본값·매뉴얼·paidApp 문서가 서로 다른 값을 말한다
+* depends: Issue129 (1.2.0 출고에 포함)
+* 상세:
+    - jm4 실측(2026-10-15, `GET /api/v2/settings/shortcuts` + `~/Documents/finfra/fWarrangeData/_config.yml`): save `⌘F7` · restoreDefault `⇧⌘F7` · restoreLast `⌥⌘F7` · showMainWindow **`⌥⇧⌘F7`** · undo **미지정(`""`)**
+    - 어긋난 자리:
+
+        | 자리                                                    | 현재                   | jm4 기준     |
+        | :------------------------------------------------------ | :--------------------- | :----------- |
+        | `cli/fWarrangeCli/_config.yml:37` (번들 시드)           | `⌃⇧⌘F7`                | `⌥⇧⌘F7`      |
+        | `cli/fWarrangeCli/Models/AppSettings.swift:201` defaults | undo `⌃⌘F7`            | undo `nil`   |
+        | `cli/fWarrangeCliTests/UndoShortcutTests.swift:8-12`    | undo 기본 `⌃⌘F7` 단언  | `nil` 단언   |
+        | `manual/{kr,en}/04_MenuBar_Usage.md:18·42`              | `⌃⇧⌘F7`                | `⌥⇧⌘F7`      |
+        | `manual/{kr,en}/09_Shortcut_Usage.md:17·81·82·163`      | `⌃⇧⌘F7`·undo `⌃⌘F7`    | 위 기준      |
+        | `manual/FunctionalSpecification.md:139`                 | `⌃⇧⌘F7`                | `⌥⇧⌘F7`      |
+
+    - paidApp `AppSettings.defaults` 는 이미 jm4 와 같다(`⌥⇧⌘F7`·undo nil) — 엔진만 갈려 있다. paidApp 문서 쪽 정리는 prj16#Issue289 ⑤
+    - 확인 필요: 공장 초기화(`factoryReset`)가 단축키 4종을 비우고 undo 만 `⌃⌘F7` 로 두는 현 동작(09 매뉴얼 163행) — jm4 기준이면 «4종은 시드값으로 복원·undo 비움» 이 자연스럽다. Issue61(«yml 에 적힌 것만 등록») 원칙과 충돌하지 않게 «초기화 = 번들 시드 재복사» 로 갈지 착수 때 판정
+* 구현 명세:
+    - ① 시드 `_config.yml` `showMainWindowShortcut: "⌥⇧⌘F7"` (주석 `{showMain}` 유지) · undo 라인은 넣지 않음(미지정)
+    - ② `AppSettings.defaults.undoShortcut = nil` + 주석 갱신, `UndoShortcutTests` 기대값 수정 — TDD red 먼저
+    - ③ 매뉴얼 kr·en 04·09·FunctionalSpecification 표기 정렬 (09 의 «되돌리기 지정 예시 `⌃⌘F7`» 는 예시로 남겨도 됨)
+    - ④ 검증: 빈 데이터 폴더로 첫 기동 → `GET /api/v2/settings/shortcuts` 가 jm4 실측 5값과 일치 · 메뉴바 «Open Main Window» 라벨 `⌥⇧⌘F7` · ⌥⇧⌘F7 로 paidApp 메인 창 열림(jma)
+    - 기존 사용자 `_config.yml` 은 건드리지 않는다(마이그레이션 없음) — 시드는 파일이 없을 때만 복사됨
+* 결과 (2026-10-15, `b4fc29e`):
+    - 공장 초기화 판정(사용자 승인 2026-10-15): «번들 시드 재복사» — `YAMLSettingsService.resetToDefaults` 가 설정 파일을 지우고 번들 시드를 다시 복사(4종 복원·undo 비움), 번들이 없으면 `AppSettings.defaults` 로 폴백. Issue61(«yml 에 적힌 것만 등록») 과 충돌하지 않음 — 시드가 명시한 4줄만 등록됨
+    - ① 시드 `_config.yml` `showMainWindowShortcut: "⌥⇧⌘F7"` · undo 라인 없음 ② `AppSettings.defaults.undoShortcut = nil`
+    - **추가 원인 발견·수정**: 시드의 `showMainWindowShortcut` 줄이 `# {showMain} …` 인라인 주석을 달고 있는데 `parseYAML` 이 주석을 떼지 못해 따옴표 값이 깨져 `nil` — 값을 무엇으로 두든 시드로 새로 설치하면 이 단축키가 등록되지 않던 기존 결함(09 매뉴얼 «일부 설치본…» 우회 문구의 정체). `SettingsService.stripInlineComment` 를 값 추출 단일 지점에 추가(따옴표 안 `#` 는 보존)
+    - ③ 매뉴얼 kr/en 04·09·FunctionalSpecification 표기 정렬 + 09 의 undo 예시를 주석 처리, 인라인 주석·초기화 서술을 «1.2.0 부터» 로 갱신
+    - TDD: `UndoShortcutTests` 에 4건(기본 undo nil · 시드 5값 jm4 일치 · 공장 초기화 복원 · 인라인 주석) 추가/수정, 구현 전 red(7 failure) 확인 후 green
+    - 검증: **jma** 별도 clone(`/tmp`, jma 체크아웃 불변)·GUI tmux·`/tmp/jma-xcode.lock` 점유 — XCTest **139/139 passed** (HEAD `b4fc29e`). jm4 도 139/139
+    - ⚠️ ④ 중 «빈 데이터 폴더 첫 기동 → REST 5값» «메뉴바 라벨» «⌥⇧⌘F7 로 paidApp 창 열림» 의 실기동 E2E 는 **미실행** — jma 에서 prj16#Issue289 세션이 1.2.0 실측을 준비 중이라 실행 중인 cliApp 을 교체하지 않음. 시드 → 파서 → 값 경로는 XCTest 가 번들 실물로 덮음. 실기동 확인은 Issue129 ② R1 에서 한다
 
 ## Issue125: [Docs] 단축키 사용 매뉴얼 추가 — kr/en `09_Shortcut_Usage.md` (등록: 2026-10-09, 완료: 2026-10-09, Hash: 70494f8) ✅
 * 목적: 전역 단축키 서술이 `04_MenuBar_Usage.md` 의 표 1개뿐 — 바꾸는 법(파일·REST·명령행·fWarrange)·반영 시점·동작 세부(저장 이름·기본 복원 대체·되돌리기 범위)·충돌·문제 해결이 없음
