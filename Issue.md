@@ -46,13 +46,6 @@ date: 2026-04-07
     - ⚠️ 128 의 CLA 링크는 prj6#Issue32 ③(cla-assistant.io 연결) 미완이라 아직 빈 페이지일 수 있다 — ③ push 전 확인
 
 # 📙 일반
-## Issue134: [Test] API 테스트 20(layout-detail)이 앞선 실행이 남긴 `testCapture` 에 기대 — 깨끗한 데이터 폴더(jma)에서 404 (등록: 2026-10-15, 출처: Issue132 full `jexec test` jma)
-* 목적: all-clear-e2e 가 머신의 과거 데이터에 좌우되지 않게 한다
-* 상세:
-    - 20 은 24(capture)보다 먼저 돈다. `testCapture` 는 24 가 만들고 `fwc-test.sh` Step 8 스냅샷 복원이 되돌리므로, 그 레이아웃이 원래 데이터에 없던 머신에서는 매번 404 — jm4 는 과거 수동 캡처가 남아 있어 가려졌다
-* 구현 명세:
-    - 인자 없으면 21·22 처럼 자체 픽스처(`_apitest_detail`) 캡처 → 조회 → 삭제. 인자 주면 기존처럼 그 이름 조회
-    - 검증(jma): 기존 호출 404 재현 → 수정본 `data.name=_apitest_detail` · 정리 후 잔존 0
 ## Issue132: [TDD] 통합 test 러너 신설 — `jexec test` 가 재생목록을 한 번에 돌게 (등록: 2026-10-15, 출처: prj5#Issue127 · 이슈후보 승격)
 * 목적: `data/exec.yml` 에 `test:` 명령이 없어 `jexec test` 가 rc 2 로 거부되고 `status: draft` 에 머문다 — `tdd/playlist.md` 를 한 번에 도는 러너를 만들어 등록한다
 * 상세:
@@ -67,9 +60,16 @@ date: 2026-04-07
 * 진행 (2026-10-15):
     - ① 러너 ✅ `cc6a2e2` — selftest 20건(변이 4종 red 확인) · `data/exec.yml` `test:`·`lock: self`·`timeout: 4500` 등록(status draft 유지)
     - ② jma `--quick` 첫 실행이 실회귀를 잡음 → Issue133(테스트 호스트가 실제 접근성 안내 모달을 띄움, `eed1015`) 분리·해결 → 재실행 `PLAYLIST RESULT: all green (3/3)` (unit 148/148)
-    - ③ ⏳ full `jexec test`(all-clear-e2e = `fwc-test.sh`, 설치본 교체) — prj16#Issue289 가 jma 설치본을 쓰는 중이라 보류. green 뒤 `status: active`
+    - ③ full `jexec test`(jma, 17:53, `sync-jma 26 push` 후 `--no-sync`): `PLAYLIST RESULT: failed all-clear-e2e (3/4 passed)` — API 3·CMD 1 실패
+        - API 20 layout-detail 404: 앞선 실행이 남긴 `testCapture` 의존 → Issue134 로 분리·해결(`757df56`)
+        - API 25·38·CMD 27 restore: «Accessibility 권한이 필요합니다» — jma 의 Debug 빌드가 접근성 미승인. 코드 결함 아님, 사람의 접근성 승인 뒤 재실행
+    - ④ ⏳ jma 접근성 승인 → full `jexec test` green → `data/exec.yml` `status: active`
 
-## Issue131: [Lifecycle] 같은 순간 뜬 두 인스턴스를 `SingleInstanceGuard` 가 못 걸러 둘 다 생존 — launchd 쪽은 3016 미점유 (등록: 2026-10-15, 출처: prj16#Issue290 jma 실측 — prj16 세션 등록)
+# 📗 선택
+
+# ✅ 완료
+
+## Issue131: [Lifecycle] 같은 순간 뜬 두 인스턴스를 `SingleInstanceGuard` 가 못 걸러 둘 다 생존 — launchd 쪽은 3016 미점유 (등록: 2026-10-15, 완료: 2026-10-15, Hash: fc7ea29, 869d6e6, 출처: prj16#Issue290 jma 실측 — prj16 세션 등록) ✅
 * 목적: 두 기동 경로가 같은 초에 겹치면 인스턴스 2개가 공존한다 — 메뉴바 아이콘·접근성 안내가 2벌, launchd 승자는 REST 없이 살아 있고 패자가 포트를 쥐어 «하나 정리하면 REST 사망»
 * 상세:
     - 재현(jma, cliApp 1.2.0 brew 로컬): paidApp [다시 시작] → `AppRestarter` 헬퍼의 `launchctl kickstart`(`XPC_SERVICE_NAME=sh.brew.fwarrange-cli`) 와 paidApp `open -a`(`application.kr.finfra.fWarrangeCli.*`) 가 같은 초 기동 → 2/2 공존, 25초 뒤에도 유지 · 3016 LISTEN 은 open 기동분
@@ -86,9 +86,14 @@ date: 2026-04-07
     - ② E2E 재실행(jma, `launchctl bootstrap` + `open -n` 동시 발화 10회): **10/10** — 매회 1개 생존·launchd PID 가 3016 LISTEN·brew started. 하네스를 첫 실행(`pkill` TERM + `kickstart -k`)에서 바꿨다: TERM 이 `applicationWillTerminate` 의 `brew services stop` 을 불러 launchd 쪽이 ~9초 늦게 떠 «동시» 가 성립하지 않았음. 새 하네스로 수정 전 빌드를 돌린 기준선은 없음
     - 끝 상태: `brew services start fwarrange-cli` 로 복원(PID 8655) · 접근성은 재설치로 다시 미승인
 
-# 📗 선택
-
-# ✅ 완료
+## Issue134: [Test] API 테스트 20(layout-detail)이 앞선 실행이 남긴 `testCapture` 에 기대 — 깨끗한 데이터 폴더(jma)에서 404 (등록: 2026-10-15, 완료: 2026-10-15, Hash: 757df56, 출처: Issue132 full `jexec test` jma) ✅
+* 목적: all-clear-e2e 가 머신의 과거 데이터에 좌우되지 않게 한다
+* 상세:
+    - 20 은 24(capture)보다 먼저 돈다. `testCapture` 는 24 가 만들고 `fwc-test.sh` Step 8 스냅샷 복원이 되돌리므로, 그 레이아웃이 원래 데이터에 없던 머신에서는 매번 404 — jm4 는 과거 수동 캡처가 남아 있어 가려졌다
+* 구현 명세:
+    - 인자 없으면 21·22 처럼 자체 픽스처(`_apitest_detail`) 캡처 → 조회 → 삭제. 인자 주면 기존처럼 그 이름 조회
+    - 검증(jma): 기존 호출 404 재현 → 수정본 `data.name=_apitest_detail` · 정리 후 잔존 0
+* 결과: jma 에서 `GET /layouts/testCapture` 404 재현 → 수정본 실행 `data.name=_apitest_detail`·windowCount 25 · 목록에 `_apitest_detail` 잔존 0
 
 ## Issue133: [Test] XCTest 호스트가 실제 접근성 안내 모달을 띄워 `AccessibilityGuideSchedulingTests` 2건이 환경 따라 red (등록: 2026-10-15, 완료: 2026-10-15, Hash: eed1015, 출처: Issue132 러너 jma 실행) ✅
 * 목적: 테스트 결과가 jma 의 TCC 상태에 좌우되지 않게 한다 — 접근성 미승인 상태(prj16 실측용 TCC 리셋)에서 unit 단계가 4 failures 로 떨어졌다
