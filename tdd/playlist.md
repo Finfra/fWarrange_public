@@ -8,6 +8,7 @@ date: 2026.09.26
 
 창 레이아웃 캡처와 복구 REST, 설정 영속성, brew 서비스 기동, 권한 상실 감지가 조용히 실패하지 않게 지킨다
 
+* **통합 러너**: `bash tdd/run.sh` (`--quick` = 설치본을 건드리지 않는 단계만 · `--list`) — `jexec test` 진입점 (Issue132)
 * 기존 러너: `bash cli/_tool/fwc-test.sh (8단계 통합) / bash cli/_tool/apiTestDo.sh v2 / bash cli/_tool/cmdTestDo.sh v2 / bash cli/_tool/fwc-deploy-brew-test.sh / XCTest 타깃 cli/fWarrangeCliTests`
 * 목표 20개 중 기존 테스트로 덮인 것 5개 · 신규 15개 (prj5#Issue99 · Issue101 · Issue104 · Issue105 · Issue109 · Issue108 · Issue106 · Issue112 · Issue110, 2026.09.28)
 * 최종 실행: **jma** — 풀 재실행 2026.09.29 (Issue113 · common#Issue108, HEAD `48167f7`): XCTest **108/108 passed**(`build-for-testing` → `test-without-building`, test plan 격리) · 18행 `fwc-deploy-brew-test.sh --summary` PASS 1·2(jm4 에서도 check 1 PASS) · red 0 → 수정 커밋 없음. 9행의 `fwc-test.sh` 부분은 이번 회차 미실행 — 러너가 `kill.sh` 로 `pkill -9 -f` 를 부르고 jma 설치본을 교체해 웨이브 제약(`pkill -f` 금지)과 충돌, 9행 성질은 XCTest `testMissingConfigIsSeededWithDefaults` 로 확인
@@ -46,6 +47,8 @@ date: 2026.09.26
 | 24  | `verify-failed-best-effort`      | 창은 찾아 옮겼으나 3px 위치 검증만 실패한 대상(ex) 줄 단위로 높이를 맞추는 TextEdit)은 재시도 루프가 마지막 시도로 끝나든 조기 종료로 끝나든 매칭 정보(제목·matchType·score)를 유지한 best-effort 성공으로 보고된다 — `noMatch`/`windowNotFound` 로 바뀌지 않는다. 창을 못 찾은 대상만 `noMatch` 다 | Issue114 ①(1.1.2 R1 6행 — TextEdit 단일 창 레이아웃이 2회차 조기 종료로 best-effort 분기를 건너뛰어 `windowNotFound` 로 보고) | `cli/fWarrangeCliTests/TDDPlaylistTests.swift` (RestoreLeftoverTests) | ✅ jma  |
 | 25  | `restart-comes-back`             | `POST /api/v2/cli/restart` 뒤 cliApp 이 기동 방식대로 되살아난다 — brew 서비스면 `brew services restart` 위임, `open` 기동이면 자가 재실행. 접근성 안내 재시작과 같은 판정(`AppRestarter`)을 쓴다 | Issue119(prj16#Issue282 «지금 재시작» 이 cliApp 을 종료만 시킴 — «launchd KeepAlive 의존» 전제 불성립) | `cli/fWarrangeCliTests/TDDPlaylistTests.swift` (AppRestarterTests) · jma E2E(open·brew 각각 restart 후 새 PID·REST 200) | ✅ jma  |
 | 26  | `best-effort-has-a-bound`        | 검증(3px)에 실패한 매칭 창은 편차가 줄 단위 스냅 수준(±24px) 안일 때만 best-effort 성공이다 — 그보다 멀거나 기하를 읽지 못하면 매칭 정보를 유지한 채 실패(`axOperationFailed`)로 보고하고 Moom/noMatch 로 떨어뜨리지 않는다 | Issue121(prj16 R1 6행 jma — TextEdit 창이 200,40 1077×660 에 머물렀는데 `succeeded`) | `cli/fWarrangeCliTests/TDDPlaylistTests.swift` (RestoreBestEffortBoundTests · RestoreLeftoverTests) · jma prj16 R1 6행 재실행 | ✅ jma  |
+| 27  | `seed-shortcuts-and-reset`       | 번들 시드로 처음 설치하면 단축키 5값이 jm4 실설정(⌘F7·⇧⌘F7·⌥⌘F7·⌥⇧⌘F7·undo 미지정)이다 — 값 뒤 `# 주석` 이 있어도 파싱되고(따옴표 안 `#` 보존), 공장 초기화는 시드를 다시 복사해 같은 5값으로 돌아간다 | Issue126(시드 `showMainWindowShortcut` 줄 끝 주석 때문에 새 설치에서 nil) · Issue127(공장 초기화가 4종을 지우고 undo ⌃⌘F7 만 남김) · Issue130(jm4 정렬, `b4fc29e`) | `cli/fWarrangeCliTests/UndoShortcutTests.swift` (testUndoShortcutDefaultIsUnassigned · testBundledSeedShortcutsMatchJm4 · testInlineCommentAfterQuotedShortcutIsIgnored · testFactoryResetRestoresSeedShortcuts) | ✅ jma  |
+| 28  | `playlist-runner`                | 통합 러너 `tdd/run.sh` 는 한 단계라도 실패하면 비0 으로 끝나고 실패 단계를 이름으로 보고한다 — 멈춘 단계는 워치독이 죽이고, 단계가 stdin 을 먹어도 남은 단계가 돈다. 빈 선택·남의 잠금은 green 이 아니다 | Issue132(prj5#Issue127 — `data/exec.yml` 에 `test:` 가 없어 `jexec test` rc 2) | `tdd/cases/run-selftest.sh` (20건 · 변이 4종 red 확인) · 전체 `bash tdd/run.sh` | ⬜ jma  |
 
 # 규약
 
