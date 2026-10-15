@@ -25,6 +25,7 @@ date: 2026-04-07
    - 의도: `_public` 의 instinct_deploy-dry-run-validation-gate.md + instinct_deploy-multistage-validation.md 작성
    - 장애: 타 prj memory 경로에 대한 쓰기 권한 제약(위임 범위) — Issue.md 에 이슈 등록만 수행, memory 파일 작성은 사용자 몫으로 미룸
 1. [prj5#Issue127] 통합 test 러너 부재로 `jexec test` 불가 — `data/exec.yml` 에 `test:` 명령이 없어 `jexec test` 가 rc 2 로 거부되고 `status: draft` 에 머문다. `tdd/playlist.md` 를 한 번에 도는 러너(cliApp — paidApp 과 같은 f2x2 묶음, brew 서비스 기동 전제 확인)를 만들어 `test:` 에 등록 → jma 실 `jexec test` green 확인 뒤 `status: active`. 선례 prj11 `tdd/run-jma.sh`·prj13 `tdd/run-unit.sh`(`lock: self`) · 근거 `~/_git/___common/_doc_work/report/jexec_issue119_report.md`
+1. [L10n] 접근성 안내 alert(`AccessibilityGuidePresenter.show`) 문구가 한국어 하드코딩 — en 시스템(jma)에서도 «Accessibility 권한 필요» 한국어 본문. paidApp 1.2.0 부터 권한 안내를 cliApp 만 하므로(prj16#Issue289) 노출 빈도가 오른다 (prj16#Issue289 4단계 실측, 캡처 `prj16 _doc_work/_release/v1.2.0/ax-guidance-check/02_en_cliapp-own-guide.png`)
 
 # 🚧 진행중
 # 📕 중요
