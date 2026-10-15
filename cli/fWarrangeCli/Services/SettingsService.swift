@@ -81,8 +81,15 @@ final class YAMLSettingsService: SettingsService {
         try? yaml.write(to: configURL, atomically: true, encoding: .utf8)
     }
 
+    /// 공장 초기화 = 번들 시드 재복사 (Issue130). 단축키 4종은 시드값으로 복원되고 되돌리기는 비워진다.
+    /// 시드를 읽을 수 없으면(번들 누락) 하드코딩 기본값으로 폴백.
     func resetToDefaults() {
-        save(AppSettings.defaults)
+        SettingsMutationLock.shared.lock()
+        defer { SettingsMutationLock.shared.unlock() }
+        try? FileManager.default.removeItem(at: configURL)
+        if !copyConfigFromBundle() {
+            save(AppSettings.defaults)
+        }
     }
 
     // MARK: - YAML 직렬화
@@ -176,7 +183,7 @@ final class YAMLSettingsService: SettingsService {
             // key: value
             if let colonIdx = trimmed.firstIndex(of: ":") {
                 let key = String(trimmed[trimmed.startIndex..<colonIdx]).trimmingCharacters(in: .whitespaces)
-                let val = String(trimmed[trimmed.index(after: colonIdx)...]).trimmingCharacters(in: .whitespaces)
+                let val = stripInlineComment(String(trimmed[trimmed.index(after: colonIdx)...]))
 
                 if key == "excludedApps" {
                     inExcludedApps = true
@@ -236,6 +243,21 @@ final class YAMLSettingsService: SettingsService {
 
         // human-readable 형식: "⌘F7", "⇧⌘F7" 등
         return KeyboardShortcutConfig.from(displayString: trimmed)
+    }
+
+    /// 값 뒤 인라인 주석 제거 (Issue130). 따옴표로 시작하면 닫는 따옴표 뒤의 ` #...` 만, 아니면 첫 ` #` 부터 잘라낸다.
+    /// 시드 `_config.yml` 의 `showMainWindowShortcut: "⌥⇧⌘F7" # {showMain} ...` 가 이 형태다.
+    private func stripInlineComment(_ raw: String) -> String {
+        let val = raw.trimmingCharacters(in: .whitespaces)
+        if val.hasPrefix("\"") {
+            guard let close = val.dropFirst().firstIndex(of: "\"") else { return val }
+            let rest = val[val.index(after: close)...].trimmingCharacters(in: .whitespaces)
+            return (rest.isEmpty || rest.hasPrefix("#")) ? String(val[...close]) : val
+        }
+        if let range = val.range(of: " #") {
+            return String(val[..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
+        }
+        return val
     }
 
     private func parseStringValue(_ raw: String) -> String {

@@ -15,7 +15,7 @@ fWarrangeCli 는 화면 상단 메뉴바에 아이콘 하나로 상주합니다.
 | 🔁 최근 레이아웃 복구        | ⌥⌘F7        | 마지막으로 쓴 레이아웃 복원                                                                    |
 | ⭐ 기본 레이아웃 복구        | ⇧⌘F7        | 기본 레이아웃 복원                                                                             |
 | (레이아웃 목록)              | -           | 기본 레이아웃(`⭐ 이름   기본`) + 최근 5개. 클릭하면 복원. 나머지는 `...외 N개` 로 표시        |
-| 🖥️ 메인 창 열기               | ⌃⇧⌘F7       | fWarrange 메인 창 표시 — **fWarrange 필요**                                                    |
+| 🖥️ 메인 창 열기               | ⌥⇧⌘F7       | fWarrange 메인 창 표시 — **fWarrange 필요**                                                    |
 | 📷 창 레이아웃 저장          | ⌘F7         | 현재 창 배치를 `YYYY-MM-DD-N` 이름으로 저장                                                    |
 | 👻 데몬 ▸ 상태               | -           | `상태: 실행 중 · 포트 3016 · 가동 …`                                                           |
 | 👻 데몬 ▸ 데몬 재시작        | -           | REST 서버 재시작                                                                               |
@@ -39,7 +39,7 @@ fWarrangeCli 는 화면 상단 메뉴바에 아이콘 하나로 상주합니다.
 | `saveShortcut`           | `⌘F7`   | 창 레이아웃 저장        |
 | `restoreDefaultShortcut` | `⇧⌘F7`  | 기본 레이아웃 복구      |
 | `restoreLastShortcut`    | `⌥⌘F7`  | 최근 레이아웃 복구      |
-| `showMainWindowShortcut` | `⌃⇧⌘F7` | fWarrange 메인 창       |
+| `showMainWindowShortcut` | `⌥⇧⌘F7` | fWarrange 메인 창       |
 | `undoShortcut`           | (없음)  | 직전 창 배치로 되돌리기 |
 
 기호는 `⌃`=Control · `⌥`=Option · `⇧`=Shift · `⌘`=Command 입니다. 줄을 지우면 그 단축키는 등록되지 않습니다. fWarrange 가 있으면 설정 › 단축키 탭에서 바꿀 수도 있습니다. 동작 세부 · 바꾸는 방법 · 표기 규칙 · 문제 해결은 [단축키 사용법](09_Shortcut_Usage.md)에 있습니다.

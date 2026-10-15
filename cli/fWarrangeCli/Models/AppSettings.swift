@@ -198,7 +198,7 @@ struct AppSettings: Codable {
         restoreDefaultShortcut: nil,
         restoreLastShortcut: nil,
         showMainWindowShortcut: nil,
-        undoShortcut: KeyboardShortcutConfig.from(displayString: "⌃⌘F7"),   // Issue98: 신규라 기본값 부여(기존 4개는 nil)
+        undoShortcut: nil,   // Issue130: 되돌리기는 기본 미지정(jm4 실설정) — 사용자가 yml 에 적을 때만 등록
         launchAtLogin: true,  // Issue228: default true so brew services plist persists across cliApp stops, enabling launchd auto-start at next login
         defaultLayoutName: nil,
         appLanguage: nil,

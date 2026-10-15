@@ -14,7 +14,7 @@ fWarrangeCli saves and restores window arrangements with **global shortcuts**. T
 | Save window layout         | `saveShortcut`           | `⌘F7`         | Saves the current arrangement as `YYYY-MM-DD-N`                   |
 | Restore default layout     | `restoreDefaultShortcut` | `⇧⌘F7`        | Restores the default layout                                       |
 | Restore last layout        | `restoreLastShortcut`    | `⌥⌘F7`        | Restores the most recently saved layout                           |
-| Open fWarrange main window | `showMainWindowShortcut` | `⌃⇧⌘F7`       | Shows the main window of the GUI wrapper fWarrange                |
+| Open fWarrange main window | `showMainWindowShortcut` | `⌥⇧⌘F7`       | Shows the main window of the GUI wrapper fWarrange                |
 | Undo                       | `undoShortcut`           | (none)        | Cancels the last restore and returns to the arrangement before it |
 
 * The menu bar menu shows the same shortcuts on the right. If a shortcut is missing from the menu, it is not registered
@@ -78,12 +78,12 @@ Open `~/Documents/finfra/fWarrangeData/_config.yml` with the menu **⚙️ Confi
 saveShortcut: "⌘F7"
 restoreDefaultShortcut: "⇧⌘F7"
 restoreLastShortcut: "⌥⌘F7"
-showMainWindowShortcut: "⌃⇧⌘F7"
-undoShortcut: "⌃⌘F7"
+showMainWindowShortcut: "⌥⇧⌘F7"
+# undoShortcut: "⌃⌘F7"   # Undo is unassigned by default — remove the leading # to use it
 ```
 
 * **Removing a line unregisters that shortcut.** Delete the whole line to turn a shortcut off
-* Wrap the value in double quotes and do not add a `#` comment at the end of the line — the comment is read as part of the value and the shortcut is not registered
+* Wrap the value in double quotes. A `#` comment at the end of the line is ignored since 1.2.0 — earlier versions read the comment as part of the value and did not register the shortcut
 * The file is not re-read while running. After saving, restart fWarrangeCli
 
 ```bash
@@ -158,9 +158,9 @@ A shortcut is one string: **modifier symbols + key name**.
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Pressing the shortcut does nothing                     | Check that the menu shows it. If not, it is unregistered — add the line to `_config.yml` and restart                                                              |
 | Edited `_config.yml` but nothing changed               | The file is not re-read while running — `brew services restart fwarrange-cli`                                                                                     |
-| Only `showMainWindowShortcut` is not registered        | Check for a `#` comment at the end of the line. Remove it and restart (some installs ship an initial settings file with that comment)                             |
+| Only `showMainWindowShortcut` is not registered        | Before 1.2.0 a `#` comment at the end of the line could cause this — remove it and restart, or upgrade to 1.2.0                             |
 | The shortcut responds but windows don't move           | Accessibility permission is off — turn it back on and restart fWarrangeCli                                                                                        |
-| Save/restore shortcuts vanished after a settings reset | The reset clears the four shortcuts and leaves only Undo at `⌃⌘F7` — write them back as in the [`_config.yml` example](#1-editing-_configyml) and restart         |
+| Save/restore shortcuts vanished after a settings reset | Before 1.2.0 the reset cleared the four shortcuts. Since 1.2.0 it restores the defaults (`⌘F7`, `⇧⌘F7`, `⌥⌘F7`, `⌥⇧⌘F7`) and leaves Undo unassigned. On older versions write them back as in the [`_config.yml` example](#1-editing-_configyml) and restart         |
 | Undo does nothing                                      | Nothing to undo — no restore from a shortcut or the menu yet, fWarrangeCli restarted, or the restore came from REST or fWarrange                                  |
 | No shortcuts registered at all (development build)     | Check whether it runs with the environment variable `FWARRANGE_DISABLE_HOTKEYS=1` — `effectiveHotkeysEnabled: false` in `GET /api/v2/settings` means they are off |
 
