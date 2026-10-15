@@ -45,17 +45,22 @@ date: 2026-04-07
 
 # 📙 일반
 
-## Issue128: CONTRIBUTING.md 추가 — 외부 PR 은 Finfra CLA 전자 서명 후 수락 (등록: 2026-10-09)
-* 목적: 상업 라이선스 판매에 필요한 외부 기여분 재라이선스 권한을 CLA Assistant 전자 서명으로 확보한다(외부 기여 0건인 지금 설치)
-* 상세:
-    - 출처: prj6#Issue32 (사용자 지시 2026-10-09 «진행») · 정본 `~/_git/___oracle/_doc_arch/license-profiles.md` §5 «CLA 게이트»
-    - 착수 조건: prj6#Issue32 ③ 완료(cla-assistant.io 연결) — 그 전에 push 하면 CONTRIBUTING 의 CLA 링크가 빈 페이지다. ② gist 는 게시 완료(https://gist.github.com/nowage/f429eb57e61ca7ad3e34a1481251682e)
-    - ⏸️ 대기 (2026-10-10 사용자 결정): prj6#Issue32 보류 — 트리거 = **이 repo 에 첫 외부 PR 도착**. 그때까지 착수하지 않고, 외부 PR 은 CLA 서명 전 머지 금지
+# 📗 선택
+
+# ✅ 완료
+
+## Issue127: [Bug] 설정 공장 초기화가 단축키 4종을 지우고 되돌리기 ⌃⌘F7 만 남김 (등록: 2026-10-09, 완료: 2026-10-15, Hash: b4fc29e) ✅
+* 목적: `resetToDefaults()` 가 `AppSettings.defaults` 를 저장하는데, 그 기본값은 save·restoreDefault·restoreLast·showMainWindow 가 `nil`(Issue61 «yml 에 적힌 것만 등록») · undo 만 `⌃⌘F7`(Issue98). 그래서 초기화 후 단축키가 시드(⌘F7 계열)와 정반대가 됨
+* 상세: 코드 판독 근거 — `AppSettings.swift` `defaults`(4종 nil, undo ⌃⌘F7) · `SettingsService.swift` `resetToDefaults` → `save(defaults)` → 직렬화가 nil 줄 생략. 앱 실측 전
 * 구현 명세:
-    - 루트 `CONTRIBUTING.md` = `~/_git/___oracle/data/template/license/CONTRIBUTING.md` 복사 — frontmatter·📄 블록 제거, `{{REPO}}` → `fWarrange_public`
-    - README 에 기여 절이 있으면 `CONTRIBUTING.md` 링크 1줄
-    - 검증: `grep -c '{{' CONTRIBUTING.md` = 0 · 링크 `https://cla-assistant.io/Finfra/fWarrange_public` 가 CLA 페이지를 연다
-## Issue126: [Bug] 번들 시드 `_config.yml` 의 `showMainWindowShortcut` 줄 끝 주석 때문에 새 설치에서 ⌃⇧⌘F7 이 등록되지 않음 (등록: 2026-10-09)
+    - red 먼저: `factoryResetSettings` 후 `getShortcutsDisplay` 가 시드 값과 같은지 XCTest
+    - 수정 방향: 초기화는 번들 시드 `_config.yml` 을 다시 복사하는 경로로(시드가 단일 기준) — Issue126 과 같은 파일이라 함께 처리 권장
+    - 검증: jma XCTest + REST `POST /settings/factory-reset` 실측
+* 결과 (2026-10-15, `b4fc29e` — Issue130 에서 함께 해결):
+    - `YAMLSettingsService.resetToDefaults` = 설정 파일 삭제 → 번들 시드 재복사(4종 복원·undo 비움), 번들 누락 시 `AppSettings.defaults` 폴백 (사용자 승인 2026-10-15)
+    - 검증: `testFactoryResetRestoresSeedShortcuts` red → green, jma XCTest 139/139. REST `POST /settings/factory-reset` 실기동 실측은 미실행 — jma cliApp 을 prj16#Issue289 가 점유 중이라 Issue129 ② R1 로 이관
+
+## Issue126: [Bug] 번들 시드 `_config.yml` 의 `showMainWindowShortcut` 줄 끝 주석 때문에 새 설치에서 ⌃⇧⌘F7 이 등록되지 않음 (등록: 2026-10-09, 완료: 2026-10-15, Hash: b4fc29e) ✅
 * 목적: 시드 `cli/fWarrangeCli/_config.yml` 37행 `showMainWindowShortcut: "⌃⇧⌘F7" # {showMain}     Open Main Window` — 파서(`parseStringValue`)가 줄 끝 `#` 주석을 떼지 않아 값 전체가 `KeyboardShortcutConfig.from` 에 들어가 `nil`. 매뉴얼은 기본값을 ⌃⇧⌘F7 로 안내함
 * 상세:
     - 실측(2026-10-09, jm4 스크립트 — `AppSettings.swift` 13~118행 발췌): `"⌃⇧⌘F7" # {showMain} …` → nil · `"⌃⇧⌘F7"` → ⌃⇧⌘F7
@@ -65,17 +70,25 @@ date: 2026-04-07
     - red 먼저: 시드 파일을 `YAMLSettingsService` 로 읽어 `showMainWindowShortcut` 이 nil 인 XCTest
     - 수정 후보 ① 시드에서 주석 제거 ② 파서가 따옴표 밖 ` #` 이후를 버림 — ②가 사용자 편집 주석까지 막음
     - 검증: jma XCTest
-## Issue127: [Bug] 설정 공장 초기화가 단축키 4종을 지우고 되돌리기 ⌃⌘F7 만 남김 (등록: 2026-10-09)
-* 목적: `resetToDefaults()` 가 `AppSettings.defaults` 를 저장하는데, 그 기본값은 save·restoreDefault·restoreLast·showMainWindow 가 `nil`(Issue61 «yml 에 적힌 것만 등록») · undo 만 `⌃⌘F7`(Issue98). 그래서 초기화 후 단축키가 시드(⌘F7 계열)와 정반대가 됨
-* 상세: 코드 판독 근거 — `AppSettings.swift` `defaults`(4종 nil, undo ⌃⌘F7) · `SettingsService.swift` `resetToDefaults` → `save(defaults)` → 직렬화가 nil 줄 생략. 앱 실측 전
+* 결과 (2026-10-15, `b4fc29e` — Issue130 에서 함께 해결):
+    - 후보 ② 채택: `SettingsService.stripInlineComment` 를 `parseYAML` 값 추출 단일 지점에 추가(따옴표 안 `#` 보존). 시드 주석 `{showMain}` 은 유지
+    - 검증: `UndoShortcutTests` 시드 5값·인라인 주석 테스트 red → green, jma XCTest 139/139 (Issue130 결과 절)
+
+## Issue128: CONTRIBUTING.md 추가 — 외부 PR 은 Finfra CLA 전자 서명 후 수락 (등록: 2026-10-09, 완료: 2026-10-15, Hash: 76c57f2) ✅
+* 목적: 상업 라이선스 판매에 필요한 외부 기여분 재라이선스 권한을 CLA Assistant 전자 서명으로 확보한다(외부 기여 0건인 지금 설치)
+* 상세:
+    - 출처: prj6#Issue32 (사용자 지시 2026-10-09 «진행») · 정본 `~/_git/___oracle/_doc_arch/license-profiles.md` §5 «CLA 게이트»
+    - 착수 조건: prj6#Issue32 ③ 완료(cla-assistant.io 연결) — 그 전에 push 하면 CONTRIBUTING 의 CLA 링크가 빈 페이지다. ② gist 는 게시 완료(https://gist.github.com/nowage/f429eb57e61ca7ad3e34a1481251682e)
+    - ⏸️ 대기 (2026-10-10 사용자 결정): prj6#Issue32 보류 — 트리거 = **이 repo 에 첫 외부 PR 도착**. 그때까지 착수하지 않고, 외부 PR 은 CLA 서명 전 머지 금지
 * 구현 명세:
-    - red 먼저: `factoryResetSettings` 후 `getShortcutsDisplay` 가 시드 값과 같은지 XCTest
-    - 수정 방향: 초기화는 번들 시드 `_config.yml` 을 다시 복사하는 경로로(시드가 단일 기준) — Issue126 과 같은 파일이라 함께 처리 권장
-    - 검증: jma XCTest + REST `POST /settings/factory-reset` 실측
-
-# 📗 선택
-
-# ✅ 완료
+    - 루트 `CONTRIBUTING.md` = `~/_git/___oracle/data/template/license/CONTRIBUTING.md` 복사 — frontmatter·📄 블록 제거, `{{REPO}}` → `fWarrange_public`
+    - README 에 기여 절이 있으면 `CONTRIBUTING.md` 링크 1줄
+    - 검증: `grep -c '{{' CONTRIBUTING.md` = 0 · 링크 `https://cla-assistant.io/Finfra/fWarrange_public` 가 CLA 페이지를 연다
+* 결과 (2026-10-15, `76c57f2`):
+    - 착수: 사용자 지시 2026-10-15 «Issue128 진행 가능할 듯» — ⏸️ 대기 해제. 쌍둥이 prj25#Issue260(`215cae9`) 선례와 동일 방식
+    - 루트 `CONTRIBUTING.md` = 템플릿 본문(frontmatter·📄 블록 제거) · `{{REPO}}` → `fWarrange_public` — 템플릿 치환본과 `diff` 0 · `grep -c '{{'` = 0
+    - README(en·kr)에 기여 절이 없어 링크 추가 생략(구현 명세 조건부 항목)
+    - ⚠️ CLA 링크 실효는 미확인 — prj6#Issue32 ③(cla-assistant.io 의 Finfra repo 연결)이 아직 미완. `cla-assistant.io/api/cla/get` 이 500 을 돌려 연결 여부를 판정하지 못함. 공개 push(Issue129 ③)는 ③ 연결 확인 뒤가 안전
 
 ## Issue130: [Settings] 기본 단축키를 jm4 실설정으로 정렬 — 번들 시드 `showMainWindowShortcut` ⌃⇧⌘F7 → ⌥⇧⌘F7, 되돌리기 기본 미지정 (등록: 2026-10-15, 완료: 2026-10-15, Hash: b4fc29e, 출처: prj16#Issue289 사용자 지시 «기본 단축키 jm4의 셋팅으로») ✅
 * 목적: 새로 설치한 사용자가 받는 기본 단축키를 개발자가 실제로 쓰는 jm4 설정과 같게 맞춘다 — 지금은 시드·코드 기본값·매뉴얼·paidApp 문서가 서로 다른 값을 말한다
