@@ -38,6 +38,7 @@ date: 2026-04-07
     - paidApp 쪽 수정(prj16#Issue289)은 접근성 안내 UI 제거뿐이라 cliApp REST 계약 변경 없음 — `GET /api/v2/status/accessibility` 그대로 사용
 * 구현 명세:
     - ① 범위 판정: Issue126·127 포함 여부 결정(포함 시 그 이슈 먼저 해결)
+    - ①-1 빌드 번호 정렬: `CURRENT_PROJECT_VERSION` 1 → 5(paidApp 1.2.0 빌드 5 와 같은 값 — 2026-10-15 사용자 지시 «맞춰줘») — pbxproj ×2(530·658행)·`cli/project.yml:16` 동시. brew 배포라 업로드 단조 증가 규약은 없다
     - ② R1(`tdd/release.md`) 전 행 jma — 증거 `cli/_doc_work/_release/v1.2.0/release-test_1.2.0.md`(peers prj16@Issue289 hash)
     - ③ R2 `recheck` → 출고(사용자 승인 뒤): release/1.2.0 push → main `--no-ff` → `fwc-deploy-brew.sh publish`(태그 `cli-v1.2.0`·GitHub release·공개 tap) → Formula sha256 실값·`cli/version-meta.yml` brew 1.2.0 반영
     - ④ 검증: jma 공개 tap 설치본이 1.2.0 을 보고(`GET /api/v2/status` version) + paidApp 1.2.0 연동
