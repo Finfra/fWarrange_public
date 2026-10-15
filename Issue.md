@@ -42,6 +42,11 @@ date: 2026-04-07
     - ② R1(`tdd/release.md`) 전 행 jma — 증거 `cli/_doc_work/_release/v1.2.0/release-test_1.2.0.md`(peers prj16@Issue289 hash)
     - ③ R2 `recheck` → 출고(사용자 승인 뒤): release/1.2.0 push → main `--no-ff` → `fwc-deploy-brew.sh publish`(태그 `cli-v1.2.0`·GitHub release·공개 tap) → Formula sha256 실값·`cli/version-meta.yml` brew 1.2.0 반영
     - ④ 검증: jma 공개 tap 설치본이 1.2.0 을 보고(`GET /api/v2/status` version) + paidApp 1.2.0 연동
+* 진행 (2026-10-15):
+    - ① ✅ 범위 판정: Issue126·127 포함 — 둘 다 Issue130(`b4fc29e`)에서 해결·종결(`366cb1a`). Issue128 CONTRIBUTING(`76c57f2`)도 이 출고에 실린다
+    - ①-1 ✅ `CURRENT_PROJECT_VERSION` 1 → 5 — pbxproj ×2·`cli/project.yml:16` (`61e7c04`)
+    - ② ⏳ 대기: peers 후보 없음 — prj16#Issue289 ①~④(접근성 안내 제거)가 미커밋 진행 중이라 paidApp 1.2.0 후보 SHA 가 없다(R1 10~12행·증거 `peers:` 필수). 또 2행 `jma-clean-state` 는 jma 의 fWarrange 자산을 지우고 4행은 접근성 재승인(사람)이 필요해, jma 를 쓰는 prj16 세션과 시점을 맞춰야 한다
+    - ⚠️ 128 의 CLA 링크는 prj6#Issue32 ③(cla-assistant.io 연결) 미완이라 아직 빈 페이지일 수 있다 — ③ push 전 확인
 
 # 📙 일반
 
