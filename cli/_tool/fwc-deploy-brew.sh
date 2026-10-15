@@ -223,7 +223,10 @@ cmd_local() {
     # 2-1: brew services stop (launchd 정상 경로)
     brew services stop fwarrange-cli 2>/dev/null || true
     # 2-2: stale LaunchAgent 잔존 시 강제 bootout (idempotent — 미등록 상태여도 무해)
-    launchctl bootout "gui/$(id -u)/homebrew.mxcl.fwarrange-cli" 2>/dev/null || true
+    #      both label conventions — brew renamed homebrew.mxcl.* to sh.brew.* (Issue95, Issue136)
+    for _label in sh.brew.fwarrange-cli homebrew.mxcl.fwarrange-cli; do
+        launchctl bootout "gui/$(id -u)/${_label}" 2>/dev/null || true
+    done
     sleep 0.3
     # 2-3: 잔여 프로세스 강제 종료
     if pgrep -f "MacOS/fWarrangeCli" > /dev/null 2>&1; then

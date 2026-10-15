@@ -34,10 +34,12 @@ LOCK_WAIT="${TDD_LOCK_WAIT:-1800}"
 
 # id | timeout(s) | quick | command — playlist rows in brackets
 DEFAULT_STEPS='playlist-runner|120|1|bash tdd/cases/run-selftest.sh
+tool-brew-label|30|1|bash tdd/cases/tool-brew-label.sh
 unit|1500|1|bash tdd/cases/unit.sh
 publish-dry-run-check|600|1|bash cli/_tool/fwc-deploy-brew-test.sh
 all-clear-e2e|1800|0|bash cli/_tool/fwc-test.sh'
 # playlist-runner        #28 (this runner)
+# tool-brew-label        #32 (shell tools see the brew service under both label conventions)
 # unit                   #1-8 #10-17 #19-27  (XCTest, test plan fWarrangeCli)
 # publish-dry-run-check  #18 check 1 (check 2 needs --summary on a throwaway clone — not run here)
 # all-clear-e2e          #9 (fwc-test.sh: deploy + REST/CMD all + log scan, data restored on exit)
