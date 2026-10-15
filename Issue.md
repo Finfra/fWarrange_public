@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 135
+* Issue HWM: 137
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -46,7 +46,35 @@ date: 2026-04-07
     - ⚠️ 128 의 CLA 링크는 prj6#Issue32 ③(cla-assistant.io 연결) 미완이라 아직 빈 페이지일 수 있다 — ③ push 전 확인
 
 # 📙 일반
-## Issue132: [TDD] 통합 test 러너 신설 — `jexec test` 가 재생목록을 한 번에 돌게 (등록: 2026-10-15, 출처: prj5#Issue127 · 이슈후보 승격)
+# 📗 선택
+
+# ✅ 완료
+
+## Issue137: [Lifecycle] brew 서비스 바이너리가 아닌 open 인스턴스(Debug 빌드)가 brew 로 handoff — all-clear 대상이 설치본(Release)으로 바뀜 (등록: 2026-10-15, 완료: 2026-10-15, Hash: 7f34994, 출처: Issue132 full `jexec test` 3회차 jma) ✅
+* 목적: brew 서비스로 위임하는 것은 launchd 가 띄울 실행 파일이 바로 나 자신일 때뿐이게 한다 — Debug 빌드는 위임하지 않고 그대로 primary 로 남는다
+* depends: Issue136
+* 상세:
+    - 3회차 full 실행(Issue136 수정 반영): 4/5. `tool-brew-label` 은 통과했고 all-clear 의 API 19~25 응답이 비었다
+    - Issue136 수정으로 Debug 배포 전 brew 가 정지되자, open 으로 뜬 Debug 앱이 `onAppStart` 의 handoff 조건(서비스 미로드·formula 설치)을 만족해 `brew services start` 를 부르고 exit 했다. launchd 는 설치본 Release(`opt/fwarrange-cli`)를 띄웠다 — launchd 로그 21:43: Debug 29233 → 29762 `speculative` → `semaphore` 재기동 반복
+    - 판정이 «formula 가 설치돼 있는가» 만 보고 «그 formula 가 나인가» 를 보지 않았다
+* 구현 명세:
+    - `BrewServiceSync.StartEnvironment.isServiceBinary` 신설 — live 는 `isSameBundle(Bundle.main.bundlePath, serviceAppPath(brewPath:))` (심링크 해소 후 비교). `onAppStart` 는 formula 확인 다음에 이 판정으로 skip
+    - 검증: XCTest `testForeignBinaryDoesNotHandOff`·`testServiceBinaryComparesResolvedBundlePaths` red→green · jma unit · jma full `jexec test` green(Issue136·132 와 함께)
+* 결과: jma unit 156/156 · full `jexec test` `PLAYLIST RESULT: all green (5/5)` — all-clear 6 PASS(API 42/43·CMD 36/37, skip 은 파괴 테스트 1건씩) · playlist #33 ✅ jma
+
+## Issue136: [Test] 셸 도구가 brew 서비스를 구 label(homebrew.mxcl.*)로만 찾아 Debug 배포 전 정지를 건너뜀 — all-clear 가 launchd 인스턴스와 경합 (등록: 2026-10-15, 완료: 2026-10-15, Hash: a8d390c, 출처: Issue132 full `jexec test` jma) ✅
+* 목적: full `jexec test` 의 all-clear-e2e 가 brew 서비스 실행 여부와 무관하게 Debug 인스턴스 하나만 상대로 돌게 한다
+* 상세:
+    - 2회차 full 실행(793f656, 접근성 granted): 3/4. all-clear 의 API 37(restore-modes)·38(restore-dryrun) 응답이 비었다. 직후 수동 실측에서는 같은 restore 가 0.8초 만에 끝났다
+    - launchd 로그상 테스트 구간에 brew 인스턴스가 `because semaphore`(KeepAlive 재기동)로 거듭 뜨고, open 인스턴스와 교대했다. 테스트가 끝난 뒤 남은 것도 brew 인스턴스(27773)였다
+    - 원인: `fwc-config.sh` `BREW_SERVICE_LABEL="homebrew.mxcl.fwarrange-cli"` — Issue95 에서 Swift 쪽만 두 규약으로 고쳤고 셸 도구는 그대로였다. `brew_service_running` 이 항상 false 라 `fwc-run-xcode.sh build-deploy` 의 «Debug 배포 전 brew 정지» 가 실행되지 않았다. `fwc-deploy-brew.sh` Step 2-2 의 stale bootout 도 구 label 만 겨눴다
+    - 1회차(Issue132 ③)가 이 문제를 드러내지 않은 것은 brew 서비스가 정지 상태였을 가능성 때문으로 보임(검증 필요)
+* 구현 명세:
+    - `fwc-config.sh`: `BREW_SERVICE_LABELS` 두 규약, `brew_service_running` 은 둘 중 하나와 정확히 일치하면 참 · `fwc-deploy-brew.sh` bootout 두 label
+    - 검증: `tdd/cases/tool-brew-label.sh`(launchctl 스텁 5건) red→green · 러너 단계 `tool-brew-label` 추가 · jma full `jexec test` green
+* 결과: red 1실패 → green 5/5 · 3회차 full 에서 `tool-brew-label` 통과, 남은 all-clear 실패는 Issue137 로 분리 · 4회차 full all green(5/5)
+
+## Issue132: [TDD] 통합 test 러너 신설 — `jexec test` 가 재생목록을 한 번에 돌게 (등록: 2026-10-15, 완료: 2026-10-15, Hash: cc6a2e2, 757df56, a8d390c, 7f34994, 출처: prj5#Issue127 · 이슈후보 승격) ✅
 * 목적: `data/exec.yml` 에 `test:` 명령이 없어 `jexec test` 가 rc 2 로 거부되고 `status: draft` 에 머문다 — `tdd/playlist.md` 를 한 번에 도는 러너를 만들어 등록한다
 * 상세:
     - 근거: `~/_git/___common/_doc_work/report/jexec_issue119_report.md` «실측으로 드러난 결함» — f2x2(15·16·25·26) 는 통합 러너 없음
@@ -63,11 +91,7 @@ date: 2026-04-07
     - ③ full `jexec test`(jma, 17:53, `sync-jma 26 push` 후 `--no-sync`): `PLAYLIST RESULT: failed all-clear-e2e (3/4 passed)` — API 3·CMD 1 실패
         - API 20 layout-detail 404: 앞선 실행이 남긴 `testCapture` 의존 → Issue134 로 분리·해결(`757df56`)
         - API 25·38·CMD 27 restore: «Accessibility 권한이 필요합니다» — jma 의 Debug 빌드가 접근성 미승인. 코드 결함 아님, 사람의 접근성 승인 뒤 재실행
-    - ④ ⏳ jma 접근성 승인 → full `jexec test` green → `data/exec.yml` `status: active`
-
-# 📗 선택
-
-# ✅ 완료
+    - ④ ✅ 접근성 승인 뒤 2회차 3/4(Issue136 — 셸 도구 구 label) · 3회차 4/5(Issue137 — Debug 빌드의 brew handoff) · 4회차(7f34994) `PLAYLIST RESULT: all green (5/5)` → `data/exec.yml` `status: active` · playlist #28 ✅ jma
 
 ## Issue135: [Lifecycle] 재부팅 뒤 cliApp 이 하나도 안 뜸 — 중복으로 종료되는 형제가 종료 훅에서 `brew services stop` 을 불러 승자(launchd 인스턴스)까지 내림 (등록: 2026-10-15, 완료: 2026-10-15, Hash: 89297bf, 출처: jma 재부팅 실측) ✅
 * 목적: 재부팅·로그인 직후 paidApp 이 띄운 cliApp 과 launchd 인스턴스가 겹쳐도 서비스 하나가 살아남게 한다. 지금은 매 재부팅마다 cliApp 이 사라질 수 있다
