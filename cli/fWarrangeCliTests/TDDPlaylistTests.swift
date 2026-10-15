@@ -1155,14 +1155,51 @@ final class AppRestarterTests: XCTestCase {
     /// was about to kickstart. Termination sync must have one decision point that honours the restart.
     func testTerminateSyncSkipsBrewStopDuringRestart() {
         defer { BrewServiceSync.endManagedRelaunch() }
-        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: true),
+        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: true, siblingAlive: false),
                        ["services", "stop", "fwarrange-cli", "--keep"])
-        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: false),
+        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: false, siblingAlive: false),
                        ["services", "stop", "fwarrange-cli"])
 
         BrewServiceSync.beginManagedRelaunch()
-        XCTAssertNil(BrewServiceSync.terminateStopArguments(launchAtLogin: true),
+        XCTAssertNil(BrewServiceSync.terminateStopArguments(launchAtLogin: true, siblingAlive: false),
                      "a restarting instance must leave the brew service loaded")
+    }
+
+    /// jma reboot: paidApp opened a cliApp before launchd spawned the RunAtLoad instance. The launchd
+    /// winner terminated that sibling (Issue131), and the sibling's terminate sync ran
+    /// `brew services stop --keep` — unloading the winner too, so no cliApp was left (Issue135).
+    /// An instance that quits while a sibling is still alive is being retired, not stopped by the user.
+    func testRetiredDuplicateLeavesBrewServiceLoaded() {
+        XCTAssertNil(BrewServiceSync.terminateStopArguments(launchAtLogin: true, siblingAlive: true))
+        XCTAssertNil(BrewServiceSync.terminateStopArguments(launchAtLogin: false, siblingAlive: true))
+        XCTAssertFalse(BrewServiceSync.shouldSyncStopOnTerminate(siblingAlive: true),
+                       "the menu Quit path must use the same decision")
+    }
+
+    /// A lone instance quit by the user still syncs brew to stopped (Issue51 behaviour kept).
+    func testLoneInstanceQuitStillStopsBrew() {
+        XCTAssertTrue(BrewServiceSync.shouldSyncStopOnTerminate(siblingAlive: false))
+    }
+
+    /// jma green run 1 still failed: the launchd winner terminates the sibling ~50 ms after it is spawned,
+    /// before LaunchServices lists it — `NSRunningApplication` saw no sibling and the stop went through
+    /// (`bootout initiated by: launchctl<-ruby<-fWarrangeCli[open pid]`). launchd's own table already
+    /// carries the winner's PID, so a running service process that is not me counts as a sibling.
+    func testServicePIDIsReadFromLaunchctlList() {
+        let list = "PID\tStatus\tLabel\n-\t78\thomebrew.mxcl.libvirt\n19854\t0\tsh.brew.fwarrange-cli\n"
+        XCTAssertEqual(BrewServiceSync.servicePID(fromLaunchctlList: list), 19854)
+        XCTAssertNil(BrewServiceSync.servicePID(fromLaunchctlList: "-\t0\tsh.brew.fwarrange-cli\n"),
+                     "loaded but not running is no sibling")
+        XCTAssertNil(BrewServiceSync.servicePID(fromLaunchctlList: ""))
+    }
+
+    func testRunningServiceProcessOtherThanMeIsASibling() {
+        XCTAssertTrue(BrewServiceSync.isSiblingAlive(myPID: 100, servicePID: 200, otherAppVisible: false),
+                      "the just-spawned launchd winner, not yet in NSRunningApplication")
+        XCTAssertFalse(BrewServiceSync.isSiblingAlive(myPID: 100, servicePID: 100, otherAppVisible: false),
+                       "the launchd instance quitting itself is a user stop")
+        XCTAssertFalse(BrewServiceSync.isSiblingAlive(myPID: 100, servicePID: nil, otherAppVisible: false))
+        XCTAssertTrue(BrewServiceSync.isSiblingAlive(myPID: 100, servicePID: nil, otherAppVisible: true))
     }
 
     /// The REST endpoint must use that path — not a bare terminate.

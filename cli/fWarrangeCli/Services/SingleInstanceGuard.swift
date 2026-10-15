@@ -126,6 +126,14 @@ enum SingleInstanceGuard {
         }
     }
 
+    /// True when another instance of this bundle is still alive — the caller is quitting as a retired
+    /// duplicate, so it must not stop the brew service the survivor runs under (Issue135).
+    static func hasLiveSibling() -> Bool {
+        let myPID = ProcessInfo.processInfo.processIdentifier
+        return otherInstances(bundleID: Bundle.main.bundleIdentifier ?? "", myPID: myPID)
+            .contains { kill($0.processIdentifier, 0) == 0 }
+    }
+
     private static func otherInstances(bundleID: String, myPID: pid_t) -> [NSRunningApplication] {
         NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
             .filter { $0.processIdentifier != myPID }

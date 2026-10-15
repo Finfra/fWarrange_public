@@ -168,10 +168,17 @@ enum BrewServiceSync {
         handoffInProgress = false
     }
 
-    /// Issue51 종료 동기화(`applicationWillTerminate`)가 실행할 brew 인자.
-    /// 재시작(handoff) 중이면 nil — `onAppStop` 과 같은 플래그를 본다 (Issue119: 두 종료 경로의 판정 갈림 통일).
-    static func terminateStopArguments(launchAtLogin: Bool) -> [String]? {
-        if handoffInProgress { return nil }
+    /// 종료하면서 brew 를 stopped 로 맞출지 — 두 종료 경로(`applicationWillTerminate`·메뉴 «종료»)의 단일 판정.
+    /// * 재시작(handoff) 중이면 false — 서비스가 loaded 로 남아야 헬퍼가 kickstart 한다 (Issue119)
+    /// * 형제 인스턴스가 살아 있으면 false — 이 종료는 사용자가 끈 것이 아니라 중복 정리(Issue131)로 물러나는 것이다.
+    ///   여기서 brew 를 멈추면 승자인 launchd 인스턴스까지 내려가 cliApp 이 0개가 된다 (Issue135, jma 재부팅 실측)
+    static func shouldSyncStopOnTerminate(siblingAlive: Bool) -> Bool {
+        !handoffInProgress && !siblingAlive
+    }
+
+    /// Issue51 종료 동기화(`applicationWillTerminate`)가 실행할 brew 인자. 멈추지 않을 때는 nil.
+    static func terminateStopArguments(launchAtLogin: Bool, siblingAlive: Bool) -> [String]? {
+        guard shouldSyncStopOnTerminate(siblingAlive: siblingAlive) else { return nil }
         return launchAtLogin ? ["services", "stop", formulaName, "--keep"] : ["services", "stop", formulaName]
     }
 
@@ -181,9 +188,10 @@ enum BrewServiceSync {
     ///
     /// 반환 후 호출부가 `NSApplication.terminate` 를 수행함.
     /// 타임아웃 초과 시 종료 흐름 지연 방지 위해 포기하고 반환.
-    static func onAppStop(timeout: TimeInterval = 2.0) {
-        if handoffInProgress {
-            logI("[brew-sync] onAppStop skip — handoff in progress (brew stop 억제)")
+    static func onAppStop(timeout: TimeInterval = 2.0,
+                          siblingAlive: () -> Bool = { BrewServiceSync.liveSiblingAlive() }) {
+        guard shouldSyncStopOnTerminate(siblingAlive: siblingAlive()) else {
+            logI("[brew-sync] onAppStop skip — 재시작 중이거나 형제 인스턴스 생존 (brew stop 억제)")
             return
         }
 
@@ -247,6 +255,32 @@ enum BrewServiceSync {
             if isServiceLabel(String(field).trimmingCharacters(in: .whitespaces)) { return true }
         }
         return false
+    }
+
+    /// `launchctl list` 에서 이 서비스의 실행 중 PID. loaded 지만 프로세스가 없으면(`-`) nil.
+    static func servicePID(fromLaunchctlList output: String) -> pid_t? {
+        for line in output.split(separator: "\n") {
+            let fields = line.split(separator: "\t").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard fields.count >= 3, isServiceLabel(fields[fields.count - 1]) else { continue }
+            return pid_t(fields[0])
+        }
+        return nil
+    }
+
+    /// 종료하는 이 프로세스 말고 살아 있는 cliApp 이 있는가 (Issue135).
+    /// launchd 승자는 spawn 직후 ~50ms 안에 형제를 종료시키는데, 그때는 LaunchServices 가 승자를 아직
+    /// `NSRunningApplication` 에 올리지 않았다(jma 실측). launchd 표에는 이미 PID 가 있으므로 둘 다 본다.
+    static func isSiblingAlive(myPID: pid_t, servicePID: pid_t?, otherAppVisible: Bool) -> Bool {
+        if otherAppVisible { return true }
+        if let servicePID, servicePID != myPID { return true }
+        return false
+    }
+
+    static func liveSiblingAlive() -> Bool {
+        let list = runCommand("/bin/launchctl", args: ["list"]) ?? ""
+        return isSiblingAlive(myPID: ProcessInfo.processInfo.processIdentifier,
+                              servicePID: servicePID(fromLaunchctlList: list),
+                              otherAppVisible: SingleInstanceGuard.hasLiveSibling())
     }
 
     /// `~/Library/LaunchAgents/` 에서 이 formula 의 서비스 plist 를 찾는다.
