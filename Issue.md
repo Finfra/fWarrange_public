@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 131
+* Issue HWM: 132
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -24,7 +24,6 @@ date: 2026-04-07
    - 패턴: `fwc-deploy-brew.sh` 와 `fpm-deploy-record.sh` 모두 `--dry-run` 플래그 사용 + 다단계 Step 0~8 검증 반복
    - 의도: `_public` 의 instinct_deploy-dry-run-validation-gate.md + instinct_deploy-multistage-validation.md 작성
    - 장애: 타 prj memory 경로에 대한 쓰기 권한 제약(위임 범위) — Issue.md 에 이슈 등록만 수행, memory 파일 작성은 사용자 몫으로 미룸
-1. [prj5#Issue127] 통합 test 러너 부재로 `jexec test` 불가 — `data/exec.yml` 에 `test:` 명령이 없어 `jexec test` 가 rc 2 로 거부되고 `status: draft` 에 머문다. `tdd/playlist.md` 를 한 번에 도는 러너(cliApp — paidApp 과 같은 f2x2 묶음, brew 서비스 기동 전제 확인)를 만들어 `test:` 에 등록 → jma 실 `jexec test` green 확인 뒤 `status: active`. 선례 prj11 `tdd/run-jma.sh`·prj13 `tdd/run-unit.sh`(`lock: self`) · 근거 `~/_git/___common/_doc_work/report/jexec_issue119_report.md`
 1. [L10n] 접근성 안내 alert(`AccessibilityGuidePresenter.show`) 문구가 한국어 하드코딩 — en 시스템(jma)에서도 «Accessibility 권한 필요» 한국어 본문. paidApp 1.2.0 부터 권한 안내를 cliApp 만 하므로(prj16#Issue289) 노출 빈도가 오른다 (prj16#Issue289 4단계 실측, 캡처 `prj16 _doc_work/_release/v1.2.0/ax-guidance-check/02_en_cliapp-own-guide.png`)
 
 # 🚧 진행중
@@ -50,6 +49,17 @@ date: 2026-04-07
     - ⚠️ 128 의 CLA 링크는 prj6#Issue32 ③(cla-assistant.io 연결) 미완이라 아직 빈 페이지일 수 있다 — ③ push 전 확인
 
 # 📙 일반
+## Issue132: [TDD] 통합 test 러너 신설 — `jexec test` 가 재생목록을 한 번에 돌게 (등록: 2026-10-15, 출처: prj5#Issue127 · 이슈후보 승격)
+* 목적: `data/exec.yml` 에 `test:` 명령이 없어 `jexec test` 가 rc 2 로 거부되고 `status: draft` 에 머문다 — `tdd/playlist.md` 를 한 번에 도는 러너를 만들어 등록한다
+* 상세:
+    - 근거: `~/_git/___common/_doc_work/report/jexec_issue119_report.md` «실측으로 드러난 결함» — f2x2(15·16·25·26) 는 통합 러너 없음
+    - 선례: 쌍둥이 prj25#Issue265 `tdd/run.sh`(`81a02d8`) · prj11 `tdd/run-jma.sh` · prj13 `tdd/run-unit.sh` (`lock: self`)
+    - 재생목록 실행 열의 러너: XCTest(test plan 격리, 1~8·10~17·19~26행) · `fwc-test.sh`(9행 — 설치본 교체·데이터 스냅샷 원복) · `fwc-deploy-brew-test.sh`(18행)
+* 구현 명세:
+    - `tdd/run.sh` + `tdd/cases/unit.sh`(test plan `fWarrangeCli`) + `tdd/cases/run-selftest.sh` — prj25 동형. 하나라도 실패하면 비0 · 마지막 줄 `PLAYLIST RESULT:` · 실패 삼킴 금지 · bash 3.2 호환
+    - `--quick` = 설치본을 건드리지 않는 단계만(셀프테스트·XCTest·publish dry-run 회귀). `fwc-test.sh` 는 full 에서만
+    - red 먼저: 러너 selftest 가 실패 단계 전파·워치독·stdin 격리를 잡는지(변이로 red 확인)
+    - `data/exec.yml`(로컬 전용) `test: bash tdd/run.sh` · `lock: self` 등록 → jma 실 `jexec test` green 확인 뒤 `status: active`
 
 ## Issue131: [Lifecycle] 같은 순간 뜬 두 인스턴스를 `SingleInstanceGuard` 가 못 걸러 둘 다 생존 — launchd 쪽은 3016 미점유 (등록: 2026-10-15, 출처: prj16#Issue290 jma 실측 — prj16 세션 등록)
 * 목적: 두 기동 경로가 같은 초에 겹치면 인스턴스 2개가 공존한다 — 메뉴바 아이콘·접근성 안내가 2벌, launchd 승자는 REST 없이 살아 있고 패자가 포트를 쥐어 «하나 정리하면 REST 사망»
