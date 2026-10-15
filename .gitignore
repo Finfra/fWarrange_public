@@ -70,3 +70,6 @@ Issue_map.htm
 
 # graphify 산출물 — 재생성 가능, 커밋 루프 방지 (Issue296)
 graphify-out/
+
+# prj3#Issue1096 — 업무 접수대장은 제품 git 이력 밖 (request-rules)
+/Request.md
