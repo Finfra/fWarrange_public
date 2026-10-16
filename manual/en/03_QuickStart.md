@@ -74,6 +74,7 @@ A GUI for picking layouts from a list and minimap and restoring only the checked
 ## Next Steps
 
 * [Menu Bar Usage](04_MenuBar_Usage.md) — menu · shortcuts · command line · `_config.yml`
+* [Shortcut Usage](09_Shortcut_Usage.md) — changing shortcuts · undo · troubleshooting
 * [REST API Usage](05_API_Usage.md) — all endpoints
 * [Skill Usage](06_Skill_Usage.md) — natural-language control from Claude Code
 * [MCP Server Usage](07_MCP_Usage.md) — AI tool integration

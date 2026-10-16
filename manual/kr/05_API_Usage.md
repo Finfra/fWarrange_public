@@ -113,7 +113,7 @@ curl -s -X POST http://localhost:3016/api/v2/capture \
 | name       | string   | 아니오 | 레이아웃 이름 (생략 시 날짜 자동 생성) |
 | filterApps | string[] | 아니오 | 캡처할 앱 목록 (생략 시 전체)          |
 
-## POST /api/v2/layouts/{name}/restore - 레이아웃 복원
+#### POST /api/v2/layouts/{name}/restore - 레이아웃 복원
 
 ```bash
 # 기본 설정으로 복원
@@ -150,7 +150,7 @@ curl -s -X POST http://localhost:3016/api/v2/layouts/myLayout/restore \
 }
 ```
 
-## PUT /api/v2/layouts/{name} - 이름 변경
+#### PUT /api/v2/layouts/{name} - 이름 변경
 
 ```bash
 curl -s -X PUT http://localhost:3016/api/v2/layouts/myLayout \
@@ -158,7 +158,7 @@ curl -s -X PUT http://localhost:3016/api/v2/layouts/myLayout \
   -d '{"newName":"dailySetup"}' | python3 -m json.tool
 ```
 
-### DELETE /api/v2/layouts/{name} - 레이아웃 삭제
+#### DELETE /api/v2/layouts/{name} - 레이아웃 삭제
 
 ```bash
 curl -s -X DELETE http://localhost:3016/api/v2/layouts/myLayout | python3 -m json.tool
@@ -193,7 +193,7 @@ curl -s http://localhost:3016/api/v2/windows/current | python3 -m json.tool
 curl -s "http://localhost:3016/api/v2/windows/current?filterApps=Safari,iTerm2" | python3 -m json.tool
 ```
 
-## GET /api/v2/windows/apps - 실행 중 앱 목록
+#### GET /api/v2/windows/apps - 실행 중 앱 목록
 
 ```bash
 curl -s http://localhost:3016/api/v2/windows/apps | python3 -m json.tool

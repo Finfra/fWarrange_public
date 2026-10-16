@@ -21,7 +21,10 @@ STABLE_LINK="${STABLE_LINK_DIR}/${APP_NAME}"
 CACHE_FILE_NAME=".last_build_path"
 CONFIGURATION="${CONFIGURATION:-Debug}"   # /run 경로 기본 Debug (TCC 회피)
 BREW_FORMULA="fwarrange-cli"              # Homebrew Formula 이름 (kebab-case)
-BREW_SERVICE_LABEL="homebrew.mxcl.${BREW_FORMULA}"
+# Homebrew renamed service labels homebrew.mxcl.* -> sh.brew.* (Issue95). Match both (Issue136);
+# BREW_SERVICE_LABEL is the current one, for messages and new calls only.
+BREW_SERVICE_LABELS="sh.brew.${BREW_FORMULA} homebrew.mxcl.${BREW_FORMULA}"
+BREW_SERVICE_LABEL="sh.brew.${BREW_FORMULA}"
 BREW_SERVICE_PLIST="${HOME}/Library/LaunchAgents/${BREW_SERVICE_LABEL}.plist"
 
 # ---------- 원격 배포(publish) 설정 (Issue82) ----------
@@ -80,7 +83,9 @@ resolve_app_path() {
 # brew service 가 현재 launchd 에 로드되어 있는지 확인
 # (plist 존재만으로는 부족 — brew services stop 후에도 plist 는 남음)
 brew_service_running() {
-    launchctl list 2>/dev/null | awk '{print $3}' | grep -q "^${BREW_SERVICE_LABEL}$"
+    local labels=" ${BREW_SERVICE_LABELS} "
+    launchctl list 2>/dev/null | awk -v want="$labels" '
+        { if (index(want, " " $3 " ") > 0) found = 1 } END { exit found ? 0 : 1 }'
 }
 
 # Issue39 Phase1: 레거시 var 경로 감지 — 발견 시 경고 출력 (자동 삭제 없음)

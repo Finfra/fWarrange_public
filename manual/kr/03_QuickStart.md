@@ -74,6 +74,7 @@ curl -X DELETE http://localhost:3016/api/v2/layouts/dailySetup        # 삭제
 ## 다음 단계
 
 * [메뉴바 사용법](04_MenuBar_Usage.md) — 메뉴 · 단축키 · 명령행 · `_config.yml`
+* [단축키 사용법](09_Shortcut_Usage.md) — 단축키 바꾸기 · 되돌리기 · 문제 해결
 * [REST API 사용법](05_API_Usage.md) — 전체 엔드포인트
 * [Skill 사용법](06_Skill_Usage.md) — Claude Code 에서 자연어 제어
 * [MCP 서버 사용법](07_MCP_Usage.md) — AI 도구 연동

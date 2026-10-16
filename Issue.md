@@ -4,7 +4,7 @@ description: fWarrangeCli 이슈 관리
 date: 2026-04-07
 ---
 # Issue Management
-* Issue HWM: 123
+* Issue HWM: 137
 * Checkpoints: 2026-06-22 (Issue85·Issue83 종결 — MCP v2 마이그레이션 + npm 1.0.2 배포, Hash b587581)
   - 5012bb2 (2026-09-05) - Chore: checkpoint — Issue94 등록 + 결정사항 링크 표 정리 (VSCode 설정 동반)
 
@@ -20,19 +20,253 @@ date: 2026-04-07
 | Issue72_6 — cliApp(non-sandbox)에서 CGS 계열 비공개 API 사용 합의 (2026-05-16)        | Issue72_6 본문                                                             |
 
 # 🌱 이슈후보
-1. `manual/FunctionalSpecification.md`·`Glossary.md`·`ReferenceAgenda.md` v2 정비 — v1 엔드포인트 표·`/locale`·`lib/wArrange_core`·«fWarrange 앱» 서술 잔존 (Issue123 범위 밖으로 남김)
-1. `cli/README.md` «brew services 불필요» 서술이 루트 README·앱 안내(brew services 권장)와 어긋남 — 한쪽으로 통일
-1. **[Observer 패턴] 배포 workflow 에 3+ dry-run 검증 단계 반복 패턴 — instinct 파일 생성 대기** (session d2d223aa-dfa6-4be8-9b7b-dd59c70126d2 관찰)
-   - 패턴: `fwc-deploy-brew.sh` 와 `fpm-deploy-record.sh` 모두 `--dry-run` 플래그 사용 + 다단계 Step 0~8 검증 반복
-   - 의도: `_public` 의 instinct_deploy-dry-run-validation-gate.md + instinct_deploy-multistage-validation.md 작성
-   - 장애: 타 prj memory 경로에 대한 쓰기 권한 제약(위임 범위) — Issue.md 에 이슈 등록만 수행, memory 파일 작성은 사용자 몫으로 미룸
+1. [L10n] 접근성 안내 alert(`AccessibilityGuidePresenter.show`) 문구가 한국어 하드코딩 — en 시스템(jma)에서도 «Accessibility 권한 필요» 한국어 본문. paidApp 1.2.0 부터 권한 안내를 cliApp 만 하므로(prj16#Issue289) 노출 빈도가 오른다 (prj16#Issue289 4단계 실측, 캡처 `prj16 _doc_work/_release/v1.2.0/ax-guidance-check/02_en_cliapp-own-guide.png`)
 
 # 🚧 진행중
+
 # 📕 중요
 
-# 📙 일반
+## Issue129: [Version] cliApp 1.2.0 출고 — paidApp 1.2.0 App Store 재제출 락스텝 (등록: 2026-10-15, 출처: prj16#Issue289 사용자 지시)
+* 목적: paidApp 1.1.3 (4) 리젝(2.4.5) 뒤 1.2.0 으로 재제출한다 — 심사·사용자 환경의 헬퍼도 1.2.0 으로 맞춘다(Issue120 락스텝 선례)
+* depends: prj16#Issue289
+* 상세:
+    - 소스 버전 4곳은 이미 1.2.0 — `VERSION`·pbxproj `MARKETING_VERSION` ×2·`cli/project.yml`·Formula url(95817c2). `cli/version-meta.yml` brew 는 아직 1.1.3(formula·installed)
+    - `cli-v1.1.3` 이후 cliApp `*.swift` 변경 0건(2026-10-15 실측) — 출고분은 버전 값만 다르다. 남은 버그 Issue126·127 을 1.2.0 에 넣을지는 착수 때 판정
+    - paidApp 쪽 수정(prj16#Issue289)은 접근성 안내 UI 제거뿐이라 cliApp REST 계약 변경 없음 — `GET /api/v2/status/accessibility` 그대로 사용
+* 구현 명세:
+    - ① 범위 판정: Issue126·127 포함 여부 결정(포함 시 그 이슈 먼저 해결)
+    - ①-1 빌드 번호 정렬: `CURRENT_PROJECT_VERSION` 1 → 5(paidApp 1.2.0 빌드 5 와 같은 값 — 2026-10-15 사용자 지시 «맞춰줘») — pbxproj ×2(530·658행)·`cli/project.yml:16` 동시. brew 배포라 업로드 단조 증가 규약은 없다
+    - ② R1(`tdd/release.md`) 전 행 jma — 증거 `cli/_doc_work/_release/v1.2.0/release-test_1.2.0.md`(peers prj16@Issue289 hash)
+    - ③ R2 `recheck` → 출고(사용자 승인 뒤): release/1.2.0 push → main `--no-ff` → `fwc-deploy-brew.sh publish`(태그 `cli-v1.2.0`·GitHub release·공개 tap) → Formula sha256 실값·`cli/version-meta.yml` brew 1.2.0 반영
+    - ④ 검증: jma 공개 tap 설치본이 1.2.0 을 보고(`GET /api/v2/status` version) + paidApp 1.2.0 연동
+* 진행 (2026-10-15):
+    - ① ✅ 범위 판정: Issue126·127 포함 — 둘 다 Issue130(`b4fc29e`)에서 해결·종결(`366cb1a`). Issue128 CONTRIBUTING(`76c57f2`)도 이 출고에 실린다
+    - ①-1 ✅ `CURRENT_PROJECT_VERSION` 1 → 5 — pbxproj ×2·`cli/project.yml:16` (`61e7c04`)
+    - ② ⏳ 대기: peers 후보 없음 — prj16#Issue289 ①~④(접근성 안내 제거)가 미커밋 진행 중이라 paidApp 1.2.0 후보 SHA 가 없다(R1 10~12행·증거 `peers:` 필수). 또 2행 `jma-clean-state` 는 jma 의 fWarrange 자산을 지우고 4행은 접근성 재승인(사람)이 필요해, jma 를 쓰는 prj16 세션과 시점을 맞춰야 한다
+    - ⚠️ 128 의 CLA 링크는 prj6#Issue32 ③(cla-assistant.io 연결) 미완이라 아직 빈 페이지일 수 있다 — ③ push 전 확인
 
-## Issue114: 1.1.2 공개본 출고 테스트 발견 결함 — 단일 창 복원 판정·테스트 도구 위험·README 불일치 (등록: 2026-09-29)
+# 📙 일반
+# 📗 선택
+
+# ✅ 완료
+
+## Issue137: [Lifecycle] brew 서비스 바이너리가 아닌 open 인스턴스(Debug 빌드)가 brew 로 handoff — all-clear 대상이 설치본(Release)으로 바뀜 (등록: 2026-10-15, 완료: 2026-10-15, Hash: 7f34994, 출처: Issue132 full `jexec test` 3회차 jma) ✅
+* 목적: brew 서비스로 위임하는 것은 launchd 가 띄울 실행 파일이 바로 나 자신일 때뿐이게 한다 — Debug 빌드는 위임하지 않고 그대로 primary 로 남는다
+* depends: Issue136
+* 상세:
+    - 3회차 full 실행(Issue136 수정 반영): 4/5. `tool-brew-label` 은 통과했고 all-clear 의 API 19~25 응답이 비었다
+    - Issue136 수정으로 Debug 배포 전 brew 가 정지되자, open 으로 뜬 Debug 앱이 `onAppStart` 의 handoff 조건(서비스 미로드·formula 설치)을 만족해 `brew services start` 를 부르고 exit 했다. launchd 는 설치본 Release(`opt/fwarrange-cli`)를 띄웠다 — launchd 로그 21:43: Debug 29233 → 29762 `speculative` → `semaphore` 재기동 반복
+    - 판정이 «formula 가 설치돼 있는가» 만 보고 «그 formula 가 나인가» 를 보지 않았다
+* 구현 명세:
+    - `BrewServiceSync.StartEnvironment.isServiceBinary` 신설 — live 는 `isSameBundle(Bundle.main.bundlePath, serviceAppPath(brewPath:))` (심링크 해소 후 비교). `onAppStart` 는 formula 확인 다음에 이 판정으로 skip
+    - 검증: XCTest `testForeignBinaryDoesNotHandOff`·`testServiceBinaryComparesResolvedBundlePaths` red→green · jma unit · jma full `jexec test` green(Issue136·132 와 함께)
+* 결과: jma unit 156/156 · full `jexec test` `PLAYLIST RESULT: all green (5/5)` — all-clear 6 PASS(API 42/43·CMD 36/37, skip 은 파괴 테스트 1건씩) · playlist #33 ✅ jma
+
+## Issue136: [Test] 셸 도구가 brew 서비스를 구 label(homebrew.mxcl.*)로만 찾아 Debug 배포 전 정지를 건너뜀 — all-clear 가 launchd 인스턴스와 경합 (등록: 2026-10-15, 완료: 2026-10-15, Hash: a8d390c, 출처: Issue132 full `jexec test` jma) ✅
+* 목적: full `jexec test` 의 all-clear-e2e 가 brew 서비스 실행 여부와 무관하게 Debug 인스턴스 하나만 상대로 돌게 한다
+* 상세:
+    - 2회차 full 실행(793f656, 접근성 granted): 3/4. all-clear 의 API 37(restore-modes)·38(restore-dryrun) 응답이 비었다. 직후 수동 실측에서는 같은 restore 가 0.8초 만에 끝났다
+    - launchd 로그상 테스트 구간에 brew 인스턴스가 `because semaphore`(KeepAlive 재기동)로 거듭 뜨고, open 인스턴스와 교대했다. 테스트가 끝난 뒤 남은 것도 brew 인스턴스(27773)였다
+    - 원인: `fwc-config.sh` `BREW_SERVICE_LABEL="homebrew.mxcl.fwarrange-cli"` — Issue95 에서 Swift 쪽만 두 규약으로 고쳤고 셸 도구는 그대로였다. `brew_service_running` 이 항상 false 라 `fwc-run-xcode.sh build-deploy` 의 «Debug 배포 전 brew 정지» 가 실행되지 않았다. `fwc-deploy-brew.sh` Step 2-2 의 stale bootout 도 구 label 만 겨눴다
+    - 1회차(Issue132 ③)가 이 문제를 드러내지 않은 것은 brew 서비스가 정지 상태였을 가능성 때문으로 보임(검증 필요)
+* 구현 명세:
+    - `fwc-config.sh`: `BREW_SERVICE_LABELS` 두 규약, `brew_service_running` 은 둘 중 하나와 정확히 일치하면 참 · `fwc-deploy-brew.sh` bootout 두 label
+    - 검증: `tdd/cases/tool-brew-label.sh`(launchctl 스텁 5건) red→green · 러너 단계 `tool-brew-label` 추가 · jma full `jexec test` green
+* 결과: red 1실패 → green 5/5 · 3회차 full 에서 `tool-brew-label` 통과, 남은 all-clear 실패는 Issue137 로 분리 · 4회차 full all green(5/5)
+
+## Issue132: [TDD] 통합 test 러너 신설 — `jexec test` 가 재생목록을 한 번에 돌게 (등록: 2026-10-15, 완료: 2026-10-15, Hash: cc6a2e2, 757df56, a8d390c, 7f34994, 출처: prj5#Issue127 · 이슈후보 승격) ✅
+* 목적: `data/exec.yml` 에 `test:` 명령이 없어 `jexec test` 가 rc 2 로 거부되고 `status: draft` 에 머문다 — `tdd/playlist.md` 를 한 번에 도는 러너를 만들어 등록한다
+* 상세:
+    - 근거: `~/_git/___common/_doc_work/report/jexec_issue119_report.md` «실측으로 드러난 결함» — f2x2(15·16·25·26) 는 통합 러너 없음
+    - 선례: 쌍둥이 prj25#Issue265 `tdd/run.sh`(`81a02d8`) · prj11 `tdd/run-jma.sh` · prj13 `tdd/run-unit.sh` (`lock: self`)
+    - 재생목록 실행 열의 러너: XCTest(test plan 격리, 1~8·10~17·19~26행) · `fwc-test.sh`(9행 — 설치본 교체·데이터 스냅샷 원복) · `fwc-deploy-brew-test.sh`(18행)
+* 구현 명세:
+    - `tdd/run.sh` + `tdd/cases/unit.sh`(test plan `fWarrangeCli`) + `tdd/cases/run-selftest.sh` — prj25 동형. 하나라도 실패하면 비0 · 마지막 줄 `PLAYLIST RESULT:` · 실패 삼킴 금지 · bash 3.2 호환
+    - `--quick` = 설치본을 건드리지 않는 단계만(셀프테스트·XCTest·publish dry-run 회귀). `fwc-test.sh` 는 full 에서만
+    - red 먼저: 러너 selftest 가 실패 단계 전파·워치독·stdin 격리를 잡는지(변이로 red 확인)
+    - `data/exec.yml`(로컬 전용) `test: bash tdd/run.sh` · `lock: self` 등록 → jma 실 `jexec test` green 확인 뒤 `status: active`
+* 진행 (2026-10-15):
+    - ① 러너 ✅ `cc6a2e2` — selftest 20건(변이 4종 red 확인) · `data/exec.yml` `test:`·`lock: self`·`timeout: 4500` 등록(status draft 유지)
+    - ② jma `--quick` 첫 실행이 실회귀를 잡음 → Issue133(테스트 호스트가 실제 접근성 안내 모달을 띄움, `eed1015`) 분리·해결 → 재실행 `PLAYLIST RESULT: all green (3/3)` (unit 148/148)
+    - ③ full `jexec test`(jma, 17:53, `sync-jma 26 push` 후 `--no-sync`): `PLAYLIST RESULT: failed all-clear-e2e (3/4 passed)` — API 3·CMD 1 실패
+        - API 20 layout-detail 404: 앞선 실행이 남긴 `testCapture` 의존 → Issue134 로 분리·해결(`757df56`)
+        - API 25·38·CMD 27 restore: «Accessibility 권한이 필요합니다» — jma 의 Debug 빌드가 접근성 미승인. 코드 결함 아님, 사람의 접근성 승인 뒤 재실행
+    - ④ ✅ 접근성 승인 뒤 2회차 3/4(Issue136 — 셸 도구 구 label) · 3회차 4/5(Issue137 — Debug 빌드의 brew handoff) · 4회차(7f34994) `PLAYLIST RESULT: all green (5/5)` → `data/exec.yml` `status: active` · playlist #28 ✅ jma
+
+## Issue135: [Lifecycle] 재부팅 뒤 cliApp 이 하나도 안 뜸 — 중복으로 종료되는 형제가 종료 훅에서 `brew services stop` 을 불러 승자(launchd 인스턴스)까지 내림 (등록: 2026-10-15, 완료: 2026-10-15, Hash: 89297bf, 출처: jma 재부팅 실측) ✅
+* 목적: 재부팅·로그인 직후 paidApp 이 띄운 cliApp 과 launchd 인스턴스가 겹쳐도 서비스 하나가 살아남게 한다. 지금은 매 재부팅마다 cliApp 이 사라질 수 있다
+* 상세:
+    - jma 재부팅(20:51) 실측. paidApp(로그인 항목) 이 먼저 떠 cliApp 을 `open` 으로 띄운다(957, 20:52:04). 이때 서비스는 loaded(pending spawn) 라 `onAppStart` 가 handoff 를 skip 하고 primary 로 남는다
+    - 20:52:48 launchd 가 RunAtLoad 인스턴스(2565) spawn → Issue131 규칙대로 형제 957 종료 → 957 의 `applicationWillTerminate` 가 `brew services stop fwarrange-cli --keep`(Issue51) → 20:52:57 `removing service: sh.brew.fwarrange-cli` — 승자까지 내려가 **cliApp 0개·brew none·REST 000**. plist 는 남아 있다
+    - 종료 훅은 «사용자가 앱을 끄면 brew 도 끈다» 는 동기화인데, 형제 정리로 종료되는 경우를 구분하지 않는다
+    - 재현(jma, 869d6e6 설치본): handoff 를 opt-out 키로만 끈 `open` 인스턴스 → `launchctl bootstrap` → 25초 뒤 프로세스 0·`Could not find service`·brew none·REST 000
+* 구현 명세:
+    - 종료 시 brew 동기화 판정을 한 곳으로 모은다 — 다른 cliApp 인스턴스가 살아 있으면(=형제 정리로 종료되는 쪽) `brew services stop` 을 하지 않는다. `applicationWillTerminate`·메뉴 «종료»(`onAppStop`) 두 경로가 같은 판정을 쓴다
+    - 검증: XCTest(형제 생존 시 nil·단독 종료 시 기존 인자) red→green · jma 재현 스크립트 수정본 green(launchd 인스턴스 1개·started·REST 200) · 메뉴 종료 단독 시 brew stop 유지 확인
+* 결과:
+    - 판정 단일 지점 `BrewServiceSync.shouldSyncStopOnTerminate(siblingAlive:)` — `terminateStopArguments`(종료 훅)·`onAppStop`(메뉴 «종료») 가 같이 쓴다
+    - 1차 수정(`NSRunningApplication` 으로 형제 판정)은 jma green **실패** — 승자가 spawn 50ms 뒤에 형제를 종료해 LaunchServices 가 승자를 아직 목록에 올리지 않았다. 통합 로그 `bootout initiated by: launchctl ← ruby ← fWarrangeCli[open pid]` 로 확인. 2차: `launchctl list` 의 서비스 PID ≠ 나 도 형제로 본다(`isSiblingAlive`·`servicePID(fromLaunchctlList:)`)
+    - jma: unit 154/154 · `fwc-deploy-brew.sh local` ALL CLEAR · 재현 6회(1회 + 반복 5회) 모두 launchd 인스턴스 1개·started·REST 200 · REST `cli/quit` 단독 종료 → brew none·plist 유지(Issue51 `--keep` 동작 보존) · 끝 상태 `brew services start` 로 복원
+    - 재생목록 #31 `retired-duplicate-keeps-brew` ✅ jma
+
+## Issue131: [Lifecycle] 같은 순간 뜬 두 인스턴스를 `SingleInstanceGuard` 가 못 걸러 둘 다 생존 — launchd 쪽은 3016 미점유 (등록: 2026-10-15, 완료: 2026-10-15, Hash: fc7ea29, 869d6e6, 출처: prj16#Issue290 jma 실측 — prj16 세션 등록) ✅
+* 목적: 두 기동 경로가 같은 초에 겹치면 인스턴스 2개가 공존한다 — 메뉴바 아이콘·접근성 안내가 2벌, launchd 승자는 REST 없이 살아 있고 패자가 포트를 쥐어 «하나 정리하면 REST 사망»
+* 상세:
+    - 재현(jma, cliApp 1.2.0 brew 로컬): paidApp [다시 시작] → `AppRestarter` 헬퍼의 `launchctl kickstart`(`XPC_SERVICE_NAME=sh.brew.fwarrange-cli`) 와 paidApp `open -a`(`application.kr.finfra.fWarrangeCli.*`) 가 같은 초 기동 → 2/2 공존, 25초 뒤에도 유지 · 3016 LISTEN 은 open 기동분
+    - 1차 원인은 paidApp 의 중복 재기동(prj16#Issue290 에서 수정) — 이 이슈는 겹쳤을 때의 방어선
+    - `shouldTerminateAsDuplicate()` 는 기동 직후 1회 `NSRunningApplication` 조회 — 상대가 아직 등록 전이면 둘 다 «혼자» 로 판정(TOCTOU). 판정 규칙(launchd 승자)은 맞지만 시점이 1회뿐
+* 구현 명세:
+    - launchd 승자 판정을 REST bind 전·후로 재확인(ex) 기동 후 짧은 지연 재검사, 또는 3016 bind 실패 시 «포트 보유자가 같은 Bundle ID 면 terminate 후 재bind») — 판정 단일 지점은 `SingleInstanceGuard` 유지
+    - 검증(jma): `open` 과 `launchctl kickstart` 를 같은 순간 발화 10회 — 매회 1개 생존·launchd 쪽이 3016 LISTEN·brew started
+* 진행 (2026-10-15):
+    - ① 재확인 구현 ✅ — `SingleInstanceGuard.decide(…atLaunch:)` 단일 판정(기동·재확인 공용) + `recheck`·`scheduleRechecks`. `AppState` 가 REST 시작 뒤 1·3초에 재확인(테스트 호스트 제외), launchd 승자는 형제 terminate 후 REST 미가동이면 재bind · 재확인 시 open 기동끼리는 더 오래된 PID 에만 양보(둘 다 exit 방지)
+    - red: `SingleInstanceRecheckTests` 6건 미구현 컴파일 실패 → green: jma `tdd/run.sh --only unit` 148/148 · 재생목록 #30
+    - ② E2E 첫 실행(jma, ① 반영 brew local) **0/10** — 매회 2개 공존, 3016 은 open 기동분. 실측: 두 인스턴스 모두 접근성 안내 모달(layer 8) 표시 중이었고, 모달 중인 인스턴스에 `NSRunningApplication.terminate()` 를 보내면 **true 를 돌려주고도 3초 넘게 안 죽음**. 기존 코드는 false 일 때만 `forceTerminate` 해서 launchd 승자의 정리가 무력했다 — 재확인 시점(TOCTOU)보다 이쪽이 주원인
+    - ② 수정: `terminateAndWait(_:politeTimeout:ops:)` — 요청 3초 대기 뒤 살아 있으면 강제 종료(+2초 대기). 생존 판정은 `kill(pid,0)`(`isTerminated` 는 이 대기가 막는 run loop 에서 갱신됨). 기동 판정·재확인 공용 · red(미구현 컴파일 실패) → jma unit 150/150
+    - ② E2E 재실행(jma, `launchctl bootstrap` + `open -n` 동시 발화 10회): **10/10** — 매회 1개 생존·launchd PID 가 3016 LISTEN·brew started. 하네스를 첫 실행(`pkill` TERM + `kickstart -k`)에서 바꿨다: TERM 이 `applicationWillTerminate` 의 `brew services stop` 을 불러 launchd 쪽이 ~9초 늦게 떠 «동시» 가 성립하지 않았음. 새 하네스로 수정 전 빌드를 돌린 기준선은 없음
+    - 끝 상태: `brew services start fwarrange-cli` 로 복원(PID 8655) · 접근성은 재설치로 다시 미승인
+
+## Issue134: [Test] API 테스트 20(layout-detail)이 앞선 실행이 남긴 `testCapture` 에 기대 — 깨끗한 데이터 폴더(jma)에서 404 (등록: 2026-10-15, 완료: 2026-10-15, Hash: 757df56, 출처: Issue132 full `jexec test` jma) ✅
+* 목적: all-clear-e2e 가 머신의 과거 데이터에 좌우되지 않게 한다
+* 상세:
+    - 20 은 24(capture)보다 먼저 돈다. `testCapture` 는 24 가 만들고 `fwc-test.sh` Step 8 스냅샷 복원이 되돌리므로, 그 레이아웃이 원래 데이터에 없던 머신에서는 매번 404 — jm4 는 과거 수동 캡처가 남아 있어 가려졌다
+* 구현 명세:
+    - 인자 없으면 21·22 처럼 자체 픽스처(`_apitest_detail`) 캡처 → 조회 → 삭제. 인자 주면 기존처럼 그 이름 조회
+    - 검증(jma): 기존 호출 404 재현 → 수정본 `data.name=_apitest_detail` · 정리 후 잔존 0
+* 결과: jma 에서 `GET /layouts/testCapture` 404 재현 → 수정본 실행 `data.name=_apitest_detail`·windowCount 25 · 목록에 `_apitest_detail` 잔존 0
+
+## Issue133: [Test] XCTest 호스트가 실제 접근성 안내 모달을 띄워 `AccessibilityGuideSchedulingTests` 2건이 환경 따라 red (등록: 2026-10-15, 완료: 2026-10-15, Hash: eed1015, 출처: Issue132 러너 jma 실행) ✅
+* 목적: 테스트 결과가 jma 의 TCC 상태에 좌우되지 않게 한다 — 접근성 미승인 상태(prj16 실측용 TCC 리셋)에서 unit 단계가 4 failures 로 떨어졌다
+* 상세:
+    - 증상: jma `tdd/run.sh --quick` unit 139 중 4 failures — `testGuideIsNotStackedWhileOneIsUp`·`testGuideShowsAgainAfterClosing` 의 `presented` 가 0. 같은 날 12:28 Issue130 실행(승인 상태)은 139/139
+    - 실측: 단독 실행(`-only-testing:…/AccessibilityGuideSchedulingTests`) 중 CGWindowList 에 테스트 호스트 PID 소유 layer 8(modal panel)·260×301 창 — 실제 «Accessibility 권한 필요» NSAlert
+    - 원인: `AppState` 가 미승인이면 XCTest 호스트에서도 `showAccessibilityGuide()` 를 부른다(목록 등록 요청만 XCTest 가드). 진짜 alert 가 `isPresenting` 을 쥔 채 modal loop 를 돌고, 테스트의 `show()` 는 그 안에서 «중복 억제» 로 버려진다
+* 구현 명세:
+    - 미승인 기동 판정을 `AccessibilityBootListing.boot(isGranted:isTestHost:requestListing:showGuide:)` 한 곳으로 모은다 — 테스트 호스트면 목록 요청·안내 모두 하지 않음
+    - XCTest 호스트 판정은 `Env.isTestHost` 단일 지점(`XCTestConfigurationFilePath` 문자열 산재 3곳 통일)
+    - 검증: 판정 단위 테스트 red→green · jma 미승인 상태에서 unit green
+* 결과:
+    - red: `AccessibilityBootListing.boot` 미구현 컴파일 실패 → green: jma(접근성 미승인 유지) `tdd/run.sh --only unit` 142/142, `AccessibilityGuideSchedulingTests` 2건 포함 통과
+    - 판정 3곳(`fWarrangeCliApp`·`AppState`·`BrewServiceSync`)이 `Env.isTestHost` 하나를 본다 · 재생목록 #29 ✅ jma
+
+## Issue127: [Bug] 설정 공장 초기화가 단축키 4종을 지우고 되돌리기 ⌃⌘F7 만 남김 (등록: 2026-10-09, 완료: 2026-10-15, Hash: b4fc29e) ✅
+* 목적: `resetToDefaults()` 가 `AppSettings.defaults` 를 저장하는데, 그 기본값은 save·restoreDefault·restoreLast·showMainWindow 가 `nil`(Issue61 «yml 에 적힌 것만 등록») · undo 만 `⌃⌘F7`(Issue98). 그래서 초기화 후 단축키가 시드(⌘F7 계열)와 정반대가 됨
+* 상세: 코드 판독 근거 — `AppSettings.swift` `defaults`(4종 nil, undo ⌃⌘F7) · `SettingsService.swift` `resetToDefaults` → `save(defaults)` → 직렬화가 nil 줄 생략. 앱 실측 전
+* 구현 명세:
+    - red 먼저: `factoryResetSettings` 후 `getShortcutsDisplay` 가 시드 값과 같은지 XCTest
+    - 수정 방향: 초기화는 번들 시드 `_config.yml` 을 다시 복사하는 경로로(시드가 단일 기준) — Issue126 과 같은 파일이라 함께 처리 권장
+    - 검증: jma XCTest + REST `POST /settings/factory-reset` 실측
+* 결과 (2026-10-15, `b4fc29e` — Issue130 에서 함께 해결):
+    - `YAMLSettingsService.resetToDefaults` = 설정 파일 삭제 → 번들 시드 재복사(4종 복원·undo 비움), 번들 누락 시 `AppSettings.defaults` 폴백 (사용자 승인 2026-10-15)
+    - 검증: `testFactoryResetRestoresSeedShortcuts` red → green, jma XCTest 139/139. REST `POST /settings/factory-reset` 실기동 실측은 미실행 — jma cliApp 을 prj16#Issue289 가 점유 중이라 Issue129 ② R1 로 이관
+
+## Issue126: [Bug] 번들 시드 `_config.yml` 의 `showMainWindowShortcut` 줄 끝 주석 때문에 새 설치에서 ⌃⇧⌘F7 이 등록되지 않음 (등록: 2026-10-09, 완료: 2026-10-15, Hash: b4fc29e) ✅
+* 목적: 시드 `cli/fWarrangeCli/_config.yml` 37행 `showMainWindowShortcut: "⌃⇧⌘F7" # {showMain}     Open Main Window` — 파서(`parseStringValue`)가 줄 끝 `#` 주석을 떼지 않아 값 전체가 `KeyboardShortcutConfig.from` 에 들어가 `nil`. 매뉴얼은 기본값을 ⌃⇧⌘F7 로 안내함
+* 상세:
+    - 실측(2026-10-09, jm4 스크립트 — `AppSettings.swift` 13~118행 발췌): `"⌃⇧⌘F7" # {showMain} …` → nil · `"⌃⇧⌘F7"` → ⌃⇧⌘F7
+    - 영향: 새 설치(시드 복사)에서 메인 창 단축키 미등록·메뉴 표시 없음. 설정을 한 번이라도 저장하면 그 줄이 파일에서 사라짐(직렬화가 nil 을 생략)
+    - jm4 실사용 `_config.yml` 은 주석 없는 `⌥⇧⌘F7` 이라 재현 안 됨 — 새 설치 경로로만 드러남
+* 구현 명세:
+    - red 먼저: 시드 파일을 `YAMLSettingsService` 로 읽어 `showMainWindowShortcut` 이 nil 인 XCTest
+    - 수정 후보 ① 시드에서 주석 제거 ② 파서가 따옴표 밖 ` #` 이후를 버림 — ②가 사용자 편집 주석까지 막음
+    - 검증: jma XCTest
+* 결과 (2026-10-15, `b4fc29e` — Issue130 에서 함께 해결):
+    - 후보 ② 채택: `SettingsService.stripInlineComment` 를 `parseYAML` 값 추출 단일 지점에 추가(따옴표 안 `#` 보존). 시드 주석 `{showMain}` 은 유지
+    - 검증: `UndoShortcutTests` 시드 5값·인라인 주석 테스트 red → green, jma XCTest 139/139 (Issue130 결과 절)
+
+## Issue128: CONTRIBUTING.md 추가 — 외부 PR 은 Finfra CLA 전자 서명 후 수락 (등록: 2026-10-09, 완료: 2026-10-15, Hash: 76c57f2) ✅
+* 목적: 상업 라이선스 판매에 필요한 외부 기여분 재라이선스 권한을 CLA Assistant 전자 서명으로 확보한다(외부 기여 0건인 지금 설치)
+* 상세:
+    - 출처: prj6#Issue32 (사용자 지시 2026-10-09 «진행») · 정본 `~/_git/___oracle/_doc_arch/license-profiles.md` §5 «CLA 게이트»
+    - 착수 조건: prj6#Issue32 ③ 완료(cla-assistant.io 연결) — 그 전에 push 하면 CONTRIBUTING 의 CLA 링크가 빈 페이지다. ② gist 는 게시 완료(https://gist.github.com/nowage/f429eb57e61ca7ad3e34a1481251682e)
+    - ⏸️ 대기 (2026-10-10 사용자 결정): prj6#Issue32 보류 — 트리거 = **이 repo 에 첫 외부 PR 도착**. 그때까지 착수하지 않고, 외부 PR 은 CLA 서명 전 머지 금지
+* 구현 명세:
+    - 루트 `CONTRIBUTING.md` = `~/_git/___oracle/data/template/license/CONTRIBUTING.md` 복사 — frontmatter·📄 블록 제거, `{{REPO}}` → `fWarrange_public`
+    - README 에 기여 절이 있으면 `CONTRIBUTING.md` 링크 1줄
+    - 검증: `grep -c '{{' CONTRIBUTING.md` = 0 · 링크 `https://cla-assistant.io/Finfra/fWarrange_public` 가 CLA 페이지를 연다
+* 결과 (2026-10-15, `76c57f2`):
+    - 착수: 사용자 지시 2026-10-15 «Issue128 진행 가능할 듯» — ⏸️ 대기 해제. 쌍둥이 prj25#Issue260(`215cae9`) 선례와 동일 방식
+    - 루트 `CONTRIBUTING.md` = 템플릿 본문(frontmatter·📄 블록 제거) · `{{REPO}}` → `fWarrange_public` — 템플릿 치환본과 `diff` 0 · `grep -c '{{'` = 0
+    - README(en·kr)에 기여 절이 없어 링크 추가 생략(구현 명세 조건부 항목)
+    - ⚠️ CLA 링크 실효는 미확인 — prj6#Issue32 ③(cla-assistant.io 의 Finfra repo 연결)이 아직 미완. `cla-assistant.io/api/cla/get` 이 500 을 돌려 연결 여부를 판정하지 못함. 공개 push(Issue129 ③)는 ③ 연결 확인 뒤가 안전
+
+## Issue130: [Settings] 기본 단축키를 jm4 실설정으로 정렬 — 번들 시드 `showMainWindowShortcut` ⌃⇧⌘F7 → ⌥⇧⌘F7, 되돌리기 기본 미지정 (등록: 2026-10-15, 완료: 2026-10-15, Hash: b4fc29e, 출처: prj16#Issue289 사용자 지시 «기본 단축키 jm4의 셋팅으로») ✅
+* 목적: 새로 설치한 사용자가 받는 기본 단축키를 개발자가 실제로 쓰는 jm4 설정과 같게 맞춘다 — 지금은 시드·코드 기본값·매뉴얼·paidApp 문서가 서로 다른 값을 말한다
+* depends: Issue129 (1.2.0 출고에 포함)
+* 상세:
+    - jm4 실측(2026-10-15, `GET /api/v2/settings/shortcuts` + `~/Documents/finfra/fWarrangeData/_config.yml`): save `⌘F7` · restoreDefault `⇧⌘F7` · restoreLast `⌥⌘F7` · showMainWindow **`⌥⇧⌘F7`** · undo **미지정(`""`)**
+    - 어긋난 자리:
+
+        | 자리                                                    | 현재                   | jm4 기준     |
+        | :------------------------------------------------------ | :--------------------- | :----------- |
+        | `cli/fWarrangeCli/_config.yml:37` (번들 시드)           | `⌃⇧⌘F7`                | `⌥⇧⌘F7`      |
+        | `cli/fWarrangeCli/Models/AppSettings.swift:201` defaults | undo `⌃⌘F7`            | undo `nil`   |
+        | `cli/fWarrangeCliTests/UndoShortcutTests.swift:8-12`    | undo 기본 `⌃⌘F7` 단언  | `nil` 단언   |
+        | `manual/{kr,en}/04_MenuBar_Usage.md:18·42`              | `⌃⇧⌘F7`                | `⌥⇧⌘F7`      |
+        | `manual/{kr,en}/09_Shortcut_Usage.md:17·81·82·163`      | `⌃⇧⌘F7`·undo `⌃⌘F7`    | 위 기준      |
+        | `manual/FunctionalSpecification.md:139`                 | `⌃⇧⌘F7`                | `⌥⇧⌘F7`      |
+
+    - paidApp `AppSettings.defaults` 는 이미 jm4 와 같다(`⌥⇧⌘F7`·undo nil) — 엔진만 갈려 있다. paidApp 문서 쪽 정리는 prj16#Issue289 ⑤
+    - 확인 필요: 공장 초기화(`factoryReset`)가 단축키 4종을 비우고 undo 만 `⌃⌘F7` 로 두는 현 동작(09 매뉴얼 163행) — jm4 기준이면 «4종은 시드값으로 복원·undo 비움» 이 자연스럽다. Issue61(«yml 에 적힌 것만 등록») 원칙과 충돌하지 않게 «초기화 = 번들 시드 재복사» 로 갈지 착수 때 판정
+* 구현 명세:
+    - ① 시드 `_config.yml` `showMainWindowShortcut: "⌥⇧⌘F7"` (주석 `{showMain}` 유지) · undo 라인은 넣지 않음(미지정)
+    - ② `AppSettings.defaults.undoShortcut = nil` + 주석 갱신, `UndoShortcutTests` 기대값 수정 — TDD red 먼저
+    - ③ 매뉴얼 kr·en 04·09·FunctionalSpecification 표기 정렬 (09 의 «되돌리기 지정 예시 `⌃⌘F7`» 는 예시로 남겨도 됨)
+    - ④ 검증: 빈 데이터 폴더로 첫 기동 → `GET /api/v2/settings/shortcuts` 가 jm4 실측 5값과 일치 · 메뉴바 «Open Main Window» 라벨 `⌥⇧⌘F7` · ⌥⇧⌘F7 로 paidApp 메인 창 열림(jma)
+    - 기존 사용자 `_config.yml` 은 건드리지 않는다(마이그레이션 없음) — 시드는 파일이 없을 때만 복사됨
+* 결과 (2026-10-15, `b4fc29e`):
+    - 공장 초기화 판정(사용자 승인 2026-10-15): «번들 시드 재복사» — `YAMLSettingsService.resetToDefaults` 가 설정 파일을 지우고 번들 시드를 다시 복사(4종 복원·undo 비움), 번들이 없으면 `AppSettings.defaults` 로 폴백. Issue61(«yml 에 적힌 것만 등록») 과 충돌하지 않음 — 시드가 명시한 4줄만 등록됨
+    - ① 시드 `_config.yml` `showMainWindowShortcut: "⌥⇧⌘F7"` · undo 라인 없음 ② `AppSettings.defaults.undoShortcut = nil`
+    - **추가 원인 발견·수정**: 시드의 `showMainWindowShortcut` 줄이 `# {showMain} …` 인라인 주석을 달고 있는데 `parseYAML` 이 주석을 떼지 못해 따옴표 값이 깨져 `nil` — 값을 무엇으로 두든 시드로 새로 설치하면 이 단축키가 등록되지 않던 기존 결함(09 매뉴얼 «일부 설치본…» 우회 문구의 정체). `SettingsService.stripInlineComment` 를 값 추출 단일 지점에 추가(따옴표 안 `#` 는 보존)
+    - ③ 매뉴얼 kr/en 04·09·FunctionalSpecification 표기 정렬 + 09 의 undo 예시를 주석 처리, 인라인 주석·초기화 서술을 «1.2.0 부터» 로 갱신
+    - TDD: `UndoShortcutTests` 에 4건(기본 undo nil · 시드 5값 jm4 일치 · 공장 초기화 복원 · 인라인 주석) 추가/수정, 구현 전 red(7 failure) 확인 후 green
+    - 검증: **jma** 별도 clone(`/tmp`, jma 체크아웃 불변)·GUI tmux·`/tmp/jma-xcode.lock` 점유 — XCTest **139/139 passed** (HEAD `b4fc29e`). jm4 도 139/139
+    - ⚠️ ④ 중 «빈 데이터 폴더 첫 기동 → REST 5값» «메뉴바 라벨» «⌥⇧⌘F7 로 paidApp 창 열림» 의 실기동 E2E 는 **미실행** — jma 에서 prj16#Issue289 세션이 1.2.0 실측을 준비 중이라 실행 중인 cliApp 을 교체하지 않음. 시드 → 파서 → 값 경로는 XCTest 가 번들 실물로 덮음. 실기동 확인은 Issue129 ② R1 에서 한다
+
+## Issue125: [Docs] 단축키 사용 매뉴얼 추가 — kr/en `09_Shortcut_Usage.md` (등록: 2026-10-09, 완료: 2026-10-09, Hash: 70494f8) ✅
+* 목적: 전역 단축키 서술이 `04_MenuBar_Usage.md` 의 표 1개뿐 — 바꾸는 법(파일·REST·명령행·fWarrange)·반영 시점·동작 세부(저장 이름·기본 복원 대체·되돌리기 범위)·충돌·문제 해결이 없음
+* 구현 명세:
+    - `manual/kr/09_Shortcut_Usage.md` · `manual/en/09_Shortcut_Usage.md` 신설 — 소스 실측 기준(`HotKeyService.swift`·`AppState.handleHotKeyAction`·`SettingsService.parseShortcut`·`KeyboardShortcutConfig`)
+    - 목차·링크 갱신: `manual/README.md`, kr/en `01`·`03`·`04`·`08`, `ReferenceAgenda.md` 5-2, `FunctionalSpecification.md` 모드 `shortcut` 행(전역 등록 안 됨)
+    - 검증: 표기 문자열 파싱을 소스 발췌 스크립트로 실측, 링크·앵커 실파일 대조
+* 결과 (2026-10-09):
+    - 신설 kr/en `09_Shortcut_Usage.md` — 단축키 5종 표, 동작 세부(저장 이름 `YYYY-MM-DD-N`·첫 저장이 기본 레이아웃·기본 복구의 최근 대체·«최근» = 최근 저장·되돌리기는 1단계·메모리·단축키/메뉴 복원만), 바꾸는 방법 4가지와 반영 시점(파일 편집은 재시작 필요 — «데몬 재시작» 은 REST 서버만), 표기 규칙(지원 키 표), 권한·충돌, 문제 해결 표
+    - 소스 실측 중 결함 2건 발견 → Issue126(시드 줄 끝 주석으로 ⌃⇧⌘F7 미등록, 파서 발췌 스크립트로 확인) · Issue127(공장 초기화가 단축키 4종 삭제, 코드 판독). 매뉴얼 문제 해결 표에 사용자 조치로 반영 — 수정되면 그 두 행을 뺀다
+    - 연결: `README.md` 목차·트리, kr/en `01`·`03`·`04`·`08`, `ReferenceAgenda.md` 5-2, `FunctionalSpecification.md`(모드 `shortcut` 은 전역 등록 안 됨 · 전역 단축키 행 링크)
+    - 검증: 매뉴얼 링크·앵커 230개 실파일 대조 오류 0. REST PUT 동작은 코드 판독 기준(jm4 실사용 설정을 바꾸지 않으려고 실호출 안 함)
+
+## Issue118: [Test] `fwc-run-xcode.sh` 가 Xcode 에 열린 문서가 없는 차가운 상태에서 workspace 로드 60s 대기를 넘겨 `fwc-test.sh` 가 빌드 전에 실패 (등록: 2026-10-04, 완료: 2026-10-09, Hash: 81aef54, 4a98625) ✅
+* 목적: R1 4행(`app-bundle-all-clear`)이 코드와 무관하게 환경 상태로 실패한다 — 출고 테스트마다 재현 가능
+* 상세:
+    - 재현(jma 2026-10-04 R1 사전 점검): Xcode 실행 중·열린 문서 0 → `fwc-test.sh` Step 2 `[open] fWarrangeCli.xcodeproj 오픈 중...` → `execution error: Xcode workspace did not finish loading within 60s (-2700)` → `❌ 빌드 실패 — 중단`
+    - 우회: 대상 프로젝트를 Xcode 에 미리 열고 로드 완료 후 실행 → ALL CLEAR 6/0 (`cli/_doc_work/_release/v1.1.2/release-test_1.1.2_r1pre-2026.10.04.md` 4행)
+    - 연관: Issue114 ③(`fwc-test.sh` delete-all 이 실 데이터 폴더를 지움)
+* 구현 명세:
+    - 로드 대기를 문서 유무·Xcode 기동 직후 여부에 따라 연장하거나, `loaded` 폴링 상한을 설정값으로
+    - red 먼저: Xcode 문서 0 상태에서 `fwc-run-xcode.sh build-deploy` 가 성공하는지(jma)
+* 진행 (2026-10-08, 구현 `81aef54` · **jma 검증 대기**):
+    - 원인 단서: 실패 회차(r1pre row04)는 직전 문서 조회도 비어 있던 차가운 Xcode, 2분 뒤 재실행(row04b)은 `OK` 즉시 통과 → 기동+첫 로드가 60초를 넘긴 것으로 추정. 어느 단계(앱 기동·문서 이벤트 유실·모달)에서 막혔는지는 미실측
+    - 수정: 단일 osascript 60초 → bash 폴링, 상한 `FWC_XCODE_LOAD_TIMEOUT`(기본 300초) · 문서가 `FWC_XCODE_REOPEN_AFTER`(기본 20초) 동안 없으면 open 1회 재요청 · 시간 초과 시 프로세스·열린 문서(loaded)·창 이름 덤프 · 같은 이름 다른 경로 사본 경고
+    - jm4 개발 확인(증거 아님): Xcode 미실행 → `open` 4~12초 로드 완료 · 재호출 «이미 로드됨» · 이름 불일치 강제 시 재요청→시간 초과→진단 덤프→rc=1
+    - 남은 일: jma 에서 Xcode 문서 0 상태 `fwc-run-xcode.sh build-deploy`(red→green). jma 는 2026-10-08 현재 `release/1.1.1` 미커밋 작업과 다른 프로젝트 Xcode 문서가 있어 이번 세션은 손대지 않음
+* 결과 (2026-10-09, jma 실측 — 사용자 승인으로 jma Xcode 종료·재기동, 종료 후 fSnippetCli 문서 원복):
+    - 방법: jm4 `release/1.2.0` bundle → jma `/tmp/fwc118/{old,new}` 격리 클론(jma 체크아웃·brew 설치본 무변경). `build`·`build-deploy` 는 stop 성공 시 `pkill -f MacOS/fWarrangeCli` 로 jma brew 설치본까지 죽이므로 결함 지점인 `open` 하위 명령만 실측
+    - 원 결함 red **재현 안 됨**: 구버전(`81aef54^`) 차가운 Xcode 9s · 문서 0 2s 통과. 신버전 7s · 1s. 60s 초과 원인은 미확정 — 신버전의 상한 300s·재요청·시간 초과 진단 덤프가 다음 실패의 단계를 남긴다
+    - **새 결함 발견·수정** (`4a98625`): Xcode 재기동 시 상태 복원으로 직전 클론의 같은 이름 문서가 다시 열리고, 스크립트가 이름으로 찾아 그 사본을 «로드 완료» rc=0 (red, 위 신버전 cold 회차) → 같은 이름 다른 경로면 rc=1 중단. green: 다른 사본 rc=1 · `/private/tmp` 별칭 경로 rc=0 · 재기동 후 자기 사본 rc=0
+    - 기록: `cli/_doc_work/debug_TECH.md` (계측 함정 3건 — pkill 범위·osascript 가 Xcode 를 기동함·재기동 ≠ 문서 0)
+
+## Issue124: [Docs] 매뉴얼 공통 문서 3종 v2 정비 — 기능 명세·용어 사전·참조 목록 (등록: 2026-10-08, 완료: 2026-10-08, Hash: 4d545d4) ✅
+* 목적: Issue123 이 범위 밖으로 남긴 `manual/` 공통 문서가 옛 구조(`lib/wArrange_core`·`setWindows.swift`)·v1 엔드포인트 14개 표·`/locale`·«REST 기본 비활성» 을 그대로 안내함 — 실제와 어긋나는 공개 문서
+* 구현 명세:
+    - `FunctionalSpecification.md` 재작성 — 실구현 기준: CGWindowList+AX 캡처, 점수 표(`matchType` 명칭), mode `strict/normal/loose`·Moom 폴백, 3px 검증·재시도·최선 결과, `windowIds`·`dryRun`, 제목 정규화, 복원 통계, 모드(`requiredApps`), 자동 저장, REST v2 범주 표(계약은 `api/openapi_v2.yaml` 링크), 변경 감지, 보안, 저장 위치
+    - `Glossary.md` — fWarrangeCli·GUI 래퍼 기준, Notification → 적응형 폴링, 엔진·GUI 래퍼·매칭 모드·시험 실행·제목 정규화·모드·저장 모드 용어 추가
+    - `ReferenceAgenda.md` — 주제별 정본 링크 목록으로 재구성(같은 내용 재서술 금지)
+* 결과 (2026-10-08):
+    - 서술은 소스 실측으로 확인 — 모드 활성화는 «normal 복원 → `requiredApps` 적용» 순서(`AppState.swift` activateMode), 변경 이벤트에 `mode.*`·`op.*` 포함, 모드 저장 `{data}/{host}/modes/`, 통계·정규화 룰은 Application Support
+    - 덤: kr/en `05_API_Usage.md` 엔드포인트 제목 단계(`##`·`###`·`####` 혼재) 통일
+    - 검증: 매뉴얼·README 링크·앵커 314개 실파일 대조 오류 0, `lib/wArrange_core`·`setWindows`·`get_locale` 잔존 0
+
+## Issue114: 1.1.2 공개본 출고 테스트 발견 결함 — 단일 창 복원 판정·테스트 도구 위험·README 불일치 (등록: 2026-09-29, 완료: 2026-10-08, Hash: 430a2ea, 779b6fe, 5dab80e) ✅
 * 목적: prj5#Issue107 jma 출고 테스트(2026-09-29, release/1.1.1 `af8537b` = 공개 1.1.2) 결과 기록 — 증거 result: partial
 * 상세:
     - ① 단일 창 레이아웃을 다른 위치에서 복원하면 `noMatch`/`windowNotFound`·succeeded 0 보고, 실제로는 근사 이동 — 3회 재현(prj16#Issue283 ②). 1.1.1 부터인지는 미확인
@@ -45,20 +279,14 @@ date: 2026-04-07
     - 원인: 창은 매칭·이동했으나 3px 검증 실패(TextEdit 은 높이를 줄 단위로 맞춤) → 재시도 대상 → 2회차도 성공 0 → **조기 종료** `break` 가 마지막 시도 best-effort 분기를 건너뛰어 매칭 정보가 버려지고 `noMatch`/score 0 → REST `windowNotFound`. 다창 레이아웃은 회차마다 성공이 있어 조기 종료에 안 걸림
     - 수정: 검증 실패 매칭을 회차별로 기록하고 루프 종료 뒤 `RestoreLeftover.resolve` 한 곳에서 판정 — 마지막 시도·조기 종료 모두 matchType·score 유지 best-effort. 기존 `isLastAttempt` 분기 2곳(병렬·순차) 제거
     - 검증: 재생목록 24행 `verify-failed-best-effort` — red(컴파일 실패) → jma XCTest 127/127 passed. E2E(TextEdit 단일 창 REST 복원)는 1.1.3 R1 6행에서 확인
-
-# 📗 선택
-
-## Issue118: [Test] `fwc-run-xcode.sh` 가 Xcode 에 열린 문서가 없는 차가운 상태에서 workspace 로드 60s 대기를 넘겨 `fwc-test.sh` 가 빌드 전에 실패 (등록: 2026-10-04)
-* 목적: R1 4행(`app-bundle-all-clear`)이 코드와 무관하게 환경 상태로 실패한다 — 출고 테스트마다 재현 가능
-* 상세:
-    - 재현(jma 2026-10-04 R1 사전 점검): Xcode 실행 중·열린 문서 0 → `fwc-test.sh` Step 2 `[open] fWarrangeCli.xcodeproj 오픈 중...` → `execution error: Xcode workspace did not finish loading within 60s (-2700)` → `❌ 빌드 실패 — 중단`
-    - 우회: 대상 프로젝트를 Xcode 에 미리 열고 로드 완료 후 실행 → ALL CLEAR 6/0 (`cli/_doc_work/_release/v1.1.2/release-test_1.1.2_r1pre-2026.10.04.md` 4행)
-    - 연관: Issue114 ③(`fwc-test.sh` delete-all 이 실 데이터 폴더를 지움)
-* 구현 명세:
-    - 로드 대기를 문서 유무·Xcode 기동 직후 여부에 따라 연장하거나, `loaded` 폴링 상한을 설정값으로
-    - red 먼저: Xcode 문서 0 상태에서 `fwc-run-xcode.sh build-deploy` 가 성공하는지(jma)
-
-# ✅ 완료
+* 결과 (2026-10-08, ②~⑤):
+    - ② 조치 불요 — Issue108②·111·112 수정 커밋 `d117d12`·`a30f5d0`·`aebef57`·`12ec148` 이 모두 `cli-v1.1.3` 의 조상(1.1.3 출고로 해소)
+    - ③ `fwc-test.sh` — Step 1 이 데이터 폴더 전체(logs 제외)를 스냅샷, EXIT trap 이 앱 정지 뒤 `rsync --checksum --delete` 로 복원(중도 실패·Ctrl-C 포함). `--checksum` 은 같은 크기·같은 초 수정이 quick-check 를 빠져나가는 것을 스텁 실험으로 확인해 넣음. delete-all 테스트 3종(api v1/06·v2/23, cmd v2/29)은 `FORCE=1` 또는 `FWC_DATA_SNAPSHOT=1`(fwc-test 가 스냅샷 뒤 설정) 일 때만 실행
+    - ③ 판정 — 신설 `cli/_tool/fwc-verdict.py` 가 테스트별 응답 내용으로 PASS/FAIL/SKIP. 1.1.3 R1 4행 로그(기존 판정 ALL CLEAR)에 적용하자 숨은 실패 3건이 드러남: v2 `37 restore-modes`·`38 restore-dryrun` jq 우선순위 버그(`.status, .data | {…}` → 문자열에 `.total`) → 수정 · v1 `03 layout-detail` 순서 의존 실패 → `apiTestDo.sh all` 을 v2 전용으로(v1 디렉토리 25개는 모두 `/api/v2` 를 부르는 중복본)
+    - ④ `cli/README.md`·`README_kr.md` — v2 only·`410 Gone`, `brew services` 운영(Formula `service do` 와 일치), 개발 경로 예시 삭제, 설정 저장소 UserDefaults → `_config.yml`, 래퍼 관계·매뉴얼 링크
+    - ⑤ `.claude/skills/jma-fwarrange-deploy` (gitignored, 로컬 전용 — `.agents` 사본 동일 반영) — 동기화 기본값을 끄고 `--sync` opt-in, `--sync` 여도 jma 쪽이 실제 체크아웃이면서 브랜치 불일치·미커밋이면 중단. 2026-10-08 실측: jma 는 `release/1.1.1`(미커밋 paidApp 8·public 1), jm4 는 `release/1.2.0` — 옛 기본값이면 지금 실행만으로 jma 작업물이 덮였을 상태. `tdd/release.md` 실행 환경에 명시
+    - 검증 한계: ③ 은 jm4 에서 로그 재생(red: 3 FAIL 검출)·trap 스텁(빌드 실패 경로 복원) 까지. **jma 전체 `fwc-test.sh` 실행은 미실행** — 다음 R1 4행이 첫 실측
+    - ③ 보강 (`5dab80e`) — 테스트 34·36 이 초기화하는 `restore-stats.json`·`title_normalize.yml` 은 데이터 폴더가 아닌 `~/Library/Application Support/fWarrangeCli/` 에 있어 스냅샷 밖이었음(소스 `RestoreStatsCollector.swift`·`TitleNormalizer.swift` 실측). 상태 폴더도 스냅샷·복원, 실행 전 없던 폴더는 제거 — 스텁 2경우 확인
 
 ## Issue123: [Docs] 매뉴얼을 fWarrangeCli 전용으로 분리 — fWarrange(GUI)는 fWarrangeCli 의 래퍼임을 명시하고 두 매뉴얼을 서로 링크 (등록: 2026-10-08, 완료: 2026-10-08, Hash: 68afa62) ✅
 * 목적: `manual/` 에 paidApp(fWarrange) GUI 사용법(`04_GUI_Usage.md`·`img/` 9장)이 섞여 있어 두 제품의 경계가 흐리다. 두 앱은 별개 프로젝트(prj26 cliApp·prj16 paidApp)이므로 매뉴얼도 각 레포에 둔다

@@ -23,6 +23,7 @@ date: 2026.10.08
 | 06  | [Skill](kr/06_Skill_Usage.md)           | [Skill](en/06_Skill_Usage.md)            | Claude Code Skill                                 |
 | 07  | [MCP](kr/07_MCP_Usage.md)               | [MCP](en/07_MCP_Usage.md)                | MCP 서버 `fwarrange-mcp`                          |
 | 08  | [FAQ](kr/08_FAQ.md)                     | [FAQ](en/08_FAQ.md)                      | 자주 묻는 질문                                    |
+| 09  | [단축키 사용법](kr/09_Shortcut_Usage.md) | [Shortcut Usage](en/09_Shortcut_Usage.md) | 전역 단축키 5종 · 바꾸기 · 표기 규칙 · 문제 해결 |
 
 공통 문서: [기능 명세](FunctionalSpecification.md) · [용어 사전](Glossary.md) · [참조 목록](ReferenceAgenda.md)
 
@@ -42,7 +43,8 @@ manual/
 │   ├── 05_API_Usage.md
 │   ├── 06_Skill_Usage.md
 │   ├── 07_MCP_Usage.md
-│   └── 08_FAQ.md
+│   ├── 08_FAQ.md
+│   └── 09_Shortcut_Usage.md
 └── en/                          # English (같은 구성)
 ```
 

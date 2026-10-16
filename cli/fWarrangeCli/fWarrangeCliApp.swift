@@ -8,7 +8,7 @@ struct AppEntry {
         // XCTest 환경에서는 CLI 처리·중복차단을 건너뛰되 GUI RunLoop(fWarrangeCliApp.main)는 유지한다.
         // return 으로 조기 종료하거나 SingleInstanceGuard(brew 실행 중 = 중복)를 그대로 타면
         // exit 되어 test runner 연결 전에 host app 이 죽는다("Early unexpected exit"). (Issue99 테스트 인프라)
-        let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        let isRunningTests = Env.isTestHost
         if !isRunningTests {
             if CLIHandler.handleIfNeeded() {
                 return
@@ -40,9 +40,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func handleBrewServicesOnTerminate(launchAtLogin: Bool) {
         // launchAtLogin=true → stop --keep (plist 유지, 재부팅 시 자동 시작) / false → stop (plist 제거)
-        // 판정은 BrewServiceSync 단일 지점 (Issue119: 재시작 중이면 nil — 서비스를 unload 하지 않는다)
-        guard let arguments = BrewServiceSync.terminateStopArguments(launchAtLogin: launchAtLogin) else {
-            logI("[brew-sync] applicationWillTerminate — 재시작 중이라 brew services stop 생략")
+        // 판정은 BrewServiceSync 단일 지점 (Issue119 재시작 · Issue135 형제 생존이면 nil — 서비스를 unload 하지 않는다)
+        // 형제가 살아 있으면 중복 정리로 물러나는 종료라 brew 를 건드리지 않는다 (Issue135)
+        guard let arguments = BrewServiceSync.terminateStopArguments(
+            launchAtLogin: launchAtLogin, siblingAlive: BrewServiceSync.liveSiblingAlive()) else {
+            logI("[brew-sync] applicationWillTerminate — 재시작 중이거나 형제 인스턴스 생존, brew services stop 생략")
             return
         }
         let process = Process()

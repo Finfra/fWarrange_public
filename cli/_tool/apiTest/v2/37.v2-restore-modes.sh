@@ -13,7 +13,7 @@ for MODE in strict normal loose; do
   echo "--- 2.$MODE) restore mode=$MODE ---"
   curl -s --max-time 20 -X POST "$BASE/layouts/$LAYOUT/restore" \
     -H "Content-Type: application/json" -d "{\"mode\":\"$MODE\"}" \
-    | jq '.status, .data | {total, succeeded, failed}'
+    | jq '.status, (.data | {total, succeeded, failed})'
 done
 
 echo ""

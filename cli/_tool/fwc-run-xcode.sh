@@ -30,41 +30,111 @@ XCODEPROJ="$CLI_DIR/$XCODEPROJ_NAME"
 CMD="${1:-build-deploy}"
 
 # ---------- Step 0: 프로젝트 사전 오픈 (AppleScript 오류 예방) ----------
-open_project() {
-    local already_loaded
-    already_loaded=$(osascript 2>/dev/null <<APPLESCRIPT || echo "false"
+# Issue118: 차가운 Xcode(막 기동·문서 0개)에서는 기동 + 첫 로드가 60초를 넘겨 빌드 전에 실패했다.
+#   - 상한은 FWC_XCODE_LOAD_TIMEOUT(초, 기본 300) — 단일 osascript 가 아닌 bash 폴링
+#   - 문서가 FWC_XCODE_REOPEN_AFTER(초, 기본 20) 동안 안 나타나면 open 을 한 번 더 보낸다
+#     (기동 중인 Xcode 가 첫 문서 열기 이벤트를 놓치는 경우 대비)
+#   - 시간 초과 시 단계·열린 문서·창 이름을 덤프해 다음 실패에서 원인을 실측할 수 있게 한다
+FWC_XCODE_LOAD_TIMEOUT="${FWC_XCODE_LOAD_TIMEOUT:-300}"
+FWC_XCODE_REOPEN_AFTER="${FWC_XCODE_REOPEN_AFTER:-20}"
+
+# Prints "<loaded>|<path>": loaded = true/false, "absent" (no such document) or
+# "busy" (Xcode did not answer within 10s, e.g. still launching or a modal is up)
+xcode_probe() {
+    osascript 2>/dev/null <<APPLESCRIPT || echo "busy|"
 tell application "Xcode"
     try
-        set ws to workspace document "$XCODEPROJ_NAME"
-        return (loaded of ws) as text
-    on error
-        return "false"
+        with timeout of 10 seconds
+            set ws to workspace document "$XCODEPROJ_NAME"
+            return ((loaded of ws) as text) & "|" & (path of ws)
+        end timeout
+    on error errMsg number errNum
+        if errNum is -1712 then return "busy|"
+        return "absent|"
     end try
 end tell
 APPLESCRIPT
-)
-    if [[ "$already_loaded" == "true" ]]; then
-        echo "[open] $XCODEPROJ_NAME 이미 로드됨"
-        return 0
-    fi
+}
 
-    echo "[open] $XCODEPROJ_NAME 오픈 중..."
-    open -a Xcode "$XCODEPROJ"
-
-    # loaded 폴링 — 최대 60초 (120회 × 0.5초)
-    osascript <<APPLESCRIPT
+xcode_diagnose() {
+    echo "[open] --- 진단 (Issue118) ---"
+    echo "[open] Xcode 프로세스: $(pgrep -x Xcode >/dev/null && echo 실행 중 || echo 없음)"
+    osascript 2>&1 <<APPLESCRIPT | sed 's/^/[open] /' || true
 tell application "Xcode"
-    repeat 120 times
-        try
-            set ws to workspace document "$XCODEPROJ_NAME"
-            if loaded of ws is true then return "OK"
-        end try
-        delay 0.5
-    end repeat
-    error "Xcode workspace did not finish loading within 60s"
+    with timeout of 10 seconds
+        set out to "열린 문서: "
+        repeat with d in (every workspace document)
+            set out to out & (path of d) & " (loaded=" & ((loaded of d) as text) & ") "
+        end repeat
+        set out to out & linefeed & "창: "
+        repeat with w in (every window)
+            set out to out & "[" & (name of w) & "] "
+        end repeat
+        return out
+    end timeout
 end tell
 APPLESCRIPT
-    echo "[open] 로드 완료"
+}
+
+# 같은 이름의 다른 경로 사본이 열려 있으면 build·stop 이 그 사본을 잡는다 (이름으로 찾기 때문).
+# 경고만 하고 넘어가면 의도와 다른 소스를 빌드·테스트하므로 중단한다 (Issue118, jma 실측:
+# Xcode 재기동 시 상태 복원으로 직전 클론의 문서가 다시 열림).
+# /tmp ↔ /private/tmp 같은 별칭은 실경로로 풀어 비교한다.
+real_dir_path() { (cd "$1" 2>/dev/null && pwd -P) || echo "$1"; }
+require_this_copy() {
+    local doc_path="$1"
+    [[ -z "$doc_path" ]] && return 0
+    [[ "$(real_dir_path "$doc_path")" == "$(real_dir_path "$XCODEPROJ")" ]] && return 0
+    echo "[open] ❌ Xcode 에 같은 이름의 다른 사본이 열려 있음: $doc_path"
+    echo "[open] ❌ 이 스크립트의 대상은 $XCODEPROJ — 그대로 진행하면 저 사본을 빌드함"
+    echo "[open] 조치: Xcode 에서 그 문서를 닫고 재실행"
+    return 1
+}
+
+open_project() {
+    local probe="" state="absent" doc_path=""
+    # Probe only a running Xcode — "tell application" would launch it before we report that
+    if pgrep -x Xcode >/dev/null; then
+        probe=$(xcode_probe)
+        state="${probe%%|*}"; doc_path="${probe#*|}"
+        if [[ "$state" == "true" ]]; then
+            require_this_copy "$doc_path" || return 1
+            echo "[open] $XCODEPROJ_NAME 이미 로드됨"
+            return 0
+        fi
+    else
+        echo "[open] Xcode 미실행 — 기동 포함 대기"
+    fi
+
+    echo "[open] $XCODEPROJ_NAME 오픈 중... (상한 ${FWC_XCODE_LOAD_TIMEOUT}s)"
+    open -a Xcode "$XCODEPROJ"
+
+    local started=$SECONDS reopened=0 last_report=$SECONDS elapsed
+    while (( SECONDS - started < FWC_XCODE_LOAD_TIMEOUT )); do
+        probe=$(xcode_probe)
+        state="${probe%%|*}"; doc_path="${probe#*|}"
+        elapsed=$(( SECONDS - started ))
+        if [[ "$state" == "true" ]]; then
+            require_this_copy "$doc_path" || return 1
+            echo "[open] 로드 완료 (${elapsed}s)"
+            return 0
+        fi
+        if [[ "$state" == "absent" && $reopened -eq 0 && $elapsed -ge $FWC_XCODE_REOPEN_AFTER ]]; then
+            echo "[open] ${elapsed}s 동안 문서 없음 — open 재요청"
+            open -a Xcode "$XCODEPROJ"
+            reopened=1
+        fi
+        if (( SECONDS - last_report >= 15 )); then
+            echo "[open] 대기 중 ${elapsed}s — 상태: ${state}"
+            last_report=$SECONDS
+        fi
+        sleep 1
+    done
+
+    echo "[open] ❌ ${FWC_XCODE_LOAD_TIMEOUT}s 안에 workspace 로드 안 됨 (마지막 상태: ${state})"
+    xcode_diagnose
+    echo "[open] 우회: Xcode 에서 프로젝트를 먼저 연 뒤 재실행하거나 FWC_XCODE_LOAD_TIMEOUT 을 늘린다"
+    return 1
 }
 
 # ---------- Step 1: Xcode 빌드 제어 ----------

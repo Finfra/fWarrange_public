@@ -5,11 +5,63 @@ import XCTest
 /// 스냅샷 캡처·복원은 windowManager(GUI/AX) 의존이라 여기서 다루지 않고 통합 검증으로 대체한다.
 final class UndoShortcutTests: XCTestCase {
 
-    /// Undo 단축키 기본값은 ⌃⌘F7 (신규라 기본값 부여 — 기존 4개는 nil).
-    func testUndoShortcutDefaultIsControlCommandF7() {
-        let cfg = AppSettings.defaults.undoShortcut
-        XCTAssertNotNil(cfg, "undoShortcut 기본값이 있어야 한다")
-        XCTAssertEqual(cfg?.displayString, "⌃⌘F7")
+    /// Undo 단축키 기본값은 미지정(nil) — jm4 실설정 기준 (Issue130). ⌃⌘F7 은 사용자가 지정하는 예시일 뿐이다.
+    func testUndoShortcutDefaultIsUnassigned() {
+        XCTAssertNil(AppSettings.defaults.undoShortcut, "undoShortcut 기본값은 미지정이어야 한다")
+    }
+
+    // MARK: - Issue130 기본 단축키 = jm4 실설정
+
+    /// jm4 실측(2026-10-15): save ⌘F7 · restoreDefault ⇧⌘F7 · restoreLast ⌥⌘F7 · showMainWindow ⌥⇧⌘F7 · undo 미지정.
+    private func assertJm4Shortcuts(_ s: AppSettings, _ context: String, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertEqual(s.saveShortcut?.displayString, "⌘F7", "\(context) save", file: file, line: line)
+        XCTAssertEqual(s.restoreDefaultShortcut?.displayString, "⇧⌘F7", "\(context) restoreDefault", file: file, line: line)
+        XCTAssertEqual(s.restoreLastShortcut?.displayString, "⌥⌘F7", "\(context) restoreLast", file: file, line: line)
+        XCTAssertEqual(s.showMainWindowShortcut?.displayString, "⌥⇧⌘F7", "\(context) showMainWindow", file: file, line: line)
+        XCTAssertNil(s.undoShortcut, "\(context) undo 는 미지정이어야 한다", file: file, line: line)
+    }
+
+    private func makeTempDir() throws -> URL {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        return dir
+    }
+
+    /// 새로 설치한 사용자(설정 파일 없음)는 번들 시드에서 jm4 와 같은 단축키 5값을 받는다.
+    func testBundledSeedShortcutsMatchJm4() throws {
+        let svc = YAMLSettingsService(baseDirectory: try makeTempDir())
+        assertJm4Shortcuts(svc.load(), "첫 기동 시드")
+    }
+
+    /// 값 뒤 인라인 주석(`# {showMain} ...`)이 있어도 단축키가 파싱된다 — 시드 파일이 이 형태라
+    /// 파서가 못 읽으면 새 설치에서 «Open Main Window» 단축키가 조용히 비어 있었다.
+    func testInlineCommentAfterQuotedShortcutIsIgnored() throws {
+        let dir = try makeTempDir()
+        let yml = """
+        saveShortcut: "⌘F7"   # save
+        showMainWindowShortcut: "⌥⇧⌘F7" # {showMain}     Open Main Window
+        restoreLastShortcut: ⌥⌘F7 # unquoted
+        dataDirectoryPath: "~/a # b"
+        """
+        try yml.write(to: dir.appendingPathComponent("_config.yml"), atomically: true, encoding: .utf8)
+        let s = YAMLSettingsService(baseDirectory: dir).load()
+        XCTAssertEqual(s.saveShortcut?.displayString, "⌘F7")
+        XCTAssertEqual(s.showMainWindowShortcut?.displayString, "⌥⇧⌘F7")
+        XCTAssertEqual(s.restoreLastShortcut?.displayString, "⌥⌘F7")
+        XCTAssertEqual(s.dataDirectoryPath, "~/a # b", "따옴표 안의 # 는 주석이 아니다")
+    }
+
+    /// 공장 초기화는 «번들 시드 재복사» — 사용자가 바꾼 단축키는 시드 4종으로 복원되고 undo 는 비워진다.
+    func testFactoryResetRestoresSeedShortcuts() throws {
+        let svc = YAMLSettingsService(baseDirectory: try makeTempDir())
+        _ = svc.mutate { s in
+            s.saveShortcut = nil
+            s.showMainWindowShortcut = KeyboardShortcutConfig.from(displayString: "⌃⇧⌘F7")
+            s.undoShortcut = KeyboardShortcutConfig.from(displayString: "⌃⌘F7")
+        }
+        svc.resetToDefaults()
+        assertJm4Shortcuts(svc.load(), "공장 초기화 후")
     }
 
     /// Undo 는 창 조작(AX)을 수반하므로 접근성 권한이 필요한 액션이다.

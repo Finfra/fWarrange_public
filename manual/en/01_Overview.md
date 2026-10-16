@@ -53,7 +53,7 @@ Window match scores: window ID 100 · exact title 90 · regex 80 · contains 70 
 
 # Four Ways to Use It
 
-1. **Menu bar · global shortcuts** — [Menu Bar Usage](04_MenuBar_Usage.md)
+1. **Menu bar · global shortcuts** — [Menu Bar Usage](04_MenuBar_Usage.md) · [Shortcut Usage](09_Shortcut_Usage.md)
 2. **Command line** — `fWarrangeCli status|list|capture|restore …` ([Menu Bar Usage › Command Line](04_MenuBar_Usage.md#command-line-cli))
 3. **REST API** — [REST API Usage](05_API_Usage.md)
 4. **AI integration** — [Claude Code Skill](06_Skill_Usage.md) · [MCP Server](07_MCP_Usage.md)

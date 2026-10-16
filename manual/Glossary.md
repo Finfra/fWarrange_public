@@ -1,10 +1,10 @@
 ---
 title: 용어 사전 (Glossary)
-description: fWarrange 프로젝트 핵심 기술 용어 및 다국어 번역 통일 문서
-date: 2026-03-26
+description: fWarrangeCli · fWarrange 핵심 기술 용어와 다국어 번역 통일 문서
+date: 2026.10.08
 ---
 
-이 문서는 fWarrange 프로젝트 내의 주요 기술 용어와 다국어 번역을 통일하기 위해 정리된 문서입니다. 다국어 매뉴얼 작성 및 앱 로컬라이제이션(Localization) 시 본 용어집을 최우선으로 준수합니다.
+이 문서는 fWarrangeCli(엔진)와 그 GUI 래퍼 fWarrange 가 함께 쓰는 기술 용어와 다국어 번역을 통일하기 위해 정리한 문서입니다. 다국어 매뉴얼 작성과 앱 로컬라이제이션(Localization) 때 이 용어집을 먼저 따릅니다. 기능 정의는 [기능 명세서](FunctionalSpecification.md)를 봅니다.
 
 # 핵심 용어 (Core Terms)
 
@@ -28,8 +28,20 @@ date: 2026-03-26
 | 외부 클라이언트가 HTTP로 앱 기능을 원격 호출하는 인터페이스 | REST API        | REST API            | REST API           | REST API             | REST API           |
 | 네트워크 요청을 수신하여 응답을 반환하는 내장 서버          | Embedded Server | 내장 서버           | 内蔵サーバー       | Eingebetteter Server | 内置服务器         |
 | IP 주소 대역을 지정하여 접근을 제한하는 보안 규칙           | CIDR Whitelist  | CIDR 화이트리스트   | CIDRホワイトリスト | CIDR-Whitelist       | CIDR白名单         |
-| 앱 내부 이벤트를 다른 컴포넌트에 비동기 전달하는 메커니즘   | Notification    | 알림 (노티피케이션) | 通知               | Benachrichtigung     | 通知               |
+| 변경 시퀀스 번호를 주기적으로 조회해 변경을 감지하는 방식   | Adaptive Polling | 적응형 폴링        | 適応型ポーリング   | Adaptives Polling    | 自适应轮询         |
 | 앱 상단 메뉴바에 상주하는 시스템 트레이 형태의 인터페이스   | Menu Bar App    | 메뉴바 앱           | メニューバーアプリ | Menüleisten-App      | 菜单栏应用         |
+
+# 앱 구성·복원 관련 용어
+
+| 설명 (설계/기능)                                                         | English          | Korean (기준)    | Japanese               | German                     | Simplified Chinese |
+| :----------------------------------------------------------------------- | :--------------- | :--------------- | :--------------------- | :------------------------- | :----------------- |
+| 창 캡처·복원·REST API 를 수행하는 메뉴바 상주 앱 (fWarrangeCli)          | Engine / Helper Daemon | 엔진 (헬퍼 데몬) | エンジン (ヘルパーデーモン) | Engine (Hilfsdienst)  | 引擎 (辅助守护进程) |
+| 엔진의 REST API 를 호출해 화면만 제공하는 앱 (fWarrange)                  | GUI Wrapper      | GUI 래퍼         | GUIラッパー            | GUI-Wrapper                | GUI 封装           |
+| 매칭 점수 하한과 폴백 허용 범위를 정하는 복원 강도 (strict/normal/loose) | Match Mode       | 매칭 모드        | マッチングモード       | Abgleichmodus              | 匹配模式           |
+| 창을 움직이지 않고 매칭 결과만 계산하는 시험 실행                        | Dry Run          | 시험 실행 (dry-run) | ドライラン          | Probelauf                  | 试运行             |
+| 비교 전에 창 제목에서 앱 이름·상태 표시를 지우는 처리                    | Title Normalization | 제목 정규화   | タイトル正規化         | Titelnormalisierung        | 标题规范化         |
+| 레이아웃과 실행·숨길 앱을 묶은 작업 단위                                 | Mode             | 모드             | モード                 | Modus                      | 模式               |
+| 레이아웃을 컴퓨터별 폴더(host) 또는 공유 폴더(share)에 두는 방식        | Storage Mode     | 저장 모드        | 保存モード             | Speichermodus              | 存储模式           |
 
 # AI 연동 관련 용어 (Skill / MCP / Plugin)
 

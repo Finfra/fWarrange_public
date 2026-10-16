@@ -672,6 +672,34 @@ final class AccessibilityBootListingTests: XCTestCase {
         XCTAssertFalse(requested)
         XCTAssertEqual(requests, 0)
     }
+
+    // MARK: - #29 test-host-no-a11y-guide (Issue133)
+
+    private func bootEvents(granted: Bool, testHost: Bool) -> [String] {
+        var events: [String] = []
+        AccessibilityBootListing.boot(
+            isGranted: { granted },
+            isTestHost: testHost,
+            requestListing: { events.append("listing") },
+            showGuide: { events.append("guide") }
+        )
+        return events
+    }
+
+    /// An ungranted boot asks for listing and shows the guide — in a real launch.
+    func testUngrantedRealBootListsAndGuides() {
+        XCTAssertEqual(bootEvents(granted: false, testHost: false), ["listing", "guide"])
+    }
+
+    /// The XCTest host must not raise a real modal guide: it holds the presenter's guard and
+    /// swallows the guide tests' own `show()` calls (jma, TCC reset → 4 failures).
+    func testTestHostBootRaisesNothing() {
+        XCTAssertEqual(bootEvents(granted: false, testHost: true), [])
+    }
+
+    func testGrantedBootRaisesNothing() {
+        XCTAssertEqual(bootEvents(granted: true, testHost: false), [])
+    }
 }
 
 // MARK: - official-build-marker (Issue105)
@@ -844,6 +872,40 @@ final class BrewHandoffTests: XCTestCase {
         XCTAssertEqual(outcome, .skipped)
         XCTAssertFalse(events.contains("start"), "must not call brew services start without the formula")
         XCTAssertFalse(events.contains("exit"))
+    }
+
+    /// Issue137: a Debug build run from DerivedData (all-clear, /run) handed itself off to the brew
+    /// service — launchd then ran the installed Release binary, so the suite tested the wrong app and
+    /// REST went silent during the swap (jma full run: API 19-25 empty). Hand off only when launchd
+    /// would run this very binary.
+    func testForeignBinaryDoesNotHandOff() {
+        var env = environment(formulaInstalled: true, startStatus: 0)
+        env.isServiceBinary = { [unowned self] _ in events.append("same-binary?"); return false }
+
+        let outcome = BrewServiceSync.onAppStart(env)
+
+        XCTAssertEqual(outcome, .skipped)
+        XCTAssertEqual(events, ["formula?", "same-binary?"], "no brew services start, no exit")
+    }
+
+    /// The installed app reached through a symlink (/Applications/_nowage_app → brew opt → Cellar)
+    /// is the service binary; another copy of the bundle is not.
+    func testServiceBinaryComparesResolvedBundlePaths() throws {
+        let cellar = tmpDir.appendingPathComponent("Cellar/fwarrange-cli/1.2.0/fWarrangeCli.app")
+        let other = tmpDir.appendingPathComponent("DerivedData/Debug/fWarrangeCli.app")
+        try FileManager.default.createDirectory(at: cellar, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: other, withIntermediateDirectories: true)
+        let opt = tmpDir.appendingPathComponent("opt/fwarrange-cli")
+        try FileManager.default.createDirectory(at: opt.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: opt, withDestinationURL: cellar.deletingLastPathComponent())
+        let appLink = tmpDir.appendingPathComponent("Applications/fWarrangeCli.app")
+        try FileManager.default.createDirectory(at: appLink.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: appLink, withDestinationURL: opt.appendingPathComponent("fWarrangeCli.app"))
+
+        let service = opt.appendingPathComponent("fWarrangeCli.app").path
+        XCTAssertTrue(BrewServiceSync.isSameBundle(cellar.path, service))
+        XCTAssertTrue(BrewServiceSync.isSameBundle(appLink.path, service))
+        XCTAssertFalse(BrewServiceSync.isSameBundle(other.path, service))
     }
 
     /// Formula present but `brew services start` fails (e.g. untrusted tap).
@@ -1127,14 +1189,51 @@ final class AppRestarterTests: XCTestCase {
     /// was about to kickstart. Termination sync must have one decision point that honours the restart.
     func testTerminateSyncSkipsBrewStopDuringRestart() {
         defer { BrewServiceSync.endManagedRelaunch() }
-        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: true),
+        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: true, siblingAlive: false),
                        ["services", "stop", "fwarrange-cli", "--keep"])
-        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: false),
+        XCTAssertEqual(BrewServiceSync.terminateStopArguments(launchAtLogin: false, siblingAlive: false),
                        ["services", "stop", "fwarrange-cli"])
 
         BrewServiceSync.beginManagedRelaunch()
-        XCTAssertNil(BrewServiceSync.terminateStopArguments(launchAtLogin: true),
+        XCTAssertNil(BrewServiceSync.terminateStopArguments(launchAtLogin: true, siblingAlive: false),
                      "a restarting instance must leave the brew service loaded")
+    }
+
+    /// jma reboot: paidApp opened a cliApp before launchd spawned the RunAtLoad instance. The launchd
+    /// winner terminated that sibling (Issue131), and the sibling's terminate sync ran
+    /// `brew services stop --keep` — unloading the winner too, so no cliApp was left (Issue135).
+    /// An instance that quits while a sibling is still alive is being retired, not stopped by the user.
+    func testRetiredDuplicateLeavesBrewServiceLoaded() {
+        XCTAssertNil(BrewServiceSync.terminateStopArguments(launchAtLogin: true, siblingAlive: true))
+        XCTAssertNil(BrewServiceSync.terminateStopArguments(launchAtLogin: false, siblingAlive: true))
+        XCTAssertFalse(BrewServiceSync.shouldSyncStopOnTerminate(siblingAlive: true),
+                       "the menu Quit path must use the same decision")
+    }
+
+    /// A lone instance quit by the user still syncs brew to stopped (Issue51 behaviour kept).
+    func testLoneInstanceQuitStillStopsBrew() {
+        XCTAssertTrue(BrewServiceSync.shouldSyncStopOnTerminate(siblingAlive: false))
+    }
+
+    /// jma green run 1 still failed: the launchd winner terminates the sibling ~50 ms after it is spawned,
+    /// before LaunchServices lists it — `NSRunningApplication` saw no sibling and the stop went through
+    /// (`bootout initiated by: launchctl<-ruby<-fWarrangeCli[open pid]`). launchd's own table already
+    /// carries the winner's PID, so a running service process that is not me counts as a sibling.
+    func testServicePIDIsReadFromLaunchctlList() {
+        let list = "PID\tStatus\tLabel\n-\t78\thomebrew.mxcl.libvirt\n19854\t0\tsh.brew.fwarrange-cli\n"
+        XCTAssertEqual(BrewServiceSync.servicePID(fromLaunchctlList: list), 19854)
+        XCTAssertNil(BrewServiceSync.servicePID(fromLaunchctlList: "-\t0\tsh.brew.fwarrange-cli\n"),
+                     "loaded but not running is no sibling")
+        XCTAssertNil(BrewServiceSync.servicePID(fromLaunchctlList: ""))
+    }
+
+    func testRunningServiceProcessOtherThanMeIsASibling() {
+        XCTAssertTrue(BrewServiceSync.isSiblingAlive(myPID: 100, servicePID: 200, otherAppVisible: false),
+                      "the just-spawned launchd winner, not yet in NSRunningApplication")
+        XCTAssertFalse(BrewServiceSync.isSiblingAlive(myPID: 100, servicePID: 100, otherAppVisible: false),
+                       "the launchd instance quitting itself is a user stop")
+        XCTAssertFalse(BrewServiceSync.isSiblingAlive(myPID: 100, servicePID: nil, otherAppVisible: false))
+        XCTAssertTrue(BrewServiceSync.isSiblingAlive(myPID: 100, servicePID: nil, otherAppVisible: true))
     }
 
     /// The REST endpoint must use that path — not a bare terminate.
@@ -1168,5 +1267,116 @@ final class AppRestarterTests: XCTestCase {
 
         wait(for: [responded, scheduled], timeout: 10)
         XCTAssertFalse(body.contains("KeepAlive"), "response must not claim launchd KeepAlive: \(body)")
+    }
+}
+
+// MARK: - same-instant-duplicate-recheck (Issue131)
+
+/// Issue131: two launch paths that fire in the same instant (`launchctl kickstart` + `open -a`)
+/// both pass the launch-time check because neither is registered in NSRunningApplication yet
+/// (TOCTOU). A delayed recheck runs the same rule again: the launchd-spawned instance terminates
+/// the others and rebinds REST; a non-launchd instance yields only to an older one so two `open`
+/// launches never both exit.
+final class SingleInstanceRecheckTests: XCTestCase {
+
+    private var events: [String] = []
+
+    override func setUp() {
+        events = []
+    }
+
+    private func environment(launchd: Bool, myPID: pid_t, others: [pid_t]) -> SingleInstanceGuard.RecheckEnvironment {
+        SingleInstanceGuard.RecheckEnvironment(
+            isLaunchedByLaunchd: { launchd },
+            myPID: myPID,
+            otherPIDs: { others },
+            terminateOthers: { [unowned self] pids in events.append("terminate \(pids.map(String.init).joined(separator: ","))") },
+            exitSelf: { [unowned self] in events.append("exit") },
+            rebindREST: { [unowned self] in events.append("rebind") }
+        )
+    }
+
+    /// The launch-time rule is unchanged: others seen at launch are older, so a non-launchd
+    /// instance always yields and a launchd one always wins.
+    func testLaunchDecisionKeepsExistingRule() {
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: false, myPID: 50, otherPIDs: [], atLaunch: true), .stay)
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: true, myPID: 50, otherPIDs: [], atLaunch: true), .stay)
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: true, myPID: 50, otherPIDs: [60, 70], atLaunch: true), .terminateOthers)
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: false, myPID: 50, otherPIDs: [60], atLaunch: true), .exitSelf)
+    }
+
+    /// On recheck a non-launchd instance yields only to an older PID — of two same-instant `open`
+    /// launches exactly one survives, never zero.
+    func testRecheckNonLaunchdYieldsOnlyToOlderInstance() {
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: false, myPID: 200, otherPIDs: [100], atLaunch: false), .exitSelf)
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: false, myPID: 100, otherPIDs: [200], atLaunch: false), .stay)
+        XCTAssertEqual(SingleInstanceGuard.decide(iAmLaunchd: true, myPID: 300, otherPIDs: [100, 200], atLaunch: false), .terminateOthers)
+    }
+
+    /// The launchd winner terminates the duplicates first, then rebinds REST — the loser may have
+    /// held port 3016 (jma repro: launchd instance alive without REST).
+    func testRecheckWinnerTerminatesOthersThenRebindsREST() {
+        let decision = SingleInstanceGuard.recheck(environment(launchd: true, myPID: 300, others: [100, 101]))
+        XCTAssertEqual(decision, .terminateOthers)
+        XCTAssertEqual(events, ["terminate 100,101", "rebind"])
+    }
+
+    func testRecheckLoserExitsWithoutTouchingOthers() {
+        let decision = SingleInstanceGuard.recheck(environment(launchd: false, myPID: 200, others: [100]))
+        XCTAssertEqual(decision, .exitSelf)
+        XCTAssertEqual(events, ["exit"])
+    }
+
+    func testRecheckAloneDoesNothing() {
+        let decision = SingleInstanceGuard.recheck(environment(launchd: true, myPID: 300, others: []))
+        XCTAssertEqual(decision, .stay)
+        XCTAssertEqual(events, [])
+    }
+
+    /// One recheck runs per delay (a late registration is still caught by the later one).
+    func testScheduledRechecksRunOncePerDelay() {
+        let done = expectation(description: "two rechecks")
+        done.expectedFulfillmentCount = 2
+        var env = environment(launchd: true, myPID: 300, others: [])
+        env.otherPIDs = { done.fulfill(); return [] }
+        SingleInstanceGuard.scheduleRechecks(delays: [0.01, 0.05], environment: env)
+        wait(for: [done], timeout: 2.0)
+    }
+
+    // MARK: - modal-blocks-terminate (Issue131 ②)
+
+    /// Fake process table: who is alive, who was force-terminated.
+    private final class Box {
+        var alive: Set<pid_t>
+        var forced: [pid_t] = []
+        init(alive: Set<pid_t>) { self.alive = alive }
+    }
+
+    /// jma E2E 0/10: an instance showing the accessibility alert (`runModal`) accepts the terminate
+    /// request (`terminate()` → true) but never quits, so both instances stayed and the loser kept
+    /// port 3016. A process still alive after the polite wait must be force-terminated.
+    func testInstanceIgnoringTerminateIsForceTerminated() {
+        let box = Box(alive: [100, 101])
+        let ops = SingleInstanceGuard.TerminationOps(
+            terminate: { pid in if pid == 101 { box.alive.remove(pid) }; return true },
+            forceTerminate: { pid in box.forced.append(pid); box.alive.remove(pid) },
+            isAlive: { box.alive.contains($0) },
+            sleep: { _ in }
+        )
+        let survivors = SingleInstanceGuard.terminateAndWait([100, 101], politeTimeout: 3, ops: ops)
+        XCTAssertEqual(box.forced, [100], "only the instance that ignored the request is forced")
+        XCTAssertEqual(survivors, [])
+    }
+
+    func testPoliteInstancesAreNotForced() {
+        let box = Box(alive: [100])
+        let ops = SingleInstanceGuard.TerminationOps(
+            terminate: { pid in box.alive.remove(pid); return true },
+            forceTerminate: { pid in box.forced.append(pid) },
+            isAlive: { box.alive.contains($0) },
+            sleep: { _ in }
+        )
+        XCTAssertEqual(SingleInstanceGuard.terminateAndWait([100], politeTimeout: 3, ops: ops), [])
+        XCTAssertEqual(box.forced, [])
     }
 }

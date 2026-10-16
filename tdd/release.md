@@ -14,7 +14,7 @@ evidence_dir: cli/_doc_work/_release
 사용자가 받는 fWarrangeCli 산출물(소스 빌드·app 번들·brew local·GitHub release tarball·공개 tap)이 jma 클린 환경에서 설치·기동·REST·로그 무오류까지 작동하고, 같은 버전의 paidApp(prj16)과 붙어 동작하는지를 지킨다.
 
 * 브랜치 모델: `release/{X.Y.Z}` → R1 은 release 브랜치 HEAD(clean). 2-레포 락스텝이므로 증거에 prj16 후보 커밋 SHA 를 함께 기록한다 ([fapp-gitflow](~/_git/___pm/_doc_arch/fapp-gitflow.md))
-* 실행 머신은 **jma**. 원격 빌드·서명은 tmux 경유 + 화면 잠금 해제 상태에서 한다 ([jma-fwarrange-deploy](.claude/skills/jma-fwarrange-deploy/SKILL.md)). jma xcodebuild 는 공용 잠금 `/tmp/jma-xcode.lock` 을 prj15·16·25 와 공유한다
+* 실행 머신은 **jma**. 원격 빌드·서명은 tmux 경유 + 화면 잠금 해제 상태에서 한다 ([jma-fwarrange-deploy](.claude/skills/jma-fwarrange-deploy/SKILL.md)). jma xcodebuild 는 공용 잠금 `/tmp/jma-xcode.lock` 을 prj15·16·25 와 공유한다 · 소스는 jma 체크아웃을 그대로 빌드한다 — jm4→jma 동기화는 `--sync` opt-in 이며 브랜치 불일치·jma 미커밋이면 중단한다(Issue114)
 
 # 재생목록
 

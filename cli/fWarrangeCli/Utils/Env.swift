@@ -24,6 +24,11 @@ enum Env {
         }
     }
 
+    /// XCTest 호스트 프로세스 여부 — 판정 단일 지점 (Issue133)
+    static var isTestHost: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
     /// FWARRANGE_DISABLE_HOTKEYS = "1" 시 글로벌 단축키 등록을 건너뜀
     static var hotkeysDisabled: Bool {
         ProcessInfo.processInfo.environment["FWARRANGE_DISABLE_HOTKEYS"] == "1"

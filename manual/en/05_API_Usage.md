@@ -102,7 +102,7 @@ Request body:
 | name       | string   | No       | Layout name (auto-generated from date if omitted) |
 | filterApps | string[] | No       | Apps to capture (all if omitted)                  |
 
-## POST /api/v2/layouts/{name}/restore - Restore Layout
+#### POST /api/v2/layouts/{name}/restore - Restore Layout
 
 ```bash
 # Default settings
@@ -138,7 +138,7 @@ Response:
 }
 ```
 
-## PUT /api/v2/layouts/{name} - Rename Layout
+#### PUT /api/v2/layouts/{name} - Rename Layout
 
 ```bash
 curl -s -X PUT http://localhost:3016/api/v2/layouts/myLayout \
@@ -146,7 +146,7 @@ curl -s -X PUT http://localhost:3016/api/v2/layouts/myLayout \
   -d '{"newName":"dailySetup"}' | python3 -m json.tool
 ```
 
-### DELETE /api/v2/layouts/{name} - Delete Layout
+#### DELETE /api/v2/layouts/{name} - Delete Layout
 
 ```bash
 curl -s -X DELETE http://localhost:3016/api/v2/layouts/myLayout | python3 -m json.tool
@@ -181,7 +181,7 @@ curl -s http://localhost:3016/api/v2/windows/current | python3 -m json.tool
 curl -s "http://localhost:3016/api/v2/windows/current?filterApps=Safari,iTerm2" | python3 -m json.tool
 ```
 
-## GET /api/v2/windows/apps - Running Apps
+#### GET /api/v2/windows/apps - Running Apps
 
 ```bash
 curl -s http://localhost:3016/api/v2/windows/apps | python3 -m json.tool
