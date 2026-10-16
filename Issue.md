@@ -26,7 +26,12 @@ date: 2026-04-07
 
 # 📕 중요
 
-## Issue129: [Version] cliApp 1.2.0 출고 — paidApp 1.2.0 App Store 재제출 락스텝 (등록: 2026-10-15, 출처: prj16#Issue289 사용자 지시)
+# 📙 일반
+# 📗 선택
+
+# ✅ 완료
+
+## Issue129: [Version] cliApp 1.2.0 출고 — paidApp 1.2.0 App Store 재제출 락스텝 (등록: 2026-10-15, 완료: 2026-10-16, Hash: 3091510, 출처: prj16#Issue289 사용자 지시) ✅
 * 목적: paidApp 1.1.3 (4) 리젝(2.4.5) 뒤 1.2.0 으로 재제출한다 — 심사·사용자 환경의 헬퍼도 1.2.0 으로 맞춘다(Issue120 락스텝 선례)
 * depends: prj16#Issue289
 * 상세:
@@ -42,13 +47,13 @@ date: 2026-04-07
 * 진행 (2026-10-15):
     - ① ✅ 범위 판정: Issue126·127 포함 — 둘 다 Issue130(`b4fc29e`)에서 해결·종결(`366cb1a`). Issue128 CONTRIBUTING(`76c57f2`)도 이 출고에 실린다
     - ①-1 ✅ `CURRENT_PROJECT_VERSION` 1 → 5 — pbxproj ×2·`cli/project.yml:16` (`61e7c04`)
-    - ② ⏳ 대기: peers 후보 없음 — prj16#Issue289 ①~④(접근성 안내 제거)가 미커밋 진행 중이라 paidApp 1.2.0 후보 SHA 가 없다(R1 10~12행·증거 `peers:` 필수). 또 2행 `jma-clean-state` 는 jma 의 fWarrange 자산을 지우고 4행은 접근성 재승인(사람)이 필요해, jma 를 쓰는 prj16 세션과 시점을 맞춰야 한다
-    - ⚠️ 128 의 CLA 링크는 prj6#Issue32 ③(cla-assistant.io 연결) 미완이라 아직 빈 페이지일 수 있다 — ③ push 전 확인
-
-# 📙 일반
-# 📗 선택
-
-# ✅ 완료
+    - ② ✅ R1 jma 12행 전부 통과 (2026-10-16). 후보 `2b17ef0`, peers `prj16@1d4399a`(prj16 세션이 지정함). 8행은 출고 직후 실행함. 증거 `cli/_doc_work/_release/v1.2.0/release-test_1.2.0.md`, 로그 `logs/r1_2026.10.16/`
+    - ③ ✅ 출고
+        - release/1.2.0 push → main `--no-ff` `3091510` → R2 recheck 통과(«이후 문서 변경 0건») → main push
+        - jma clean clone 에서 `publish` → ALL CLEAR 9/0. 태그 `cli-v1.2.0`, GitHub release, 공개 tap `cd7675a`
+        - Formula 스냅샷 sha256 실값 `ad3a13ac…`(공개 asset 을 내려받아 대조해 일치), `cli/version-meta.yml` brew 1.2.0
+    - ④ ✅ 공개 tap 설치본: 라벨 = 번들 = REST = `VERSION` = 1.2.0, 접근성 `granted` 승계. jma 원복 뒤 paidApp 1.2.0 이 이 cliApp 에 등록됨(`/paidapp/status` running·1.2.0)
+    - CLA 링크 `cla-assistant.io/Finfra/fWarrange_public` 는 HTTP 200 (2026-10-16 확인)
 
 ## Issue137: [Lifecycle] brew 서비스 바이너리가 아닌 open 인스턴스(Debug 빌드)가 brew 로 handoff — all-clear 대상이 설치본(Release)으로 바뀜 (등록: 2026-10-15, 완료: 2026-10-15, Hash: 7f34994, 출처: Issue132 full `jexec test` 3회차 jma) ✅
 * 목적: brew 서비스로 위임하는 것은 launchd 가 띄울 실행 파일이 바로 나 자신일 때뿐이게 한다 — Debug 빌드는 위임하지 않고 그대로 primary 로 남는다
